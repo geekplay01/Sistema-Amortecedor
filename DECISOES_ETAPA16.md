@@ -76,4 +76,12 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Observação para a etapa D: em R-D, 760 de 790 itens têm «Pendente compras» no sub status, inclusive 766 já recebidos — provável sub status velho no servidor.
 - Próximo: Metas (migração visual + filtro DES/R-D).
 
+### Etapa B · tela Metas & Validação (11/11/2026) ✅
+- Tela própria `telas/metas.js` (saiu de `pages_new.js`; `PSDTW.validationBlock` removido). Filtros na URL + última visita: `year`, `tipo` (des/rd; chip ativo clicado de novo limpa; «Todos»), `conta` (sim/nao) na lista de recebidos.
+- Tipo filtra KPIs de validação, série mensal, cartões de meta, lista de recebidos (`/api/goals/events?kind=`) e esconde «Validações R-D» quando o tipo é DES.
+- `/api/goals/events` passou a aceitar `limit` (antes cortava em 80 sem avisar: eram 341 recebidos em 2026). A tela pede a lista inteira; os contadores «conta / não conta» agora são exatos.
+- Percentuais em pt-BR (65,6%). Corrigido o texto da base «item recebido» do cartão DES (lia `recebidos_no_ano`, campo que não existe).
+- Observação: na base «validação», a coluna «Conta?» de R-D segue a regra de recebimento (0 de 168 em 2026) — a meta R-D soma validações (197). A tela explica isso no cartão; regra não alterada.
+- Próximo: Produtos/Pesquisa/ficha (Q13: Família, Diâmetro da haste, Lançamento; busca pela coluna E).
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

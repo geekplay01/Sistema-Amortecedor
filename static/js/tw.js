@@ -37,19 +37,5 @@ window.PSDTW = (() => {
     write();
     return { restaurado, get: () => ({ ...st }), set: patch => { st = pick({ ...st, ...patch }); write(); }, toggle: (k, v) => { st = pick({ ...st, [k]: st[k] === String(v) ? "" : v }); write(); }, clear: () => { st = {}; write(); } };
   };
-
-  /* bloco «Validações» da tela Metas & Validação (alimentado por /api/goals → validacoes) */
-  const DES = "DESENVOLVIMENTO", RD = "REDESENVOLVIMENTO";
-  const validationBlock = d => {
-    const v = d.validacoes || {}, g = d.goals || {}, warn = [...(v.avisos || [])];
-    if (v.sem_data) warn.push(`${v.sem_data} validação(ões) sem data de aprovação (não entram na evolução mensal)`);
-    return `<section class="mb-6 flex flex-col gap-4">
-      <div class="flex flex-wrap items-end justify-between gap-2"><div><h3 class="m-0 text-lg font-semibold text-ink">Validações ${esc(v.filtro?.USER_VALID || "ITALOC")} · ${d.year}</h3>
-        <p class="text-sm text-mute">USER_VALID = <b>${esc(v.filtro?.USER_VALID || "ITALOC")}</b> · LINHA contém <b>${esc(v.filtro?.LINHA_contem || "AMORTECEDOR")}</b> · contagem por código distinto · tipo pela SUGESTÃO</p></div></div>
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">${kpi("Total de validações", nf(v.total), `${nf(v.linhas?.do_usuario_e_linha)} linhas de ${nf(v.linhas?.lidas)} lidas`, "blue")}
-        ${kpi(DES, nf(v[DES]), g[DES] ? `meta ${nf(g[DES].target)} · ${g[DES].pct ?? "–"}% atingido` : "", "green")}${kpi(RD, nf(v[RD]), g[RD] ? `meta ${nf(g[RD].target)} · ${g[RD].pct ?? "–"}% atingido` : "", "slate")}</div>
-      ${warn.length ? notice(warn.map(esc).join("<br>"), "amber") : ""}
-      ${card("Validações por mês", '<div id="mxc" class="chart"></div>')}</section>`;
-  };
-  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, filtros, validationBlock };
+  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, filtros };
 })();

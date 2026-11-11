@@ -17,6 +17,7 @@
 .bg-red-500\/10{background-color:rgba(239,68,68,0.1)}
 .bg-red-500\/15{background-color:rgba(239,68,68,0.15)}
 .bg-slate-400{background-color:#94a3b8}
+.bg-slate-500\/10{background-color:rgba(100,116,139,0.1)}
 .bg-slate-500\/15{background-color:rgba(100,116,139,0.15)}
 .bg-slate-500\/20{background-color:rgba(100,116,139,0.2)}
 .bg-slate-600{background-color:#475569}
@@ -58,6 +59,7 @@
 .font-normal{font-weight:400}
 .font-semibold{font-weight:600}
 .gap-1{gap:.25rem}
+.gap-1\.5{gap:.375rem}
 .gap-2{gap:.5rem}
 .gap-3{gap:.75rem}
 .gap-4{gap:1rem}
@@ -67,6 +69,7 @@
 .grid{display:grid}
 .grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}
 .grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .h-1{height:.25rem}
 .h-1\.5{height:.375rem}
 .h-3\.5{height:.875rem}
@@ -81,7 +84,6 @@
 .inset-x-0{left:0;right:0}
 .inset-y-0{top:0;bottom:0}
 .items-center{align-items:center}
-.items-end{align-items:flex-end}
 .justify-between{justify-content:space-between}
 .justify-center{justify-content:center}
 .leading-none{line-height:1}
@@ -95,19 +97,21 @@
 .max-w-\[13rem\]{max-width:13rem}
 .max-w-\[16rem\]{max-width:16rem}
 .max-w-\[18rem\]{max-width:18rem}
+.max-w-\[22rem\]{max-width:22rem}
 .max-w-\[8rem\]{max-width:8rem}
 .max-w-none{max-width:none}
 .mb-2{margin-bottom:.5rem}
 .mb-3{margin-bottom:.75rem}
 .mb-4{margin-bottom:1rem}
-.mb-6{margin-bottom:1.5rem}
 .min-w-0{min-width:0}
 .min-w-\[12rem\]{min-width:12rem}
 .min-w-\[16rem\]{min-width:16rem}
 .min-w-\[200px\]{min-width:200px}
 .min-w-\[220px\]{min-width:220px}
 .ml-2{margin-left:.5rem}
+.ml-auto{margin-left:auto}
 .mr-1{margin-right:.25rem}
+.mt-1{margin-top:.25rem}
 .mt-2{margin-top:.5rem}
 .mt-3{margin-top:.75rem}
 .mt-4{margin-top:1rem}
@@ -146,6 +150,7 @@
 .py-8{padding-top:2rem;padding-bottom:2rem}
 .relative{position:relative}
 .ring-1{box-shadow:0 0 0 1px var(--tw-ring-color,rgba(59,130,246,.5))}
+.ring-emerald-500\/50{--tw-ring-color:rgba(16,185,129,0.5)}
 .ring-slate-600{--tw-ring-color:#475569}
 .rounded-2xl{border-radius:1rem}
 .rounded-full{border-radius:9999px}
@@ -179,6 +184,7 @@
 .text-sm{font-size:.875rem;line-height:1.25rem}
 .text-violet-600{color:#7c3aed}
 .text-white{color:#ffffff}
+.text-xl{font-size:1.25rem;line-height:1.75rem}
 .text-xs{font-size:.75rem;line-height:1rem}
 .top-0{top:0}
 .tracking-\[0\.3em\]{letter-spacing:0.3em}
@@ -206,9 +212,11 @@
 .hover\:text-slate-200:hover{color:#e2e8f0}
 .hover\:text-white:hover{color:#ffffff}
 @media(min-width:640px){.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:768px){.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:768px){.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:768px){.md\:hidden{display:none}}
 @media(min-width:768px){.md\:static{position:static}}
+@media(min-width:1024px){.lg\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:1024px){.lg\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(min-width:1280px){.xl\:col-span-2{grid-column:span 2/span 2}}
 @media(min-width:1280px){.xl\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}

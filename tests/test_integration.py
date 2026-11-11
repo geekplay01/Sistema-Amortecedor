@@ -97,6 +97,12 @@ class Fluxo(unittest.TestCase):
         self.assertEqual(C.get("/api/goals?year=2025").json["goals"][DES]["tracked"], 0)                                 # outro ano: nada (a data da mudança está em 2026)
         ev = C.get("/api/goals/events?year=2026").json["rows"]; self.assertTrue(any(e["counts"] for e in ev)); self.assertTrue(any(not e["counts"] and "ITALOC" in (e["why_not"] or "") for e in ev))
         self.assertFalse(any(e["code"] == des_b[1] for e in ev))                                                          # fora do filtro «Amortecedor»
+        # filtro Tipo da tela Metas (etapa 16): aceita sigla ou rótulo; cada tipo traz só os seus e, juntos, dão a lista completa
+        ev_des = C.get("/api/goals/events?year=2026&kind=des").json["rows"]; ev_rd = C.get("/api/goals/events?year=2026&kind=REDESENVOLVIMENTO").json["rows"]
+        self.assertTrue(ev_des and ev_rd); self.assertEqual({e["kind"] for e in ev_des}, {DES}); self.assertEqual({e["kind"] for e in ev_rd}, {RD})
+        self.assertEqual(sorted((e["code"], e["kind"]) for e in ev_des + ev_rd), sorted((e["code"], e["kind"]) for e in ev))
+        self.assertEqual(len(C.get("/api/goals/events?year=2026&limit=1").json["rows"]), 1)                              # a tela pede a lista inteira (contadores «conta?» exatos)
+        self.assertEqual(C.get("/api/goals/events?year=2026&limit=abc").status_code, 200)
         self.assertNotIn(des_b[1], {r["code"] for r in C.get("/api/rd/des?all=1").json["rows"]})                         # e some das listas
 
     def test_04b_metas_por_validacao_nao_zera(self):

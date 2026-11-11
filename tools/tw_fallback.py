@@ -22,7 +22,7 @@ STATIC = {"flex": "display:flex", "grid": "display:grid", "block": "display:bloc
           "border-collapse": "border-collapse:collapse", "border-dashed": "border-style:dashed", "block ": "", "h-auto": "height:auto", "max-w-none": "max-width:none", "w-full": "width:100%", "h-full": "height:100%", "h-screen": "height:100vh", "min-w-0": "min-width:0",
           "shadow-sm": "box-shadow:0 1px 2px 0 rgb(0 0 0/.05)", "shadow-inner": "box-shadow:inset 0 2px 4px 0 rgb(0 0 0/.05)", "ring-1": "box-shadow:0 0 0 1px var(--tw-ring-color,rgba(59,130,246,.5))",
           "tracking-wide": "letter-spacing:.025em", "tracking-widest": "letter-spacing:.1em", "inset-x-0": "left:0;right:0", "inset-y-0": "top:0;bottom:0", "left-0": "left:0", "top-0": "top:0", "z-10": "z-index:10", "z-40": "z-index:40",
-          "mx-auto": "margin-left:auto;margin-right:auto", "grow": "flex-grow:1", "break-words": "overflow-wrap:break-word", "hidden ": ""}
+          "mx-auto": "margin-left:auto;margin-right:auto", "ml-auto": "margin-left:auto", "grow": "flex-grow:1", "break-words": "overflow-wrap:break-word", "hidden ": ""}
 SIDES = {"": ["{}"], "x": ["{}-left", "{}-right"], "y": ["{}-top", "{}-bottom"], "t": ["{}-top"], "b": ["{}-bottom"], "l": ["{}-left"], "r": ["{}-right"]}
 
 def color(name):

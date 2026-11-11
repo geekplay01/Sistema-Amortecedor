@@ -1,11 +1,9 @@
-/* Telas novas: Dashboard (gráficos), Metas e validações, painel do servidor e busca de preços.
+/* Telas novas: Dashboard (gráficos), painel do servidor e busca de preços. (Metas & Validação: static/js/telas/metas.js.)
    Carregado antes do core.js; recebe os utilitários dele (window.PSD_NEW(ctx)). */
 window.PSD_NEW = ctx => {
   const { J, post, $, $$, esc, num, tag, T, clip, empty, fail, dlg, qs, dmy, root, FLG, FGROUPS } = ctx;
-  const put = (u, b) => J(u, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) });
   const brl = v => v == null ? "–" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const when = s => s ? `${dmy(s)} ${String(s).slice(11, 16)}`.trim() : "–";
-  const MON = ["", "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const DES = "DESENVOLVIMENTO", RD = "REDESENVOLVIMENTO";
   const panel = (title, body, cls = "", extra = "") => `<section class="dpanel ${cls}"><header><h3>${title}</h3>${extra}</header>${body}</section>`;
   const note = (t, cls = "") => `<div class="notice ${cls}">${t}</div>`;
@@ -46,38 +44,6 @@ window.PSD_NEW = ctx => {
     } else { $("#c-sales").innerHTML = $("#c-top").innerHTML = none("Vendas ainda não chegaram do servidor (PEDIDOS_VENDA_DETALHADO). Sincronize ou rode <code>python data_pipeline.py probe</code> para conferir as colunas."); }
     const st = d.stock; $("#c-stock").innerHTML = st.available ? `<div class="kpis"><div><span class="num">${num(st.qty)}</span><small>peças disponíveis</small></div><div><span class="num">${num(st.items)}</span><small>códigos em estoque</small></div><div><span class="num">${num(st.zero)}</span><small>zerados</small></div></div>` : none("Estoque ainda não chegou do servidor (EST DISP).");
     const sys = d.system, lab = { gas: "Gás", oleo: "Óleo", nd: "Sem dado" }; PSDCharts.donut($("#c-sys"), { labels: sys.map(r => lab[r.s] || r.s), values: sys.map(r => r.n), colors: ["#2f6bff", "#10b981", "#94a3b8"] });
-  }
-
-  // ───────────────────────── Metas e validações ─────────────────────────
-  async function metas() {
-    const year0 = new URLSearchParams(location.search).get("year") || "";
-    root.innerHTML = `<div class="toolbar"><label class="inl">Ano <select id="my"></select></label><span class="muted" id="mtr"></span></div><div id="mx"></div><div id="mg" class="goal-grid"></div><div id="mevo"></div><div class="two"><div id="mev"></div><div id="mval"></div></div>`;
-    const load = async yr => {
-      let d, ev, pv; try { [d, ev, pv] = await Promise.all([J("/api/goals?year=" + (yr || "")), J("/api/goals/events?year=" + (yr || "")), J("/api/validations/pending")]); } catch (e) { return fail(e); }
-      $("#mx").innerHTML = PSDTW.validationBlock(d); { const pm = d.validacoes.por_mes, ks = Object.keys(pm).sort(); PSDCharts.bars($("#mxc"), { x: ks.length ? ks : [d.year + "-01"], series: [{ name: DES, y: ks.map(k => pm[k][DES] || 0), color: "#2f6bff" }, { name: RD, y: ks.map(k => pm[k][RD] || 0), color: "#10b981" }], height: 240, labels: true }); }
-      $("#my").innerHTML = d.years.map(y => `<option ${y === d.year ? "selected" : ""}>${y}</option>`).join("");
-      $("#mtr").textContent = d.tracking.since ? `Transições rastreadas desde ${dmy(d.tracking.since)} (${d.tracking.runs} sincronização(ões)). O que aconteceu antes entra em «já realizado antes do rastreio».` : "O rastreio começa na 1ª sincronização com o servidor.";
-      $("#mg").innerHTML = [DES, RD].map(k => { const g = d.goals[k], p = g.parts; return `<section class="dpanel goalcard ${g.reached ? "ok" : ""}"><header><h3>${k}</h3><button class="btn ghost sm" data-edit="${k}">Editar meta</button></header><div id="gg-${k}" class="chart"></div>
-        <div class="gstats"><div><b>${g.target}</b><small>meta ${d.year}</small></div><div><b>${g.done}</b><small>realizado</small></div><div><b>${g.missing}</b><small>faltam</small></div><div><b>${g.pct == null ? "–" : g.pct + "%"}</b><small>da meta</small></div></div>
-        <p class="muted gline">Rastreado pelo sistema: <b>${g.tracked}</b> + já realizado antes do rastreio: <b>${g.prior_done}</b>${g.note ? ` · <i>${esc(g.note)}</i>` : ""}</p>
-        <p class="muted gline">${esc(d.rules[k])}</p>
-        <p class="muted gline">${d.basis === "validacao" ? `Validações ${esc(d.validacoes.filtro.USER_VALID)} no ano: <b>${p.validacoes}</b>${p.validacoes_sem_data ? ` · ${p.validacoes_sem_data} sem data de aprovação` : ""}.` : k === RD ? `Recebidos e validados no ano: <b>${p.recebidos_validados}</b>${p.recebidos_sem_validacao ? ` · <b>${p.recebidos_sem_validacao}</b> recebido(s) sem validação de usuário não contam.` : ""}` : `Recebidos no ano: <b>${p.recebidos_no_ano}</b>${p.por_coluna_de_data ? ` (<b>${p.por_coluna_de_data}</b> datados pela coluna de status do servidor)` : ""}.`}</p></section>`; }).join("");
-      [DES, RD].forEach(k => PSDCharts.gauge($("#gg-" + k), { value: d.goals[k].done, target: d.goals[k].target, title: "", subtitle: `realizado × meta ${d.goals[k].target}` }));
-      $("#mevo").innerHTML = d.basis === "validacao" ? "" : panel("Evolução mensal — itens recebidos", '<div id="mevoc" class="chart"></div>');
-      if (d.basis !== "validacao") PSDCharts.bars($("#mevoc"), { x: d.goals[DES].series.main.map(m => m.month), series: [{ name: DES + " · item recebido", y: d.goals[DES].series.main.map(m => m.n), color: "#2f6bff" }, { name: RD + " · recebido e validado", y: d.goals[RD].series.main.map(m => m.n), color: "#10b981" }], height: 250, labels: true });
-      $("#mev").innerHTML = panel("Itens recebidos no ano e se contam", ev.rows.length ? T(["Código", "Tipo", "Mudança", "Data", "Conta?"], ev.rows.slice(0, 25).map(r => `<tr><td><a href="#" data-rd="${r.kind === RD ? "rd" : "des"}" data-code="${esc(r.code)}">${esc(r.code)}</a></td><td>${tag(r.kind)}</td><td>${esc(r.from_value || "—")} → <b>${esc(r.to_value)}</b></td><td>${dmy(r.at)}</td><td>${r.counts ? '<span class="badge ok">conta</span>' : `<span class="badge warn" title="${esc(r.why_not || "")}">não conta</span> <small class="muted">${esc(r.why_not || "")}</small>`}</td></tr>`)) : empty("Nenhum item chegou a ITEM RECEBIDO neste ano ainda (a data vem da sincronização diária ou da coluna de data de status do servidor)."));
-      $("#mval").innerHTML = panel(`Validações — ${RD}`, `<p class="muted">Itens em <b>PENDENTE CONFIRMAÇÃO</b> (Amortecedor): ${pv.total}, com validação enviada: <b>${pv.sent}</b>. Quando o servidor mostrar <b>ITEM RECEBIDO</b> e o item tiver a validação do usuário ITALOC, ele entra na meta automaticamente.</p>` + (pv.rows.length ? T(["Código", "Descrição", "Validação", ""], pv.rows.slice(0, 40).map(r => `<tr><td><a href="#" data-rd="rd" data-code="${esc(r.code)}">${esc(r.code)}</a></td><td>${clip(r.description)}</td><td>${r.sent_at ? `<span class="badge ok">enviada em ${dmy(r.sent_at)}</span> <small class="muted">aguardando ITEM RECEBIDO</small>` : '<span class="badge warn">não enviada</span>'}</td><td>${r.sent_at ? "" : `<button class="btn sm" data-vs="${esc(r.code)}">Marcar enviada</button>`}</td></tr>`)) : empty("Nenhum item de Redesenvolvimento aguardando confirmação.")));
-    };
-    $("#my").onchange = e => load(e.target.value);
-    root.addEventListener("click", async e => {
-      const ed = e.target.closest("[data-edit]"), vs = e.target.closest("[data-vs]");
-      if (vs) { try { await post("/api/validations", { code: vs.dataset.vs, kind: RD }); load($("#my").value); } catch (er) { alert(er.message); } }
-      if (ed) { const k = ed.dataset.edit, yr = $("#my").value, d = await J("/api/goals?year=" + yr), g = d.goals[k];
-        dlg.innerHTML = `<div class="dh"><div><h2>Meta ${yr} — ${k}</h2></div><div><button class="btn ghost" data-close>Fechar</button></div></div><div class="fgrid"><label>Meta do ano<input id="gt" type="number" min="0" value="${g.target}"></label><label>Já realizado antes do rastreio<input id="gp" type="number" min="0" value="${g.prior_done}"></label><label>Observação<input id="gn" value="${esc(g.note || "")}" placeholder="opcional"></label></div>
-          <p class="muted">«Já realizado antes do rastreio» soma ao que o sistema contar a partir da 1ª sincronização (o servidor não guarda histórico).</p><p id="gm" class="imp-msg"></p><div class="acts"><button class="btn" id="gs">Salvar</button><button class="btn ghost" data-close>Cancelar</button></div>`;
-        $("#gs").onclick = async () => { try { await put("/api/goals", { year: yr, kind: k, target: $("#gt").value, prior_done: $("#gp").value, note: $("#gn").value }); dlg.close(); load(yr); } catch (er) { $("#gm").textContent = er.message; $("#gm").className = "imp-msg err"; } }; dlg.showModal(); }
-    });
-    load(year0);
   }
 
   // ───────────────────────── Painel do servidor (Configurações) ─────────────────────────
@@ -129,5 +95,5 @@ window.PSD_NEW = ctx => {
     return { setRefs(r) { const keep = refs.filter(x => x.manual); refs = [...r.map((x, i) => ({ ...x, on: i < 2 })), ...keep]; render(); }, search: go, refs: () => refs };
   }
 
-  return { pages: { dashboard, metas }, serverPanel, priceSearch };
+  return { pages: { dashboard }, serverPanel, priceSearch };
 };

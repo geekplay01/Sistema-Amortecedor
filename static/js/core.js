@@ -179,5 +179,4 @@
   };
   window.PSD = { $, $$, esc, J, post, qs, num, brl, SYS, yr, T, lnk, empty, root, page, url, fail, dlg, kv, usd, fobBlock, sec, openFicha, fichaServer, listView, inp, sel, prodRow, prodHead, fillSel, initLists, tag, clip, AX, SD, FLG, FGROUPS, flagSel, flagChips, xchips, flagPanel, rdOpen, flagRefresh, FMT, fext, dwTile, kb, dmy, KL, dwBlocks, dwFill, dwCol, dwCollect, dwPrevOk, dwNav, NEW, pages, tela, iniciar };
   tela("dashboard", () => NEW.pages.dashboard());
-  tela("metas", () => NEW.pages.metas());
 })();
