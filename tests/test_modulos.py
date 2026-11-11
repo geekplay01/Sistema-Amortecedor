@@ -199,6 +199,19 @@ class UniversoDesRd(_TmpDB):
         c = self.db.conn(); c.execute("UPDATE rd_projects SET line=NULL"); c.commit()      # banco antigo, sem LINHA: vale a descrição, ainda sem COX/KAD
         ok2 = sorted(r[0] for r in c.execute("SELECT DISTINCT code FROM rd_projects WHERE " + rules.desc_sql())); c.close(); self.assertEqual(ok2, ["A1", "A2", "A3", "B1", "K1"])      # fallback pela descrição: K1 («KIT AMORTECEDOR») só sai quando a coluna LINHA (KAD) chega do servidor
 
+    def test_item_bloqueado_ou_inativo_no_erp_sai_do_universo(self):
+        import rules, rd
+        self.db.init_db()
+        self.sql("INSERT INTO rd_projects(code,suggestion,description,line) VALUES(?,?,?,?)", [(x, "DESENVOLVIMENTO", "AMORTECEDOR", "AMORTECEDOR") for x in ("A1", "A2", "A3", "A4")])
+        self.sql("INSERT INTO ds_situacao(code,active,blocked) VALUES(?,?,?)", [("A1", "ATIVO", "SIM"), ("A2", "ATIVO", "NAO"), ("A3", "INATIVO", "NAO")])
+        c = self.db.conn()
+        try: ok = sorted(r[0] for r in c.execute("SELECT DISTINCT code FROM rd_projects r WHERE " + rules.desc_sql("r.description")))
+        finally: c.close()
+        self.assertEqual(ok, ["A2", "A4"])          # A1 bloqueado e A3 inativo saem; A4 (fora da view do ERP) fica
+        self.assertEqual(sorted(x["code"] for x in rd.items("DESENVOLVIMENTO", {"all": 1})["rows"]), ["A2", "A4"])
+        self.assertEqual(self.db.stats()["des_items"], 2)
+        import goals; self.assertEqual(sorted(goals._meta("DESENVOLVIMENTO")), ["A1", "A2", "A3", "A4"])      # metas: o que foi recebido e validado continua contando
+
 
 class MercadoLivreFallback(unittest.TestCase):
     def test_token_expirado_cai_para_rota_publica(self):

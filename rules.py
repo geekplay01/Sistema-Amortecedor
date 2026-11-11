@@ -42,16 +42,20 @@ def only_desc():
 
 LINE_EXCLUDE = ("COX", "KAD")          # linhas COX (coxim) e KAD: não entram nas listas nem nas metas
 
-def desc_sql(col="description"):
+def desc_sql(col="description", erp=True):
     """Condição SQL que define o UNIVERSO de Desenvolvimento/Redesenvolvimento: só a linha «AMORTECEDOR» e «AMORTECEDOR LINHA PESADA» (coluna LINHA do servidor);
     COX e KAD ficam de fora. `col` carrega o alias da tabela («r.description» → usa r.line e r.code). Enquanto a coluna LINHA não veio do servidor (banco antigo), vale a descrição
-    contendo o texto da regra — sempre sem itens COX/KAD."""
+    contendo o texto da regra — sempre sem itens COX/KAD. `erp=False` mantém os bloqueados/inativos no ERP (metas: o que já foi recebido e validado continua contando)."""
     t = re.sub(r"[^A-Z0-9 ]", "", only_desc())
-    if not t: return "1=1"
     pre = col[:-len("description")] if col.endswith("description") else ""
     ln, cd, ds = f"upper(trim(coalesce({pre}line,'')))", f"upper(coalesce({pre}code,''))", f"upper(coalesce({col},''))"
+    off = f"{cd} NOT IN ({ERP_OFF_SQL})" if erp else "1=1"
+    if not t: return f"({off})"
     ex = " AND ".join(f"{cd} NOT LIKE '{x}%' AND {ds} NOT LIKE '{x}%'" for x in LINE_EXCLUDE)
-    return f"(({ln} IN ('{t}', '{t} LINHA PESADA')) OR ({ln}='' AND {ds} LIKE '%{t}%' AND {ex}))"
+    return f"((({ln} IN ('{t}', '{t} LINHA PESADA')) OR ({ln}='' AND {ds} LIKE '%{t}%' AND {ex})) AND {off})"
+
+# Bloqueado (BLOQ=SIM) ou inativo no ERP: sai de DES/R-D (listas, contadores e metas). Vem de ESTOQUE_ANALISE_REPOSICAO pela sincronização (tabela ds_situacao).
+ERP_OFF_SQL = "SELECT upper(code) FROM ds_situacao WHERE upper(trim(coalesce(blocked,'')))='SIM' OR upper(trim(coalesce(active,'ATIVO')))<>'ATIVO'"
 
 def valid_user():
     v = _setting("goal_valid_user")

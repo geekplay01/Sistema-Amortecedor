@@ -121,6 +121,9 @@ CREATE INDEX IF NOT EXISTS ix_ship_code ON sample_shipments(perfect_code);
 CREATE INDEX IF NOT EXISTS ix_ship_status ON sample_shipments(status, supplier);
 CREATE TABLE IF NOT EXISTS catalog_vehicles(id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, make TEXT, model TEXT, year_from INTEGER, year_to INTEGER, raw TEXT, source_id INTEGER REFERENCES sources(id));
 CREATE INDEX IF NOT EXISTS ix_cv_prod ON catalog_vehicles(product_id);
+-- situação do código no ERP (ESTOQUE_ANALISE_REPOSICAO, via sincronização): bloqueado/inativo sai de DES/R-D (rules.desc_sql)
+CREATE TABLE IF NOT EXISTS ds_situacao(code TEXT, active TEXT, blocked TEXT, line TEXT, extra TEXT);
+CREATE INDEX IF NOT EXISTS ix_dssit_code ON ds_situacao(code);
 """
 NEW_COLUMNS["import_batches"] = [("rows_read","INTEGER")]
 NEW_COLUMNS["products"] += [("catalog_position","INTEGER"),("catalog_group","TEXT"),("fob","REAL"),("fob_supplier","TEXT"),("catalog_subgroup","TEXT"),("catalog_highlight","TEXT"),("catalog_photo","TEXT")]   # FOB em USD (menor preço) e fornecedor do melhor preço

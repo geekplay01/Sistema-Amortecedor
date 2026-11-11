@@ -30,6 +30,7 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Tipo vem de `SUGESTAO`: qualquer variação de DES → DESENVOLVIMENTO; R-D/RD/Redes… → REDESENVOLVIMENTO (`kinds.py`).
 - **Exclusividade:** um código não aparece nos dois; se tem linha R-D, vale só R-D (`normalize_dev`, `rd.py`).
 - Universo das telas e metas: LINHA exatamente «AMORTECEDOR» ou «AMORTECEDOR LINHA PESADA»; códigos/descrições COX e KAD ficam fora (`rules.desc_sql`).
+- **Item inativado = bloqueado no ERP.** A sincronização lê `ATIVO`/`BLOQ` de `ESTOQUE_ANALISE_REPOSICAO` (tabela `ds_situacao`); `BLOQ = SIM` ou `ATIVO` diferente de «ATIVO» tira o código das listas e contadores de DES/R-D (`rules.ERP_OFF_SQL`). As **metas não mudam**: item recebido e validado continua contando mesmo depois de bloqueado (`goals._meta` usa `desc_sql(erp=False)`). Código fora da view do ERP fica.
 - Status do item (várias linhas por aplicação) = o mais avançado do ciclo: PENDENTE COD. PERFECT/PARTNUMBER → PENDENTE CONFIRMAÇÃO → EM COTAÇÃO → PEDIDO CONFIRMADO → FINALIZANDO CIT → ITEM RECEBIDO.
 - O servidor só guarda o status atual: o app grava um snapshot por sincronização e registra as **transições** (eventos com data). 1ª sincronização = marco zero.
 - Controle de status (Pendente validação, Validação reprovada, Pendente desenho do fornecedor, Pendente compras): detectado pelos sub status; a marcação manual prevalece (`statuses.py`).

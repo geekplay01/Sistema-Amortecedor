@@ -94,4 +94,9 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Sistema exibido como FORCE GAS / FORCE OIL em todo o app (`SYS` no núcleo, Dashboard, Excel).
 - Próximo: Lados.
 
+### Item inativado sai de DES/R-D pelo bloqueio do ERP (11/11/2026) ✅
+- DES e R-D com «os mesmos produtos» eram 182 pares parecidos (mesma descrição/veículo, códigos diferentes): está certo. O problema real eram AMD0184/AMD0185, inativados pelo usuário mas ainda vindos de `DESENVOLVIMENTO_PRODUTOS` (a view não tem coluna de situação).
+- Decisão do usuário: inativar = **bloquear no ERP**. Novo conjunto `situacao` na sincronização (`ESTOQUE_ANALISE_REPOSICAO`, só LINHA amortecedor, só código/ATIVO/BLOQ/LINHA, sem `extra`) → `ds_situacao`; `rules.desc_sql` exclui bloqueado/inativo de listas e contadores; metas não mudam.
+- Na cópia: 2.059 códigos lidos, 68 bloqueados; saem 10 de DES e 7 de R-D. AMD0184/0185 ainda vinham BLOQ=NAO na view no dia do bloqueio (a view do POWERBI deve atualizar em lote): saem na sincronização seguinte à atualização.
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

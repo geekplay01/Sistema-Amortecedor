@@ -416,6 +416,11 @@ DATASETS = {
         "reserved": ["RESERVA", "RESERVADO", "QTDE_RESERVADA", "EMPENHADO"], "line": ["LINHA"]},
         "num": ["qty", "reserved"], "dates": [],
         "where": [({"LINHA"}, "LINHA LIKE '%AMORTECEDOR%'")]},
+    # situação do código no ERP: BLOQ=SIM ou ATIVO≠ATIVO tira o item de DES/R-D (rules.desc_sql). Só as 4 colunas: a view tem ~70 de estoque/vendas que o app não usa aqui
+    "situacao": {"object": "ESTOQUE_ANALISE_REPOSICAO", "table": "ds_situacao", "aliases": {
+        "code": ["CODIGO", "COD_PRODUTO", "CODIGO_PRODUTO", "PRODUTO"], "active": ["ATIVO", "SITUACAO"], "blocked": ["BLOQ", "BLOQUEADO", "MSBLQL"], "line": ["LINHA"]},
+        "num": [], "dates": [], "no_extra": True,
+        "where": [({"LINHA"}, "LINHA LIKE '%AMORTECEDOR%'")]},
 }
 # DESENVOLVIMENTO_PRODUTOS: só as linhas de amortecedor (as demais linhas do servidor não são usadas por nenhuma tela nem meta)
 DEV_WHERE = [({"LINHA"}, "LINHA LIKE '%AMORTECEDOR%'")]
@@ -465,7 +470,7 @@ def normalize_dataset(key, raw, overrides=None):
             if a in by_canon: mp[field] = by_canon[a]; break
     warn = {}
     if "code" not in mp: warn["coluna_codigo_ausente"] = 1
-    keep_extra = len(raw) <= int(os.environ.get("DEV_DS_EXTRA_MAX_ROWS", "50000")); other = [c for c in raw.columns if c not in mp.values()]; rows = []
+    keep_extra = not spec.get("no_extra") and len(raw) <= int(os.environ.get("DEV_DS_EXTRA_MAX_ROWS", "50000")); other = [c for c in raw.columns if c not in mp.values()]; rows = []
     for rec in raw.to_dict("records"):
         r = {f: None for f in spec["aliases"]}
         for f, col in mp.items():
@@ -504,6 +509,8 @@ CREATE TABLE IF NOT EXISTS ds_embarques(pedido TEXT, supplier TEXT, code TEXT, d
 CREATE INDEX IF NOT EXISTS ix_dse2_ped ON ds_embarques(pedido);
 CREATE TABLE IF NOT EXISTS ds_garantia(code TEXT, description TEXT, defect TEXT, qty REAL, event_date TEXT, extra TEXT);
 CREATE INDEX IF NOT EXISTS ix_dsg_code ON ds_garantia(code);
+CREATE TABLE IF NOT EXISTS ds_situacao(code TEXT, active TEXT, blocked TEXT, line TEXT, extra TEXT);
+CREATE INDEX IF NOT EXISTS ix_dssit_code ON ds_situacao(code);
 CREATE TABLE IF NOT EXISTS ds_runs(id INTEGER PRIMARY KEY, run_id INTEGER, dataset TEXT, object TEXT, rows INTEGER, status TEXT, note TEXT, at TEXT);
 """
 TRACKED = ("status", "substatus", "curtiu", "nao_curtiu")

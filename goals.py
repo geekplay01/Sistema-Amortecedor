@@ -53,7 +53,7 @@ def _meta(kind):
     """Por código: é «Amortecedor»? validado pelo usuário (ITALOC)? data de status vinda do servidor (se a view tiver essa coluna)?"""
     import json
     out = {}; vu = rules.valid_user()
-    for r in q(f"SELECT code, extra, description FROM rd_projects WHERE suggestion=? AND {rules.desc_sql('description')}", (kind,)):
+    for r in q(f"SELECT code, extra, description FROM rd_projects WHERE suggestion=? AND {rules.desc_sql('description', erp=False)}", (kind,)):      # meta: item bloqueado depois de recebido continua contando
         m = out.setdefault(r["code"], {"validated": False, "status_date": None, "valid_by": None, "valid_at": None})
         try: ex = json.loads(r["extra"]) if r["extra"] else {}
         except ValueError: ex = {}

@@ -74,6 +74,16 @@ class Pipeline(unittest.TestCase):
         c = self.sync(); self.assertEqual(c['events'], 0)                                                             # sem mudança: idempotente
         self.assertEqual(self.store.last_sync()['runs'], 3)
 
+    def test_bloqueio_do_erp(self):
+        """ESTOQUE_ANALISE_REPOSICAO: a sincronização guarda ATIVO/BLOQ por código (sem os espaços do ERP e sem as dezenas de colunas de estoque)."""
+        c = sqlite3.connect(self.server)
+        c.execute('CREATE TABLE "ESTOQUE_ANALISE_REPOSICAO" ("ATIVO","BLOQ","LINHA","CODIGO","DESCRICAO","QTD_EST_T_PRIVATE_E_FECT")')
+        c.executemany('INSERT INTO "ESTOQUE_ANALISE_REPOSICAO" VALUES (?,?,?,?,?,?)', [('ATIVO', 'SIM', 'AMORTECEDOR   ', 'AMD0184        ', 'AMORTECEDOR DIANT. LD PULSE', 200.0),
+            ('ATIVO', 'NAO', 'AMORTECEDOR', 'AMD0170', 'AMORTECEDOR', 5.0), ('ATIVO', 'SIM', 'COXIM', 'CXM0001', 'COXIM', 1.0)]); c.commit(); c.close()
+        r = self.sync(); self.assertTrue(r['ok']); self.assertEqual(r['datasets']['situacao']['status'], 'ok')
+        c = self.store.conn(); got = [tuple(x) for x in c.execute('SELECT code, active, blocked, extra FROM ds_situacao ORDER BY code')]; c.close()
+        self.assertEqual(got, [('AMD0170', 'ATIVO', 'NAO', None), ('AMD0184', 'ATIVO', 'SIM', None)])      # só amortecedor; código sem espaços; sem «extra»
+
     def test_backfill_is_opt_in(self):
         self.assertEqual(self.sync()['events'], 0)
         os.remove(os.path.join(self.tmp, 'cache.db')); st = dp.Store(os.path.join(self.tmp, 'cache.db')); os.environ['DEV_SYNC_BACKFILL_DATES'] = '1'
