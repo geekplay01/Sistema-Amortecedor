@@ -9,7 +9,10 @@ App Flask de uso interno (um usuário, um PC Windows) para amortecedores PERFECT
 
 - Python: sempre `.venv\Scripts\python.exe` (o Python global não tem pandas). Não há pytest nem node.
 - App: `iniciar.bat` (porta 5000). Para testar contra uma cópia do banco, defina `PSD_DB` com o caminho da cópia. Mesmo assim, `queries.backup_create` grava em `backups\` do projeto: apague o que o teste criar.
-- Testes: `.venv\Scripts\python.exe -m unittest discover -s tests`. Hoje leva cerca de 18 min, com 9 falhas já conhecidas. A meta da etapa 16 é uma suíte rápida com banco pequeno.
+- Testes: `.venv\Scripts\python.exe tools\testes.py` (≈1 min; um módulo por processo; no fim confere o hash do banco real e acusa se mudou). Filtro: `tools\testes.py pipeline`. Fica verde antes de qualquer commit.
+- **`database.DB_PATH` é lido na importação.** `PSD_DB` precisa estar definido antes de qualquer `import` do app; senão o código grava no banco REAL (já aconteceu: 11/11/2026, restaurado do backup). `tests/__init__.py` aponta para um banco temporário, e `seed_db.guard(db)` aborta se o caminho for o real.
+- Testes de integração usam `tests/seed_db.py` (banco sintético, determinístico, sem usuários nem dados de servidor) + `tests/fake_server.py` (SQLite no papel do SQL Server). Nunca copie `data/perfect_shock.db` para teste.
+- SQLite: `with sqlite3.connect(...)` não fecha a conexão (só commit). Use `database.session()` ou `try/finally c.close()`; conexão aberta prende o arquivo no Windows e trava outra conexão por 5 s.
 - Front sem build: JS puro em `static/js`, Tailwind pré-compilado. Ao usar uma classe Tailwind nova no JS ou no template, rode `python tools/tw_fallback.py`, senão ela não tem estilo offline.
 - PowerShell 5.1 come as aspas de `python -c "..."`: escreva o script em arquivo e rode o arquivo.
 

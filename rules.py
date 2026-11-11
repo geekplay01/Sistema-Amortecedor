@@ -20,7 +20,9 @@ def _setting_db(key):
     try:
         import database as db
         c = db.conn()
-        try: c.execute("CREATE TABLE IF NOT EXISTS app_settings(key TEXT PRIMARY KEY, value TEXT, updated_by TEXT, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)"); r = c.execute("SELECT value FROM app_settings WHERE key=?", (key,)).fetchone()
+        try:      # só leitura: um CREATE aqui esperava 5 s pelo lock quando chamado dentro da migração (outra conexão escrevendo)
+            if not c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='app_settings'").fetchone(): return None
+            r = c.execute("SELECT value FROM app_settings WHERE key=?", (key,)).fetchone()
         finally: c.close()
         return r[0] if r else None
     except Exception: return None

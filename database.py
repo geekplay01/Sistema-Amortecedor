@@ -29,8 +29,17 @@ def conn():
     c = sqlite3.connect(DB_PATH); c.row_factory = sqlite3.Row
     c.execute("PRAGMA foreign_keys=ON"); return c
 
+from contextlib import contextmanager
+@contextmanager
+def session():
+    """Conexão que faz commit (ou rollback) e FECHA no fim. `with sqlite3.connect()` sozinho não fecha: o arquivo fica preso no Windows."""
+    c = conn()
+    try:
+        with c: yield c
+    finally: c.close()
+
 def init_db():
-    with conn() as c: c.executescript(SCHEMA)
+    with session() as c: c.executescript(SCHEMA)
     migrate()
 
 def stats():
@@ -50,7 +59,7 @@ def stats():
      "rd_items": "SELECT COUNT(DISTINCT code) FROM rd_projects WHERE suggestion='REDESENVOLVIMENTO' AND " + rules.desc_sql(),
      "equivalences_pending": "SELECT COUNT(*) FROM equivalence_suggestions WHERE status='pendente'",
     }
-    with conn() as c: return {k: c.execute(v).fetchone()[0] for k, v in q.items()}
+    with session() as c: return {k: c.execute(v).fetchone()[0] for k, v in q.items()}
 
 def quick_search(term, limit=5):
     import rd
@@ -124,11 +133,11 @@ NEW_COLUMNS["drawing_files"] = [("kind", "TEXT DEFAULT 'desenho'"), ("origin", "
 def rebuild_flags_view():
     """Recria v_rd_flags (usa o filtro de descrição vigente). Chamado ao mudar a regra na tela de Configurações."""
     import statuses
-    with conn() as c:
+    with session() as c:
         c.execute("DROP VIEW IF EXISTS v_rd_flags"); c.execute(statuses.view_sql({r[1] for r in c.execute("PRAGMA table_info(rd_projects)")}))
 
 def migrate():
-    with conn() as c:
+    with session() as c:
         c.executescript(SCHEMA_V2 + SCHEMA_V3 + SCHEMA_V4 + SCHEMA_V5 + SCHEMA_V6 + SCHEMA_V7)
         for t, cols in NEW_COLUMNS.items():
             have = {r["name"] for r in c.execute(f"PRAGMA table_info({t})")}

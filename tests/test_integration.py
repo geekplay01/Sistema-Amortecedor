@@ -5,9 +5,11 @@ import os, sys, json, time, shutil, sqlite3, tempfile, unittest
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT); sys.path.insert(0, HERE)
 TMP = tempfile.mkdtemp(prefix="psd_int_"); DB = os.path.join(TMP, "app.db"); SERVER = os.path.join(TMP, "server.db")
-shutil.copy(os.path.join(ROOT, "data", "perfect_shock.db"), DB)
+# o ambiente vem ANTES de qualquer import do app: database.DB_PATH é lido na importação (importar antes = gravar no banco REAL)
 os.environ.update(PSD_DB=DB, PSD_AUTH="off", PSD_SCHEDULER="off", DEV_DB_USER="pwbi.desenvolvimento", DEV_DB_PASSWORD="senha-de-teste", ML_CLIENT_ID="id", ML_CLIENT_SECRET="segredo")
+import seed_db; seed_db.build(DB)          # banco sintético: o teste não depende (nem expõe) dos dados reais da empresa
 import app as A, database as db, fake_server, data_pipeline as dp, goals, price_search, auth, kinds, statuses
+seed_db.guard(db)
 DES, RD = kinds.DES, kinds.RD
 import drawings
 drawings.DIR = os.path.join(TMP, "drawings"); drawings.TMP = os.path.join(TMP, "uploads"); auth.AVATAR_DIR = os.path.join(TMP, "avatars")      # os testes não tocam nos arquivos reais do projeto
@@ -101,7 +103,8 @@ class Fluxo(unittest.TestCase):
         """Bug dos dados zerados: espaços/caixa/NBSP em USER_VALID, SUGESTAO e LINHA. Conta só ITALOC + LINHA Amortecedor, DES e R-D separados."""
         server("ALTER TABLE DESENVOLVIMENTO_PRODUTOS ADD COLUMN LINHA"); server('ALTER TABLE DESENVOLVIMENTO_PRODUTOS ADD COLUMN "DATA APROV"')
         server('UPDATE DESENVOLVIMENTO_PRODUTOS SET "USER APROV"=NULL, LINHA=\'AMORTECEDOR\'')
-        c = sqlite3.connect(DB); pick = lambda k, n: [x[0] for x in c.execute("SELECT DISTINCT code FROM rd_projects WHERE suggestion=? AND upper(description) LIKE '%AMORTECEDOR%' ORDER BY code LIMIT ?", (k, n))]; des, rd_ = pick(DES, 5), pick(RD, 4); c.close()
+        used = {x for v in Fluxo.ctx.values() for x in v}          # códigos que o test_04 já mexeu (recebidos em 2026) não servem: o cenário aqui parte de «nenhum recebido no ano»
+        c = sqlite3.connect(DB); pick = lambda k, n: [x[0] for x in c.execute("SELECT DISTINCT code FROM rd_projects WHERE suggestion=? AND upper(description) LIKE '%AMORTECEDOR%' ORDER BY code", (k,)) if x[0] not in used][:n]; des, rd_ = pick(DES, 5), pick(RD, 4); c.close()
         def mark(codes, kind, user, linha="AMORTECEDOR", dt="2026-05-10"):
             server("UPDATE DESENVOLVIMENTO_PRODUTOS SET \"USER APROV\"=?, LINHA=?, \"DATA APROV\"=? WHERE CÓDIGO IN (%s) AND lower(trim(SUGESTÃO)) IN %s" % (",".join("?" * len(codes)), KIND_SQL[kind]), (user, linha, dt, *codes))
         mark(des[:3], DES, " italoc\u00a0"); mark(des[3:4], DES, "ITALOC2"); mark(des[4:5], DES, "ITALOC", linha="BANDEJA"); mark(rd_[:2], RD, "Italoc ", dt="2025-12-30"); mark(rd_[2:4], RD, "ITALOC")

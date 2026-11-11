@@ -48,3 +48,12 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - A busca de Produtos já acha código de concorrente/OEM sem pontuação (GP32530 = GP-32530 → AMD0100, «COFAP»). Hoje os códigos vêm quase todos do CrossCatalogo (3.945 concorrente + 1.096 OEM); a coluna E do CatalogoAMD só acrescentou 3 que faltavam — a mesma lista.
 - **Git não está instalado neste PC** (nem GitHub Desktop/`gh`); há `winget`.
 - O repositório `geekplay01/Sistema-Amortecedor` é **público** e hoje tem só `README.md` e `perfect_shock_data_etapa14.zip` na branch `main`.
+
+## Checkpoints
+
+### Passo 0a — rede de segurança dos testes (11/11/2026) ✅
+- Suíte: ~18 min com 9 falhas → **61 s, tudo verde** (`tools\testes.py`).
+- Causas das falhas: (1) `with conn()` não fechava a conexão → arquivo preso no Windows (3 erros); (2) `rules._setting_db` fazia `CREATE TABLE` dentro da migração → esperava 5 s pelo lock a cada `init_db` (também deixava a abertura do app 5 s mais lenta); (3) teste de integração copiava o banco real (sincronizações, usuário e garantias reais quebravam 3 testes); (4) `discover` misturava módulos no mesmo processo (test_04/test_13); (5) `test_importer` conferia contagens da planilha antiga.
+- Correções: `database.session()`; leitura de configuração sem escrita; banco sintético `tests/seed_db.py`; `tests/__init__.py` + `seed_db.guard` (nenhum teste toca no banco real); `test_importer` vira unittest estrutural que pula sem `bases_exemplo`.
+- **Incidente:** durante a troca para o banco sintético, uma rodada de teste gravou no banco real (ordem de import). Restaurado de `backups\pre_atualizacao_20261110_115132.db` — entre esse backup e o incidente só houve uma importação sem efeito (0 novos, 0 alterados). Cópia do estado afetado: `backups\poluido_pelo_teste_20261111_1035.db` (pode apagar depois de conferir o app).
+- Próximo: passo 0b — tarefa agendada 06:30 + trava de sincronização.
