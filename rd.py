@@ -31,7 +31,23 @@ def _where(kind, f):
     if s == "comprada": w.append("r.sample_bought IS NOT NULL")
     elif s == "enviada": w.append("r.sample_sent IS NOT NULL")
     elif s == "nenhuma": w.append("r.sample_bought IS NULL AND r.sample_sent IS NULL")
+    cu = CURTIU.get(f.get("curtiu") or "")           # curtidas valem por ITEM (maior valor entre as aplicações do código)
+    if cu: w.append(f"r.code IN (SELECT code FROM rd_projects WHERE suggestion=:kind GROUP BY code HAVING {cu})")
     return " AND ".join(w), p
+
+CURTIU = {"sim": "MAX(coalesce(curtiu,0))>0", "sem": "MAX(coalesce(curtiu,0))=0", "nao": "MAX(coalesce(nao_curtiu,0))>0"}
+
+def _rank_sql():
+    """Posição do status no ciclo (PENDENTE … ITEM RECEBIDO); o item vale pelo status mais avançado entre as aplicações."""
+    from data_pipeline import STATUS_RANK
+    return "MAX(CASE r.status " + " ".join(f"WHEN '{k}' THEN {v}" for k, v in STATUS_RANK.items()) + " ELSE -1 END)"
+
+def _order(f):
+    """Ordem da lista. Padrão (etapa 16): mais curtidos primeiro; empate → status mais avançado; depois o código."""
+    o = f.get("ordem") or "curtidas"
+    if o == "codigo": return "r.code"
+    if o == "status": return f"{_rank_sql()} DESC, r.code"
+    return f"MAX(coalesce(r.curtiu,0)) DESC, {_rank_sql()} DESC, r.code"
 
 FLAGS = dict(statuses.LABEL)
 AUTO = {k: statuses.auto_col(k) for k in statuses.KEYS}
@@ -46,7 +62,7 @@ def items(kind, f):
         group_concat(DISTINCT r.status) statuses,group_concat(DISTINCT r.drawing_substatus) drawing,group_concat(DISTINCT r.validation_substatus) validation,group_concat(DISTINCT r.supplier) suppliers,
         MAX(substr(r.sample_bought,1,10)) bought,MAX(substr(r.sample_sent,1,10)) sent,MAX(r.curtiu) curtiu,MAX(r.nao_curtiu) nao_curtiu,
         EXISTS(SELECT 1 FROM rd_projects o WHERE o.code=r.code AND o.suggestion<>:kind) also_other
-        FROM rd_projects r WHERE {w} GROUP BY r.code ORDER BY r.code LIMIT {size} OFFSET {off}""", p)
+        FROM rd_projects r WHERE {w} GROUP BY r.code ORDER BY {_order(f)} LIMIT {size} OFFSET {off}""", p)
     for r in rows:
         for k in ("makes", "vehicles", "statuses", "drawing", "validation", "suppliers"): r[k] = _j(r[k])
     if rows:
@@ -56,8 +72,11 @@ def items(kind, f):
 
 def facets(kind):
     g = lambda col: q(f"SELECT {col} v,COUNT(DISTINCT code) n FROM rd_projects WHERE {rules.desc_sql()} AND {_excl(kind, "rd_projects")} AND suggestion=? AND {col} IS NOT NULL AND trim({col})<>'' GROUP BY {col} ORDER BY n DESC", (kind,))
-    tot = q1("SELECT COUNT(DISTINCT code) n,COUNT(*) l FROM rd_projects WHERE suggestion=? AND " + rules.desc_sql() + " AND " + _excl(kind, "rd_projects"), (kind,))
-    return {"status": g("status"), "drawing": g("drawing_substatus"), "validation": g("validation_substatus"), "supplier": g("supplier"), "make": g("make"), "total": tot["n"], "lines": tot["l"], "flags": flag_counts(kind)}
+    base = "suggestion=? AND " + rules.desc_sql() + " AND " + _excl(kind, "rd_projects")
+    tot = q1("SELECT COUNT(DISTINCT code) n,COUNT(*) l FROM rd_projects WHERE " + base, (kind,))
+    cur = q1(f"SELECT SUM(cu>0) curtidos,SUM(nc>0) nao_curtidos FROM (SELECT MAX(coalesce(curtiu,0)) cu,MAX(coalesce(nao_curtiu,0)) nc FROM rd_projects WHERE {base} GROUP BY code)", (kind,))
+    return {"status": g("status"), "drawing": g("drawing_substatus"), "validation": g("validation_substatus"), "supplier": g("supplier"), "make": g("make"), "total": tot["n"], "lines": tot["l"], "flags": flag_counts(kind),
+            "curtidos": cur["curtidos"] or 0, "nao_curtidos": cur["nao_curtidos"] or 0}
 
 def _cross(pid, code):
     import purchases, queries

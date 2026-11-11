@@ -120,7 +120,8 @@
   dlg.addEventListener("click", async e => {   // validação enviada (REDESENVOLVIMENTO)
     const s = e.target.closest("[data-vsend]"), u = e.target.closest("[data-vundo]"); if (!s && !u) return; e.preventDefault();
     try { if (s) await post("/api/validations", { code: s.dataset.vsend, kind: "REDESENVOLVIMENTO" }); else await J("/api/validations/" + u.dataset.vundo, { method: "DELETE" }); const c = (s || u).closest(".vpanel").dataset.vc; dlg.close(); rdOpen("rd", c); } catch (er) { alert(er.message); } });
-  const flagRefresh = () => { const f = $("form.toolbar", root); if (f) f.dispatchEvent(new Event("input", { bubbles: true })); };
+  const flagRefresh = () => { if (window.PSD && PSD.aoMudarControle) return PSD.aoMudarControle();       // telas migradas avisam por este gancho
+    const f = $("form.toolbar", root); if (f) f.dispatchEvent(new Event("input", { bubbles: true })); };
   dlg.addEventListener("change", async e => { const t = e.target.closest("[data-fl]"), pn = e.target.closest(".fpanel"); if (!t || !pn) return;
     try { const r = await post(`/api/rd/${pn.dataset.fk}/item/${encodeURIComponent(pn.dataset.fc)}/flags`, { flag: t.dataset.fl, value: t.checked }); pn.outerHTML = flagPanel(pn.dataset.fk, pn.dataset.fc, r.flags); flagRefresh(); } catch (er) { alert(er.message); t.checked = !t.checked; } });
   dlg.addEventListener("click", async e => { const a = e.target.closest("[data-flauto]"), pn = e.target.closest(".fpanel"); if (!a || !pn) return; e.preventDefault();

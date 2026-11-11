@@ -101,12 +101,13 @@ LABELS = {"desenvolvimento": "Em desenvolvimento", "redesenvolvimento": "Em rede
           "comparacao": "Comparação técnica", "pendencias": "Pendências de dados", "fontes": "Fontes e histórico", "amostras": "Compra de amostras", "damping": "Damping force",
           "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
-          "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca"}
+          "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
+          "curtiu": "Curtiu", "flag": "Controle"}
 
 def friendly_name(module, filtros=None):
     """'Perfect Shock Data - Em desenvolvimento (Busca strada) - 28-10-2026 19h34.xlsx' — legível e ordenável por data dentro do nome."""
     import re
-    parts = [f"{v}" if k in ("q", "code") else f"{FLABEL.get(k, k)} {v}" for k, v in (filtros or {}).items() if v and k not in ("all", "page", "size", "sort", "dir")]
+    parts = [f"{v}" if k in ("q", "code") else f"{FLABEL.get(k, k)} {v}" for k, v in (filtros or {}).items() if v and k not in ("all", "page", "size", "sort", "dir", "ordem")]
     flt = re.sub(r"[\\/:*?\"<>|\r\n]+", " ", ", ".join(parts)).strip()[:48].strip()
     return f"Perfect Shock Data - {LABELS.get(module, module.title())}{f' ({flt})' if flt else ''} - {datetime.datetime.now():%d-%m-%Y %Hh%M}.xlsx"
 

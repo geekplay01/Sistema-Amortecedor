@@ -23,6 +23,21 @@ window.PSDTW = (() => {
   const btn = (id, label, ghost = true) => `<button type="button" id="${id}" class="rounded-lg px-3.5 py-2 text-sm font-semibold ${ghost ? "border border-line bg-card text-ink hover:bg-slate-500/10" : "bg-blue-600 text-white hover:bg-blue-700"}">${label}</button>`;
   const csv = (name, head, rows) => { const q = v => '"' + String(v ?? "").replace(/"/g, '""') + '"'; const b = new Blob(["﻿" + [head, ...rows].map(r => r.map(q).join(";")).join("\r\n")], { type: "text/csv;charset=utf-8" }); const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(b), download: name }); document.body.appendChild(a); a.click(); a.remove(); };
 
+  /* Estado dos filtros de uma tela (padrão de todas as telas migradas, etapa 16):
+     · a URL manda (links e conectores abrem a tela já filtrada); sem filtros na URL, volta o último uso (localStorage, por tela);
+     · set() grava na URL (sem recarregar) e no navegador; chip ativo clicado de novo = toggle() limpa o filtro.
+     Uso: const F = PSDTW.filtros("desenvolvimento", ["q", "status", ...]);  F.get() → {chave: valor}; F.set({status: "X"}); F.toggle("flag", "pend_compras"); F.clear(); F.restaurado */
+  const filtros = (tela, chaves) => {
+    const key = "psd-filtros-" + tela, pick = o => Object.fromEntries(chaves.filter(k => o[k] != null && o[k] !== "").map(k => [k, String(o[k])]));
+    const daUrl = pick(Object.fromEntries(new URLSearchParams(location.search)));
+    let salvo = {}; try { salvo = pick(JSON.parse(localStorage.getItem(key) || "{}")); } catch (e) { }
+    const restaurado = !Object.keys(daUrl).length && Object.keys(salvo).length > 0;
+    let st = Object.keys(daUrl).length ? daUrl : salvo;
+    const write = () => { const u = new URLSearchParams(st).toString(); history.replaceState(null, "", location.pathname + (u ? "?" + u : "") + location.hash); try { localStorage.setItem(key, JSON.stringify(st)); } catch (e) { } };
+    write();
+    return { restaurado, get: () => ({ ...st }), set: patch => { st = pick({ ...st, ...patch }); write(); }, toggle: (k, v) => { st = pick({ ...st, [k]: st[k] === String(v) ? "" : v }); write(); }, clear: () => { st = {}; write(); } };
+  };
+
   /* bloco «Validações» da tela Metas & Validação (alimentado por /api/goals → validacoes) */
   const DES = "DESENVOLVIMENTO", RD = "REDESENVOLVIMENTO";
   const validationBlock = d => {
@@ -36,5 +51,5 @@ window.PSDTW = (() => {
       ${warn.length ? notice(warn.map(esc).join("<br>"), "amber") : ""}
       ${card("Validações por mês", '<div id="mxc" class="chart"></div>')}</section>`;
   };
-  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, validationBlock };
+  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, filtros, validationBlock };
 })();

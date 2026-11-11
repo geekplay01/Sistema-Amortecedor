@@ -70,4 +70,10 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Interface de cada tela: `PSD.tela(slug, desenhar)`; `page.html` carrega o núcleo, as telas e chama `PSD.iniciar()`.
 - Fim do Ctrl+F5: JS/CSS com `?v=` da hora em que o app abriu.
 - Verificado no navegador (cópia do banco, porta 5055): as 23 telas carregam com conteúdo e sem erro de script; ficha do produto, detalhe de DES/R-D, busca por concorrente (GP32530 → AMD0100) e painel do servidor funcionam.
-- Próximo: **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.
+### Etapa B · tela DES/R-D (11/11/2026) ✅
+- API `rd.items`: ordem padrão curtidos → status mais avançado → código (`ordem=status|codigo`); filtro `curtiu=sim|sem|nao`; facets com `curtidos`/`nao_curtidos`. Excel segue os mesmos filtros e ordem.
+- Tela em Tailwind (`telas/desenvolvimento.js`): KPIs, atalhos (Pendente compras em destaque, Curtidos, status) que ligam/desligam, filtros na URL + última visita (`PSDTW.filtros`, reutilizável), lote de controle de status, temas claro/escuro verificados.
+- Observação para a etapa D: em R-D, 760 de 790 itens têm «Pendente compras» no sub status, inclusive 766 já recebidos — provável sub status velho no servidor.
+- Próximo: Metas (migração visual + filtro DES/R-D).
+
+- (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

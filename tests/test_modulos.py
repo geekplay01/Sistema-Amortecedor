@@ -281,6 +281,30 @@ class CompraAmostra(_TmpDB):
         self.assertEqual(samples({})["totals"]["usd"], 365.51)
 
 
+class CurtidasDesRd(_TmpDB):
+    """Etapa 16 · B: lista de DES/R-D com os curtidos primeiro (desempate: status mais avançado) e filtro Curtiu."""
+    def setUp(self):
+        super().setUp(); self.db.init_db()
+        ins = "INSERT INTO rd_projects(code,suggestion,status,description,curtiu,nao_curtiu,line) VALUES(?,?,?,?,?,?,'AMORTECEDOR')"
+        D = "DESENVOLVIMENTO"
+        self.sql(ins, [("AMD1", D, "EM COTAÇÃO", "AMORTECEDOR", 0, 0), ("AMD2", D, "ITEM RECEBIDO", "AMORTECEDOR", 1, 0), ("AMD3", D, "EM COTAÇÃO", "AMORTECEDOR", 1, 0),
+                       ("AMD4", D, "PEDIDO CONFIRMADO", "AMORTECEDOR", 2, 0), ("AMD5", D, "ITEM RECEBIDO", "AMORTECEDOR", None, 1),
+                       ("AMD3", D, "FINALIZANDO CIT", "AMORTECEDOR", 0, 0)])          # 2ª aplicação do AMD3: o item fica com curtiu 1 e status FINALIZANDO CIT
+    def codes(self, **f):
+        import rd; return [r["code"] for r in rd.items("DESENVOLVIMENTO", f)["rows"]]
+    def test_curtidos_primeiro_e_desempate_pelo_status(self):
+        self.assertEqual(self.codes(), ["AMD4", "AMD2", "AMD3", "AMD5", "AMD1"])      # 2 curtidas; 1 curtida (recebido > finalizando CIT); sem curtida (recebido > cotação)
+        self.assertEqual(self.codes(ordem="codigo"), ["AMD1", "AMD2", "AMD3", "AMD4", "AMD5"])
+        self.assertEqual(self.codes(ordem="status")[:2], ["AMD2", "AMD5"])
+    def test_filtro_curtiu(self):
+        self.assertEqual(self.codes(curtiu="sim"), ["AMD4", "AMD2", "AMD3"])
+        self.assertEqual(self.codes(curtiu="sem"), ["AMD5", "AMD1"])
+        self.assertEqual(self.codes(curtiu="nao"), ["AMD5"])
+    def test_contadores(self):
+        import rd; fc = rd.facets("DESENVOLVIMENTO")
+        self.assertEqual((fc["curtidos"], fc["nao_curtidos"], fc["total"]), (3, 1, 5))
+
+
 class TipoPedido(_TmpDB):
     def test_amostras_na_lista_sem_afetar_resumo(self):
         import orders
