@@ -111,6 +111,7 @@
 .pb-1{padding-bottom:.25rem}
 .pb-2{padding-bottom:.5rem}
 .pb-3{padding-bottom:.75rem}
+.pb-5{padding-bottom:1.25rem}
 .placeholder-slate-400::placeholder{color:#94a3b8}
 .pt-2{padding-top:.5rem}
 .pt-5{padding-top:1.25rem}
@@ -128,6 +129,7 @@
 .py-2{padding-top:.5rem;padding-bottom:.5rem}
 .py-2\.5{padding-top:.625rem;padding-bottom:.625rem}
 .py-3{padding-top:.75rem;padding-bottom:.75rem}
+.py-4{padding-top:1rem;padding-bottom:1rem}
 .py-6{padding-top:1.5rem;padding-bottom:1.5rem}
 .py-8{padding-top:2rem;padding-bottom:2rem}
 .relative{position:relative}

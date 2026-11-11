@@ -8,6 +8,11 @@ data_pipeline.load_env()          # lê o .env (usuário/senha do servidor, chav
 app = Flask(__name__)
 auth.init_app(app)                # login de administrador (desligar só em desenvolvimento: PSD_AUTH=off)
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024   # desenhos CAD podem ser grandes
+ASSET_V = datetime.datetime.now().strftime("%Y%m%d%H%M%S")   # muda a cada vez que o app abre: o navegador baixa JS/CSS novos (sem Ctrl+F5)
+
+@app.url_defaults
+def _asset_version(endpoint, values):
+    if endpoint == "static" and "v" not in values and str(values.get("filename", "")).endswith((".js", ".css")): values["v"] = ASSET_V
 UPLOADS = os.path.join(db.BASE, 'data', 'uploads')
 CATEGORIES = ['Produtos / códigos', 'Aplicações', 'Dimensões técnicas', 'Fornecedores / concorrentes', 'Dados comerciais / logísticos', 'Personalizada']
 db.init_db()

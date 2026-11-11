@@ -23,3 +23,6 @@ bases_exemplo/
 # logs e temporários
 iniciar_log.txt
 *.log
+
+# configurações locais do Claude Code (caminhos desta máquina)
+.claude/

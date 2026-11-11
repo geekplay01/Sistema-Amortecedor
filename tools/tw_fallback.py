@@ -1,9 +1,9 @@
 """Gera static/css/tw-fallback.css: as MESMAS classes TailwindCSS usadas nas telas (page.html, tw.js, pages_exec.js), escritas à mão.
 Serve para o layout funcionar mesmo SEM internet e sem o arquivo static/vendor/tailwind.js; com o Tailwind carregado, as regras dele
 assumem (mesmas declarações), então não há conflito. Rode de novo se criar telas com classes novas:  python tools/tw_fallback.py"""
-import re, os, sys
+import re, os, sys, glob
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FILES = ["templates/page.html", "static/js/tw.js", "static/js/pages_exec.js", "static/js/pages.js"]
+FILES = ["templates/page.html", "static/js/tw.js", "static/js/pages_exec.js", "static/js/core.js"] + sorted("static/js/telas/" + os.path.basename(p) for p in glob.glob(os.path.join(ROOT, "static", "js", "telas", "*.js")))
 SP = {"0": "0", "px": "1px", "0.5": ".125rem", "1": ".25rem", "1.5": ".375rem", "2": ".5rem", "2.5": ".625rem", "3": ".75rem", "3.5": ".875rem", "4": "1rem", "5": "1.25rem", "6": "1.5rem", "7": "1.75rem", "8": "2rem", "9": "2.25rem", "10": "2.5rem", "12": "3rem", "16": "4rem", "20": "5rem", "24": "6rem", "32": "8rem", "64": "16rem"}
 PAL = {"slate": {"50": "#f8fafc", "100": "#f1f5f9", "200": "#e2e8f0", "300": "#cbd5e1", "400": "#94a3b8", "500": "#64748b", "600": "#475569", "700": "#334155", "800": "#1e293b", "900": "#0f172a"},
        "blue": {"400": "#60a5fa", "500": "#3b82f6", "600": "#2563eb", "700": "#1d4ed8"}, "emerald": {"50": "#ecfdf5", "100": "#d1fae5", "200": "#a7f3d0", "300": "#6ee7b7", "500": "#10b981", "600": "#059669", "700": "#047857"}, "amber": {"500": "#f59e0b", "700": "#b45309"},

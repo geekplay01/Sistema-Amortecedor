@@ -1,5 +1,5 @@
 /* Telas executivas em TailwindCSS: Pedidos em Aberto · Vendas (Curva A) · Garantia.
-   (Metas & Validação usa o bloco PSDTW.validationBlock dentro de pages_new.js.) Recebe os utilitários do pages.js (window.PSD_EXEC(ctx)). */
+   (Metas & Validação usa o bloco PSDTW.validationBlock dentro de pages_new.js.) Recebe os utilitários do core.js (window.PSD_EXEC(ctx)). */
 window.PSD_EXEC = ctx => {
   const { J, $, root, fail } = ctx, TW = window.PSDTW, { esc, nf, brl, brl0, dmy } = TW;
   const MONTHS = ["", "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];

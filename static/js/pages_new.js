@@ -1,5 +1,5 @@
 /* Telas novas: Dashboard (gráficos), Metas e validações, painel do servidor e busca de preços.
-   Carregado antes do pages.js; recebe os utilitários dele (window.PSD_NEW(ctx)). */
+   Carregado antes do core.js; recebe os utilitários dele (window.PSD_NEW(ctx)). */
 window.PSD_NEW = ctx => {
   const { J, post, $, $$, esc, num, tag, T, clip, empty, fail, dlg, qs, dmy, root, FLG, FGROUPS } = ctx;
   const put = (u, b) => J(u, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) });

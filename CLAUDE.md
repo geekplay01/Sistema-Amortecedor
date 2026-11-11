@@ -14,6 +14,8 @@ App Flask de uso interno (um usuário, um PC Windows) para amortecedores PERFECT
 - Testes de integração usam `tests/seed_db.py` (banco sintético, determinístico, sem usuários nem dados de servidor) + `tests/fake_server.py` (SQLite no papel do SQL Server). Nunca copie `data/perfect_shock.db` para teste.
 - SQLite: `with sqlite3.connect(...)` não fecha a conexão (só commit). Use `database.session()` ou `try/finally c.close()`; conexão aberta prende o arquivo no Windows e trava outra conexão por 5 s.
 - Front sem build: JS puro em `static/js`, Tailwind pré-compilado. Ao usar uma classe Tailwind nova no JS ou no template, rode `python tools/tw_fallback.py`, senão ela não tem estilo offline.
+- Uma tela por arquivo em `static/js/telas/<tela>.js`: lê o que precisa de `window.PSD` (núcleo `core.js`) e se registra com `PSD.tela(slug, desenhar)`. Tela nova = arquivo novo + entrada na lista de `templates/page.html`. Dashboard/Metas vêm de `pages_new.js`; Pedidos/Vendas/Garantia/FOB de `pages_exec.js`.
+- JS/CSS recebem `?v=<hora em que o app abriu>` (`app._asset_version`): reabrir o app basta para o navegador baixar a versão nova.
 - PowerShell 5.1 come as aspas de `python -c "..."`: escreva o script em arquivo e rode o arquivo.
 
 ## Servidor SQL (somente leitura)

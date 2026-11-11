@@ -64,3 +64,10 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Teste real: disparada pelo Agendador às 11:20 → «pulada — já sincronizado hoje (11:11:27)», código 0. A primeira sincronização de fato pela tarefa será em 12/11 06:30 (conferir `data\sincronizacao_log.txt`).
 - Backup antes do teste: `backups\pre_tarefa_agendada_20261111.db`.
 - Próximo: passo 0c — quebrar `pages.js` em módulos por tela.
+
+### Passo 0c — pages.js dividido por tela (11/11/2026) ✅
+- `pages.js` (881 linhas, 142 KB) → `core.js` (utilitários, ficha, lista paginada, controle de status, miniaturas de desenho) + `telas/`: catalogo, desenvolvimento, desenhos, amostras, envio, lados, brands, dados. Divisão feita por script, código copiado sem alteração; cada linha conferida (foi para exatamente um lugar).
+- Interface de cada tela: `PSD.tela(slug, desenhar)`; `page.html` carrega o núcleo, as telas e chama `PSD.iniciar()`.
+- Fim do Ctrl+F5: JS/CSS com `?v=` da hora em que o app abriu.
+- Verificado no navegador (cópia do banco, porta 5055): as 23 telas carregam com conteúdo e sem erro de script; ficha do produto, detalhe de DES/R-D, busca por concorrente (GP32530 → AMD0100) e painel do servidor funcionam.
+- Próximo: **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

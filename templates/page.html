@@ -58,7 +58,12 @@
     <script src="{{ url_for('static', filename='js/tw.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pages_exec.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pages_new.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/pages.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/core.js') }}"></script>
+    {# uma tela por arquivo (static/js/telas); cada uma se registra com PSD.tela(slug, desenhar) #}
+    {% for t in ['catalogo', 'desenvolvimento', 'desenhos', 'amostras', 'envio', 'lados', 'brands', 'dados'] %}
+    <script src="{{ url_for('static', filename='js/telas/' ~ t ~ '.js') }}"></script>
+    {% endfor %}
+    <script>PSD.iniciar();</script>
     {% endif %}
   </main>
 </div>
