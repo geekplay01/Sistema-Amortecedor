@@ -1,0 +1,9 @@
+{
+  "name": "Perfect Shock Data",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "pip install -r requirements.txt",
+  "postAttachCommand": "HOST=0.0.0.0 python app.py",
+  "containerEnv": { "HOST": "0.0.0.0" },
+  "forwardPorts": [5000],
+  "portsAttributes": { "5000": { "label": "Perfect Shock Data", "onAutoForward": "openBrowser", "visibility": "private" } }
+}

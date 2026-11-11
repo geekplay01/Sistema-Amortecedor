@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ 'Criar administrador' if mode == 'setup' else 'Entrar' }} · PERFECT Shock Data</title>
+<script>try{var t=localStorage.getItem("psd-theme");document.documentElement.setAttribute("data-theme",t||"light")}catch(e){}</script>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-body">
+<main class="login-card">
+  <div class="login-logo"><img src="{{ url_for('static', filename='img/logo-perfect.png') }}" alt="PERFECT Automotive"></div>
+  <h1>{{ 'Primeiro acesso' if mode == 'setup' else 'Central de Dados de Amortecedores' }}</h1>
+  <p class="muted">{% if mode == 'setup' %}Crie o <b>administrador</b> do sistema. Esta é a única conta por enquanto e não existe senha padrão.{% else %}Entre com seu usuário de administrador.{% endif %}</p>
+  {% if error %}<div class="login-err" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" autocomplete="on">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label>Usuário<input name="username" required minlength="3" autofocus autocomplete="username"></label>
+    <label>Senha<input name="password" type="password" required minlength="{{ 8 if mode == 'setup' else 1 }}" autocomplete="{{ 'new-password' if mode == 'setup' else 'current-password' }}"></label>
+    {% if mode == 'setup' %}<label>Repita a senha<input name="password2" type="password" required minlength="8" autocomplete="new-password"></label><small class="muted">Mínimo de 8 caracteres.</small>{% endif %}
+    <button class="btn" type="submit">{{ 'Criar administrador' if mode == 'setup' else 'Entrar' }}</button>
+  </form>
+</main>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# PERFECT Shock Data
+
+App Flask de uso interno (um usuário, um PC Windows) para amortecedores PERFECT: catálogo, DES/R-D, amostras, lados, compras, vendas e lead time. A interface, os textos e os commits são em **português**.
+
+- Regras de negócio, cada uma com o arquivo que a implementa: [`REGRAS_DE_NEGOCIO.md`](REGRAS_DE_NEGOCIO.md). Leia antes de mudar qualquer cálculo, contagem ou filtro.
+- Plano e decisões da etapa em curso (ponto de retomada após `/compact`): [`DECISOES_ETAPA16.md`](DECISOES_ETAPA16.md). Ao fim de cada tela, registre ali o checkpoint.
+
+## Rodar e testar
+
+- Python: sempre `.venv\Scripts\python.exe` (o Python global não tem pandas). Não há pytest nem node.
+- App: `iniciar.bat` (porta 5000). Para testar contra uma cópia do banco, defina `PSD_DB` com o caminho da cópia. Mesmo assim, `queries.backup_create` grava em `backups\` do projeto: apague o que o teste criar.
+- Testes: `.venv\Scripts\python.exe -m unittest discover -s tests`. Hoje leva cerca de 18 min, com 9 falhas já conhecidas. A meta da etapa 16 é uma suíte rápida com banco pequeno.
+- Front sem build: JS puro em `static/js`, Tailwind pré-compilado. Ao usar uma classe Tailwind nova no JS ou no template, rode `python tools/tw_fallback.py`, senão ela não tem estilo offline.
+- PowerShell 5.1 come as aspas de `python -c "..."`: escreva o script em arquivo e rode o arquivo.
+
+## Servidor SQL (somente leitura)
+
+- O SQL Server `POWERBI` só recebe `SELECT`: `data_pipeline.assert_select` barra o resto, e o servidor nunca grava no catálogo. Credenciais em `~/.perfect_shock_data/.env`, carregadas por `data_pipeline.load_env()`.
+- As colunas reais das views divergem dos nomes esperados. Quando uma tela vier vazia, liste primeiro as colunas da view e só depois mexa na lógica; alias faltando vira NULL sem erro. Exemplos: vendas usa `DATA_FATUR` e `VALOR_TOTAL_CIPI`; embarques usa `ETA_ATUAL` e `DATA_CHEGADA_FILIAL`.
+- Subconsulta entre `EMBARQUES_DETALHADO` e `PEDIDOS_COMPRA_DETALHADO` precisa de `COLLATE DATABASE_DEFAULT`, porque as collations diferem.
+- O faturamento de referência do BI é `VALOR_TOTAL_CIPI` com `LINHA = 'AMORTECEDOR'` exata. Conferido: outubro/2026 = R$ 25.467.272,00.
+
+## Dados e repositório
+
+- O `CatalogoAMD.xlsx` é a fonte da verdade do catálogo e prevalece sobre o banco. DES/R-D vêm só do servidor.
+- O repositório (`github.com/geekplay01/Sistema-Amortecedor`) recebe **somente código e documentos**. Banco, backups, planilhas e `.env` ficam no PC: o `.gitignore` já os exclui. Antes de cada commit, confira `git status`.
+- Git: não está no PATH. Use o que vem com o GitHub Desktop: `%LOCALAPPDATA%\GitHubDesktop\app-*\resources\app\git\cmd\git.exe`.

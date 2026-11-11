@@ -1,0 +1,20 @@
+<section class="imp">
+  <div class="notice">Confira o mapeamento e clique em <b>Validar</b>: a simulação mostra o resumo <b>sem gravar nada</b>. Só depois de confirmar o banco é alterado (com backup antes).</div>
+  <div class="imp-row">
+    <label>Arquivo<input type="file" id="imp-file" accept=".xlsx,.xls,.csv"></label>
+    <label>Categoria<select id="imp-cat" disabled></select></label>
+    <label>Planilha<select id="imp-sheet" disabled></select></label>
+    <label>Se o valor divergir do já cadastrado<select id="imp-policy"><option value="keep">Manter o atual e abrir pendência</option><option value="overwrite">Usar o valor da planilha importada</option></select></label>
+  </div>
+  <p id="imp-msg" class="imp-msg" role="status"></p>
+  <div id="imp-map" hidden>
+    <h3>Mapeamento de colunas</h3>
+    <p class="muted">Sugestão automática por cabeçalho conhecido. Ajuste o que estiver errado ou marque "ignorar".</p>
+    <div class="tbl"><table id="imp-map-tbl"></table></div>
+    <h3>Prévia das primeiras linhas</h3>
+    <div class="tbl"><table id="imp-sample"></table></div>
+    <button class="btn" id="imp-run">Validar (simulação)</button>
+    <div id="imp-result" class="notice" hidden></div>
+  </div>
+</section>
+<script src="{{ url_for('static', filename='js/import.js') }}"></script>

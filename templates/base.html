@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}PERFECT Shock Data{% endblock %}</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="shortcut icon" href="/favicon.ico">
+<script>try{var t=localStorage.getItem("psd-theme");document.documentElement.setAttribute("data-theme",t||"light")}catch(e){}</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% if tw_page is defined and tw_page %}
+<!-- Estilos Tailwind PRÉ-COMPILADOS (static/css/tw-fallback.css, gerado por tools/tw_fallback.py): nenhum script externo — a tela abre na hora, mesmo sem internet.
+     (O CDN do Tailwind bloqueava a página inteira por dezenas de segundos quando o PC da empresa não alcançava a internet.) -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tw-fallback.css') }}">
+{% endif %}
+</head>
+<body class="{% block bodyclass %}{% endblock %}">{% block body %}{% endblock %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script></body></html>

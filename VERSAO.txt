@@ -1,0 +1,1 @@
+Etapa 15 - 10/11/2026 (CatalogoAMD.xlsx completo, sincronização diária filtrada/incremental, Vendas corrigida, Lados automático, previsão de chegadas, menu em fluxo com conectores)

@@ -1,0 +1,20 @@
+# PERFECT Shock Data — dependências 100% portáteis (instaladas dentro de .venv, na pasta do projeto; não precisam de administrador)
+
+# ── núcleo do sistema ──
+flask>=3.0,<4
+pandas>=2.0,<4
+openpyxl>=3.1
+xlrd>=2.0.1
+python-dotenv>=1.0
+
+# ── conexão com o SQL Server 192.168.0.54 (somente leitura) ──
+# pymssql traz o FreeTDS embutido: instala só com pip, sem driver ODBC no Windows.
+pymssql>=2.3.0; python_version < "3.14"
+# alternativa automática: pyodbc usando o driver legado "SQL Server" que já vem com o Windows.
+pyodbc>=5.1
+
+# ── gráficos: motor SVG próprio (sem CDN e sem biblioteca extra) ──
+
+# ── foto de perfil, miniaturas de desenhos (pillow) e prévia de PDF (pypdfium2) ──
+pillow>=10
+pypdfium2>=4.30

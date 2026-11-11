@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% block bodyclass %}homebody{% endblock %}
+{% block body %}
+<header class="home-top"><a class="logo-plate big" href="/" aria-label="PERFECT Automotive"><img src="{{ url_for('static', filename='img/logo-perfect.png') }}" alt="PERFECT Automotive"></a><span class="sub">SHOCK DATA</span></header>
+<section class="hero">
+  <div class="hero-text">
+    <h1>Central de Dados de Amortecedores</h1>
+    <p>Pesquisa, aplicações, características técnicas e equivalências</p>
+    <form class="quick" action="/pesquisa"><input id="quick" name="q" type="search" autocomplete="off" placeholder="Código, aplicação ou item em DES / R-D (ex.: strada)"><button class="btn ghost">Buscar</button></form>
+    <ul id="quick-results" class="results"></ul>
+    <a class="btn" href="/dashboard">Acessar central</a>
+    <div class="mini">
+      <div><span class="num" data-stat="products">{{ s.products }}</span>produtos cadastrados</div>
+      <div><span class="num" data-stat="des_items">{{ s.des_items }}</span>em desenvolvimento (DES)</div>
+      <div><span class="num" data-stat="rd_items">{{ s.rd_items }}</span>em redesenvolvimento (R-D)</div>
+      <div><span class="num" data-stat="imports">{{ s.imports }}</span>bases importadas</div>
+    </div>
+  </div>
+  <div class="hero-art"><div class="stage">
+    <video id="hero-video" autoplay muted loop playsinline preload="auto" poster="{{ url_for('static', filename='img/amortecedor-poster.jpg', v=2) }}" data-fallback="{{ url_for('static', filename='img/amortecedor-poster.jpg', v=2) }}">
+      <source src="{{ url_for('static', filename='img/amortecedor.mp4', v=2) }}" type="video/mp4"></video></div></div>
+</section>
+{% endblock %}

@@ -1,0 +1,86 @@
+PERFECT SHOCK DATA - como abrir
+1. Extraia o zip inteiro para uma pasta (nao execute de dentro do zip).
+2. Precisa do Python 3.10+ (python.org, marcando "Add python.exe to PATH").
+   O atalho "python" da Microsoft Store NAO serve. Se nao tiver Python, o iniciar.bat oferece instalar via winget.
+3. Dois cliques em iniciar.bat. O navegador abre em http://127.0.0.1:5000.
+Dados ja carregados (bases_exemplo). Para recarregar do zero: apague data\perfect_shock.db e rode "python carregar_exemplos.py".
+Posicao no catalogo = ordem das linhas da planilha CatalogoAMD (nao ha coluna de pagina/posicao na base).
+
+GITHUB CODESPACES (alternativa sem instalar Python)
+1. Crie um repositorio PRIVADO e envie estes arquivos (o .gitignore ja protege banco e planilhas).
+2. Code > Codespaces > Create codespace. O app sobe sozinho e abre na porta 5000.
+3. Arraste as planilhas para uma pasta bases_exemplo no explorador e rode: python carregar_exemplos.py
+Obs.: o Codespaces gratuito tem limite mensal de horas e os dados ficam na nuvem do GitHub.
+
+ATUALIZAR OS DADOS (menu "Atualização de dados")
+Mantenha o MESMO NOME das planilhas (ex.: "DadosR-D e DES.xlsx", "Compra_de_amostra.xlsx", "CatalogoAMD.xlsx"...). Escolha os arquivos (um ou vários) ou substitua os da pasta bases_exemplo e clique
+em "Verificar a pasta". O sistema lê tudo, compara com o banco e mostra o que falta; ao clicar em "Aplicar" insere só o que não está (backup automático antes). Nada é apagado.
+Em Desenvolvimento, status/fornecedor/amostras são atualizados quando mudam na planilha; em Compra de amostras, só campos vazios são preenchidos (etapa e edições feitas no sistema são preservadas).
+
+DESENHOS (menu "Desenhos")
+Envie arquivos de desenho em qualquer formato (PDF, DWG, DXF, STEP, imagens...), soltando arquivos ou uma pasta. O sistema reconhece o CÓDIGO e a REVISÃO pelo nome do arquivo
+(ex.: AMD0170_REV02.pdf, D-AMD0170 R3.dwg, AMD0108_AMD0109 rev B.pdf) e vincula a catálogo, desenvolvimento e redesenvolvimento. Antes de gravar, mostra a análise para você conferir/corrigir.
+Revisões antigas ficam guardadas; os cadastros mostram só a vigente (maior revisão do código). Sem revisão no nome = próxima revisão automática. Arquivo idêntico ao já cadastrado é ignorado.
+Os arquivos ficam na pasta data\drawings (o backup do sistema copia apenas o banco: copie também essa pasta ao fazer backup).
+Miniaturas: imagens usam Pillow e PDF usa PyMuPDF, se instalados (pip install pillow pymupdf). Sem eles, aparece o ícone do formato.
+
+PLANILHAS NOVAS: na "Atualização de dados", planilhas com nome desconhecido também entram (cada aba vira uma fonte, listada em Fontes e histórico; use "Ver linhas" para consultar).
+
+NOVIDADES (etapa 7)
+- Referência cruzada: planilha CrossCatalogo.xlsx (mesmo nome) carregada em "Atualização de dados". Aparece na ficha do catálogo, na pesquisa por código (tipo "Concorrente") e na Compra de amostras.
+- Controle de status (Em desenvolvimento / Em redesenvolvimento): Pendente validação, Validação reprovada, Pendente desenho do fornecedor, Pendente compras. Vem da planilha quando ela indica;
+  a marcação manual (no detalhe do item ou em lote na lista) prevalece e pode voltar ao automático.
+- Compra de amostras > aba "Pendente de compra": todo item com Pendente compras + referência cruzada (o que cotar) + situação do pedido de amostra; "Criar pedido" já preenche o formulário.
+- Brands: PERFECT (AMD…), BPROAUTO (1BP…), MOTRIO (só números), MOTORCRAFT (base ItensMotorcraft).
+- Configurações: chave de tema claro/escuro (também no botão do topo). Fica gravado no navegador.
+- Desenhos: miniaturas reais (imagens e PDF; PDF precisa de pypdfium2 ou PyMuPDF — o iniciar.bat tenta instalar), visualizador com zoom/tela cheia, setas entre desenhos e comparação de revisões.
+
+NOVIDADES (etapa 11)
+- Menu lateral fixo (slate-800, igual nos temas claro e escuro) com: Metas & Validação · Pedidos em Aberto · Vendas (Curva A) · Garantia. Os demais módulos continuam no menu, abaixo.
+- Layout em TailwindCSS. O iniciar.bat baixa static\vendor\tailwind.js uma vez (se houver internet); sem ele o sistema usa o CDN ou o CSS reserva (static\css\tw-fallback.css, gerado por tools\tw_fallback.py).
+- Metas & Validação: conta validações do usuário ITALOC (USER_VALID), LINHA «Amortecedor», por SUGESTAO DES e R-D, no ano da DATA_APROVACAO (metas.py). Em Configurações > Regras (administrador) dá para voltar à regra «item recebido».
+- Pedidos em Aberto: pedidos de compra de amortecedor com código MP-, fornecedor traduzido do código EX (EX0002116 = ZS, EX0002110 = E-WIN, EX008042 = XGM; outro = VERIFICAR).
+- Vendas (Curva A): vendas faturadas (view VENDAS_FATURAMENTO_DETALHADO) agrupadas por produto, ordenadas por valor, com % acumulado e classe A/B/C.
+- Garantia: envie o Excel/CSV de garantia; ficam só código, defeito e quantidade (a linha «Total» é descartada).
+- FOB: python fob_merge.py PRODUTOS.xlsx fob.xlsx -o saida.xlsx (left join pelo PartNumber) ou, no sistema, POST /api/fob/import (grava products.fob em USD).
+
+ETAPA 11b — ajustes pedidos em 09/11/2026
+ - Catálogo: a planilha «CatalogoAMD - atualizar» é a fonte de verdade (Importação de Excel). O que está nela prevalece; produto que sai da planilha sai do catálogo (não é apagado). O servidor nunca grava no catálogo.
+ - Meta de DESENVOLVIMENTO: só item que chegou a ITEM RECEBIDO neste ano E validado por USER_VALID (ITALOC).
+ - Pedidos em Aberto: bloco «Lead time por fornecedor» (prometido, pedido→embarque, embarque→chegada, real, atraso, previsão empurrada). Meta padrão 180 dias, editável em Configurações. Embarques vêm de EMBARQUES_DETALHADO (confirme os nomes das colunas com «python data_pipeline.py probe»).
+ - Lados: só amortecedores do catálogo com LD ou LE; coluna «Possuímos?» confere o traseiro/dianteiro pela aplicação.
+ - Pesquisa: aceita código de concorrente/OEM com ou sem ponto e hífen; a linha mostra qual referência casou.
+ - Vendas: «Conferir com o BI» compara o export VENDA_POR_SKU com o servidor e com o catálogo.
+
+ETAPA 11c — ajustes pedidos em 09/11/2026 (tarde)
+ - Lentidão: a causa era o script do Tailwind via CDN (travava a página sem internet) e a tela de Pedidos enviar todo o histórico de compras. Agora só há CSS local, Pedidos é paginado no servidor (filtros por busca, fornecedor e STATUS_PC) e os cálculos ficam em cache até a próxima sincronização.
+ - .env permanente: o sistema procura o .env na pasta do projeto, em ~/.perfect_shock_data/.env, na pasta acima e em pastas de versões vizinhas, e guarda uma cópia em ~/.perfect_shock_data/.env. Ao trocar de versão não precisa editar de novo. O .env nunca vai no zip.
+ - DES / R-D: só a linha AMORTECEDOR e AMORTECEDOR LINHA PESADA (COX e KAD ficam fora). Um código não aparece nos dois: se está em R-D, sai de DES (e vice-versa; R-D prevalece, com aviso na sincronização).
+ - FOB: menu Compras e amostras > FOB (importar fob.xlsx, ver itens sem FOB e FOB fora do catálogo); a coluna FOB aparece na Pesquisa e na ficha.
+ - Pesquisa: códigos de concorrente do CrossCatalogo (aba Equivalências) são pesquisáveis.
+ - A exclusividade DES x R-D também vale na leitura (listas, filtros e pesquisa): se um código está nos dois, só aparece em REDESENVOLVIMENTO.
+
+ETAPA 11d — backlog de 09/11/2026 (tarde), em 5 etapas
+ - Mercado Livre: se o ML_ACCESS_TOKEN falhar/expirar, a busca refaz sozinha pela rota pública (sem token), sem quebrar. Erro inesperado numa rota /api/ volta como mensagem (JSON), não como página de erro.
+ - Metas: LINHA estrita «AMORTECEDOR» ou «AMORTECEDOR LINHA PESADA»; qualquer linha com COX ou KAD fica fora. DES e R-D são exclusivos (código em R-D não conta em DES).
+ - Lead time: só pedidos emitidos no ANO VIGENTE (muda sozinho em janeiro); Pedidos em Aberto continua mostrando todos os pedidos em aberto.
+ - Brands: importe as planilhas «Shock Data - Brands (MOTORCRAFT) …xlsx» e «Perfect Shock Data - Brands (BPROAUTO) …xlsx» (Importação de Excel; a marca vem do nome do arquivo). Left join pelo código PERFECT: toda linha entra; sem PERFECT no catálogo fica sem vínculo.
+ - Lados: reconhece LD, LE, «Lado Direito/Esquerdo», Direito, Esquerdo (sem diferenciar maiúsculas); procura também na Aplicação do catálogo.
+ - FOB: a ficha mostra as cotações (E-WIN, ZS, XGM) e destaca a menor em verde com a etiqueta «Melhor Preço».
+ - Busca reversa: código de concorrente (CrossCatalogo / Brands) converte para o código PERFECT na Pesquisa, em Pedidos em Aberto e em Equivalências.
+ - Compra de amostras: «Sugestões de compra» lista só itens em DES/R-D com PENDENTE COMPRAS, sem amostra comprada, fora do catálogo e que não sejam ITEM RECEBIDO. A importação de Compra_de_amostra.xlsx agora lê também MELHOR PREÇO e PREÇO DOLAR, e os cartões mostram SC, credit note, pesos e links.
+ - Pedidos em Aberto: filtro «Tipo» (Compra / Amostra / Compra + Amostra). As amostras só aparecem na lista; resumo, KPIs, lead time e alertas continuam sendo só das compras do servidor.
+
+ETAPA 15 — 10/11/2026 (regras completas em REGRAS_DE_NEGOCIO.md)
+ - Catálogo: bases_exemplo\CatalogoAMD.xlsx é a fonte do catálogo (Atualização de dados > Verificar a pasta). Agora lê também Números Referência, Veículos e
+   «Produtos Relacionados» (antes a planilha era confundida com referência cruzada e o catálogo não era atualizado por ela).
+ - Servidor: sincronização DIÁRIA às 06:30 (DEV_SYNC_AT). O servidor filtra e só envia o que o app usa: DES/R-D de amortecedor, compras/embarques/estoque/garantia
+   de amortecedor e vendas JÁ SOMADAS por mês × SKU, só a partir do mês anterior (incremental). A sincronização caiu de ~8 min para ~1,5 min (a 1ª) e ~35 s (as seguintes).
+ - Vendas: a tela não lia nada por dois motivos — a view usa DATA_FATUR e VALOR_TOTAL_CIPI (o app não reconhecia: data e valor vinham vazios, e só 300 mil linhas
+   aleatórias de 9 milhões) e a tela chamava uma função inexistente. Corrigido; novo resumo com comparação com o ano anterior, evolução mensal e % do catálogo.
+ - Lados: par pela planilha «Lados - Amortecedores»; traseiro (e o par dele) automaticamente por Produtos Relacionados → aplicação do catálogo → aplicação no
+   servidor (DES/R-D) → em desenvolvimento. Coluna «Conjunto do veículo» e escopo «todos os dianteiros/traseiros».
+ - Pedidos em Aberto: «Previsão de embarques e chegadas» por etapas (produção → mar → desembaraço) medidas no histórico real de cada fornecedor, com faixa p25–p75,
+   calendário de chegadas/embarques, linhas que vão atrasar e saldos parados. O cálculo de previsão empurrada ficou ~250× mais rápido.
+ - Menu em ordem de fluxo (1 Desenvolvimento → 2 Amostras → 3 Catálogo → 4 Compras) com trilho de conectores; faixa «vem de → esta tela → alimenta» em cada página;
+   clicar num código (sublinhado tracejado) abre as outras telas onde ele aparece.

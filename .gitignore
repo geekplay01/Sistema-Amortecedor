@@ -1,0 +1,25 @@
+# segredos
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# dados da empresa: nunca vão para o repositório
+data/
+backups/
+bases_exemplo/
+*.db
+*.db-journal
+*.sqlite
+*.xlsx
+*.xls
+*.csv
+~$*
+
+# logs e temporários
+iniciar_log.txt
+*.log
