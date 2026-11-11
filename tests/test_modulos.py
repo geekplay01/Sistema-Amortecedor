@@ -135,6 +135,34 @@ class CatalogoPlanilha(_TmpDB):
         self.assertEqual(P["AMD2"]["catalog_subgroup"], "AMORTECEDOR LINHA PESADA"); self.assertIsNone(P["AMD7"]["catalog_position"]); self.assertEqual(P["AMD7"]["description"], "SAIU")  # saiu do catálogo, mas não foi apagado
         self.assertEqual(s["counts"]["conflicts"], 0)
 
+    def test_campos_novos_sistema_familia_haste_lancamento(self):
+        """Etapa 16 (Q12/Q13): colunas Sistema, Familia, Diametro Haste e Lançamento do CatalogoAMD. Sistema inválido → usa a Observação e abre pendência."""
+        import loaders, importer, queries
+        self.db.init_db()
+        def carregar(sistemas):
+            f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); f.close()
+            pd.DataFrame({"Código Produto": ["AMD1", "AMD2", "AMD3", "AMD4"], "Descrição Produto": ["AMORTECEDOR"] * 4, "Lançamento": ["Sim", None, None, None],
+                          "Observação": [None, None, "Sistema.: Óleo", None], "Sistema": sistemas, "Familia": ["Estrutural", "Cabine", "Convencional", None],
+                          "Diametro Haste": ["20", "12.5", None, "22"]}).to_excel(f.name, index=False)
+            df, _ = importer.read_table(f.name, None); loaders.run(f.name, None, importer.suggest_mapping(df.columns), None, "CatalogoAMD.xlsx", True); os.remove(f.name)
+            c = self.db.conn(); P = {r["perfect_code"]: dict(r) for r in c.execute("SELECT p.*, d.rod_diameter_mm FROM products p LEFT JOIN dimensions d ON d.product_id=p.id")}
+            pend = {r[0] for r in c.execute("SELECT p.perfect_code FROM pendencies x JOIN products p ON p.id=x.product_id WHERE x.kind='campo_invalido' AND x.field='sistema' AND x.status='aberta'")}; c.close()
+            return P, pend
+        P, pend = carregar(["FORCE GAS", "FORCE OIL", "Código Produto", "Código Produto"])
+        self.assertEqual([P[k]["system_type"] for k in ("AMD1", "AMD2", "AMD3", "AMD4")], ["gas", "oleo", "oleo", None])        # AMD3: inválido → Observação
+        self.assertEqual(pend, {"AMD3", "AMD4"})
+        self.assertEqual((P["AMD1"]["family"], P["AMD2"]["family"]), ("ESTRUTURAL", "CABINE"))                                      # mesmo formato das famílias do Inmetro
+        self.assertEqual((P["AMD1"]["rod_diameter_mm"], P["AMD2"]["rod_diameter_mm"], P["AMD4"]["rod_diameter_mm"]), (20.0, 12.5, 22.0))
+        self.assertEqual((P["AMD1"]["is_launch"], P["AMD2"]["is_launch"]), ("S", "N"))                                              # coluna presente e vazia = não é lançamento
+        _, pend = carregar(["FORCE GAS", "FORCE OIL", "FORCE GAS", "FORCE OIL"]); self.assertEqual(pend, set())                   # planilha corrigida: pendência some
+        # filtros e contagens da tela Produtos
+        cod = lambda f: sorted(r["perfect_code"] for r in queries.products(f)["rows"])
+        self.assertEqual(cod({"family": "ESTRUTURAL"}), ["AMD1"]); self.assertEqual(cod({"rod": "12.5"}), ["AMD2"]); self.assertEqual(cod({"launch": "S"}), ["AMD1"])
+        self.assertEqual(cod({"system": "oleo"}), ["AMD2", "AMD4"]); self.assertEqual(cod({"launch": "N", "system": "gas"}), ["AMD3"])
+        fc = queries.product_facets()
+        self.assertEqual(fc["family"][0], {"v": "CABINE", "n": 1}); self.assertIn({"v": 12.5, "n": 1}, fc["rod"]); self.assertEqual((fc["launch"], fc["system"]["gas"], fc["system"]["oleo"]), (1, 2, 2))
+        r = queries.products({"q": "AMD1"})["rows"][0]; self.assertEqual((r["is_launch"], r["rod_diameter_mm"]), ("S", 20.0))
+
 class BuscaConcorrente(_TmpDB):
     def test_codigo_com_ou_sem_pontuacao(self):
         import queries

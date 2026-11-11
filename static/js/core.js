@@ -9,7 +9,7 @@
   const qs = o => new URLSearchParams(Object.entries(o).filter(([, v]) => v !== "" && v != null)).toString();
   const num = (v, d = 0) => v == null ? "–" : Number(v).toLocaleString("pt-BR", { maximumFractionDigits: d });
   const brl = v => "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const SYS = { gas: "Gás", oleo: "Óleo" }, yr = a => a.year_from ? a.year_from + (a.year_to && a.year_to !== a.year_from ? "–" + a.year_to : "") : "–";
+  const SYS = { gas: "FORCE GAS", oleo: "FORCE OIL" }, yr = a => a.year_from ? a.year_from + (a.year_to && a.year_to !== a.year_from ? "–" + a.year_to : "") : "–";
   const T = (h, rows) => `<div class="tbl"><table><tr>${h.map(x => `<th>${x}</th>`).join("")}</tr>${rows.join("")}</table></div>`;
   const lnk = (id, t) => `<a href="#" data-ficha="${id}">${esc(t)}</a>`;
   const empty = m => `<div class="notice soon"><img src="/static/img/amortecedor-desenho.png" alt="" width="72"><div>${m}</div></div>`;
@@ -29,14 +29,23 @@
       : `<div class="flex items-center justify-between rounded-lg border px-3 py-2"><span>${esc(x.fornecedor)}</span><span class="tabular-nums">${usd(x.preco)}</span></div>`).join("");
     return `<details class="sec" open><summary>Cotações FOB <span class="badge">${q.length}</span></summary><div class="flex flex-col gap-2 py-2">${rows}</div></details>`;
   };
+  // ficha: campos-chave do catálogo em destaque (Sistema, Família, Ø haste, Lançamento, posição) + grade de dados em Tailwind (etapa 16)
+  const kvT = (k, v) => `<div class="rounded-xl border border-line bg-card px-3 py-2"><div class="text-xs text-mute">${k}</div><div class="mt-0.5 break-words text-sm font-semibold text-ink">${v == null || v === "" ? '<span class="text-mute">—</span>' : esc(v)}</div></div>`;
+  const fichaTopo = (p, d) => {
+    const cx = (k, v, cor = "border-line bg-card") => `<div class="rounded-xl border ${cor} px-4 py-2.5"><div class="text-xs font-semibold uppercase tracking-wide text-mute">${k}</div><div class="mt-1 text-base font-bold text-ink">${v == null || v === "" ? '<span class="font-normal text-mute">—</span>' : esc(v)}</div></div>`;
+    const sis = p.system_type === "gas" ? "border-blue-500/40 bg-blue-500/10" : p.system_type === "oleo" ? "border-amber-500/40 bg-amber-500/10" : undefined;
+    return `<div class="mb-3 grid grid-cols-2 gap-2 md:grid-cols-5">${cx("Sistema", SYS[p.system_type], sis)}${cx("Família", p.family ? p.family.charAt(0) + p.family.slice(1).toLowerCase() : null)}${cx("Ø haste (mm)", d.rod_diameter_mm)}
+      ${cx("Lançamento", p.is_launch === "S" ? "Sim" : p.is_launch === "N" ? "Não" : null, p.is_launch === "S" ? "border-emerald-500/40 bg-emerald-500/10" : undefined)}${cx("Posição no catálogo", p.catalog_position)}</div>`;
+  };
   const sec = (t, n, h) => `<details class="sec" ${n ? "open" : ""}><summary>${t} <span class="badge">${n}</span></summary>${n ? h : '<p class="muted">Nenhum dado nas bases importadas.</p>'}</details>`;
   async function openFicha(id) {
     try {
       const p = await J("/api/products/" + id), d = p.dimensions || {}, b = p.box;
       dlg.innerHTML = `<div class="dh"><div><h2>${esc(p.perfect_code)}</h2><p>${esc(p.description || "")}</p></div><div><a class="btn ghost" href="/comparacao?ids=${p.id}">Comparar</a> <button class="btn ghost" data-close>Fechar</button></div></div>
-      <div class="kvs">${kv("Posição no catálogo", p.catalog_position)}${kv("Grupo", p.catalog_group)}${kv("Família", p.family)}${kv("Sistema", SYS[p.system_type])}${kv("EAN", p.ean)}${kv("NCM", p.ncm)}${kv("Peso (kg)", p.weight_kg)}${kv("Descrição (ES)", p.description_es)}
-      ${kv("Lmin (mm)", d.lmin_mm)}${kv("Lmax (mm)", d.lmax_mm)}${kv("Curso (mm)", d.stroke_mm)}${kv("Ø haste (mm)", d.rod_diameter_mm)}${kv("Corpo (mm)", d.body_length_mm)}${kv("Ø tubo (mm)", d.tube_diameter_mm)}${kv("Fixação sup.", d.upper_mount)}${kv("Fixação inf.", d.lower_mount)}
-      ${kv("FOB mín. (US$)", p.fob_detail && p.fob_detail.fob != null ? `${p.fob_detail.fob} · ${p.fob_detail.fob_fornecedor || ""} ${p.fob_detail.fob_data || ""}` : null)}${kv("FOB E-WIN / ZS / XGM (US$)", p.fob_detail ? [p.fob_detail.fob_ewin, p.fob_detail.fob_zs, p.fob_detail.fob_xgm].map(x => x ?? "–").join(" / ") : null)}${kv("Caixa", p.package_code)}${kv("Dim. caixa (mm)", b && b.raw_dims)}${kv("Embalagem (catálogo)", p.package_note)}${kv("Características", p.features)}</div><p class="muted">“—” = não consta nas bases importadas (nada foi inventado).</p>
+      ${fichaTopo(p, d)}
+      <div class="grid grid-cols-2 gap-2 md:grid-cols-4">${kvT("Grupo", p.catalog_group)}${kvT("EAN", p.ean)}${kvT("NCM", p.ncm)}${kvT("Peso (kg)", p.weight_kg)}
+      ${kvT("Lmin (mm)", d.lmin_mm)}${kvT("Lmax (mm)", d.lmax_mm)}${kvT("Curso (mm)", d.stroke_mm)}${kvT("Corpo (mm)", d.body_length_mm)}${kvT("Ø tubo (mm)", d.tube_diameter_mm)}${kvT("Fixação sup.", d.upper_mount)}${kvT("Fixação inf.", d.lower_mount)}${kvT("Descrição (ES)", p.description_es)}
+      ${kvT("FOB mín. (US$)", p.fob_detail && p.fob_detail.fob != null ? `${p.fob_detail.fob} · ${p.fob_detail.fob_fornecedor || ""} ${p.fob_detail.fob_data || ""}` : null)}${kvT("FOB E-WIN / ZS / XGM (US$)", p.fob_detail ? [p.fob_detail.fob_ewin, p.fob_detail.fob_zs, p.fob_detail.fob_xgm].map(x => x ?? "–").join(" / ") : null)}${kvT("Caixa", p.package_code)}${kvT("Dim. caixa (mm)", b && b.raw_dims)}${kvT("Embalagem (catálogo)", p.package_note)}${kvT("Características", p.features)}</div><p class="muted">“—” = não consta nas bases importadas (nada foi inventado).</p>
       ${fobBlock(p)}
       <div data-dwblock="${esc(p.perfect_code)}"></div>
       <div id="fch-srv"></div>

@@ -317,6 +317,8 @@ def _unexpected(e):
 A = lambda: request.args.to_dict()
 @app.get("/api/products")
 def api_products(): return jsonify(queries.products(A()))
+@app.get("/api/products/facets")
+def api_products_facets(): return jsonify(queries.product_facets())
 @app.get("/api/products/<int:pid>")
 def api_ficha(pid):
     d = queries.ficha(pid) or abort(404); code = (d.get("product") or d).get("perfect_code") if isinstance(d, dict) else None

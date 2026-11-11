@@ -60,7 +60,7 @@
     <script src="{{ url_for('static', filename='js/pages_new.js') }}"></script>
     <script src="{{ url_for('static', filename='js/core.js') }}"></script>
     {# uma tela por arquivo (static/js/telas); cada uma se registra com PSD.tela(slug, desenhar) #}
-    {% for t in ['catalogo', 'desenvolvimento', 'metas', 'desenhos', 'amostras', 'envio', 'lados', 'brands', 'dados'] %}
+    {% for t in ['catalogo', 'produtos', 'desenvolvimento', 'metas', 'desenhos', 'amostras', 'envio', 'lados', 'brands', 'dados'] %}
     <script src="{{ url_for('static', filename='js/telas/' ~ t ~ '.js') }}"></script>
     {% endfor %}
     <script>PSD.iniciar();</script>

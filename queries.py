@@ -44,7 +44,20 @@ def _where(f):
     ac = _app_conds(f, p)
     if ac: w.append("EXISTS(SELECT 1 FROM applications a WHERE a.product_id=p.id AND " + " AND ".join(ac) + ")")
     if f.get("system"): w.append("p.system_type=:system"); p["system"] = f["system"]
+    if f.get("family"): w.append("upper(p.family)=upper(:family)"); p["family"] = f["family"]
+    if f.get("launch") in ("S", "N"): w.append("coalesce(p.is_launch,'N')=:launch"); p["launch"] = f["launch"]
+    try: rod = float(str(f.get("rod") or "").replace(",", "."))
+    except ValueError: rod = None
+    if rod is not None: w.append("EXISTS(SELECT 1 FROM dimensions d2 WHERE d2.product_id=p.id AND abs(d2.rod_diameter_mm-:rod)<0.001)"); p["rod"] = rod
     return w, p
+
+def product_facets():
+    """Opções (com contagem) dos filtros da tela Produtos: família, Ø da haste, sistema e lançamentos."""
+    return {"family": q("SELECT family v, COUNT(*) n FROM products WHERE family IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1"),
+            "rod": q("SELECT rod_diameter_mm v, COUNT(*) n FROM dimensions WHERE rod_diameter_mm IS NOT NULL GROUP BY 1 ORDER BY 1"),
+            "system": {r["s"]: r["n"] for r in q("SELECT coalesce(system_type,'nd') s, COUNT(*) n FROM products GROUP BY 1")},
+            "launch": q1("SELECT COUNT(*) n FROM products WHERE is_launch='S'")["n"], "total": q1("SELECT COUNT(*) n FROM products")["n"],
+            "catalogo": q1("SELECT COUNT(*) n FROM products WHERE catalog_position IS NOT NULL")["n"]}
 
 def perfect_codes(term, limit=200):
     """BUSCA REVERSA: código de CONCORRENTE/OEM/marca (CrossCatalogo, aba Equivalências, planilhas Brands) → códigos PERFECT correspondentes.
@@ -66,7 +79,7 @@ def products(f):
     w, p = _where(f); sw = " AND ".join(w) or "1=1"
     size = 10**9 if f.get("all") else min(int(f.get("size") or 50), 200); off = 0 if f.get("all") else (max(int(f.get("page") or 1), 1) - 1) * size
     total = q1(f"SELECT COUNT(*) n FROM products p WHERE {sw}", p)["n"]
-    rows = q(f"""SELECT p.id,p.perfect_code,p.description,p.ean,p.weight_kg,p.fob,p.fob_supplier,p.catalog_position,p.catalog_group,p.system_type,p.family,d.lmin_mm,d.lmax_mm,
+    rows = q(f"""SELECT p.id,p.perfect_code,p.description,p.ean,p.weight_kg,p.fob,p.fob_supplier,p.catalog_position,p.catalog_group,p.system_type,p.family,p.is_launch,d.lmin_mm,d.lmax_mm,d.rod_diameter_mm,
       (SELECT COUNT(*) FROM applications a WHERE a.product_id=p.id) apps,(SELECT COUNT(*) FROM codes k WHERE k.product_id=p.id) ncodes,
       (SELECT COUNT(*) FROM pendencies x WHERE x.product_id=p.id AND x.status='aberta') pend
       FROM products p LEFT JOIN dimensions d ON d.product_id=p.id WHERE {sw}

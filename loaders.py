@@ -86,6 +86,11 @@ def _merge(x, pid, vals):
     if sets:
         x.c.execute(f"UPDATE products SET {','.join(k + '=?' for k in sets)},updated_at=CURRENT_TIMESTAMP WHERE id=?", [*sets.values(), pid]); x.n["updated"] += 1
 
+SYSTEM_LABEL = {"gas": "FORCE GAS", "oleo": "FORCE OIL"}       # como a PERFECT chama o sistema (telas, filtros e exports)
+def _system(u):
+    """Texto já em maiúsculas → 'gas' | 'oleo' | None («FORCE GAS», «GÁS», «FORCE OIL», «ÓLEO»; «Código Produto» e vazio → None)."""
+    return "gas" if re.search(r"\bG[ÁA]S\b", u) else "oleo" if re.search(r"\bOIL\b|[ÓO]LEO", u) else None
+
 def _axle_side(desc):
     d = (desc or "").upper(); ax = "dianteiro" if "DIANT" in d else "traseiro" if "TRAS" in d else None
     sd = "ambos" if re.search(r"LD\s*/\s*LE|LE\s*/\s*LD", d) else "direito" if re.search(r"\bLD\b", d) else "esquerdo" if re.search(r"\bLE\b", d) else None
@@ -108,19 +113,24 @@ def _relink(x):
 def L_catalogo(x, rows):
     """A planilha «CatalogoAMD» é a FONTE DE VERDADE do catálogo: o que está nela PREVALECE sobre o banco (política «overwrite»), a posição segue a ordem das linhas e
     produto que NÃO está mais na planilha sai do catálogo (catalog_position = NULL) — nada é apagado. O servidor SQL nunca grava nos dados de catálogo."""
-    x.policy = "overwrite"; seen = set()
+    x.policy = "overwrite"; seen = set(); invalid = []
+    has_launch = bool(rows) and "launch_flag" in rows[0]                 # coluna presente e vazia = não é lançamento
     for pos, r in enumerate(rows, 1):  # posição no catálogo = ordem das linhas da planilha
         code, _ = normalize_code(r.get("perfect_code"))
         if not code: x.err("linha sem código PERFECT"); continue
         v = {"description": _s(r.get("description")), "description_es": _s(r.get("description_es")), "description_en": _s(r.get("description_en")),
              "ean": _s(r.get("ean")), "ncm": _s(r.get("ncm")), "weight_kg": _f(r.get("weight_kg")), "catalog_group": _s(r.get("group_name")),
-             "catalog_subgroup": _s(r.get("subgroup_name")), "is_launch": (_s(r.get("launch_flag")) or "").upper()[:1] or None, "catalog_highlight": (_s(r.get("highlight_flag")) or "").upper()[:1] or None,
-             "catalog_photo": _s(r.get("photo_file"))}
+             "catalog_subgroup": _s(r.get("subgroup_name")), "is_launch": (_s(r.get("launch_flag")) or "").upper()[:1] or ("N" if has_launch else None), "catalog_highlight": (_s(r.get("highlight_flag")) or "").upper()[:1] or None,
+             "catalog_photo": _s(r.get("photo_file")), "family": (_s(r.get("family")) or "").upper() or None}      # família em maiúsculas, como nos certificados Inmetro
         obs = _s(r.get("observation")) or ""
         m = re.search(r"Sistema\.?:\s*(.+)", obs, re.I)
         if m:
             u = m.group(1).upper(); v["features"] = "Sistema: " + m.group(1).strip()
-            v["system_type"] = "gas" if re.search(r"G[ÁA]S", u) else "oleo" if re.search(r"[ÓO]LEO", u) else None
+            v["system_type"] = _system(u)
+        if "system_col" in r:                                             # coluna «Sistema» (FORCE GAS / FORCE OIL) prevalece; inválida → fica a da Observação + pendência
+            raw = _s(r.get("system_col")); st = _system((raw or "").upper())
+            if st: v["system_type"] = st
+            else: invalid.append((code, raw, v.get("system_type")))
         m = re.search(r"Medida emb\.?:\s*(.+)", obs, re.I)
         if m: v["package_note"] = m.group(1).strip()
         pid = x.pid.get(code)
@@ -133,7 +143,16 @@ def L_catalogo(x, rows):
         mm = re.search(r"MIN:\s*(\d+).*?M[ÁA]X:\s*(\d+)", _s(r.get("measure_min_max")) or "", re.I)
         if mm: x.c.execute("INSERT INTO dimensions(product_id,lmin_mm,lmax_mm,source_id) VALUES(?,?,?,?) ON CONFLICT(product_id) DO UPDATE SET lmin_mm=excluded.lmin_mm,lmax_mm=excluded.lmax_mm,source_id=excluded.source_id",
                            (pid, float(mm.group(1)), float(mm.group(2)), x.src))
-    gone = [r[0] for r in x.c.execute("SELECT perfect_code FROM products WHERE catalog_position IS NOT NULL AND id NOT IN (%s)" % (",".join(map(str, seen)) or "0"))]
+        rod = _f(r.get("rod_diameter"))
+        if rod is not None: x.c.execute("INSERT INTO dimensions(product_id,rod_diameter_mm,source_id) VALUES(?,?,?) ON CONFLICT(product_id) DO UPDATE SET rod_diameter_mm=excluded.rod_diameter_mm", (pid, rod, x.src))
+    if rows and "system_col" in rows[0]:
+        x.c.execute("DELETE FROM pendencies WHERE kind='campo_invalido' AND field='sistema' AND status='aberta'")
+        for code, raw, st in invalid:
+            x.c.execute("INSERT INTO pendencies(product_id,kind,field,description) VALUES(?,?,?,?)", (x.pid[code], "campo_invalido", "sistema",
+                        f"Sistema inválido na planilha («{raw or 'vazio'}»). " + (f"Usado o da Observação: {SYSTEM_LABEL[st]}." if st else "A Observação também não informa: fica o sistema que já estava no cadastro (se houver).")))
+        x.n["sistema_invalido"] = len(invalid)
+        if invalid: x.msgs.append(f"{len(invalid)} produto(s) com Sistema inválido na planilha (ex.: {', '.join(c for c, _, _ in invalid[:8])}): ver Pendências.")
+    gone =[r[0] for r in x.c.execute("SELECT perfect_code FROM products WHERE catalog_position IS NOT NULL AND id NOT IN (%s)" % (",".join(map(str, seen)) or "0"))]
     if gone and seen:
         x.c.execute("UPDATE products SET catalog_position=NULL WHERE catalog_position IS NOT NULL AND id NOT IN (%s)" % ",".join(map(str, seen))); x.n["fora_do_catalogo"] = len(gone)
         x.msgs.append(f"{len(gone)} produto(s) saíram do catálogo (não estão mais na planilha): " + ", ".join(gone[:15]) + ("…" if len(gone) > 15 else ""))

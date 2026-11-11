@@ -24,7 +24,7 @@ window.PSD_NEW = ctx => {
       panel("Funil — " + DES, '<div id="c-fun-des" class="chart"></div>'), panel("Funil — " + RD, '<div id="c-fun-rd" class="chart"></div>'),
       panel("Pendências por status", `<div class="seg sm" id="pk"><button type="button" data-k="${DES}" class="on">${DES}</button><button type="button" data-k="${RD}">${RD}</button></div><div id="c-flags" class="chart"></div>`, "span2"),
       panel("Vendas — últimos 12 meses", '<div id="c-sales" class="chart"></div>'), panel("Mais vendidos (12 meses)", '<div id="c-top" class="chart"></div>'),
-      panel("Estoque disponível", '<div id="c-stock"></div>'), panel("Sistema: Gás × Óleo", '<div id="c-sys" class="chart"></div>')].join("");
+      panel("Estoque disponível", '<div id="c-stock"></div>'), panel("Sistema: FORCE GAS × FORCE OIL", '<div id="c-sys" class="chart"></div>')].join("");
     // metas
     const gg = (id, k, sub) => PSDCharts.gauge($(id), { value: g[k].done, target: g[k].target, title: k, subtitle: sub });
     const vb = d.goals.basis === "validacao"; gg("#g-des", DES, vb ? `meta ${g[DES].target} · validações ${d.goals.validacoes.filtro.USER_VALID} em ${d.goals.year}` : `meta ${g[DES].target} · item recebido em ${d.goals.year}`); gg("#g-rd", RD, vb ? `meta ${g[RD].target} · validações ${d.goals.validacoes.filtro.USER_VALID} em ${d.goals.year}` : `meta ${g[RD].target} · recebido e validado (${d.goals.validacoes.filtro.USER_VALID})`);
@@ -43,7 +43,7 @@ window.PSD_NEW = ctx => {
       s.top.length ? PSDCharts.hbars($("#c-top"), { labels: s.top.map(t => `${t.code}${t.description ? " · " + t.description : ""}`), values: s.top.map(t => t.value || t.qty), color: "#10b981" }) : ($("#c-top").innerHTML = none("Sem vendas no período."));
     } else { $("#c-sales").innerHTML = $("#c-top").innerHTML = none("Vendas ainda não chegaram do servidor (PEDIDOS_VENDA_DETALHADO). Sincronize ou rode <code>python data_pipeline.py probe</code> para conferir as colunas."); }
     const st = d.stock; $("#c-stock").innerHTML = st.available ? `<div class="kpis"><div><span class="num">${num(st.qty)}</span><small>peças disponíveis</small></div><div><span class="num">${num(st.items)}</span><small>códigos em estoque</small></div><div><span class="num">${num(st.zero)}</span><small>zerados</small></div></div>` : none("Estoque ainda não chegou do servidor (EST DISP).");
-    const sys = d.system, lab = { gas: "Gás", oleo: "Óleo", nd: "Sem dado" }; PSDCharts.donut($("#c-sys"), { labels: sys.map(r => lab[r.s] || r.s), values: sys.map(r => r.n), colors: ["#2f6bff", "#10b981", "#94a3b8"] });
+    const sys = d.system, lab = { gas: "FORCE GAS", oleo: "FORCE OIL", nd: "Sem dado" }; PSDCharts.donut($("#c-sys"), { labels: sys.map(r => lab[r.s] || r.s), values: sys.map(r => r.n), colors: ["#2f6bff", "#10b981", "#94a3b8"] });
   }
 
   // ───────────────────────── Painel do servidor (Configurações) ─────────────────────────

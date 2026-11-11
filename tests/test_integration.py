@@ -134,6 +134,12 @@ class Fluxo(unittest.TestCase):
         dash = C.get("/api/dashboard").json; self.assertTrue(dash["sales"]["available"]); self.assertEqual(len(dash["sales"]["months"]), 12); self.assertTrue(dash["sales"]["top"]); self.assertTrue(dash["stock"]["available"])
         self.assertTrue(set(dash["funnel"]) == {DES, RD}); self.assertEqual(dash["groups"]["groups"][0]["key"], "compras")
         pid = C.get("/api/products?size=1").json["rows"][0]["id"]; f = C.get(f"/api/products/{pid}").json; self.assertIn("sales", f); self.assertIn("stock", f)
+        fc = C.get("/api/products/facets").json; self.assertTrue(fc["family"] and fc["rod"]); self.assertGreater(fc["system"]["gas"], 0)       # filtros da tela Produtos (etapa 16)
+        rod = fc["rod"][0]; self.assertEqual(C.get(f"/api/products?rod={rod['v']}").json["total"], rod["n"])
+        import openpyxl, io
+        r = C.get("/api/export/produtos.xlsx?system=gas&launch=S"); wb = openpyxl.load_workbook(io.BytesIO(r.data)); ws = wb["Produtos"]
+        head = [c.value for c in ws[1]]; self.assertIn("Ø haste (mm)", head); self.assertEqual({row[head.index("Sistema")] for row in ws.iter_rows(min_row=2, values_only=True)}, {"FORCE GAS"})
+        self.assertIn("FORCE GAS", r.headers.get("Content-Disposition", "") + str([c.value for c in wb["Filtros aplicados"]["B"]]))
         for x in ("lados", "envio", "desenvolvimento", "redesenvolvimento", "brands", "desenhos"): self.assertEqual(C.get(f"/api/export/{x}.xlsx").status_code, 200, x)
 
     def test_07_busca_de_precos(self):

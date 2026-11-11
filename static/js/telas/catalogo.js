@@ -1,20 +1,7 @@
-/* Tela · Catálogo: Produtos, Pesquisa, Aplicações, Comparação e Equivalências.
+/* Tela · Catálogo: Aplicações, Comparação e Equivalências. (Produtos e Pesquisa: telas/produtos.js.)
    Usa o núcleo window.PSD (core.js); registra a tela com PSD.tela(slug, desenhar). Separado do antigo pages.js na etapa 16. */
 (function () {
   const { $, $$, esc, J, post, qs, SYS, yr, T, lnk, empty, root, page, url, fail, listView, inp, sel, prodRow, prodHead, initLists, tag, clip, AX, SD } = PSD;
-  PSD.tela("produtos", () => listView({ endpoint: "/api/products", xlsx: "produtos", head: prodHead, row: prodRow,
-      note: '<p class="muted">Ordenado pela posição do item no catálogo (ordem das linhas da planilha do catálogo importada). Clique no código para abrir a ficha completa.</p>',
-      form: inp("q", "Buscar: código, OEM, fornecedor, descrição, veículo, ano…", 'autofocus style="flex:1;min-width:260px"') }));
-  PSD.tela("pesquisa", () => listView({ endpoint: "/api/products", xlsx: "pesquisa", head: prodHead, row: prodRow, init: initLists,
-      note: '<p class="muted"><b>Digite o código PERFECT, OEM ou de um CONCORRENTE</b> (com ou sem ponto/hífen: 16.470 = 16470) — a linha mostra qual referência casou. Pesquisa no catálogo e nos itens em desenvolvimento (DES) e redesenvolvimento (R-D). Use “Origem” para escolher onde procurar.</p>',
-      form: inp("q", "Busca livre (ex.: strada 2012 dianteiro)", 'style="flex:1;min-width:220px"') + sel("origem", "Origem: todas", [["catalogo", "Somente catálogo"], ["des", "Somente em desenvolvimento (DES)"], ["rd", "Somente redesenvolvimento (R-D)"]]) + inp("code", "Código") + sel("code_type", "Tipo de código", [["oem", "OEM"], ["fornecedor", "Fornecedor"], ["concorrente", "Concorrente (referência cruzada)"]]) +
-        sel("make", "Montadora", []) + sel("model", "Modelo", []) + sel("year", "Ano", []) + sel("axle", "Eixo", AX) + sel("side", "Lado", SD) + sel("system", "Sistema", [["gas", "Gás"], ["oleo", "Óleo"]]),
-      after: async p => { const o = p.origem || "", box = $("#xtra"); $("#out").hidden = $("#pg").hidden = (o === "des" || o === "rd");
-        const want = o === "" ? ["des", "rd"] : o === "catalogo" ? [] : [o]; if (!want.length || (o === "" && !p.q && !p.make && !p.model && !p.year)) { box.innerHTML = ""; return; }
-        const parts = await Promise.all(want.map(k => J(`/api/rd/${k}?` + qs({ q: p.q, make: p.make, model: p.model, year: p.year })).then(d => [k, d])));
-        box.innerHTML = parts.map(([k, d]) => { const slug = k === "des" ? "desenvolvimento" : "redesenvolvimento", lab = k === "des" ? "DESENVOLVIMENTO" : "REDESENVOLVIMENTO";
-          return `<h3>${tag(lab)} ${k === "des" ? "Em desenvolvimento" : "Em redesenvolvimento"} — ${d.total} item(ns) <a class="btn ghost sm" href="/${slug}?${qs({ q: p.q, make: p.make, model: p.model, year: p.year })}">Ver todos</a></h3>` +
-            (d.rows.length ? T(["Código", "Descrição", "Veículo(s)", "Status", "Catálogo"], d.rows.slice(0, 12).map(r => `<tr><td><a href="#" data-rd="${k}" data-code="${esc(r.code)}">${esc(r.code)}</a></td><td>${clip(r.description)}</td><td>${clip(r.vehicles)}</td><td>${clip(r.statuses)}</td><td>${r.product_id ? lnk(r.product_id, "abrir ficha") : "–"}</td></tr>`)) : '<p class="muted">Nenhum item.</p>'); }).join(""); } }));
   PSD.tela("aplicacoes", () => listView({ endpoint: "/api/applications", xlsx: "aplicacoes", init: initLists, head: ["Montadora", "Modelo", "Aplicação", "Anos", "Eixo", "Lado", "Produto", "Pos."],
       row: a => `<tr><td>${esc(a.make || "")}</td><td>${esc(a.model || "")}</td><td>${esc(a.application_text || "")}</td><td>${yr(a)}</td><td>${esc(a.axle || "")}</td><td>${esc(a.side || "")}</td><td>${lnk(a.product_id, a.perfect_code)}</td><td>${a.catalog_position ?? "–"}</td></tr>`,
       form: inp("q", "Buscar veículo, aplicação ou código", 'style="flex:1;min-width:220px"') + sel("make", "Montadora", []) + sel("model", "Modelo", []) + sel("year", "Ano", []) + sel("axle", "Eixo", AX) + sel("side", "Lado", SD) }));

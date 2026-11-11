@@ -25,13 +25,13 @@ def _codes():
     out = {}
     for r in Q.q("SELECT product_id,code_type,group_concat(DISTINCT code) c FROM codes GROUP BY product_id,code_type"): out[(r["product_id"], r["code_type"])] = r["c"].replace(",", "; ")
     return out
-SYS = {"gas": "Gás", "oleo": "Óleo"}
+from loaders import SYSTEM_LABEL as SYS          # FORCE GAS / FORCE OIL
 
 def _products(a):
     rows = Q.products({**a, "all": 1})["rows"]; cd = _codes()
-    return [("Produtos", ["Pos. catálogo", "Código PERFECT", "Descrição", "Grupo", "Família", "Sistema", "EAN", "Peso (kg)", "Lmin (mm)", "Lmax (mm)", "Aplicações", "Códigos OEM", "Códigos fornecedor", "Códigos concorrente", "Pendências abertas"],
-             [[r["catalog_position"], r["perfect_code"], r["description"], r["catalog_group"], r["family"], SYS.get(r["system_type"]), r["ean"], r["weight_kg"], r["lmin_mm"], r["lmax_mm"], r["apps"],
-               cd.get((r["id"], "oem")), cd.get((r["id"], "fornecedor")), cd.get((r["id"], "concorrente")), r["pend"]] for r in rows], [11, 16, 38, 18, 16, 9, 16, 10, 10, 10, 11, 30, 30, 30, 11])], len(rows)
+    return [("Produtos", ["Pos. catálogo", "Código PERFECT", "Descrição", "Grupo", "Família", "Sistema", "Ø haste (mm)", "Lançamento", "EAN", "Peso (kg)", "Lmin (mm)", "Lmax (mm)", "Aplicações", "Códigos OEM", "Códigos fornecedor", "Códigos concorrente", "Pendências abertas"],
+             [[r["catalog_position"], r["perfect_code"], r["description"], r["catalog_group"], r["family"], SYS.get(r["system_type"]), r["rod_diameter_mm"], "Sim" if r["is_launch"] == "S" else "", r["ean"], r["weight_kg"], r["lmin_mm"], r["lmax_mm"], r["apps"],
+               cd.get((r["id"], "oem")), cd.get((r["id"], "fornecedor")), cd.get((r["id"], "concorrente")), r["pend"]] for r in rows], [11, 16, 38, 18, 16, 12, 11, 11, 16, 10, 10, 10, 11, 30, 30, 30, 11])], len(rows)
 
 def _apps(a):
     rows = Q.applications({**a, "all": 1})["rows"]
@@ -102,12 +102,14 @@ LABELS = {"desenvolvimento": "Em desenvolvimento", "redesenvolvimento": "Em rede
           "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
-          "curtiu": "Curtiu", "flag": "Controle"}
+          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento"}
+FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}}          # valor legível no nome do arquivo e na aba «Filtros aplicados»
+def _fv(k, v): return FVALUE.get(k, {}).get(v, v)
 
 def friendly_name(module, filtros=None):
     """'Perfect Shock Data - Em desenvolvimento (Busca strada) - 28-10-2026 19h34.xlsx' — legível e ordenável por data dentro do nome."""
     import re
-    parts = [f"{v}" if k in ("q", "code") else f"{FLABEL.get(k, k)} {v}" for k, v in (filtros or {}).items() if v and k not in ("all", "page", "size", "sort", "dir", "ordem")]
+    parts = [f"{v}" if k in ("q", "code") else f"{FLABEL.get(k, k)} {_fv(k, v)}" for k, v in (filtros or {}).items() if v and k not in ("all", "page", "size", "sort", "dir", "ordem")]
     flt = re.sub(r"[\\/:*?\"<>|\r\n]+", " ", ", ".join(parts)).strip()[:48].strip()
     return f"Perfect Shock Data - {LABELS.get(module, module.title())}{f' ({flt})' if flt else ''} - {datetime.datetime.now():%d-%m-%Y %Hh%M}.xlsx"
 
@@ -160,7 +162,7 @@ def build(name, args):
     if name not in BUILD: raise ValueError("Módulo sem exportação.")
     a = {k: v for k, v in args.items() if v}; sheets, n = BUILD[name](a); wb = Workbook(); wb.remove(wb.active)
     for s in sheets: _sheet(wb, *s)
-    bio = _finish(wb, {"Módulo": LABELS.get(name, name), **{FLABEL.get(k, k): v for k, v in a.items() if k != "all"}})
+    bio = _finish(wb, {"Módulo": LABELS.get(name, name), **{FLABEL.get(k, k): _fv(k, v) for k, v in a.items() if k != "all"}})
     flt = dict(a)
     if name == "comparacao" and a.get("ids"):   # nomes mais claros: códigos em vez de ids
         flt["ids"] = " x ".join(r["perfect_code"] for r in Q.q("SELECT perfect_code FROM products WHERE id IN (%s)" % ",".join("?" * len(a["ids"].split(","))), [int(i) for i in a["ids"].split(",") if i.isdigit()]))[:40]

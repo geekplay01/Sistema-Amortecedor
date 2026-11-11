@@ -28,7 +28,7 @@ ALIASES = {
  "rd_kind": ["sugestao"], "status": ["status"], "sub_status_drawing": ["sub_status_desenho"],
  "sub_status_validation": ["sub_status_validacao"], "supplier": ["fornecedor", "fornecedores"],
  "sample_bought": ["amostra_comprada"], "sample_sent": ["amostra_enviada"],
- "group_name": ["descricao do grupo do produto", "grupo"], "subgroup_name": ["descricao do subgrupo do produto"], "launch_flag": ["produto e lancamento?"], "highlight_flag": ["destacar produto?"], "photo_file": ["nome do arquivo da foto do produto"], "ship_code": ["codigo envio"], "sc_number": ["n sc"], "sample_code": ["codigo amostra"],
+ "group_name": ["descricao do grupo do produto", "grupo"], "subgroup_name": ["descricao do subgrupo do produto"], "launch_flag": ["produto e lancamento?", "lancamento"], "system_col": ["sistema"], "rod_diameter": ["diametro haste", "diametro da haste"], "highlight_flag": ["destacar produto?"], "photo_file": ["nome do arquivo da foto do produto"], "ship_code": ["codigo envio"], "sc_number": ["n sc"], "sample_code": ["codigo amostra"],
  "best_price": ["melhor preco"], "price_usd": ["preco dolar"], "price1": ["preco 1"], "link1": ["link 1 / contato"], "price2": ["preco 2"], "link2": ["link 2"], "price3": ["preco 3"], "link3": ["link3"],
  "sc_open": ["sc aberta"], "arrived": ["chegou"], "finished": ["projeto finalizado"], "approved": ["projeto aprovado"], "to_send": ["enviar"],
  "tracking": ["cod. rastreio"], "month": ["mes"], "credit_note": ["credit note"], "net_weight": ["peso liq. (kg)"], "gross_weight": ["peso brut. (kg)"],

@@ -84,4 +84,14 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Observação: na base «validação», a coluna «Conta?» de R-D segue a regra de recebimento (0 de 168 em 2026) — a meta R-D soma validações (197). A tela explica isso no cartão; regra não alterada.
 - Próximo: Produtos/Pesquisa/ficha (Q13: Família, Diâmetro da haste, Lançamento; busca pela coluna E).
 
+### Etapa B · Produtos, Pesquisa e ficha (11/11/2026) ✅
+- Importação do CatalogoAMD (`loaders.L_catalogo`): lê **Sistema** (FORCE GAS/OIL; inválido → usa a Observação e abre pendência `campo_invalido/sistema`, que some quando a planilha é corrigida), **Familia** (gravada em maiúsculas, igual aos certificados Inmetro, para não gerar conflito falso), **Diametro Haste** (`dimensions.rod_diameter_mm`) e **Lançamento** (coluna presente e vazia = «N»). Aliases novos em `importer.ALIASES`.
+- A planilha atual já vem corrigida: 772 FORCE GAS + 142 FORCE OIL (os 142 «Código Produto» da rodada 1 sumiram). Hoje o banco real tem 141 itens sem sistema e nenhum Ø de haste: **é preciso reimportar o CatalogoAMD** (Atualizar bases) para os campos aparecerem. Na cópia de teste a reimportação atualizou 146 produtos, sem conflito.
+- API: `/api/products` filtra `family`, `rod`, `launch` (S/N) e `system`; `/api/products/facets` dá as opções com contagem. Excel de Produtos/Pesquisa com Ø haste e Lançamento, sistema como FORCE GAS/OIL, filtros legíveis no nome e na aba «Filtros aplicados».
+- Telas `telas/produtos.js` (Produtos e Pesquisa, saíram de `catalogo.js`): KPIs, atalhos que ligam/desligam (Lançamentos, FORCE GAS, FORCE OIL, cada família), filtros na URL + última visita, referência que casou na busca (coluna E já alimentava a busca: GP32530 → AMD0100 «COFAP»). Pesquisa mantém aplicação, código por tipo, origem e os blocos DES/R-D.
+- Ficha: topo com Sistema, Família, Ø haste, Lançamento e posição em destaque; dados em grade Tailwind. Seções (códigos, aplicações…) seguem no estilo antigo.
+- Não existe formulário de edição de produto (o catálogo vem só da planilha, que prevalece): «no formulário» do Q13 ficou como ficha + filtros.
+- Sistema exibido como FORCE GAS / FORCE OIL em todo o app (`SYS` no núcleo, Dashboard, Excel).
+- Próximo: Lados.
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.
