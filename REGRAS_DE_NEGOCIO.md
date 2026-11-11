@@ -44,6 +44,8 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 
 ## 5. Sincronização com o servidor (`data_pipeline.py`) **[novo]**
 - **Diária, em horário fixo** (`DEV_SYNC_AT`, padrão 06:30): uma vez por dia; se o app abrir depois do horário, roda ~20 s após abrir. Botão «Sincronizar agora» continua.
+- **[etapa 16] Também com o app fechado:** tarefa agendada do Windows «PERFECT Shock Data - sincronizacao diaria» (06:30, usuário logado; se o PC estava desligado, roda assim que possível) executa `sincronizar.bat` → `data_pipeline.py diaria`. Não repete se já houve sincronização OK no dia. Log em `data\sincronizacao_log.txt`.
+- **[etapa 16] Uma por vez entre processos:** a tarefa e o app usam a trava `data\sincronizacao.lock`; quem chega depois desiste («já existe uma sincronização em andamento»). Trava com mais de 45 min é considerada de um processo que morreu e é descartada.
 - **Só o necessário vem do servidor** (filtro aplicado no próprio SQL Server, `DEV_SYNC_ESCOPO=amortecedor`):
   - DES/R-D: `LINHA LIKE '%AMORTECEDOR%'` (≈2,7 mil linhas em vez de 15 mil);
   - compras: LINHA ou descrição de amortecedor (≈21 mil em vez de 209 mil);

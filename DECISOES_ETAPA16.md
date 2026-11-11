@@ -57,3 +57,10 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Correções: `database.session()`; leitura de configuração sem escrita; banco sintético `tests/seed_db.py`; `tests/__init__.py` + `seed_db.guard` (nenhum teste toca no banco real); `test_importer` vira unittest estrutural que pula sem `bases_exemplo`.
 - **Incidente:** durante a troca para o banco sintético, uma rodada de teste gravou no banco real (ordem de import). Restaurado de `backups\pre_atualizacao_20261110_115132.db` — entre esse backup e o incidente só houve uma importação sem efeito (0 novos, 0 alterados). Cópia do estado afetado: `backups\poluido_pelo_teste_20261111_1035.db` (pode apagar depois de conferir o app).
 - Próximo: passo 0b — tarefa agendada 06:30 + trava de sincronização.
+
+### Passo 0b — sincronização com o app fechado (11/11/2026) ✅
+- Tarefa «PERFECT Shock Data - sincronizacao diaria»: 06:30, usuário italo.cuellas, só logado, `StartWhenAvailable`, limite 1 h, janela minimizada → `sincronizar.bat` → `data_pipeline.py diaria`.
+- `daily()`: só sincroniza se não houve OK no dia. Trava entre processos `data\sincronizacao.lock` (atômica; descartada após 45 min). Testes: `test_trava_entre_processos`, `test_diaria_nao_repete_no_mesmo_dia`.
+- Teste real: disparada pelo Agendador às 11:20 → «pulada — já sincronizado hoje (11:11:27)», código 0. A primeira sincronização de fato pela tarefa será em 12/11 06:30 (conferir `data\sincronizacao_log.txt`).
+- Backup antes do teste: `backups\pre_tarefa_agendada_20261111.db`.
+- Próximo: passo 0c — quebrar `pages.js` em módulos por tela.

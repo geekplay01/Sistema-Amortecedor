@@ -705,15 +705,36 @@ class Store:
 _LOCK = threading.Lock()
 _STATE = {"running": False, "started": None, "last": None, "next_at": None}
 
+LOCK_STALE_S = 45 * 60          # trava mais velha que isso = processo que morreu no meio (a 1ª carga completa leva ~8 min)
+
+def lock_path(store):
+    return os.path.join(os.path.dirname(os.path.abspath(store.path)), "sincronizacao.lock")
+
+def _take_file_lock(path):
+    """Trava ENTRE PROCESSOS (tarefa agendada do Windows × app aberto): cria o arquivo de forma atômica; False se outro processo já tem a trava."""
+    try:
+        if time.time() - os.path.getmtime(path) > LOCK_STALE_S: os.remove(path)
+    except OSError: pass
+    try: fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError: return False
+    with os.fdopen(fd, "w") as fh: fh.write(f"pid={os.getpid()} desde={now()}\n")
+    return True
+
 def sync(cfg=None, store=None, conn_factory=None):
     """Sincroniza: servidor → normalização → snapshot/transições → publica em rd_projects → compras/vendas/estoque.
-    Nunca levanta exceção para quem chama: devolve {'ok': False, 'error': ...} e mantém os dados anteriores. Só roda uma por vez."""
+    Nunca levanta exceção para quem chama: devolve {'ok': False, 'error': ...} e mantém os dados anteriores. Só roda uma por vez (no processo e entre processos)."""
     if not _LOCK.acquire(blocking=False): return {"ok": False, "error": "Já existe uma sincronização em andamento."}
-    _STATE.update(running=True, started=now())
     try:
-        out = _sync(cfg, store, conn_factory); _STATE["last"] = {k: out.get(k) for k in ("ok", "error", "finished_at", "items", "events")}; return out
-    finally:
-        _STATE["running"] = False; _LOCK.release()
+        store = store or Store(); lp = lock_path(store)
+        if not _take_file_lock(lp): return {"ok": False, "error": "Já existe uma sincronização em andamento (em outro processo: tarefa agendada ou outra janela do app)."}
+        _STATE.update(running=True, started=now())
+        try:
+            out = _sync(cfg, store, conn_factory); _STATE["last"] = {k: out.get(k) for k in ("ok", "error", "finished_at", "items", "events")}; return out
+        finally:
+            _STATE["running"] = False
+            try: os.remove(lp)
+            except OSError: pass
+    finally: _LOCK.release()
 
 def _sync(cfg, store, conn_factory):
     load_env(); cfg = cfg or Config(); store = store or Store(); t0 = time.time(); started = now(); conn = None
@@ -810,6 +831,15 @@ def next_run(last_ok, now_=None, hours=24.0, at=None):
         return datetime.datetime.combine(d, at)
     return datetime.datetime.strptime(last_ok, "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=hours)
 
+def daily(cfg=None, store=None, conn_factory=None, now_=None):
+    """Usada pela tarefa agendada do Windows (sincronizar.bat): sincroniza só se ainda não houve sincronização OK hoje
+    (o app aberto pode ter feito antes). 2 min de folga para a tarefa que dispara segundos antes do horário."""
+    load_env(); store = store or Store(); now_ = now_ or datetime.datetime.now(); at = sync_at()
+    last = store.last_sync().get("last_ok_at")
+    if not is_due(last, now_ + datetime.timedelta(minutes=2), float(os.environ.get("DEV_SYNC_HOURS", "24") or 24), at):
+        return {"ok": True, "pulada": True, "motivo": f"já sincronizado hoje ({last})", "last_ok_at": last}
+    return sync(cfg, store, conn_factory)
+
 def start_scheduler(interval_hours=None, conn_factory=None, on_done=None, first_delay=20):
     """Sincronização DIÁRIA automática: uma vez por dia no horário DEV_SYNC_AT (padrão 06:30; se o app abrir depois, roda ~20 s após abrir).
     Só busca no servidor o que o app usa (DES/R-D e, de compras/vendas/embarques/estoque/garantia, só amortecedor; vendas de forma incremental). DEV_SYNC_HOURS=0 desliga."""
@@ -852,4 +882,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(message)s"); cmd = (sys.argv[1] if len(sys.argv) > 1 else "status").lower()
     if cmd == "probe": print(json.dumps(probe(), ensure_ascii=False, indent=2, default=str))
     elif cmd == "sync": print(json.dumps(sync(), ensure_ascii=False, indent=2, default=str))
+    elif cmd == "diaria":        # tarefa agendada: só sincroniza se ainda não houve hoje; saída 1 = falhou (o Agendador mostra o código)
+        r = daily(); print(json.dumps({k: v for k, v in r.items() if k != "datasets"}, ensure_ascii=False, indent=2, default=str)); sys.exit(0 if r.get("ok") else 1)
     else: load_env(); print(json.dumps(Store().last_sync(), ensure_ascii=False, indent=2))

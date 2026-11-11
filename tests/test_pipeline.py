@@ -96,6 +96,21 @@ class Pipeline(unittest.TestCase):
         s = self.store.last_sync(); self.assertEqual(s['last_status'], 'erro'); self.assertIsNotNone(s['last_ok_at']); self.assertNotIn('s3cr3t', s['last_error'])
         c = self.store.conn(); self.assertGreater(c.execute('SELECT COUNT(*) FROM dev_rows').fetchone()[0], 30); c.close()
 
+    def test_trava_entre_processos(self):
+        """Tarefa agendada e app aberto ao mesmo tempo: a 2ª sincronização desiste; trava velha (processo morto) é ignorada; a trava some no fim."""
+        lock = dp.lock_path(self.store); open(lock, 'w').write('outro processo')
+        r = self.sync(); self.assertFalse(r['ok']); self.assertIn('andamento', r['error']); self.assertTrue(os.path.exists(lock))
+        old = __import__('time').time() - dp.LOCK_STALE_S - 5; os.utime(lock, (old, old))
+        self.assertTrue(self.sync()['ok']); self.assertFalse(os.path.exists(lock))
+        self.assertTrue(self.sync()['ok']); self.assertFalse(os.path.exists(lock))
+
+    def test_diaria_nao_repete_no_mesmo_dia(self):
+        import datetime
+        manha = datetime.datetime.combine(datetime.date.today(), datetime.time(6, 30))
+        self.assertTrue(dp.daily(self.cfg, self.store, self.factory, now_=manha)['ok'])                      # 1ª do dia: sincroniza
+        r = dp.daily(self.cfg, self.store, self.factory, now_=manha); self.assertTrue(r['pulada']); self.assertEqual(self.store.last_sync()['runs'], 1)   # já rodou hoje: não repete
+        r = dp.daily(self.cfg, self.store, self.factory, now_=manha + datetime.timedelta(days=1)); self.assertFalse(r.get('pulada')); self.assertEqual(self.store.last_sync()['runs'], 2)
+
     def test_missing_object_message(self):
         os.remove(self.server); make_server(self.server, table='OUTRA'); r = self.sync()
         self.assertFalse(r['ok']); self.assertIn('DESENVOLVIMENTO_PRODUTOS', r['error']); self.assertIn('probe', r['error'])

@@ -84,3 +84,11 @@ ETAPA 15 — 10/11/2026 (regras completas em REGRAS_DE_NEGOCIO.md)
    calendário de chegadas/embarques, linhas que vão atrasar e saldos parados. O cálculo de previsão empurrada ficou ~250× mais rápido.
  - Menu em ordem de fluxo (1 Desenvolvimento → 2 Amostras → 3 Catálogo → 4 Compras) com trilho de conectores; faixa «vem de → esta tela → alimenta» em cada página;
    clicar num código (sublinhado tracejado) abre as outras telas onde ele aparece.
+
+ETAPA 16 — em andamento (plano e decisões em DECISOES_ETAPA16.md)
+ - Sincronização com o app FECHADO: tarefa agendada do Windows «PERFECT Shock Data - sincronizacao diaria», todo dia às 06:30 (com você logado; se o PC
+   estava desligado, roda assim que possível). Ela chama sincronizar.bat; se o app já sincronizou no dia, não repete. Log: data\sincronizacao_log.txt.
+   App e tarefa nunca sincronizam ao mesmo tempo (trava data\sincronizacao.lock). Para remover: Agendador de Tarefas > a tarefa > Excluir.
+   Se mudar a pasta do sistema de lugar, recrie a tarefa (ela aponta para o caminho atual do sincronizar.bat).
+ - O app abre ~5 s mais rápido (a migração do banco esperava um lock à toa).
+ - Testes: tools\testes.py roda tudo em ~1 min, com banco sintético (nenhum teste usa o banco real).
