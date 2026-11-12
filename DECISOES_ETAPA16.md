@@ -99,4 +99,12 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Decisão do usuário: inativar = **bloquear no ERP**. Novo conjunto `situacao` na sincronização (`ESTOQUE_ANALISE_REPOSICAO`, só LINHA amortecedor, só código/ATIVO/BLOQ/LINHA, sem `extra`) → `ds_situacao`; `rules.desc_sql` exclui bloqueado/inativo de listas e contadores; metas não mudam.
 - Na cópia: 2.059 códigos lidos, 68 bloqueados; saem 10 de DES e 7 de R-D. AMD0184/0185 ainda vinham BLOQ=NAO na view no dia do bloqueio (a view do POWERBI deve atualizar em lote): saem na sincronização seguinte à atualização.
 
+### Etapa B · tela Lados (11/11/2026) ✅
+- `telas/lados.js` em Tailwind: 4 KPIs (escopo, traseiro confirmado, dianteiro SEM traseiro, sem par), legenda das 5 fontes do outro eixo na ordem de confiança, atalhos que ligam/desligam (cada atalho troca os outros; o select combina), filtros com contagem, «Limpar filtros» mantém o escopo, filtros na URL + última visita, Excel com os mesmos filtros.
+- Candidato do outro eixo fora do catálogo abre a lista certa (DES ou R-D pelo tipo do servidor; antes ia sempre para DES). Situação «inativo/em breve» aparece ao lado do código.
+- API `/api/sides`: `stats` ganhou `com_par`, `direito`, `esquerdo`, `ativo`, `em_breve`, `inativo`. Teste `test_19`: cada número da tela = total da lista com o filtro do atalho, nos dois escopos.
+- `PSDTW.filtros`: o aviso «filtros da última visita» some na primeira mudança de filtro (antes ficava até recarregar, inclusive depois de «Limpar»). Vale para DES/R-D, Metas, Produtos/Pesquisa e Lados.
+- Na cópia: 354 itens com lados (346 pares da planilha + 8 automáticos, nenhum sem par), 308 dianteiros com traseiro confirmado, 4 sem traseiro; `/api/sides` ≈ 0,4 s.
+- Próximo: Amostras/Envio.
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

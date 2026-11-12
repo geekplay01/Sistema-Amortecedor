@@ -194,7 +194,9 @@ def listing(f):
              "traseiro_desenvolvimento": sum(1 for i in fr if i["other_axle"] == "desenvolvimento"),
              "traseiro_nao": sum(1 for i in fr if i["other_axle"] == "nao"), "sem_aplicacao": sum(1 for i in items if i["other_axle"] == "sem_aplicacao"),
              "por_relacionados": sum(1 for i in fr if any(x["level"] == "relacionado" for x in i["rear"])), "por_servidor": sum(1 for i in fr if any(x["level"] in ("servidor", "desenvolvimento") for x in i["rear"])),
-             "pares_planilha": sum(1 for i in items if i["pair_how"] == "planilha Lados"), "pares_automaticos": sum(1 for i in items if i["pair"] and i["pair_how"] != "planilha Lados")}
+             "pares_planilha": sum(1 for i in items if i["pair_how"] == "planilha Lados"), "pares_automaticos": sum(1 for i in items if i["pair"] and i["pair_how"] != "planilha Lados"),
+             "com_par": sum(1 for i in items if i["pair"]), "direito": sum(i["side"] == "direito" for i in items), "esquerdo": sum(i["side"] == "esquerdo" for i in items),
+             **{k: sum(i["status"] == k for i in items) for k in ("ativo", "em_breve", "inativo")}}          # cada contagem = total da lista com o filtro do atalho (tela Lados)
     size = 50 if not f.get("all") else 10**9; page = max(1, int(f.get("page") or 1))
     out = []
     for i in rows[(page - 1) * size: page * size]:

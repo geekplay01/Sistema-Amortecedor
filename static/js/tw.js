@@ -31,11 +31,12 @@ window.PSDTW = (() => {
     const key = "psd-filtros-" + tela, pick = o => Object.fromEntries(chaves.filter(k => o[k] != null && o[k] !== "").map(k => [k, String(o[k])]));
     const daUrl = pick(Object.fromEntries(new URLSearchParams(location.search)));
     let salvo = {}; try { salvo = pick(JSON.parse(localStorage.getItem(key) || "{}")); } catch (e) { }
-    const restaurado = !Object.keys(daUrl).length && Object.keys(salvo).length > 0;
+    let restaurado = !Object.keys(daUrl).length && Object.keys(salvo).length > 0;      // vale só até o primeiro filtro mudado (aí já não são os da última visita)
     let st = Object.keys(daUrl).length ? daUrl : salvo;
     const write = () => { const u = new URLSearchParams(st).toString(); history.replaceState(null, "", location.pathname + (u ? "?" + u : "") + location.hash); try { localStorage.setItem(key, JSON.stringify(st)); } catch (e) { } };
     write();
-    return { restaurado, get: () => ({ ...st }), set: patch => { st = pick({ ...st, ...patch }); write(); }, toggle: (k, v) => { st = pick({ ...st, [k]: st[k] === String(v) ? "" : v }); write(); }, clear: () => { st = {}; write(); } };
+    const mudou = () => { restaurado = false; write(); };
+    return { get restaurado() { return restaurado; }, get: () => ({ ...st }), set: patch => { st = pick({ ...st, ...patch }); mudou(); }, toggle: (k, v) => { st = pick({ ...st, [k]: st[k] === String(v) ? "" : v }); mudou(); }, clear: () => { st = {}; mudou(); } };
   };
   return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, filtros };
 })();

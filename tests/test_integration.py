@@ -309,6 +309,17 @@ class Fluxo(unittest.TestCase):
         self.assertEqual(sqlite3.connect(DB).execute("SELECT fob, fob_supplier FROM products WHERE perfect_code=?", (code,)).fetchone(), (7.25, "E-WIN"))
         for slug in ("pedidos-aberto", "vendas", "garantia", "metas"): self.assertEqual(C.get("/" + slug).status_code, 200, slug)
 
+    def test_19_lados_atalhos_batem_com_a_lista(self):
+        """Cada número da tela Lados é um atalho: clicar nele filtra a lista e o total tem de ser o mesmo número."""
+        for esc in ("lados", "todos"):
+            d = C.get(f"/api/sides?escopo={esc}").json; s = d["stats"]; self.assertEqual(d["total"], s["total"])
+            self.assertGreater(s["total"], 0, esc)
+            atalhos = {"dianteiro": "axle=dianteiro", "traseiro": "axle=traseiro", "traseiro_exato": "other=exata&axle=dianteiro", "traseiro_desenvolvimento": "other=desenvolvimento&axle=dianteiro",
+                       "traseiro_provavel": "other=provavel&axle=dianteiro", "traseiro_nao": "other=nao&axle=dianteiro", "sem_aplicacao": "other=sem_aplicacao", "sem_par": "pair=sem", "com_par": "pair=com",
+                       "direito": "side=direito", "esquerdo": "side=esquerdo", "ativo": "status=ativo", "em_breve": "status=em_breve", "inativo": "status=inativo"}
+            for k, f in atalhos.items(): self.assertEqual(C.get(f"/api/sides?escopo={esc}&{f}").json["total"], s[k], f"{esc}: {k}")
+        self.assertEqual(C.get("/api/export/lados.xlsx?escopo=todos&axle=traseiro").status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
