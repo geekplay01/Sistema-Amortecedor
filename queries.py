@@ -175,6 +175,8 @@ def samples(f):
     w, p = [], {}
     for k in ("stage", "supplier", "month", "side"):
         if f.get(k): w.append(f"o.{k}=:{k}"); p[k] = f[k]
+    fl = {"enviar": "o.to_send=1", "pendente_fornecedor": "o.pending_supplier=1"}.get(f.get("flag") or "")      # atalhos da tela (batem com totals.to_send / pending_supplier)
+    if fl: w.append(fl)
     for i, t in enumerate((f.get("q") or "").split()):
         w.append(f"(o.perfect_code LIKE :t{i} OR o.sample_code LIKE :t{i} OR o.application LIKE :t{i} OR o.sc_number LIKE :t{i} OR o.supplier LIKE :t{i} OR o.ship_code LIKE :t{i})"); p[f"t{i}"] = f"%{t}%"
     rows = q(f"SELECT o.*,(SELECT p.description FROM products p WHERE p.id=o.product_id) description FROM sample_orders o WHERE {' AND '.join(w) or '1=1'} ORDER BY o.id DESC", p)

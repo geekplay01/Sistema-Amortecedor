@@ -107,4 +107,14 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Na cópia: 354 itens com lados (346 pares da planilha + 8 automáticos, nenhum sem par), 308 dianteiros com traseiro confirmado, 4 sem traseiro; `/api/sides` ≈ 0,4 s.
 - Próximo: Amostras/Envio.
 
+### Etapa B · Compra de amostras e Envio de amostra (12/11/2026) ✅
+- 12/11 10:27: a view do ERP passou a trazer AMD0184/AMD0185 com BLOQ=SIM; a sincronização do app os tirou de DES (ds_situacao: 70 bloqueados).
+- `telas/amostras.js` em Tailwind: abas na URL (`tab=pendentes|pedidos`). Sugestões: KPIs, atalhos DES / R-D, tabela com referências (consulta do menor preço) e «Criar pedido». Pedidos: KPIs de valores, atalhos **Para enviar** e **Pendente fornecedor** (novo `flag` em `/api/samples`), filtros fornecedor/mês/lado, kanban por etapa.
+- Corrigido: «Criar pedido» nas Sugestões quebrava se a aba de pedidos ainda não tivesse sido aberta (o formulário lia etapas/fornecedores de dados não carregados). Link do Envio para o pedido abria a aba errada e ignorava o código (agora `/amostras?tab=pedidos&q=…`). Link do pedido para o Envio usa `status=todos` (envio finalizado também aparece).
+- `telas/envio.js` em Tailwind: fluxo em etapas, cartões por fornecedor (clique filtra, ✎ edita o EX), atalhos de status com **Todos**, seleção em lote, filtros na URL + última visita, Excel com os filtros.
+- Diálogos (formulário do pedido, novo envio, editar, enviar, EX) seguem no estilo antigo, sem mudança de comportamento.
+- Teste `test_20`: atalhos da Compra de amostras batem com os totais; `status=todos` no Envio soma pendente + enviada + finalizada.
+- Na cópia: 336 sugestões (6 R-D), 100 pedidos (11 para enviar, 18 pendente fornecedor), 1.057 envios (150 em aberto).
+- Próximo: demais telas (Q16).
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

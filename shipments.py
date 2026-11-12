@@ -67,7 +67,7 @@ def sync():
 
 def _rows(f):
     w, p = [], {}
-    st = f.get("status") or "abertos"
+    st = f.get("status") or "abertos"          # «todos» = sem filtro de status (link vindo da Compra de amostras: o envio pode já estar finalizado)
     if st == "abertos": w.append("s.status IN ('pendente_projeto','enviada')")
     elif st in STATUS: w.append("s.status=:st"); p["st"] = st
     if f.get("supplier") == "sem": w.append("(s.supplier IS NULL OR s.supplier='')")

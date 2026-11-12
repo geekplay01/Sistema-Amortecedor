@@ -87,10 +87,12 @@
 .inset-x-0{left:0;right:0}
 .inset-y-0{top:0;bottom:0}
 .items-center{align-items:center}
+.items-start{align-items:flex-start}
 .justify-between{justify-content:space-between}
 .justify-center{justify-content:center}
 .leading-none{line-height:1}
 .left-0{left:0}
+.list-none{list-style:none}
 .m-0{margin:0}
 .max-h-\[40vh\]{max-height:40vh}
 .max-h-\[50vh\]{max-height:50vh}
@@ -98,11 +100,14 @@
 .max-h-\[65vh\]{max-height:65vh}
 .max-w-\[10rem\]{max-width:10rem}
 .max-w-\[13rem\]{max-width:13rem}
+.max-w-\[14rem\]{max-width:14rem}
 .max-w-\[15rem\]{max-width:15rem}
 .max-w-\[16rem\]{max-width:16rem}
 .max-w-\[17rem\]{max-width:17rem}
 .max-w-\[18rem\]{max-width:18rem}
+.max-w-\[20rem\]{max-width:20rem}
 .max-w-\[22rem\]{max-width:22rem}
+.max-w-\[24rem\]{max-width:24rem}
 .max-w-\[26rem\]{max-width:26rem}
 .max-w-\[8rem\]{max-width:8rem}
 .max-w-none{max-width:none}
@@ -116,6 +121,7 @@
 .min-w-\[16rem\]{min-width:16rem}
 .min-w-\[200px\]{min-width:200px}
 .min-w-\[220px\]{min-width:220px}
+.min-w-\[9rem\]{min-width:9rem}
 .ml-1{margin-left:.25rem}
 .ml-2{margin-left:.5rem}
 .ml-auto{margin-left:auto}
@@ -131,7 +137,9 @@
 .overflow-hidden{overflow:hidden}
 .overflow-x-auto{overflow-x:auto}
 .overflow-y-auto{overflow-y:auto}
+.p-0{padding:0}
 .p-3{padding:.75rem}
+.p-4{padding:1rem}
 .p-5{padding:1.25rem}
 .p-8{padding:2rem}
 .pb-1{padding-bottom:.25rem}
@@ -141,6 +149,7 @@
 .placeholder-slate-400::placeholder{color:#94a3b8}
 .pt-2{padding-top:.5rem}
 .pt-5{padding-top:1.25rem}
+.px-1{padding-left:.25rem;padding-right:.25rem}
 .px-1\.5{padding-left:.375rem;padding-right:.375rem}
 .px-2{padding-left:.5rem;padding-right:.5rem}
 .px-2\.5{padding-left:.625rem;padding-right:.625rem}
@@ -163,6 +172,7 @@
 .ring-1{box-shadow:0 0 0 1px var(--tw-ring-color,rgba(59,130,246,.5))}
 .ring-emerald-500\/50{--tw-ring-color:rgba(16,185,129,0.5)}
 .ring-slate-600{--tw-ring-color:#475569}
+.rounded{border-radius:.25rem}
 .rounded-2xl{border-radius:1rem}
 .rounded-full{border-radius:9999px}
 .rounded-lg{border-radius:.5rem}
@@ -220,7 +230,9 @@
 .hover\:bg-amber-500\/20:hover{background-color:rgba(245,158,11,0.2)}
 .hover\:bg-blue-700:hover{background-color:#1d4ed8}
 .hover\:bg-slate-500\/10:hover{background-color:rgba(100,116,139,0.1)}
+.hover\:bg-slate-500\/20:hover{background-color:rgba(100,116,139,0.2)}
 .hover\:bg-slate-700\/60:hover{background-color:rgba(51,65,85,0.6)}
+.hover\:text-ink:hover{color:var(--tx)}
 .hover\:text-slate-200:hover{color:#e2e8f0}
 .hover\:text-white:hover{color:#ffffff}
 @media(min-width:640px){.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}

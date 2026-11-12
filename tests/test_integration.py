@@ -320,6 +320,23 @@ class Fluxo(unittest.TestCase):
             for k, f in atalhos.items(): self.assertEqual(C.get(f"/api/sides?escopo={esc}&{f}").json["total"], s[k], f"{esc}: {k}")
         self.assertEqual(C.get("/api/export/lados.xlsx?escopo=todos&axle=traseiro").status_code, 200)
 
+    def test_20_amostras_e_envio_atalhos(self):
+        """Compra de amostras: «Pendente fornecedor» e «Para enviar» filtram a lista (e batem com o total). Envio: status=todos traz também os finalizados."""
+        con = sqlite3.connect(DB)
+        try:
+            con.executemany("INSERT INTO sample_orders(perfect_code,stage,to_send,pending_supplier,supplier) VALUES(?,?,?,?,?)", [("T20A", "cotacao", 1, 0, "ZS"), ("T20B", "chegou", 0, 1, "ZS"), ("T20C", "cotacao", 1, 1, "E-WIN")])
+            con.executemany("INSERT INTO sample_shipments(perfect_code,status,supplier) VALUES(?,?,?)", [("T20S1", "pendente_projeto", "ZS"), ("T20S2", "finalizada", "ZS")]); con.commit()
+        finally: con.close()
+        d = C.get("/api/samples?q=T20").json; self.assertEqual(d["totals"]["n"], 3)
+        self.assertEqual(sorted(r["perfect_code"] for r in C.get("/api/samples?q=T20&flag=enviar").json["rows"]), ["T20A", "T20C"])
+        self.assertEqual(sorted(r["perfect_code"] for r in C.get("/api/samples?q=T20&flag=pendente_fornecedor").json["rows"]), ["T20B", "T20C"])
+        tudo = C.get("/api/samples").json["totals"]
+        self.assertEqual(C.get("/api/samples?flag=enviar").json["totals"]["n"], tudo["to_send"]); self.assertEqual(C.get("/api/samples?flag=pendente_fornecedor").json["totals"]["n"], tudo["pending_supplier"])
+        self.assertEqual([r["perfect_code"] for r in C.get("/api/shipments?q=T20S").json["rows"]], ["T20S1"])                  # padrão: só em aberto
+        self.assertEqual(sorted(r["perfect_code"] for r in C.get("/api/shipments?q=T20S&status=todos").json["rows"]), ["T20S1", "T20S2"])
+        s = C.get("/api/shipments?status=todos").json; self.assertEqual(s["total"], s["summary"]["pendente_projeto"] + s["summary"]["enviada"] + s["summary"]["finalizada"])
+        for x in ("amostras.xlsx?flag=enviar", "envio.xlsx?status=todos", "pendente_compras.xlsx?kind=des"): self.assertEqual(C.get("/api/export/" + x).status_code, 200, x)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
