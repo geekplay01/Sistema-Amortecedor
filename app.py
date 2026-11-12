@@ -395,7 +395,7 @@ def api_dr_up():
     finally: os.remove(p)
     return jsonify(points=n, **par)
 @app.get("/api/damping/tests")
-def api_dt(): return jsonify(damping.tests(request.args.get("q")))
+def api_dt(): return jsonify(damping.listing(request.args.get("q"), request.args.get("res")))
 @app.get("/api/damping/tests/<int:i>")
 def api_dt1(i): return jsonify(damping.get_test(i) or abort(404))
 @app.post("/api/damping/tests")

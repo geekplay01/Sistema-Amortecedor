@@ -91,11 +91,21 @@ def save_test(d):
         c.commit(); return tid
     finally: c.close()
 
-def tests(q=None):
+RESULTS = ("APPROVED", "DISAPPROVED", "INCOMPLETO")
+
+def tests(q=None, res=None):
+    """Ensaios salvos (mais novo primeiro). q busca no código e na identificação; res filtra pelo resultado geral."""
     c = db.conn()
     try: ids = [r[0] for r in c.execute("SELECT id FROM damping_tests WHERE (?1 IS NULL OR perfect_code LIKE ?2 OR label LIKE ?2) ORDER BY id DESC", (q or None, f"%{q}%"))]
     finally: c.close()
-    return [{k: t[k] for k in ("id", "perfect_code", "label", "test_date", "overall", "product_id")} | {"points_filled": sum(1 for p in t["points"] if p["found"] is not None)} for t in map(get_test, ids)]
+    out = [{k: t[k] for k in ("id", "perfect_code", "label", "test_date", "overall", "product_id")}
+           | {"points_filled": sum(1 for p in t["points"] if p["found"] is not None), "points_total": sum(1 for p in t["points"] if p["drawing"] is not None)} for t in map(get_test, ids)]
+    return [t for t in out if not res or t["overall"] == res]
+
+def listing(q=None, res=None):
+    """Lista da tela: as contagens por resultado ignoram o próprio filtro res (cada uma é o total do atalho)."""
+    todos = tests(q); rows = [t for t in todos if not res or t["overall"] == res]
+    return {"rows": rows, "total": len(rows), "counts": {k: sum(1 for t in todos if t["overall"] == k) for k in RESULTS} | {"all": len(todos)}}
 
 def prefill(code):
     c = db.conn()

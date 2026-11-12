@@ -126,4 +126,12 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Na cópia não há desenho cadastrado (914 itens do catálogo sem desenho; 955 DES/R-D fora do catálogo sem projeto, contando todos os status — revisar na etapa D se recebidos/cancelados devem contar). Upload não testado no navegador: gravaria em `data\drawings` real; coberto por `test_15`.
 - Próximo: Damping.
 
+### Etapa B · tela Damping (12/11/2026) ✅
+- Saiu de `telas/dados.js` para `telas/damping.js` (Tailwind): quadro da regra (fórmula, nota da planilha, fonte, botão «Atualizar regra»), 4 KPIs, formulário do ensaio com cálculo ao vivo (tabelas Pf/Py lado a lado em telas largas) e lista dos ensaios salvos.
+- Atalhos Aprovados / Reprovados / Incompletos ligam/desligam o filtro `res`; busca e `res` na URL + última visita; Excel segue os filtros. API `/api/damping/tests` agora devolve `{rows, total, counts}` (`damping.listing`); cada ensaio traz «pontos medidos / pontos com DRAWING».
+- Sem `alert()`: avisos na própria tela. Abrir outro ensaio ou «Novo ensaio» com alterações não salvas pede confirmação.
+- Teste `test_22`: faixa com ajuste (500 N → 430–570), atalho = lista, Excel com o mesmo número de ensaios e pontos, excluir apaga os pontos, prefill do DRAWING.
+- Na cópia e no banco real há regra (Pf e Py, 5 velocidades cada) e nenhum ensaio. No navegador salvei, abri, filtrei e excluí um ensaio de teste na cópia.
+- Próximo: Aplicações, Comparação e Equivalências (`telas/catalogo.js`).
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

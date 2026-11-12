@@ -89,4 +89,5 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - FOB: chave = PartNumber; repetido fica com o menor FOB; menor entre E-WIN/ZS/XGM = «Melhor Preço».
 - Desenhos: código e revisão pelo nome do arquivo; cadastros mostram a maior revisão; arquivo idêntico é ignorado.
 - «Sem desenho» = produto do catálogo sem nenhum desenho técnico; «Sem projeto» = código DES/R-D fora do catálogo (`rd_projects.product_id` vazio, qualquer status) sem Projeto PERFECT. O número do topo e a lista `where=falta` usam o mesmo conjunto (`drawings._missing`).
+- Damping force (`damping.py · calc/overall`): faixa = DRAWING×(1±tol); se DRAWING < limite (1.000 N na regra atual), mín +ajuste e máx −ajuste (30 N). Ponto aprovado se mín ≤ FOUND ≤ máx. Ensaio: **Reprovado** se algum ponto reprovou; **Aprovado** só se todo ponto com DRAWING foi aprovado; senão **Incompleto**. Os atalhos da tela e o Excel filtram por esse resultado geral (`damping.listing`).
 - Equivalências: só sugestões por similaridade; nada é aprovado automaticamente.

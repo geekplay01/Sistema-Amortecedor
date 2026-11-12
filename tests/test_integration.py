@@ -357,6 +357,37 @@ class Fluxo(unittest.TestCase):
         self.assertEqual(linhas("kind=desenho&origin=REDESENVOLVIMENTO"), sum(c["n_files"] for c in red))       # todas as revisões dos códigos filtrados
         self.assertEqual(linhas("kind=projeto"), 0)
 
+    def test_22_damping_atalhos_e_excel(self):
+        """Damping: cada resultado (aprovado/reprovado/incompleto) é um atalho que bate com a lista; o Excel segue os filtros; excluir apaga os pontos."""
+        import io
+        from openpyxl import load_workbook
+        con = sqlite3.connect(DB)
+        try:
+            con.execute("DELETE FROM damping_rules"); con.execute("DELETE FROM damping_params")
+            con.executemany("INSERT INTO damping_rules(table_name,seq,velocity,tolerance) VALUES(?,?,?,?)", [("Pf", 0, .05, .2), ("Pf", 1, .3, .15), ("Py", 0, .05, .2), ("Py", 1, .3, .15)])
+            con.executemany("INSERT INTO damping_params(key,value) VALUES(?,?)", [("threshold", 1000), ("offset", 30)]); con.commit()
+        finally: con.close()
+        def ensaio(code, found):              # 4 pontos com DRAWING 500 N: faixa 430–570 N na 1ª velocidade (abaixo do limite → ajuste de 30 N)
+            pts = [{"table": t, "velocity": v, "drawing": "500", "found": f} for (t, v), f in zip([("Pf", .05), ("Pf", .3), ("Py", .05), ("Py", .3)], found)]
+            r = C.post("/api/damping/tests", json={"perfect_code": code, "label": "lote T22", "points": pts}); self.assertEqual(r.status_code, 200, r.json); return r.json["id"]
+        ids = {"APPROVED": ensaio("T22A", ["500"] * 4), "DISAPPROVED": ensaio("T22B", ["500", "500", "1000", "500"]), "INCOMPLETO": ensaio("T22C", ["500", "", "", ""])}
+        t = C.get(f"/api/damping/tests/{ids['APPROVED']}").json; p = t["points"][0]
+        self.assertEqual((round(p["min"]), round(p["max"]), p["result"]), (430, 570, "APPROVED"))
+        d = C.get("/api/damping/tests?q=T22").json; self.assertEqual(d["total"], 3); self.assertEqual(d["counts"], {"APPROVED": 1, "DISAPPROVED": 1, "INCOMPLETO": 1, "all": 3})
+        for res, i in ids.items():
+            r = C.get(f"/api/damping/tests?q=T22&res={res}").json; self.assertEqual([x["id"] for x in r["rows"]], [i], res); self.assertEqual(r["counts"], d["counts"])
+        self.assertEqual(r["rows"][0]["points_filled"], 1); self.assertEqual(r["rows"][0]["points_total"], 4)
+        tudo = C.get("/api/damping/tests").json; self.assertEqual(sum(tudo["counts"][k] for k in ids), tudo["counts"]["all"])
+        def linhas(qs):
+            r = C.get("/api/export/damping.xlsx?" + qs); self.assertEqual(r.status_code, 200, qs); wb = load_workbook(io.BytesIO(r.data)); return [ws.max_row - 1 for ws in wb.worksheets[:2]]
+        self.assertEqual(linhas("q=T22"), [3, 12]); self.assertEqual(linhas("q=T22&res=DISAPPROVED"), [1, 4])
+        self.assertEqual([p["drawing"] for p in C.get("/api/damping/prefill?code=T22C").json], [500.0] * 4)
+        C.delete(f"/api/damping/tests/{ids['INCOMPLETO']}")
+        con = sqlite3.connect(DB)
+        try: self.assertEqual(con.execute("SELECT COUNT(*) FROM damping_points WHERE test_id=?", (ids["INCOMPLETO"],)).fetchone()[0], 0)
+        finally: con.close()
+        self.assertEqual(C.get("/api/damping/tests?q=T22").json["counts"]["INCOMPLETO"], 0)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

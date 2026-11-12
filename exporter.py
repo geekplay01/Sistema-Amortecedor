@@ -74,7 +74,7 @@ def _samples(a):
              "Preço 1", "Link 1", "Preço 2", "Link 2", "Preço 3", "Link 3", "Observações"], rows, [16, 18, 10, 12, 40, 14, 16, 12, 18, 8, 12, 18, 9, 9, 12, 12, 10, 30, 10, 30, 10, 30, 30])], len(rows)
 
 def _damping(a):
-    ts = damping.tests(a.get("q")); pts = []
+    ts = damping.tests(a.get("q"), a.get("res")); pts = []
     for t in ts:
         full = damping.get_test(t["id"])
         for p in full["points"]: pts.append([t["id"], t["perfect_code"], t["label"], t["test_date"], p["table_name"], p["velocity"], p["tolerance"], p["drawing"], p["min"], p["max"], p["found"], p["result"]])
@@ -102,9 +102,10 @@ LABELS = {"desenvolvimento": "Em desenvolvimento", "redesenvolvimento": "Em rede
           "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
-          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem"}
+          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem", "res": "Resultado"}
 FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT"},
-          "where": {"cat": "No catálogo", "des": "Em DES", "rd": "Em R-D", "sem": "Sem vínculo", "falta": "Sem desenho"}}          # valor legível no nome do arquivo e na aba «Filtros aplicados»
+          "where": {"cat": "No catálogo", "des": "Em DES", "rd": "Em R-D", "sem": "Sem vínculo", "falta": "Sem desenho"},
+          "res": {"APPROVED": "Aprovados", "DISAPPROVED": "Reprovados", "INCOMPLETO": "Incompletos"}}          # valor legível no nome do arquivo e na aba «Filtros aplicados»
 def _fv(k, v): return FVALUE.get(k, {}).get(v, v)
 
 def friendly_name(module, filtros=None):

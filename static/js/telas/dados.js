@@ -1,4 +1,4 @@
-/* Tela · Dados: Pendências, Fontes, Configurações, Damping e Atualização de dados.
+/* Tela · Dados: Pendências, Fontes, Configurações e Atualização de dados (Damping foi para telas/damping.js).
    Usa o núcleo window.PSD (core.js); registra a tela com PSD.tela(slug, desenhar). Separado do antigo pages.js na etapa 16. */
 (function () {
   const { $, $$, esc, J, post, qs, num, T, lnk, empty, root, page, url, fail, dlg, inp, dmy, NEW } = PSD;
@@ -141,41 +141,6 @@
       const show = async () => { const pane = $("#spane"); pane.onclick = pane.onchange = null; try { pane.innerHTML = await PANES[cur](); wire[cur](); } catch (e) { pane.innerHTML = `<div class="notice err">${esc(e.message)}</div>`; } };
       $("#snav").onclick = e => { const b = e.target.closest("[data-s]"); if (!b) return; cur = b.dataset.s; history.replaceState(null, "", "#" + cur); $$("#snav button").forEach(x => x.classList.toggle("on", x === b)); show(); };
       show();
-    });
-  PSD.tela("damping", async () => {
-      let R; try { R = await J("/api/damping/rules"); } catch (e) { return fail(e); }
-      const names = Object.keys(R.tables); let cur = null;
-      const num = v => { v = String(v ?? "").trim().replace(",", "."); return v === "" || isNaN(v) ? null : +v; };
-      const calc = (d, tol, f) => { if (d == null) return [null, null, ""]; let lo = d * (1 - tol), hi = d * (1 + tol); if (d < R.threshold) { lo += R.offset; hi -= R.offset; } if (lo > hi) return [lo, hi, "FAIXA INVÁLIDA"]; if (f == null) return [lo, hi, "INCOMPLETO"]; return [lo, hi, lo <= f && f <= hi ? "APPROVED" : "DISAPPROVED"]; };
-      const cls = r => r === "APPROVED" ? "ok" : r === "DISAPPROVED" ? "bad" : "warn", fx = v => v == null ? "–" : v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
-      root.innerHTML = R.tables && names.length ? `<div class="notice"><b>Regra:</b> ${esc(R.source || "")} — se DRAWING &lt; ${R.threshold} N: mín = D×(1−tol)+${R.offset} e máx = D×(1+tol)−${R.offset}; senão sem ajuste. Aprovado se mín ≤ FOUND ≤ máx.<br><small>${esc(R.note)}</small></div>
-        <div class="toolbar"><label class="muted">Atualizar regra a partir de planilha: <input type="file" id="rf" accept=".xlsx"></label></div>
-        <h3>Ensaio <span id="ov"></span></h3>
-        <form id="df" class="fgrid"><label>Código PERFECT<input name="perfect_code" list="dpl" autocomplete="off"></label><datalist id="dpl"></datalist><label>Identificação / lote<input name="label"></label><label>Data<input type="date" name="test_date"></label><label>Observações<input name="notes"></label></form>
-        ${names.map(n => `<h4>Tabela ${n}</h4>` + T(["PERFECT STANDARD", "VM/S", "DRAWING (N)", n + " (N) mín", n + " (N) máx", "FOUND (N)", "RESULT"], R.tables[n].map(r => `<tr data-t="${n}" data-v="${r.velocity}" data-tol="${r.tolerance}"><td>${Math.round(r.tolerance * 100)}%</td><td>${r.velocity}</td><td><input class="dd" inputmode="decimal" size="8"></td><td class="mn">–</td><td class="mx">–</td><td><input class="df" inputmode="decimal" size="8"></td><td class="rs"></td></tr>`))).join("")}
-        <div class="acts"><button class="btn" id="sv">Salvar ensaio</button><button class="btn ghost" id="nw">Novo ensaio</button><a class="btn ghost" id="dx" href="#" hidden>⬇ Baixar este ensaio (Excel)</a></div>
-        <h3>Ensaios salvos</h3><div class="toolbar"><input id="dq" placeholder="Buscar código ou identificação"><span style="flex:1"></span><a class="btn" id="dall" href="/api/export/damping.xlsx">⬇ Baixar todos (Excel)</a></div><div id="dl2"></div>` : empty("Regra não carregada. Selecione a planilha DAMPING FORCE - REGRA.xlsx em “Atualizar regra”.") + `<input type="file" id="rf" accept=".xlsx">`;
-      $("#rf").onchange = async e => { const fd = new FormData(); fd.append("file", e.target.files[0]); const r = await fetch("/api/damping/rules", { method: "POST", body: fd }), d = await r.json(); if (!r.ok) return alert(d.error); alert("Regra atualizada: " + d.points + " pontos."); PSD.pages.damping(); };
-      if (!names.length) return;
-      const rows = () => $$("tr[data-t]", root), F = $("#df");
-      const recalc = () => { const res = []; rows().forEach(tr => { const d = num($(".dd", tr).value), f = num($(".df", tr).value), [lo, hi, r] = calc(d, +tr.dataset.tol, f); $(".mn", tr).textContent = fx(lo); $(".mx", tr).textContent = fx(hi); $(".rs", tr).innerHTML = r ? `<span class="badge ${cls(r)}">${r}</span>` : ""; if (d != null) res.push(r); });
-        const o = !res.length ? "" : res.includes("DISAPPROVED") ? "DISAPPROVED" : res.some(r => r !== "APPROVED") || res.length < rows().length ? "INCOMPLETO" : "APPROVED"; $("#ov").innerHTML = o ? `<span class="badge ${cls(o)}">${o}</span>` : ""; };
-      root.addEventListener("input", e => { if (e.target.closest("tr[data-t]")) recalc(); });
-      const fill = t => { F.perfect_code.value = t.perfect_code || ""; F.label.value = t.label || ""; F.test_date.value = t.test_date || ""; F.notes.value = t.notes || "";
-        rows().forEach(tr => { const p = (t.points || []).find(x => x.table_name === tr.dataset.t && Math.abs(x.velocity - tr.dataset.v) < 1e-6); $(".dd", tr).value = p?.drawing ?? ""; $(".df", tr).value = p?.found ?? ""; });
-        cur = t.id || null; $("#dx").hidden = !cur; if (cur) $("#dx").href = `/api/damping/tests/${cur}/export.xlsx`; recalc(); };
-      const list = async () => { const ts = await J("/api/damping/tests?q=" + encodeURIComponent($("#dq").value));
-        $("#dl2").innerHTML = ts.length ? T(["#", "Código", "Identificação", "Data", "Resultado", ""], ts.map(t => `<tr><td>${t.id}</td><td>${t.product_id ? lnk(t.product_id, t.perfect_code) : esc(t.perfect_code || "–")}</td><td>${esc(t.label || "")}</td><td>${esc(t.test_date || "")}</td><td><span class="badge ${cls(t.overall)}">${t.overall}</span></td><td><button class="btn ghost" data-op="${t.id}">Abrir</button> <a class="btn ghost" href="/api/damping/tests/${t.id}/export.xlsx">Excel</a> <button class="btn ghost" data-rm2="${t.id}">Excluir</button></td></tr>`)) : empty("Nenhum ensaio salvo ainda."); };
-      $("#dq").oninput = list;
-      $("#sv").onclick = async e => { e.preventDefault(); const points = rows().map(tr => ({ table: tr.dataset.t, velocity: +tr.dataset.v, drawing: $(".dd", tr).value, found: $(".df", tr).value }));
-        try { const r = await post("/api/damping/tests", { id: cur, ...Object.fromEntries(new FormData(F)), points }); cur = r.id; $("#dx").hidden = false; $("#dx").href = `/api/damping/tests/${cur}/export.xlsx`; list(); alert("Ensaio salvo."); } catch (er) { alert(er.message); } };
-      $("#nw").onclick = e => { e.preventDefault(); fill({}); };
-      root.addEventListener("click", async e => { const o = e.target.closest("[data-op]"), d = e.target.closest("[data-rm2]");
-        if (o) { fill(await J("/api/damping/tests/" + o.dataset.op)); scrollTo(0, 0); } if (d && confirm("Excluir este ensaio?")) { await J("/api/damping/tests/" + d.dataset.rm2, { method: "DELETE" }); list(); } });
-      const pc = F.perfect_code; pc.addEventListener("input", async () => { if (pc.value.length < 3) return; const d = await J("/api/products?size=8&q=" + encodeURIComponent(pc.value)); $("#dpl").innerHTML = d.rows.map(r => `<option value="${esc(r.perfect_code)}">${esc(r.description || "")}</option>`).join("");
-        if (d.rows.some(r => r.perfect_code === pc.value.trim()) && rows().every(tr => !$(".dd", tr).value)) { const pts = await J("/api/damping/prefill?code=" + encodeURIComponent(pc.value.trim()));
-          rows().forEach(tr => { const p = pts.find(x => x.table_name === tr.dataset.t && Math.abs(x.velocity - tr.dataset.v) < 1e-6); if (p?.drawing != null) $(".dd", tr).value = p.drawing; }); recalc(); } });
-      F.test_date.value = new Date().toISOString().slice(0, 10); recalc(); list();
     });
   PSD.tela("atualizacao", () => atualizacao());
 })();
