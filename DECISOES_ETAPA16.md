@@ -117,4 +117,13 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Na cópia: 336 sugestões (6 R-D), 100 pedidos (11 para enviar, 18 pendente fornecedor), 1.057 envios (150 em aberto).
 - Próximo: demais telas (Q16).
 
+### Etapa B · tela Desenhos (12/11/2026) ✅
+- Ordem das telas restantes (menu): Desenhos → Damping → Aplicações/Comparação/Equivalências → Dashboard/Brands → telas de Dados.
+- `telas/desenhos.js` em Tailwind: abas Desenhos técnicos / Projeto PERFECT (`kind` na URL), área de envio, 4 KPIs, atalhos por cadastro (No catálogo, Em DES, Em R-D, Sem vínculo, **Sem desenho/Sem projeto**) que ligam/desligam, filtros na URL + última visita, tamanho dos cartões lembrado. Cartões da galeria e diálogos (revisar envio, visualizador, vincular) seguem no estilo antigo.
+- Novo: o número «Catálogo sem desenho» (e «DES/R-D fora do catálogo sem projeto») virou lista: `gallery(where=falta)`, mesmo conjunto de `stats` (`drawings._missing`); código abre a ficha ou a lista DES/R-D. `stats` ganhou `cat`/`des`/`rd`.
+- Excel segue os filtros da tela (tipo, busca, cadastro, origem, formato); com `where=falta` sai a lista dos itens sem arquivo. Sem filtro, continua tudo.
+- Teste `test_21`: cada atalho = total da galeria, nos dois tipos; Excel com filtro tem o mesmo número de linhas.
+- Na cópia não há desenho cadastrado (914 itens do catálogo sem desenho; 955 DES/R-D fora do catálogo sem projeto, contando todos os status — revisar na etapa D se recebidos/cancelados devem contar). Upload não testado no navegador: gravaria em `data\drawings` real; coberto por `test_15`.
+- Próximo: Damping.
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

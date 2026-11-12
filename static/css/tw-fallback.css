@@ -109,8 +109,10 @@
 .max-w-\[22rem\]{max-width:22rem}
 .max-w-\[24rem\]{max-width:24rem}
 .max-w-\[26rem\]{max-width:26rem}
+.max-w-\[34rem\]{max-width:34rem}
 .max-w-\[8rem\]{max-width:8rem}
 .max-w-none{max-width:none}
+.mb-0{margin-bottom:0}
 .mb-1{margin-bottom:.25rem}
 .mb-2{margin-bottom:.5rem}
 .mb-3{margin-bottom:.75rem}
@@ -166,6 +168,7 @@
 .py-2\.5{padding-top:.625rem;padding-bottom:.625rem}
 .py-3{padding-top:.75rem;padding-bottom:.75rem}
 .py-4{padding-top:1rem;padding-bottom:1rem}
+.py-5{padding-top:1.25rem;padding-bottom:1.25rem}
 .py-6{padding-top:1.5rem;padding-bottom:1.5rem}
 .py-8{padding-top:2rem;padding-bottom:2rem}
 .relative{position:relative}
@@ -232,6 +235,7 @@
 .hover\:bg-slate-500\/10:hover{background-color:rgba(100,116,139,0.1)}
 .hover\:bg-slate-500\/20:hover{background-color:rgba(100,116,139,0.2)}
 .hover\:bg-slate-700\/60:hover{background-color:rgba(51,65,85,0.6)}
+.hover\:border-blue-500:hover{border-color:#3b82f6}
 .hover\:text-ink:hover{color:var(--tx)}
 .hover\:text-slate-200:hover{color:#e2e8f0}
 .hover\:text-white:hover{color:#ffffff}
@@ -242,8 +246,11 @@
 @media(min-width:768px){.md\:grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media(min-width:768px){.md\:hidden{display:none}}
 @media(min-width:768px){.md\:static{position:static}}
+@media(min-width:1024px){.lg\:col-span-2{grid-column:span 2/span 2}}
+@media(min-width:1024px){.lg\:col-span-3{grid-column:span 3/span 3}}
 @media(min-width:1024px){.lg\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:1024px){.lg\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:1024px){.lg\:grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media(min-width:1280px){.xl\:col-span-2{grid-column:span 2/span 2}}
 @media(min-width:1280px){.xl\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:1280px){.xl\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}

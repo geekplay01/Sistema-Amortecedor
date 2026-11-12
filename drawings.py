@@ -144,6 +144,14 @@ def gallery(p):
     for r in rows: by.setdefault(r["code"], []).append(r)
     prod = _prod_index(); rdc = _rd_index(); rdd = {}
     for r in q("SELECT code,description FROM rd_projects WHERE description IS NOT NULL"): rdd.setdefault(_key(r["code"]), r["description"])
+    page, size = max(1, int(p.get("page") or 1)), (10**9 if p.get("all") else 48)
+    if where == "falta":    # o que ainda não tem arquivo: mesmo conjunto do número «sem desenho / sem projeto» de stats()
+        cards = []
+        for k in sorted(_missing(kind, set(by), prod)):
+            desc = prod[k][1] if k in prod else rdd.get(k)
+            if term and term not in k and term not in (desc or "").upper(): continue
+            cards.append({"code": prod[k][2] if k in prod else k, "key": k, "missing": True, "description": desc, "product_id": prod[k][0] if k in prod else None, "registries": _registries(prod.get(k), rdc.get(k, set()))})
+        return {"total": len(cards), "page": page, "size": size, "rows": cards[(page - 1) * size: page * size]}
     cards = []
     for code, fs in by.items():
         cur = _current(fs); reg = _registries(prod.get(code), rdc.get(code, set()))
@@ -169,8 +177,12 @@ def gallery(p):
     if srt == "code": cards.sort(key=lambda c: (c["code"] is None, c["code"] or c.get("filename") or ""))
     elif srt == "rev": cards.sort(key=lambda c: (c["code"] is None, -c["n_revisions"], c["code"] or ""))
     else: cards.sort(key=lambda c: (c["code"] is None, c["updated"] or ""), reverse=False); cards.sort(key=lambda c: (c["code"] is None, c["updated"] or ""), reverse=True)
-    page, size = max(1, int(p.get("page") or 1)), 48
     return {"total": len(cards), "page": page, "size": size, "rows": cards[(page - 1) * size: page * size]}
+
+def _missing(kind, have, prod=None):
+    """Chaves sem arquivo: desenho = produtos do catálogo sem desenho · projeto = itens DES/R-D fora do catálogo sem projeto."""
+    if kind == "desenho": return set(prod if prod is not None else _prod_index()) - have
+    return {_key(r["code"]) for r in q("SELECT DISTINCT code FROM rd_projects WHERE product_id IS NULL")} - have
 
 def stats(kind="desenho"):
     kind = _kind(kind); K = "coalesce(f.kind,'desenho')=?"
@@ -178,9 +190,9 @@ def stats(kind="desenho"):
             "orphans": q1(f"SELECT COUNT(*) n FROM drawing_files f WHERE {K} AND f.id NOT IN (SELECT file_id FROM drawing_links)", (kind,))["n"],
             "old": q1(f"""SELECT COUNT(*) n FROM drawing_files f JOIN drawing_links l ON l.file_id=f.id WHERE {K} AND f.rev_num < (SELECT MAX(f2.rev_num) FROM drawing_files f2 JOIN drawing_links l2 ON l2.file_id=f2.id WHERE l2.code=l.code AND coalesce(f2.kind,'desenho')=?)""", (kind, kind))["n"]}
     have = {r["code"] for r in q(f"SELECT DISTINCT l.code FROM drawing_links l JOIN drawing_files f ON f.id=l.file_id WHERE {K}", (kind,))}
-    if kind == "desenho": base["missing"] = len(set(_prod_index()) - have)
-    else:   # projeto PERFECT: o que importa são os itens em desenvolvimento que ainda não estão no catálogo
-        base["missing"] = len({_key(r["code"]) for r in q("SELECT DISTINCT code FROM rd_projects WHERE product_id IS NULL")} - have)
+    prod, rdc = _prod_index(), _rd_index(); base["missing"] = len(_missing(kind, have, prod))   # projeto PERFECT: o que importa são os itens DES/R-D fora do catálogo
+    reg = [_registries(prod.get(c), rdc.get(c, set())) for c in have]      # atalhos por cadastro (mesma regra do filtro where de gallery)
+    base.update(cat=sum("Catálogo" in r for r in reg), des=sum("DESENVOLVIMENTO" in r for r in reg), rd=sum("REDESENVOLVIMENTO" in r for r in reg))
     return base
 
 # ---------------- envio: verificação e aplicação ----------------

@@ -88,4 +88,5 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Garantia: do servidor quando há dados; senão planilha (só código, defeito, quantidade; linha «Total» descartada).
 - FOB: chave = PartNumber; repetido fica com o menor FOB; menor entre E-WIN/ZS/XGM = «Melhor Preço».
 - Desenhos: código e revisão pelo nome do arquivo; cadastros mostram a maior revisão; arquivo idêntico é ignorado.
+- «Sem desenho» = produto do catálogo sem nenhum desenho técnico; «Sem projeto» = código DES/R-D fora do catálogo (`rd_projects.product_id` vazio, qualquer status) sem Projeto PERFECT. O número do topo e a lista `where=falta` usam o mesmo conjunto (`drawings._missing`).
 - Equivalências: só sugestões por similaridade; nada é aprovado automaticamente.

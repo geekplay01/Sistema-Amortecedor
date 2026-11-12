@@ -337,6 +337,26 @@ class Fluxo(unittest.TestCase):
         s = C.get("/api/shipments?status=todos").json; self.assertEqual(s["total"], s["summary"]["pendente_projeto"] + s["summary"]["enviada"] + s["summary"]["finalizada"])
         for x in ("amostras.xlsx?flag=enviar", "envio.xlsx?status=todos", "pendente_compras.xlsx?kind=des"): self.assertEqual(C.get("/api/export/" + x).status_code, 200, x)
 
+    def test_21_desenhos_atalhos_e_excel(self):
+        """Desenhos: cada número do topo é um atalho (where=…) e bate com o total da galeria; «sem desenho» lista os itens; o Excel segue os filtros."""
+        import io
+        from openpyxl import load_workbook
+        if not C.get("/api/drawings?kind=desenho").json["total"]: self.test_15_desenhos_zip_prefixo_red_des()      # módulo rodado sozinho com filtro
+        for kind in ("desenho", "projeto"):
+            s = C.get(f"/api/drawings/stats?kind={kind}").json; tot = lambda w: C.get(f"/api/drawings?kind={kind}&where={w}").json["total"]
+            self.assertEqual(tot(""), s["codes"] + s["orphans"], kind); self.assertEqual(tot("sem"), s["orphans"], kind); self.assertEqual(tot("falta"), s["missing"], kind)
+            for w in ("cat", "des", "rd"): self.assertEqual(tot(w), s[w], f"{kind}: {w}")
+        s = C.get("/api/drawings/stats?kind=desenho").json; self.assertGreater(s["codes"], 0); self.assertGreater(s["orphans"], 0); self.assertGreater(s["missing"], 0)
+        f = C.get("/api/drawings?kind=desenho&where=falta&all=1").json["rows"]; com = {c["key"] for c in C.get("/api/drawings?kind=desenho&all=1").json["rows"] if c["code"]}
+        self.assertEqual(len(f), s["missing"]); self.assertTrue(all(r["missing"] and r["code"] and r["key"] not in com for r in f))
+        alvo = f[0]["code"]; self.assertIn(alvo, [r["code"] for r in C.get(f"/api/drawings?kind=desenho&where=falta&q={alvo}").json["rows"]])
+        def linhas(qs):
+            r = C.get("/api/export/desenhos.xlsx?" + qs); self.assertEqual(r.status_code, 200, qs); return load_workbook(io.BytesIO(r.data)).worksheets[0].max_row - 1
+        self.assertEqual(linhas("kind=desenho&where=falta"), s["missing"])
+        red = [c for c in C.get("/api/drawings?kind=desenho&origin=REDESENVOLVIMENTO&all=1").json["rows"] if c["code"]]; self.assertTrue(red)
+        self.assertEqual(linhas("kind=desenho&origin=REDESENVOLVIMENTO"), sum(c["n_files"] for c in red))       # todas as revisões dos códigos filtrados
+        self.assertEqual(linhas("kind=projeto"), 0)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

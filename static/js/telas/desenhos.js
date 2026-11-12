@@ -1,68 +1,121 @@
-/* Tela · Desenhos: envio, revisões, visualizador.
-   Usa o núcleo window.PSD (core.js); registra a tela com PSD.tela(slug, desenhar). Separado do antigo pages.js na etapa 16. */
+/* Tela · Desenhos — visual Tailwind (etapa 16): envio (arrastar arquivos/ZIP/pasta), galeria por código, revisões e visualizador.
+   Abas Desenhos técnicos × Projeto PERFECT (kind). Cada número do topo é um atalho (where=…) e bate com o total da galeria (tests: test_21);
+   «Sem desenho» lista os itens que ainda não têm arquivo. Filtros na URL e lembrados (PSDTW.filtros); o Excel segue os mesmos filtros.
+   Links de outras telas: /desenhos?kind=…&open=CÓDIGO abre o visualizador. Diálogos (revisar envio, visualizador, vincular) seguem no estilo antigo. */
 (function () {
-  const { $, $$, esc, J, post, qs, num, empty, root, page, url, fail, dlg, tag, clip, fext, dwTile, kb, dmy, dwCollect, dwPrevOk, dwNav } = PSD;
+  const { $, $$, esc, J, post, qs, root, fail, dlg, tag, fext, dwTile, kb, dmy, dwCollect, dwPrevOk, dwNav } = PSD;
+  const TW = window.PSDTW, { nf, badge, kpi, notice } = TW;
+  const CHAVES = ["kind", "q", "where", "origin", "ext", "sort"];
+  const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
+  const botao = "rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10";
+  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
+  const selectF = (name, rotulo, opts, cur, extra = "") => `<select name="${name}" class="${campo} max-w-[15rem]" title="${esc(rotulo)}" ${extra}>${rotulo ? `<option value="">${esc(rotulo)}</option>` : ""}${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur ?? "") ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+  const TAM = { P: 170, M: 215, G: 290 };
+  const tam = { get: () => { try { return localStorage.getItem("psd-dw-tam") || "M"; } catch (e) { return "M"; } }, set: v => { try { localStorage.setItem("psd-dw-tam", v); } catch (e) { } } };
+
   function desenhos() {
-    let kind = new URLSearchParams(location.search).get("kind") === "projeto" ? "projeto" : "desenho";
-    const TXT = { desenho: "Solte os arquivos de desenho em <b>qualquer formato</b>. Aceita também um <b>arquivo ZIP</b> com vários desenhos. O sistema lê a <b>origem</b> (nome começando com <b>RED</b> = redesenvolvimento, <b>DES</b> = desenvolvimento), o <b>código</b> e a <b>revisão</b> pelo nome (ex.: <code>RED_AMD0170_REV02.pdf</code>), vincula a todos os cadastros — catálogo, desenvolvimento e redesenvolvimento — e guarda as revisões anteriores. Nos cadastros aparece sempre a <b>vigente</b>.",
-      projeto: "Anexe aqui o <b>Projeto PERFECT</b> (ex.: <code>1BP31901AB_REV01.pdf</code>). Ele fica visível no cadastro dos itens <b>em desenvolvimento que ainda não estão no catálogo</b>, na <b>Compra de amostras</b> e no <b>Envio de amostra</b>. Mesma lógica: código e revisão pelo nome, revisões anteriores guardadas." };
-    root.innerHTML = `<div class="seg" id="dw-kind"><button type="button" data-k="desenho">Desenhos técnicos</button><button type="button" data-k="projeto">Projeto PERFECT</button></div>
-      <section class="dw-hero" id="hero"><div class="dw-hero-t"><h2 id="dw-h2"></h2><p id="dw-p"></p></div>
-      <label class="dw-drop" id="dz"><svg width="34" height="34" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
-        <span class="dw-dt"><b>Arraste arquivos ou uma pasta para cá</b><span class="muted">PDF · DWG · DXF · STEP · imagens · ZIP · qualquer formato</span></span>
-        <span class="dw-btns"><span class="btn">Escolher arquivos ou ZIP</span><button type="button" class="btn ghost" id="dw-folder">Escolher pasta</button></span>
-        <input type="file" id="dw-f" multiple hidden><input type="file" id="dw-d" webkitdirectory hidden></label></section>
-      <p id="dw-msg" class="imp-msg" role="status"></p><div class="dw-stats" id="dw-stats"></div>
-      <form class="toolbar dw-tb" id="dw-form"><input name="q" placeholder="Buscar código, descrição ou nome do arquivo…" style="flex:1;min-width:240px">
-        <select name="where"><option value="">Todos os cadastros</option><option value="cat">No catálogo</option><option value="des">Em desenvolvimento</option><option value="rd">Em redesenvolvimento</option><option value="sem">Sem vínculo</option></select>
-        <select name="origin"><option value="">Origem: todas</option><option value="DESENVOLVIMENTO">Origem DES</option><option value="REDESENVOLVIMENTO">Origem RED</option></select>
-        <select name="ext"><option value="">Todos os formatos</option>${[".pdf", ".dwg", ".dxf", ".step", ".png", ".jpg"].map(x => `<option value="${x}">${x.slice(1).toUpperCase()}</option>`).join("")}</select>
-        <select name="sort"><option value="recent">Mais recentes</option><option value="code">Código (A–Z)</option><option value="rev">Mais revisões</option></select>
-        <span class="seg sm" id="dw-size" title="Tamanho dos cartões"><button type="button" data-s="170">P</button><button type="button" data-s="215" class="on">M</button><button type="button" data-s="290">G</button></span>
-        <a class="btn" id="dw-xl" href="/api/export/desenhos.xlsx">⬇ Excel</a></form>
-      <div class="summary" id="dw-sum"></div><div class="dw-grid" id="dw-grid"></div><div class="pager" id="dw-pg"></div>`;
-    const msg = (t, err) => { const m = $("#dw-msg"); m.textContent = t; m.className = "imp-msg" + (err ? " err" : ""); };
-    const f = $("#dw-form"); let pg = 1, t;
-    const setKind = k => { kind = k; $$("#dw-kind button").forEach(b => b.classList.toggle("on", b.dataset.k === k)); $("#dw-h2").textContent = k === "projeto" ? "Projeto PERFECT" : "Desenhos técnicos"; $("#dw-p").innerHTML = TXT[k]; $("#hero").classList.toggle("projeto", k === "projeto");
-      $("#dw-xl").href = "/api/export/desenhos.xlsx"; history.replaceState(null, "", k === "projeto" ? "?kind=projeto" : location.pathname); };
-    const ICO = { codes: "M4 5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2zM8 8h8M8 12h8M8 16h5", files: "M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8zM14 3v5h5", old: "M12 8v5l3 2M3 12a9 9 0 109-9 9 9 0 00-6.4 2.6L3 8M3 3v5h5", orph: "M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1", miss: "M12 3l10 18H2zM12 10v5M12 18v.5" };
-    const stats = async () => { try { const s = await J("/api/drawings/stats?kind=" + kind);
-      $("#hero").classList.toggle("compact", s.files > 0);
-      $("#dw-stats").innerHTML = [["codes", "Códigos com desenho", s.codes, ""], ["files", "Arquivos guardados", s.files, ""], ["old", "Revisões anteriores", s.old, "guardadas no histórico"], ["orph", "Sem vínculo", s.orphans, s.orphans ? "clique para ver" : "", "sem"], ["miss", kind === "projeto" ? "DES/R-D fora do catálogo sem projeto" : "Catálogo sem desenho", s.missing, ""]]
-        .map(([k, l, v, h, w]) => `<div class="dws ${w ? "link" : ""}" ${w ? `data-w="${w}"` : ""}><svg viewBox="0 0 24 24"><path d="${ICO[k]}"/></svg><div><span class="num sm">${num(v)}</span><small>${l}${h ? ` · ${h}` : ""}</small></div></div>`).join(""); } catch (e) { } };
+    const abrir = new URLSearchParams(location.search).get("open");          // lido antes de filtros() reescrever a URL
+    const F = TW.filtros("desenhos", CHAVES); let pg = 1, t, st = null;
+    const kind = () => F.get().kind === "projeto" ? "projeto" : "desenho";
+    const TXT = { desenho: "Solte os arquivos de desenho em <b>qualquer formato</b>, um <b>ZIP</b> ou uma pasta. O nome diz a <b>origem</b> (começa com <b>RED</b> = redesenvolvimento, <b>DES</b> = desenvolvimento), o <b>código</b> e a <b>revisão</b> (ex.: <code>RED_AMD0170_REV02.pdf</code>). O desenho vale para todos os cadastros (catálogo, DES e R-D), as revisões anteriores ficam guardadas e os cadastros mostram sempre a <b>vigente</b>.",
+      projeto: "Anexe aqui o <b>Projeto PERFECT</b> (ex.: <code>1BP31901AB_REV01.pdf</code>). Ele aparece no cadastro dos itens <b>em desenvolvimento que ainda não estão no catálogo</b>, na <b>Compra de amostras</b> e no <b>Envio de amostra</b>. Mesma lógica: código e revisão pelo nome, revisões anteriores guardadas." };
+    root.innerHTML = `<div class="flex flex-col gap-5">
+      <div id="dw-kind" class="flex flex-wrap gap-2" role="tablist"></div>
+      <section id="hero" class="grid gap-4 rounded-2xl border border-line bg-card p-5 shadow-sm lg:grid-cols-5">
+        <div class="lg:col-span-3"><h3 id="dw-h2" class="m-0 text-base font-semibold text-ink"></h3><p id="dw-p" class="mb-0 mt-2 text-sm text-mute"></p></div>
+        <label id="dz" class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line px-4 py-5 text-center transition hover:border-blue-500 lg:col-span-2">
+          <svg class="h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
+          <b class="text-sm text-ink">Arraste arquivos ou uma pasta para cá</b><span class="text-xs text-mute">PDF · DWG · DXF · STEP · imagens · ZIP · qualquer formato</span>
+          <span class="mt-1 flex flex-wrap justify-center gap-2"><span class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700">Escolher arquivos ou ZIP</span><button type="button" id="dw-folder" class="${botao}">Escolher pasta</button></span>
+          <input type="file" id="dw-f" multiple hidden><input type="file" id="dw-d" webkitdirectory hidden></label>
+      </section>
+      <p id="dw-msg" class="m-0 hidden text-sm" role="status"></p><div id="dw-done"></div>
+      <div id="dw-k" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
+      <div id="dw-q" class="flex flex-wrap items-center gap-2"></div>
+      <form id="dw-form" class="flex flex-wrap items-center gap-2" autocomplete="off"></form>
+      <div id="dw-meta" class="flex flex-wrap items-center justify-between gap-3 text-sm text-mute"></div>
+      <div id="dw-grid"></div><div id="dw-pg" class="flex items-center justify-center gap-3 text-sm text-mute"></div>
+    </div>`;
+    const msg = (t, err) => { const m = $("#dw-msg"); m.textContent = t; m.classList.toggle("hidden", !t); m.classList.toggle("text-red-600", !!err); m.classList.toggle("text-mute", !err); };
+    const semNome = () => kind() === "projeto" ? "Sem projeto" : "Sem desenho";
+    const ATALHOS = [["No catálogo", "cat"], ["Em DES", "des"], ["Em R-D", "rd"], ["Sem vínculo", "sem", true], [null, "falta", true]];
+
+    const desenharTopo = () => {
+      const k = kind(), s = st || {}, w = F.get().where || "";
+      $("#dw-kind").innerHTML = [["desenho", "Desenhos técnicos"], ["projeto", "Projeto PERFECT"]].map(([v, l]) => `<button type="button" role="tab" data-k="${v}" aria-selected="${v === k}" class="rounded-lg px-4 py-2 text-sm font-semibold ${v === k ? "bg-blue-600 text-white" : "border border-line bg-card text-ink hover:bg-slate-500/10"}">${l}</button>`).join("");
+      $("#dw-h2").textContent = k === "projeto" ? "Projeto PERFECT" : "Desenhos técnicos"; $("#dw-p").innerHTML = TXT[k];
+      if (!st) return;
+      $("#dw-k").innerHTML = kpi(k === "projeto" ? "Códigos com projeto" : "Códigos com desenho", nf(s.codes), `${nf(s.files)} arquivo(s) guardado(s)`, "blue") +
+        kpi("Revisões anteriores", nf(s.old), "guardadas no histórico", "slate") +
+        kpi("Sem vínculo", nf(s.orphans), s.orphans ? "arquivos sem código: abra o cartão e informe" : "todo arquivo tem código", s.orphans ? "amber" : "green") +
+        kpi(k === "projeto" ? "DES/R-D fora do catálogo sem projeto" : "Catálogo sem desenho", nf(s.missing), "use o atalho para ver a lista", s.missing ? "red" : "green");
+      $("#dw-q").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` +
+        ATALHOS.map(([l, v, forte]) => chip(`data-w="${v}"`, l || semNome(), w === v, v === "sem" ? s.orphans : v === "falta" ? s.missing : s[v], forte)).join("");
+    };
+    const desenharFiltros = () => {
+      const f = F.get(), s = st || {}, c = k => s[k] != null ? ` (${nf(s[k])})` : "", falta = f.where === "falta", off = falta ? 'disabled title="Não se aplica à lista de itens sem arquivo"' : "";
+      $("#dw-form").innerHTML = `<input name="q" type="search" value="${esc(f.q || "")}" placeholder="Buscar código, descrição ou nome do arquivo…" class="${campo} min-w-[16rem] flex-1">` +
+        selectF("where", "Todos os cadastros", [["cat", "No catálogo" + c("cat")], ["des", "Em desenvolvimento" + c("des")], ["rd", "Em redesenvolvimento" + c("rd")], ["sem", "Sem vínculo" + c("orphans")], ["falta", semNome() + c("missing")]], f.where) +
+        selectF("origin", "Origem: todas", [["DESENVOLVIMENTO", "Origem DES"], ["REDESENVOLVIMENTO", "Origem RED"]], f.origin, off) +
+        selectF("ext", "Todos os formatos", [".pdf", ".dwg", ".dxf", ".step", ".png", ".jpg"].map(x => [x, x.slice(1).toUpperCase()]), f.ext, off) +
+        selectF("sort", "", [["recent", "Mais recentes"], ["code", "Código (A–Z)"], ["rev", "Mais revisões"]], f.sort || "recent", off) +
+        `<span class="inline-flex overflow-hidden rounded-lg border border-line" title="Tamanho dos cartões">${Object.keys(TAM).map(v => `<button type="button" data-s="${v}" class="px-3 py-2 text-sm font-semibold ${tam.get() === v ? "bg-blue-600 text-white" : "bg-card text-ink hover:bg-slate-500/10"}">${v}</button>`).join("")}</span>` +
+        `<button type="button" id="dw-clr" class="${botao}">Limpar filtros</button>`;
+    };
+
+    const cartao = c => c.code
+      ? `<article class="dw-card" data-open="${esc(c.code)}" tabindex="0"><div class="dw-th"><div class="sk"></div>${dwTile(c.thumb_id, c.thumb_ext, true)}<span class="rev">${esc(c.label)}</span><span class="dw-ex">${c.exts.map(x => `<i>${esc(x)}</i>`).join("")}</span>
+          <div class="dw-ov"><span class="btn sm">Visualizar</span><a class="btn ghost sm" href="/api/drawings/file/${c.thumb_id}?download=1" title="Baixar o arquivo vigente">⬇</a></div></div>
+          <div class="dw-bd"><b>${esc(c.code)}</b><span class="clip" title="${esc(c.description || "")}">${esc(c.description || (c.registered ? "" : "Código ainda não cadastrado"))}</span>
+          <div class="dw-tags">${c.origin ? `<span class="tag org ${c.origin === "REDESENVOLVIMENTO" ? "red" : "des"}" title="Origem pelo prefixo do nome do arquivo">${c.origin === "REDESENVOLVIMENTO" ? "RED" : "DES"}</span> ` : ""}${c.registries.map(tag).join(" ")}</div><small class="muted">${dmy(c.updated)} · ${c.n_revisions} revisão(ões)</small></div></article>`
+      : `<article class="dw-card orph" data-orph="${c.file_id}" data-name="${esc(c.filename)}" tabindex="0"><div class="dw-th"><div class="sk"></div>${dwTile(c.thumb_id, c.thumb_ext, true)}<span class="rev warn">Sem código</span></div><div class="dw-bd"><b class="clip" title="${esc(c.filename)}">${esc(c.filename)}</b><small class="muted">Clique para informar o código</small></div></article>`;
+    // item ainda sem arquivo: código leva à ficha (catálogo) ou à lista DES/R-D
+    const REGC = { "Catálogo": "blue", DESENVOLVIMENTO: "amber", REDESENVOLVIMENTO: "violet" };
+    const faltando = c => [c.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${c.product_id}">${esc(c.code)}</a>`
+        : `<a href="/${c.registries.includes("DESENVOLVIMENTO") ? "desenvolvimento" : "redesenvolvimento"}?q=${encodeURIComponent(c.code)}" class="font-semibold text-blue-600">${esc(c.code)}</a>`,
+      `<span class="block min-w-[16rem] max-w-[34rem] truncate" title="${esc(c.description || "")}">${esc(c.description || "")}</span>`,
+      c.registries.map(r => badge(r === "DESENVOLVIMENTO" ? "DES" : r === "REDESENVOLVIMENTO" ? "R-D" : r, REGC[r])).join(" ")];
+
+    const stats = async () => { try { st = await J("/api/drawings/stats?kind=" + kind()); desenharTopo(); desenharFiltros(); } catch (e) { } };
     const load = async () => { try {
-      const d = await J("/api/drawings?" + qs({ ...Object.fromEntries(new FormData(f)), kind, page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size));
-      $("#dw-sum").textContent = num(d.total) + " desenho(s)"; dwNav.list = d.rows.filter(c => c.code).map(c => c.code);
-      $("#dw-grid").innerHTML = d.rows.length ? d.rows.map(c => c.code
-        ? `<article class="dw-card" data-open="${esc(c.code)}" tabindex="0"><div class="dw-th"><div class="sk"></div>${dwTile(c.thumb_id, c.thumb_ext, true)}<span class="rev">${esc(c.label)}</span><span class="dw-ex">${c.exts.map(x => `<i>${esc(x)}</i>`).join("")}</span>
-            <div class="dw-ov"><span class="btn sm">Visualizar</span><a class="btn ghost sm" href="/api/drawings/file/${c.thumb_id}?download=1" title="Baixar o arquivo vigente">⬇</a></div></div>
-            <div class="dw-bd"><b>${esc(c.code)}</b><span class="clip" title="${esc(c.description || "")}">${esc(c.description || (c.registered ? "" : "Código ainda não cadastrado"))}</span>
-            <div class="dw-tags">${c.origin ? `<span class="tag org ${c.origin === "REDESENVOLVIMENTO" ? "red" : "des"}" title="Origem pelo prefixo do nome do arquivo">${c.origin === "REDESENVOLVIMENTO" ? "RED" : "DES"}</span> ` : ""}${c.registries.map(tag).join(" ")}</div><small class="muted">${dmy(c.updated)} · ${c.n_revisions} revisão(ões)</small></div></article>`
-        : `<article class="dw-card orph" data-orph="${c.file_id}" data-name="${esc(c.filename)}" tabindex="0"><div class="dw-th"><div class="sk"></div>${dwTile(c.thumb_id, c.thumb_ext, true)}<span class="rev warn">Sem código</span></div><div class="dw-bd"><b class="clip" title="${esc(c.filename)}">${esc(c.filename)}</b><small class="muted">Clique para informar o código</small></div></article>`).join("")
-        : empty("Nenhum desenho com esses filtros. Arraste os arquivos para a área acima.");
-      $("#dw-pg").innerHTML = pages > 1 ? `<button class="btn ghost" data-p="${pg - 1}" ${pg < 2 ? "disabled" : ""}>‹</button> Página ${pg} de ${pages} <button class="btn ghost" data-p="${pg + 1}" ${pg >= pages ? "disabled" : ""}>›</button>` : "";
-    } catch (e) { fail(e); } };
+      const f = F.get(), falta = f.where === "falta";
+      const d = await J("/api/drawings?" + qs({ ...f, kind: kind(), page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(f).filter(k => k !== "kind" && k !== "sort").length;
+      dwNav.list = falta ? [] : d.rows.filter(c => c.code).map(c => c.code);
+      $("#dw-meta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> ${falta ? "item(ns) sem arquivo" : "desenho(s)"}${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
+        <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/desenhos.xlsx?${new URLSearchParams({ ...f, kind: kind() })}">⬇ Baixar Excel</a>`;
+      $("#dw-grid").innerHTML = falta
+        ? notice(`Para anexar, arraste o arquivo com o código no nome para a área acima (ex.: <code>DES_${esc(d.rows[0]?.code || "AMD0000")}_REV00.pdf</code>).`, "blue") + `<div class="mt-3">${TW.table([{ h: "Código" }, { h: "Descrição", nw: false }, { h: "Cadastros" }], d.rows.map(faltando), { h: "max-h-[65vh]" })}</div>`
+        : d.rows.length ? `<div class="dw-grid" style="--cw:${TAM[tam.get()]}px">${d.rows.map(cartao).join("")}</div>` : TW.empty("Nenhum desenho com esses filtros. Arraste os arquivos para a área acima.");
+      const b = (p, dis, l) => `<button type="button" data-p="${p}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${dis ? "disabled" : ""}>${l}</button>`;
+      $("#dw-pg").innerHTML = pages > 1 ? `${b(pg - 1, pg < 2, "‹")} Página ${pg} de ${pages} ${b(pg + 1, pg >= pages, "›")}` : "";
+    } catch (e) { $("#dw-grid").innerHTML = notice(esc(e.message), "red"); } };
     const refresh = () => { stats(); load(); }; dwNav.onDone = refresh;
-    f.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { pg = 1; load(); }, 300); }); f.addEventListener("submit", e => e.preventDefault());
+    const aplicar = (logo = false) => { pg = 1; desenharTopo(); clearTimeout(t); t = setTimeout(load, logo ? 0 : 300); };
+    const f = $("#dw-form");
+    f.addEventListener("input", e => { const n = e.target.name; if (!n) return; F.set({ [n]: e.target.value }); if (n === "where") desenharFiltros(); aplicar(e.target.tagName === "SELECT"); });
+    f.addEventListener("submit", e => e.preventDefault());
+    f.addEventListener("click", e => {
+      const s = e.target.closest("[data-s]"); if (s) { tam.set(s.dataset.s); desenharFiltros(); const g = $("#dw-grid .dw-grid"); if (g) g.style.setProperty("--cw", TAM[s.dataset.s] + "px"); return; }
+      if (e.target.id === "dw-clr") { const k = F.get().kind; F.clear(); if (k) F.set({ kind: k }); desenharFiltros(); aplicar(true); }
+    });
+    $("#dw-q").addEventListener("click", e => { const b = e.target.closest("[data-w]"); if (!b) return; F.toggle("where", b.dataset.w); desenharFiltros(); aplicar(true); });
+    $("#dw-kind").addEventListener("click", e => { const b = e.target.closest("[data-k]"); if (!b || b.dataset.k === kind()) return; F.set({ kind: b.dataset.k === "projeto" ? "projeto" : "" }); st = null; pg = 1; desenharTopo(); refresh(); });
     $("#dw-pg").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; load(); scrollTo(0, 0); } });
-    $("#dw-size").onclick = e => { const b = e.target.closest("[data-s]"); if (!b) return; $$("#dw-size button").forEach(x => x.classList.toggle("on", x === b)); $("#dw-grid").style.setProperty("--cw", b.dataset.s + "px"); };
-    $("#dw-stats").onclick = e => { const s = e.target.closest("[data-w]"); if (s) { f.elements.where.value = s.dataset.w; pg = 1; load(); } };
-    const openCard = e => { if (e.target.closest("a")) return; const c = e.target.closest("[data-open],[data-orph]"); if (!c || (e.type === "keydown" && e.key !== "Enter")) return; c.dataset.open ? dwOpen(c.dataset.open, refresh, kind) : dwOrphan(+c.dataset.orph, c.dataset.name, refresh); };
-    $("#dw-grid").addEventListener("click", openCard); $("#dw-grid").addEventListener("keydown", openCard);
+    $("#dw-grid").addEventListener("click", e => { if (e.target.closest("a")) return; openCard(e); }); $("#dw-grid").addEventListener("keydown", openCard);
+    function openCard(e) { const c = e.target.closest("[data-open],[data-orph]"); if (!c || (e.type === "keydown" && e.key !== "Enter")) return; c.dataset.open ? dwOpen(c.dataset.open, refresh, kind()) : dwOrphan(+c.dataset.orph, c.dataset.name, refresh); }
     const send = async files => {
-      if (!files.length) return; const fd = new FormData(); fd.append("kind", kind); files.forEach(x => fd.append("files", x, x.name));
+      if (!files.length) return msg(""); const fd = new FormData(); fd.append("kind", kind()); files.forEach(x => fd.append("files", x, x.name));
       msg(`Enviando ${files.length} arquivo(s) para análise…`);
       try { const r = await J("/api/drawings/check", { method: "POST", body: fd }); msg(""); dwReview(r, refresh); } catch (e) { msg(e.message, true); }
     };
     $("#dw-f").onchange = e => { send([...e.target.files]); e.target.value = ""; };
     $("#dw-d").onchange = e => { send([...e.target.files]); e.target.value = ""; };
     $("#dw-folder").onclick = e => { e.preventDefault(); e.stopPropagation(); $("#dw-d").click(); };
-    const dz = $("#dz"); ["dragenter", "dragover"].forEach(n => dz.addEventListener(n, e => { e.preventDefault(); dz.classList.add("over"); }));
-    ["dragleave", "drop"].forEach(n => dz.addEventListener(n, e => { e.preventDefault(); dz.classList.remove("over"); }));
+    const dz = $("#dz"), sobre = on => ["border-blue-500", "bg-blue-500/10"].forEach(c => dz.classList.toggle(c, on));
+    ["dragenter", "dragover"].forEach(n => dz.addEventListener(n, e => { e.preventDefault(); sobre(true); }));
+    ["dragleave", "drop"].forEach(n => dz.addEventListener(n, e => { e.preventDefault(); sobre(false); }));
     dz.addEventListener("drop", async e => { msg("Lendo os arquivos soltos…"); send(await dwCollect(e.dataTransfer)); });
-    const p0 = new URLSearchParams(location.search); if (p0.get("q")) f.elements.q.value = p0.get("q");
-    $("#dw-kind").onclick = e => { const b = e.target.closest("[data-k]"); if (!b || b.dataset.k === kind) return; setKind(b.dataset.k); pg = 1; refresh(); };
-    setKind(kind); stats(); load().then(() => { if (p0.get("open")) dwOpen(p0.get("open"), refresh, kind); });
+    desenharTopo(); desenharFiltros(); stats(); load().then(() => { if (abrir) dwOpen(abrir, refresh, kind()); });
   }
 
   function dwReview(res, done) {
@@ -84,7 +137,8 @@
       const ov = {}; $$("tr[data-n]", dlg).forEach(tr => { const code = $(".dw-code", tr).value.trim(), rev = $(".dw-rev-i", tr).value.trim(), origin = $(".dw-org", tr)?.value || ""; if (code || rev || origin) ov[tr.dataset.n] = { codes: code, rev, origin }; });
       const b = $("#dw-go"); b.disabled = true; $("#dw-rmsg").textContent = "Gravando…";
       try { const r = await post("/api/drawings/apply", { token: res.token, overrides: ov }), s = r.summary; dlg.close();
-        root.insertAdjacentHTML("afterbegin", `<div class="notice">✔ ${s.novos} novo(s), ${s.revisoes} revisão(ões), ${s.ignorados} ignorado(s) · ${s.redesenvolvimento} REDESENVOLVIMENTO, ${s.desenvolvimento} DESENVOLVIMENTO${s.sem_origem ? `, ${s.sem_origem} sem prefixo RED/DES` : ""}${s.sem_vinculo ? `, ${s.sem_vinculo} sem código (vincule clicando no card)` : ""}. Os cadastros já mostram a revisão vigente.</div>`); done && done(); }
+        const aviso = `✔ ${s.novos} novo(s), ${s.revisoes} revisão(ões), ${s.ignorados} ignorado(s) · ${s.redesenvolvimento} REDESENVOLVIMENTO, ${s.desenvolvimento} DESENVOLVIMENTO${s.sem_origem ? `, ${s.sem_origem} sem prefixo RED/DES` : ""}${s.sem_vinculo ? `, ${s.sem_vinculo} sem código (vincule clicando no cartão)` : ""}. Os cadastros já mostram a revisão vigente.`;
+        const slot = $("#dw-done"); if (slot) slot.innerHTML = PSDTW.notice(aviso, "blue"); else root.insertAdjacentHTML("afterbegin", `<div class="notice">${aviso}</div>`); done && done(); }
       catch (e) { b.disabled = false; $("#dw-rmsg").textContent = e.message; $("#dw-rmsg").className = "imp-msg err"; }
     };
     dlg.showModal();

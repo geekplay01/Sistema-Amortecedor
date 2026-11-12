@@ -102,8 +102,9 @@ LABELS = {"desenvolvimento": "Em desenvolvimento", "redesenvolvimento": "Em rede
           "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
-          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento"}
-FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}}          # valor legível no nome do arquivo e na aba «Filtros aplicados»
+          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem"}
+FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT"},
+          "where": {"cat": "No catálogo", "des": "Em DES", "rd": "Em R-D", "sem": "Sem vínculo", "falta": "Sem desenho"}}          # valor legível no nome do arquivo e na aba «Filtros aplicados»
 def _fv(k, v): return FVALUE.get(k, {}).get(v, v)
 
 def friendly_name(module, filtros=None):
@@ -114,9 +115,18 @@ def friendly_name(module, filtros=None):
     return f"Perfect Shock Data - {LABELS.get(module, module.title())}{f' ({flt})' if flt else ''} - {datetime.datetime.now():%d-%m-%Y %Hh%M}.xlsx"
 
 def _desenhos(a):
+    """Sem filtro: todos os arquivos dos dois tipos. Com filtro (tela Desenhos): os mesmos códigos da galeria; where=falta lista os itens sem arquivo."""
     import drawings
+    flt = {k: a[k] for k in ("kind", "q", "where", "origin", "ext") if a.get(k)}; keys = None
+    if flt:
+        g = drawings.gallery({**flt, "all": 1})["rows"]
+        if flt.get("where") == "falta":
+            return [("Sem desenho" if drawings._kind(flt.get("kind")) == "desenho" else "Sem projeto", ["Código", "Descrição", "Cadastros"],
+                     [[c["code"], c["description"], ", ".join(c["registries"])] for c in g], [16, 50, 40])], len(g)
+        keys = {c["key"] for c in g if c.get("code")}
     rows = []
     for r in Q.q("""SELECT l.code,f.filename,f.ext,f.size,f.rev_num,f.rev_label,f.rev_auto,f.uploaded_at,coalesce(f.kind,'desenho') kind FROM drawing_links l JOIN drawing_files f ON f.id=l.file_id ORDER BY l.code,f.kind,f.rev_num DESC,f.id DESC"""):
+        if keys is not None and (r["code"] not in keys or r["kind"] != drawings._kind(flt.get("kind"))): continue
         cur = {x["filename"] for x in drawings._current([x for x in Q.q("SELECT f.id,f.filename,f.ext,f.rev_num FROM drawing_files f JOIN drawing_links l ON l.file_id=f.id WHERE l.code=? AND coalesce(f.kind,'desenho')=?", (r["code"], r["kind"]))])}
         rows.append([r["code"], "Projeto PERFECT" if r["kind"] == "projeto" else "Desenho técnico", "Rev. " + (r["rev_label"] or str(r["rev_num"]).zfill(2)), "Vigente" if r["filename"] in cur else "Histórico", r["filename"], (r["ext"] or "").lstrip(".").upper(), round((r["size"] or 0) / 1024, 1), "Automática" if r["rev_auto"] else "Pelo nome", r["uploaded_at"]])
     return [("Desenhos", ["Código", "Tipo", "Revisão", "Situação", "Arquivo", "Formato", "Tamanho (KB)", "Revisão definida", "Enviado em"], rows, [16, 16, 12, 12, 46, 10, 14, 16, 20])], len(rows)
