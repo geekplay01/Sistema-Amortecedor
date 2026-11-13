@@ -234,9 +234,12 @@ class Fluxo(unittest.TestCase):
         finally: os.environ["PSD_AUTH"] = "off"
 
     def test_11_paginas_carregam(self):
-        for slug in ("dashboard", "metas", "pedidos-aberto", "vendas", "garantia", "desenvolvimento", "redesenvolvimento", "amostras", "configuracoes", "brands", "lados", "envio", "desenhos"):
+        import re
+        for slug in ("dashboard", "metas", "pedidos-aberto", "vendas", "garantia", "desenvolvimento", "redesenvolvimento", "amostras", "configuracoes", "brands", "lados", "envio", "desenhos", "pendencias", "fontes", "atualizacao"):
             r = C.get("/" + slug); self.assertEqual(r.status_code, 200, slug); html = r.get_data(as_text=True)
             self.assertIn("syncchip", html); self.assertIn("PSD_STATUS", html); self.assertIn("bg-slate-800", html); self.assertIn("psd-nav", html)         # sidebar fixa slate-800 em Tailwind
+        telas = re.findall(r'/static/js/telas/([\w-]+)\.js', html); self.assertIn("pendencias", telas); self.assertNotIn("dados", telas)
+        for t in telas: self.assertEqual(C.get(f"/static/js/telas/{t}.js").status_code, 200, t)                                                       # todo script de tela citado existe
         self.assertIn("Desenvolvimento", C.get("/desenvolvimento").get_data(as_text=True)); self.assertNotIn("Em desenvolvimento", C.get("/desenvolvimento").get_data(as_text=True))
 
     def test_12_favicon_e_menu_sem_pedidos(self):
@@ -449,6 +452,42 @@ class Fluxo(unittest.TestCase):
         wb = load_workbook(io.BytesIO(r.data)); ws = wb.worksheets[0]; self.assertEqual(ws.max_row - 1, s["unclassified"])
         r = C.get("/api/export/brands.xlsx?brand=PERFECT&scope=catalog"); n = C.get("/api/brands/PERFECT/items?scope=catalog").json["total"]
         self.assertEqual(load_workbook(io.BytesIO(r.data)).worksheets[0].max_row - 1, n)
+
+    def test_25_dados_pendencias_fontes(self):
+        """Pendências: status, tipo e campo são atalhos (cada grupo ignora o próprio filtro e respeita os outros); status=todas = sem filtro de status;
+        resolver tira da contagem de abertas; o Excel traz as mesmas linhas. Fontes: o histórico conta gravadas × só verificação e o Excel segue o status."""
+        import io
+        from openpyxl import load_workbook
+        con = sqlite3.connect(DB)
+        try:
+            p = [r[0] for r in con.execute("SELECT id FROM products ORDER BY id LIMIT 3")]
+            con.executemany("INSERT INTO pendencies(product_id,kind,field,description,status) VALUES(?,?,?,?,?)", [
+                (p[0], "conflito", "family", "Valor atual «A» × importado «B» (fonte T25.xlsx). Nada foi sobrescrito.", "aberta"),
+                (p[1], "conflito", "ean", "Valor atual «1» × importado «2» (fonte T25.xlsx). Nada foi sobrescrito.", "aberta"),
+                (p[2], "campo_ausente", "peso", "Campo ausente: peso T25", "aberta"), (p[0], "campo_ausente", "peso", "Campo ausente: peso T25", "resolvida"),
+                (p[1], "conflito", "family", "T25 ignorada", "ignorada")])
+            src = con.execute("INSERT INTO sources(name,category,priority) VALUES('T25.xlsx','Dados avulsos (planilha nova)',5)").lastrowid
+            con.executemany("INSERT INTO import_batches(source_id,filename,category,rows_new,status) VALUES(?,?,?,?,?)", [(src, "T25.xlsx", "Dados avulsos (planilha nova)", 1, "ok"), (src, "T25.xlsx", "Dados avulsos (planilha nova)", 0, "simulado")])
+            con.commit()
+        finally: con.close()
+        for flt in ("", "q=T25", "kind=conflito", "status=aberta&field=peso", "status=todas&q=T25"):
+            c = C.get(f"/api/pendencies?{flt}").json["counts"]
+            for grp in ("status", "kind", "field"):
+                base = "&".join(x for x in flt.split("&") if x and not x.startswith(grp + "="))
+                for v, n in c[grp].items(): self.assertEqual(C.get(f"/api/pendencies?{base}&{grp}={v}").json["total"], n, f"{flt} {grp}={v}")
+            self.assertEqual(sum(n for v, n in c["status"].items() if v != "todas"), c["status"]["todas"], flt)
+        d = C.get("/api/pendencies?q=T25").json
+        self.assertEqual(d["counts"]["status"], {"todas": 5, "aberta": 3, "resolvida": 1, "ignorada": 1}); self.assertEqual(d["counts"]["kind"], {"conflito": 3, "campo_ausente": 2})
+        self.assertEqual(C.get("/api/pendencies?q=T25&status=todas").json["total"], 5)
+        r = C.get("/api/export/pendencias.xlsx?q=T25&status=aberta&kind=conflito"); self.assertEqual(r.status_code, 200)
+        self.assertEqual(load_workbook(io.BytesIO(r.data)).worksheets[0].max_row - 1, 2)
+        i = next(x["id"] for x in C.get("/api/pendencies?q=T25&status=aberta&field=ean").json["rows"])
+        self.assertEqual(C.post(f"/api/pendencies/{i}", json={"status": "resolvida"}).status_code, 200)
+        self.assertEqual(C.get("/api/pendencies?q=T25").json["counts"]["status"]["aberta"], 2)
+        h = C.get("/api/history").json; n = {s: sum(1 for b in h["batches"] if b["status"] == s) for s in {b["status"] for b in h["batches"]}}
+        self.assertEqual(h["counts"], {"todas": len(h["batches"]), **n}); self.assertGreaterEqual(n["simulado"], 1); self.assertGreaterEqual(n["ok"], 1)
+        for s in n:
+            r = C.get(f"/api/export/fontes.xlsx?status={s}"); self.assertEqual(load_workbook(io.BytesIO(r.data)).worksheets[0].max_row - 1, n[s], s)
 
 
 if __name__ == "__main__":

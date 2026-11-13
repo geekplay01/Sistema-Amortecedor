@@ -16,6 +16,8 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - O servidor é **somente leitura**: só `SELECT` passa (`assert_select`). O servidor **nunca grava no catálogo**.
 - A planilha antiga `DadosR-D e DES.xlsx` é ignorada: DES/R-D vêm só do servidor.
 - Atualização por planilha: insere só o que falta, nada é apagado, backup automático antes de aplicar (`updater.py`).
+- Cada leitura de planilha fica no histórico (`import_batches`): status `ok` = gravada; `simulado` = só verificação (lida e comparada, nada gravado). A tela Fontes conta as duas sobre as últimas 200 e o Excel segue o filtro (`queries.history`).
+- Conflito na importação: o valor do banco **nunca** é sobrescrito sozinho; vira pendência «conflito» (valor atual × importado, com a fonte). A prioridade da fonte (1–9) só orienta a análise manual.
 
 ## 2. Catálogo
 - `CatalogoAMD.xlsx` é a **fonte de verdade**: o que está nela prevalece sobre o banco (política *overwrite*); a posição no catálogo é a ordem das linhas; produto que sai da planilha sai do catálogo (`catalog_position = NULL`), mas não é apagado.
@@ -23,6 +25,7 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Observação: «Sistema: Gás/Óleo» → `system_type`; «Medida emb.» → nota de embalagem; «MIN: x / MÁX: y» → Lmin/Lmax.
 - Números Referência «CÓDIGO (MARCA)»: marca OEM → código OEM; demais → concorrente.
 - Pendências automáticas: produto sem Lmin/Lmax, peso ou EAN.
+- Tela Pendências (`queries.pendencies`): status aberta/resolvida/ignorada (padrão: abertas; «todas» = sem filtro), tipo e campo são atalhos; cada grupo conta com os outros filtros e ignora o próprio, então o número = lista ao clicar. Resolver/ignorar só muda o status da pendência, nunca o produto. Duplicidades (mesmo código em mais de um produto, sem a referência cruzada) só são listadas: nada é unido.
 - Brands pelo prefixo: `AMD…` PERFECT · `1BP…` BPROAUTO · só números MOTRIO · base ItensMotorcraft MOTORCRAFT. O que não se encaixa vai para «Sem marca» (`OUTROS`), que também tem lista e Excel próprios. Os cartões de marca, «onde está» (catálogo, DES, R-D, base) e os 4 controles contam como a lista: cada grupo ignora o próprio filtro e respeita os outros (`brands.items · counts`).
 - Prefixo `MP-` = item a granel (sem embalagem); é removido para casar com o código do catálogo.
 - Aplicações (`queries._app_conds`): lado direito/esquerdo inclui as aplicações de **ambos** os lados; `axle`/`side = sem` = não informado. Os atalhos de eixo e lado contam cada um ignorando o próprio filtro (`queries.applications · stats`).

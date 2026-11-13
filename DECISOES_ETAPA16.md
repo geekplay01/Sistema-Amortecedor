@@ -153,4 +153,14 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Na cópia: 914 produtos (772 FORCE GAS, 142 FORCE OIL), 759 DES, 790 R-D; Brands: PERFECT 1.314, BPROAUTO 188, MOTRIO 10, MOTORCRAFT 36, Sem marca 13. Observação para a etapa D: códigos Ford no formato `XXX/18097/XX` fora da base Motorcraft caem em «Sem marca».
 - Próximo: telas de Dados (pendências, fontes, configurações, atualização).
 
+### Etapa B · telas de Dados (13/11/2026) ✅
+- `telas/dados.js` virou quatro arquivos em Tailwind: `pendencias.js`, `fontes.js`, `configuracoes.js`, `atualizacao.js`. O painel do servidor saiu de `pages_new.js` para `configuracoes.js`; `pages_new.js` ficou só com a busca de preços (Compra de amostras). Com isso a **etapa B termina**: todas as telas do menu estão no visual novo (diálogos antigos como ficha e visualizador de desenho seguem no estilo antigo).
+- Pendências: abas «Pendências e conflitos» / «Possíveis duplicidades · N» (`tab` na URL); atalhos de status (Abertas, Resolvidas, Ignoradas, Todas), tipo e campo com contagem, busca, filtros na URL + última visita, Excel com os filtros. Conflitos aparecem como «No banco X × na planilha Y · fonte» (o texto gravado não muda). `queries.pendencies` ganhou `counts`, filtro `field` e `status=todas`.
+- Fontes: 4 KPIs (gravadas, só verificação, fontes, linhas de dados avulsos), atalhos Todas / Gravadas / Só verificação (`status` na URL), Excel do histórico com o filtro, conflitos e erros destacados, aviso ao salvar a prioridade, dados avulsos em diálogo com tabela nova. `queries.history(status)` com `counts`.
+- Configurações: menu lateral (em cima no celular), seções em cartões, formulários e tabelas novos; mesmas APIs e nomes de campo. Atualização: aviso, 4 KPIs, tabela por planilha e botão Aplicar.
+- `tw_fallback.py`: variante `disabled:` e 8 classes novas (308 regras).
+- Teste `test_25`: atalhos de status/tipo/campo = lista (com e sem outros filtros), `todas` = soma, resolver tira das abertas, Excel com filtros; histórico conta gravadas × só verificação e o Excel segue o status.
+- Na cópia: 97 pendências abertas (85 conflitos: família 43, código da caixa 36, EAN 6; 12 sem peso), 18 duplicidades, 33 importações (10 gravadas, 23 só verificação), 21 fontes. No navegador resolvi e reabri uma pendência e rodei a verificação da pasta bases_exemplo (nada a inserir; não apliquei). Perfil e senha não foram vistos com usuário: a cópia roda com `PSD_AUTH=off` (as APIs de perfil e senha são cobertas pelo `test_10`).
+- Próximo: etapa D.
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

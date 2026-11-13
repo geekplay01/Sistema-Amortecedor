@@ -24,6 +24,8 @@ STATIC = {"flex": "display:flex", "grid": "display:grid", "block": "display:bloc
           "tracking-wide": "letter-spacing:.025em", "tracking-widest": "letter-spacing:.1em", "inset-x-0": "left:0;right:0", "inset-y-0": "top:0;bottom:0", "left-0": "left:0", "top-0": "top:0", "z-10": "z-index:10", "z-20": "z-index:20", "z-40": "z-index:40", "w-44": "width:11rem", "w-72": "width:18rem", "align-top": "vertical-align:top",
           "shadow-lg": "box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1)",
           "ring-2": "box-shadow:0 0 0 2px var(--tw-ring-color,rgba(59,130,246,.5))", "no-underline": "text-decoration-line:none", "w-14": "width:3.5rem", "w-48": "width:12rem",
+          "-mb-px": "margin-bottom:-1px", "border-b-2": "border-bottom-width:2px", "w-60": "width:15rem", "list-disc": "list-style-type:disc", "object-cover": "object-fit:cover",
+          "place-items-center": "place-items:center", "rounded-md": "border-radius:.375rem", "opacity-50": "opacity:.5",
           "mx-auto": "margin-left:auto;margin-right:auto", "ml-auto": "margin-left:auto", "w-36": "width:9rem", "items-start": "align-items:flex-start", "list-none": "list-style:none","grow": "flex-grow:1", "break-words": "overflow-wrap:break-word", "hidden ": ""}
 SIDES = {"": ["{}"], "x": ["{}-left", "{}-right"], "y": ["{}-top", "{}-bottom"], "t": ["{}-top"], "b": ["{}-bottom"], "l": ["{}-left"], "r": ["{}-right"]}
 
@@ -90,6 +92,7 @@ def rule(tok):
         if v in BP: media = BP[v]; order = max(order, 1 + BP[v] // 100)
         elif v == "hover": pseudo += ":hover"; order = max(order, 1)
         elif v == "focus": pseudo += ":focus"; order = max(order, 1)
+        elif v == "disabled": pseudo += ":disabled"; order = max(order, 1)
         elif v == "group-hover": grp = True; order = max(order, 1)
         else: return None
     if base.startswith("placeholder-"): pseudo += "::placeholder"

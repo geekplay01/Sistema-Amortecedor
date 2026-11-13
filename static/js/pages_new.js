@@ -1,28 +1,9 @@
-/* Painel do servidor (Configurações) e busca de preços (Compra de amostras). (Dashboard: telas/dashboard.js · Metas & Validação: telas/metas.js.)
+/* Busca de preços (Compra de amostras). (Dashboard: telas/dashboard.js · Metas: telas/metas.js · painel do servidor: telas/configuracoes.js.)
    Carregado antes do core.js; recebe os utilitários dele (window.PSD_NEW(ctx)). */
 window.PSD_NEW = ctx => {
-  const { post, $, esc, num, T, dmy } = ctx, J = ctx.J;
+  const { post, $, esc, num } = ctx;
   const brl = v => v == null ? "–" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const when = s => s ? `${dmy(s)} ${String(s).slice(11, 16)}`.trim() : "–";
   const note = (t, cls = "") => `<div class="notice ${cls}">${t}</div>`;
-
-  // ───────────────────────── Painel do servidor (Configurações) ─────────────────────────
-  async function serverPanel(host) {
-    host.innerHTML = '<p class="muted">Consultando o servidor…</p>';
-    const draw = async () => {
-      let st, rn; try { [st, rn] = await Promise.all([J("/api/pipeline/status"), J("/api/pipeline/runs")]); } catch (e) { host.innerHTML = note(esc(e.message), "err"); return; }
-      const ok = st.last_status === "ok", drv = st.drivers.length ? st.drivers.map(d => `<span class="chip ok">${d}</span>`).join(" ") : '<span class="chip warn">nenhum (rode o iniciar.bat novamente)</span>';
-      host.innerHTML = `<section class="dpanel srv"><header><h3>Servidor SQL — ${esc(st.host)}</h3><button class="btn" id="srvgo" ${st.running || !st.configured ? "disabled" : ""}>${st.running ? "Sincronizando…" : "Sincronizar agora"}</button></header>
-        <div class="srv-grid"><div><small>Credenciais (.env)</small><b>${st.configured ? "✔ preenchidas" : "✖ faltam usuário/senha"}</b></div><div><small>Drivers</small><b>${drv}</b></div><div><small>Última sincronização</small><b>${st.last_ok_at ? when(st.last_ok_at) : "nunca"}</b></div><div><small>Itens no servidor</small><b>${num(st.items)}</b></div><div><small>Sincronizações feitas</small><b>${st.runs}</b></div><div><small>Agendamento</small><b>diário (DEV_SYNC_HOURS)</b></div></div>
-        ${st.last_status === "erro" ? note(`<b>Última tentativa falhou:</b> ${esc(st.last_error || "")}`, "err") : ""}
-        ${rn.tracking.since ? `<p class="muted">O servidor só guarda o status atual: o sistema grava um <b>snapshot a cada sincronização</b> (marco zero em ${dmy(rn.tracking.since)}) e detecta as mudanças de status a partir dele.</p>` : ""}
-        <h4>Últimas sincronizações</h4>${rn.runs.length ? T(["#", "Início", "Fim", "Resultado", "Linhas", "Itens", "Eventos", "Novos", "Ausentes", "Avisos"], rn.runs.map(r => `<tr><td>${r.id}</td><td>${when(r.started_at)}</td><td>${when(r.finished_at)}</td><td>${r.status === "ok" ? `<span class="badge ok">${r.baseline ? "marco zero" : "ok"}</span>` : `<span class="badge bad" title="${esc(r.error || "")}">erro</span>`}</td><td>${num(r.source_rows)}</td><td>${num(r.items)}</td><td>${num(r.events)}</td><td>${num(r.new_items)}</td><td>${num(r.removed_items)}</td><td>${warnTxt(r)}</td></tr>`)) : '<p class="muted">Nenhuma ainda.</p>'}
-        ${rn.datasets.length ? `<h4>Compras, vendas e estoque</h4>` + T(["Conjunto", "Objeto no servidor", "Linhas", "Resultado", "Quando", "Observação"], rn.datasets.map(r => `<tr><td>${esc(r.dataset)}</td><td>${esc(r.object || "")}</td><td>${num(r.rows)}</td><td><span class="badge ${r.status === "ok" ? "ok" : "warn"}">${esc(r.status)}</span></td><td>${when(r.at)}</td><td>${esc(r.note || "")}</td></tr>`)) : ""}</section>`;
-      const b = $("#srvgo"); if (b) b.onclick = async () => { b.disabled = true; b.textContent = "Sincronizando…"; try { await post("/api/pipeline/sync"); window.psdSyncPoll && window.psdSyncPoll(draw); } catch (e) { alert(e.message); draw(); } };
-    };
-    const warnTxt = r => { try { const w = JSON.parse(r.warnings || "{}"); const k = Object.keys(w); return k.length ? `<span class="muted" title="${esc(JSON.stringify(w))}">${k.length} aviso(s)</span>` : "–"; } catch (e) { return "–"; } };
-    draw();
-  }
 
   // ───────────────────────── Busca de preços (Compra de amostras) ─────────────────────────
   function priceSearch(host, o = {}) {
@@ -55,5 +36,5 @@ window.PSD_NEW = ctx => {
     return { setRefs(r) { const keep = refs.filter(x => x.manual); refs = [...r.map((x, i) => ({ ...x, on: i < 2 })), ...keep]; render(); }, search: go, refs: () => refs };
   }
 
-  return { serverPanel, priceSearch };
+  return { priceSearch };
 };

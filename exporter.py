@@ -59,7 +59,7 @@ def _pend(a):
             ("Duplicidades", ["Tipo de código", "Código", "Produtos", "Qtd. produtos"], [[r["code_type"], r["code"], r["products"], r["n"]] for r in du], [14, 20, 60, 12])], len(d)
 
 def _fontes(a):
-    h = Q.history()
+    h = Q.history(a.get("status"))
     return [("Histórico", ["#", "Data", "Arquivo", "Planilha", "Categoria", "Linhas lidas", "Novos", "Atualizados", "Conflitos", "Erros", "Status"],
              [[b["id"], b["imported_at"], b["filename"], b["sheet"], b["category"], b["rows_read"], b["rows_new"], b["rows_updated"], b["rows_conflict"], b["rows_error"], b["status"]] for b in h["batches"]], [6, 20, 40, 14, 28, 12, 9, 12, 10, 8, 10]),
             ("Fontes", ["Fonte", "Categoria", "Importações", "Prioridade"], [[s["name"], s["category"], s["imports"], s["priority"]] for s in h["sources"]], [44, 30, 12, 10])], len(h["batches"])
@@ -102,8 +102,10 @@ LABELS = {"desenvolvimento": "Em desenvolvimento", "redesenvolvimento": "Em rede
           "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
-          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem", "res": "Resultado", "scope": "Onde está"}
-FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT"},
+          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo"}
+FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT", "conflito": "Conflito entre fontes", "campo_ausente": "Campo ausente", "campo_invalido": "Campo inválido"},
+          "status": {"aberta": "Abertas", "resolvida": "Resolvidas", "ignorada": "Ignoradas", "todas": "Todas", "simulado": "Só verificação"},
+          "field": {"family": "Família", "package_code": "Código da caixa", "ean": "EAN", "peso": "Peso", "sistema": "Sistema"},
           "where": {"cat": "No catálogo", "des": "Em DES", "rd": "Em R-D", "sem": "Sem vínculo", "falta": "Sem desenho"},
           "res": {"APPROVED": "Aprovados", "DISAPPROVED": "Reprovados", "INCOMPLETO": "Incompletos"}, "axle": {"sem": "não informado"}, "side": {"sem": "não informado"},
           "scope": {"catalog": "No catálogo", "des": "Em DES", "rd": "Em R-D", "base": "Na base Motorcraft"}, "brand": {"OUTROS": "Sem marca"},

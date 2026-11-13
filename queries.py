@@ -141,23 +141,35 @@ def applications(f):
             "stats": {f"{g}:{v}": st.get((g, v), 0) for g, vs in (("axle", ("dianteiro", "traseiro", "sem")), ("side", ("direito", "esquerdo", "sem"))) for v in vs},
             "rows": q(f"SELECT a.id,a.make,a.model,a.version,a.application_text,a.year_from,a.year_to,a.axle,a.side,p.id product_id,p.perfect_code,p.description,p.catalog_position {b} ORDER BY a.make,a.model,a.year_from LIMIT {size} OFFSET {off}", p)}
 
+PEND_STATUS = ("aberta", "resolvida", "ignorada")
 def pendencies(f):
-    w, p = [], {}
-    for k in ("kind", "status"):
-        if f.get(k): w.append(f"x.{k}=:{k}"); p[k] = f[k]
-    for i, t in enumerate((f.get("q") or "").split()): w.append(f"(p.perfect_code LIKE :t{i} OR x.description LIKE :t{i} OR x.field LIKE :t{i})"); p[f"t{i}"] = f"%{t}%"
-    sw = " AND ".join(w) or "1=1"; size = 10**9 if f.get("all") else 100; off = 0 if f.get("all") else (max(int(f.get("page") or 1), 1) - 1) * size
-    base = f"FROM pendencies x LEFT JOIN products p ON p.id=x.product_id WHERE {sw}"
-    return {"total": q1("SELECT COUNT(*) n " + base, p)["n"], "size": size, "kinds": [r["kind"] for r in q("SELECT DISTINCT kind FROM pendencies")],
-            "rows": q(f"SELECT x.id,x.kind,x.field,x.description,x.status,p.id product_id,p.perfect_code {base} ORDER BY x.status,x.kind,p.perfect_code LIMIT {size} OFFSET {off}", p)}
+    """Lista de pendências. Filtros: q, status («todas» ou vazio = sem filtro), kind, field. `counts` = atalhos da tela: cada grupo (status, kind, field)
+    conta com os outros filtros e ignora o próprio, então o número do atalho = total da lista ao clicar (test_25)."""
+    fl = {k: f.get(k) for k in ("status", "kind", "field") if f.get(k) and f.get(k) != "todas"}
+    def where(skip=""):
+        w, p = [], {}
+        for k, v in fl.items():
+            if k != skip: w.append(f"x.{k}=:{k}"); p[k] = v
+        for i, t in enumerate((f.get("q") or "").split()): w.append(f"(p.perfect_code LIKE :t{i} OR x.description LIKE :t{i} OR x.field LIKE :t{i})"); p[f"t{i}"] = f"%{t}%"
+        return f"FROM pendencies x LEFT JOIN products p ON p.id=x.product_id WHERE {' AND '.join(w) or '1=1'}", p
+    base, p = where(); size = 10**9 if f.get("all") else 100; off = 0 if f.get("all") else (max(int(f.get("page") or 1), 1) - 1) * size
+    def grp(k):
+        b, pp = where(k); return {r["v"]: r["n"] for r in q(f"SELECT x.{k} v,COUNT(*) n {b} AND x.{k} IS NOT NULL AND x.{k}<>'' GROUP BY x.{k} ORDER BY n DESC,v", pp)}
+    st = grp("status"); counts = {"status": {"todas": sum(st.values()), **{s: st.get(s, 0) for s in PEND_STATUS}}, "kind": grp("kind"), "field": grp("field")}
+    return {"total": q1("SELECT COUNT(*) n " + base, p)["n"], "size": size, "kinds": [r["kind"] for r in q("SELECT DISTINCT kind FROM pendencies")], "counts": counts,
+            "rows": q(f"SELECT x.id,x.kind,x.field,x.description,x.status,x.created_at,p.id product_id,p.perfect_code {base} ORDER BY x.status,x.kind,p.perfect_code LIMIT {size} OFFSET {off}", p)}
 
 def duplicates():
     return q("""SELECT k.code_type,k.normalized_code code,group_concat(DISTINCT p.perfect_code) products,COUNT(DISTINCT k.product_id) n
         FROM codes k JOIN products p ON p.id=k.product_id WHERE k.normalized_code IS NOT NULL AND coalesce(k.source_id,0) NOT IN (SELECT id FROM sources WHERE name LIKE 'CrossCatalogo%') GROUP BY k.code_type,k.normalized_code HAVING COUNT(DISTINCT k.product_id)>1 ORDER BY n DESC,code""")
 
-def history():
-    return {"batches": q("SELECT b.id,b.imported_at,b.filename,b.sheet,b.category,b.rows_read,b.rows_new,b.rows_updated,b.rows_conflict,b.rows_error,b.status FROM import_batches b ORDER BY b.id DESC LIMIT 200"),
-            "sources": q("SELECT s.id,s.name,s.category,s.priority,(SELECT COUNT(*) FROM import_batches b WHERE b.source_id=s.id) imports,(SELECT COUNT(*) FROM generic_rows g WHERE g.source_id=s.id) generic_rows FROM sources s ORDER BY s.name")}
+def history(status=None):
+    """Últimas 200 importações (status «ok» = gravada, «simulado» = só verificação) e as fontes. `counts` por status sobre as 200; `status` filtra a lista (Excel)."""
+    b = q("SELECT b.id,b.imported_at,b.filename,b.sheet,b.category,b.rows_read,b.rows_new,b.rows_updated,b.rows_conflict,b.rows_error,b.status FROM import_batches b ORDER BY b.id DESC LIMIT 200")
+    counts = {"todas": len(b)}
+    for x in b: counts[x["status"]] = counts.get(x["status"], 0) + 1
+    return {"batches": [x for x in b if not status or status == "todas" or x["status"] == status], "counts": counts,
+            "sources":q("SELECT s.id,s.name,s.category,s.priority,(SELECT COUNT(*) FROM import_batches b WHERE b.source_id=s.id) imports,(SELECT COUNT(*) FROM generic_rows g WHERE g.source_id=s.id) generic_rows FROM sources s ORDER BY s.name")}
 
 # ---- backup / restauração ----
 BK = os.path.join(db.BASE, "backups")
