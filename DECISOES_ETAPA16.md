@@ -134,4 +134,13 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Na cópia e no banco real há regra (Pf e Py, 5 velocidades cada) e nenhum ensaio. No navegador salvei, abri, filtrei e excluí um ensaio de teste na cópia.
 - Próximo: Aplicações, Comparação e Equivalências (`telas/catalogo.js`).
 
+### Etapa B · Aplicações, Comparação e Equivalências (13/11/2026) ✅
+- `telas/catalogo.js` reescrito em Tailwind (as três telas).
+- Aplicações: 4 KPIs (aplicações, produtos, montadoras, modelos — com os filtros), atalhos de eixo (Dianteiro, Traseiro, **Eixo não informado**) e lado (Direito, Esquerdo, **Lado não informado**), filtros na URL + última visita, montadora → modelos, Excel com os filtros, descrição do produto junto do código. `queries.applications` ganhou `stats`/`kpis`; `axle`/`side = sem`.
+- Comparação: escolha por código (até 4, aviso de repetido/limite), produtos como chips removíveis, linhas que diferem destacadas, botão «Só as diferenças», última comparação lembrada (`ids`, `dif`).
+- Equivalências: 4 KPIs por status, atalhos de status, confiança e «Sem diferenças»; critérios/diferenças/dados ausentes em menus com contagem, guardados na URL juntos por «|» (`_eqf` aceita os dois jeitos). Barra da pontuação colorida pela **confiança**. Sem `alert()` ao gerar sugestões. `listing` ganhou `conf_counts`/`diff_counts`.
+- Teste `test_23`: atalhos de eixo/lado = lista (com e sem outros filtros), Excel `axle=sem`; status/confiança/diferença = lista; `crit` com «|» = repetido = Excel; comparação limita a 4.
+- Na cópia: 963 aplicações (32 sem eixo e sem lado), 259 sugestões, todas pendentes (2 Alta, 36 Média, 221 Baixa; 23 sem diferenças). No navegador aprovei e voltei a pendente uma sugestão na cópia.
+- Próximo: Dashboard e Brands.
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

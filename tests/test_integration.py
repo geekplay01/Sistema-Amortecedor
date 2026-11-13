@@ -388,6 +388,35 @@ class Fluxo(unittest.TestCase):
         finally: con.close()
         self.assertEqual(C.get("/api/damping/tests?q=T22").json["counts"]["INCOMPLETO"], 0)
 
+    def test_23_aplicacoes_equivalencias_atalhos(self):
+        """Aplicações: eixo e lado (inclusive «não informado») são atalhos que batem com a lista. Equivalências: status, confiança e «sem diferenças» idem;
+        crit/dif/miss aceitam «|» (URL da tela) como os parâmetros repetidos; o Excel traz o mesmo número de linhas."""
+        import io
+        from openpyxl import load_workbook
+        con = sqlite3.connect(DB)
+        try:
+            pid = con.execute("SELECT id FROM products ORDER BY id LIMIT 1").fetchone()[0]
+            con.execute("INSERT INTO applications(product_id,make,model,year_from,year_to,axle,side) VALUES(?,?,?,?,?,?,?)", (pid, "T23", "SEM EIXO", 2020, 2021, None, None)); con.commit()
+        finally: con.close()
+        for flt in ("", "make=T23", "q=strada"):
+            d = C.get(f"/api/applications?{flt}").json; s = d["stats"]
+            for k, n in s.items():
+                g, v = k.split(":"); self.assertEqual(C.get(f"/api/applications?{flt}&{g}={v}").json["total"], n, f"{flt} {k}")
+        d = C.get("/api/applications").json; self.assertGreater(d["stats"]["axle:dianteiro"], 0); self.assertGreaterEqual(d["stats"]["axle:sem"], 1)
+        self.assertEqual(d["stats"]["axle:dianteiro"] + d["stats"]["axle:traseiro"] + d["stats"]["axle:sem"], d["total"])
+        self.assertEqual(d["kpis"]["makes"] >= 1 and d["kpis"]["products"] <= d["total"], True)
+        r = C.get("/api/export/aplicacoes.xlsx?axle=sem"); self.assertEqual(load_workbook(io.BytesIO(r.data)).worksheets[0].max_row - 1, d["stats"]["axle:sem"])
+        if not C.get("/api/equivalences").json["total"]: C.post("/api/equivalences/generate")
+        e = C.get("/api/equivalences").json; self.assertGreater(e["total"], 0)
+        for grp, par in (("status_counts", "status"), ("conf_counts", "confidence"), ("diff_counts", "diff")):
+            self.assertEqual(sum(e[grp].values()), e["total"], grp)
+            for v, n in e[grp].items(): self.assertEqual(C.get(f"/api/equivalences?{par}={v}").json["total"], n, f"{par}={v}")
+        crit = [k.split(":", 1)[1] for k, n in e["facets"].items() if k.startswith("crit:") and n][:2]; self.assertTrue(crit)
+        junto = C.get("/api/equivalences?crit=" + "|".join(crit)).json["total"]
+        self.assertEqual(junto, C.get("/api/equivalences?" + "&".join("crit=" + c for c in crit)).json["total"])
+        r = C.get("/api/equivalences/export.xlsx?crit=" + "|".join(crit)); self.assertEqual(load_workbook(io.BytesIO(r.data)).worksheets[0].max_row - 1, junto)
+        ids = [str(x) for x in range(1, 7)]; self.assertLessEqual(len(C.get("/api/compare?ids=" + ",".join(ids)).json), 4)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

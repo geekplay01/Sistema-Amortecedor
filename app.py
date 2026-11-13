@@ -343,7 +343,8 @@ def api_hist(): return jsonify(queries.history())
 def api_src(i):
     pr = int((request.get_json(force=True) or {}).get("priority", 5)); queries.run("UPDATE sources SET priority=? WHERE id=?", (max(1, min(pr, 9)), i)); return jsonify(ok=True)
 def _eqf():
-    g = request.args; return dict(status=g.get("status") or None, conf=g.get("confidence") or None, qtxt=g.get("q") or None, crit=g.getlist("crit"), dif=g.getlist("dif"), miss=g.getlist("miss"), diff=g.get("diff") or None, minscore=g.get("minscore") or None)
+    g = request.args; lst = lambda k: [x for v in g.getlist(k) for x in v.split("|") if x]          # crit/dif/miss: repetidos (crit=a&crit=b) ou juntos por «|» (URL da tela)
+    return dict(status=g.get("status") or None, conf=g.get("confidence") or None, qtxt=g.get("q") or None, crit=lst("crit"), dif=lst("dif"), miss=lst("miss"), diff=g.get("diff") or None, minscore=g.get("minscore") or None)
 @app.get("/api/equivalences")
 def api_eq(): return jsonify(equivalence.listing(page=int(request.args.get("page") or 1), **_eqf()))
 @app.get("/api/equivalences/export.xlsx")

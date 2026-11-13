@@ -72,14 +72,14 @@ CRITERIA = ["Código em comum", "Aplicação em comum", "Mesmo eixo", "Mesmo lad
 def _where(status=None, conf=None, qtxt=None, crit=(), diff=None, minscore=None, skip=(), dif=(), miss=()):
     w, p = [], {}
     if status and "status" not in skip: w.append("e.status=:s"); p["s"] = status
-    if conf: w.append("e.confidence=:c"); p["c"] = conf
+    if conf and "conf" not in skip: w.append("e.confidence=:c"); p["c"] = conf
     if qtxt:
         from queries import perfect_codes              # código de concorrente → código PERFECT correspondente
         cv = perfect_codes(qtxt); ph = ",".join(f":cv{i}" for i in range(len(cv)))
         w.append("(pa.perfect_code LIKE :q OR pb.perfect_code LIKE :q" + (f" OR pa.perfect_code IN ({ph}) OR pb.perfect_code IN ({ph})" if cv else "") + ")"); p["q"] = f"%{qtxt}%"
         p.update({f"cv{i}": c for i, c in enumerate(cv)})
-    if diff == "sem": w.append("e.differences='[]'")
-    elif diff == "com": w.append("e.differences<>'[]'")
+    if diff == "sem" and "diff" not in skip: w.append("e.differences='[]'")
+    elif diff == "com" and "diff" not in skip: w.append("e.differences<>'[]'")
     if minscore not in (None, ""): w.append("e.score>=:ms"); p["ms"] = float(minscore)
     if "crit" not in skip:
         for i, c in enumerate(x for x in crit if x in CRITERIA): w.append(f"instr(e.criteria,:c{i})>0"); p[f"c{i}"] = '"' + c
@@ -99,17 +99,20 @@ def listing(status=None, conf=None, qtxt=None, crit=(), diff=None, minscore=None
         total = c.execute("SELECT COUNT(*) " + _BASE + sw, p).fetchone()[0]
         lim = "" if all_rows else f"LIMIT {size} OFFSET {(page - 1) * size}"
         rows = [dict(r) for r in c.execute(f"SELECT e.*,pa.perfect_code a_code,pa.description a_desc,pb.perfect_code b_code,pb.description b_desc {_BASE}{sw} ORDER BY e.score DESC,e.id {lim}", p)]
-        facets = status_counts = None
-        if not all_rows:  # contagens ao lado de cada filtro (respeitando os demais filtros)
+        facets = status_counts = conf_counts = diff_counts = None
+        if not all_rows:  # contagens ao lado de cada filtro/atalho: ignoram o próprio filtro e respeitam os demais (= total da lista ao clicar)
             facets = {}
             for grp, col, lst in (("crit", "criteria", CRITERIA), ("dif", "differences", DIFFS), ("miss", "missing", MISSING)):
                 w2, p2 = _where(*args, skip=(grp,), **kw)
                 for k in lst: facets[grp + ":" + k] = c.execute("SELECT COUNT(*) " + _BASE + w2 + f" AND instr(e.{col},:k)>0", {**p2, "k": '"' + k}).fetchone()[0]
-            w3, p3 = _where(*args, skip=("status",), **kw); status_counts = {r[0]: r[1] for r in c.execute("SELECT e.status,COUNT(*) " + _BASE + w3 + " GROUP BY e.status", p3)}
+            def grp_count(sk, expr):
+                w4, p4 = _where(*args, skip=(sk,), **kw); return {r[0]: r[1] for r in c.execute(f"SELECT {expr},COUNT(*) " + _BASE + w4 + " GROUP BY 1", p4)}
+            status_counts = grp_count("status", "e.status"); conf_counts = grp_count("conf", "e.confidence")
+            diff_counts = grp_count("diff", "CASE WHEN e.differences='[]' THEN 'sem' ELSE 'com' END")
     finally: c.close()
     for r in rows:
         for k in ("criteria", "differences", "missing"): r[k] = json.loads(r[k] or "[]")
-    return {"total": total, "rows": rows, "size": size, "facets": facets, "status_counts": status_counts}
+    return {"total": total, "rows": rows, "size": size, "facets": facets, "status_counts": status_counts, "conf_counts": conf_counts, "diff_counts": diff_counts}
 
 def export_xlsx(**f):
     """Planilha com TODAS as sugestões do filtro atual (não só a página). Códigos como texto."""

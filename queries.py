@@ -14,13 +14,16 @@ def run(sql, a=()):
     finally: c.close()
 
 APP_TXT = "coalesce(a.make,'')||' '||coalesce(a.model,'')||' '||coalesce(a.version,'')||' '||coalesce(a.application_text,'')||' '||coalesce(a.axle,'')||' '||coalesce(a.side,'')"
-def _app_conds(f, p):
+def _app_conds(f, p, skip=()):
+    """Filtros de aplicação. axle/side='sem' = não informado; lado direito/esquerdo inclui as aplicações de ambos os lados."""
     w = []
     if f.get("make"): w.append("upper(trim(a.make))=upper(trim(:make))"); p["make"] = f["make"]
     if f.get("model"): w.append("upper(trim(a.model))=upper(trim(:model))"); p["model"] = f["model"]
     if re.fullmatch(r"\d{4}", f.get("year") or ""): w.append("a.year_from<=:year AND coalesce(a.year_to,9999)>=:year"); p["year"] = int(f["year"])
-    if f.get("axle"): w.append("a.axle=:axle"); p["axle"] = f["axle"]
-    if f.get("side"): w.append("(a.side=:side OR a.side='ambos')"); p["side"] = f["side"]
+    if f.get("axle") == "sem" and "axle" not in skip: w.append("coalesce(a.axle,'')=''")
+    elif f.get("axle") and "axle" not in skip: w.append("a.axle=:axle"); p["axle"] = f["axle"]
+    if f.get("side") == "sem" and "side" not in skip: w.append("coalesce(a.side,'')=''")
+    elif f.get("side") and "side" not in skip: w.append("(a.side=:side OR a.side='ambos')"); p["side"] = f["side"]
     return w
 
 KEY = "replace(replace(replace(replace(replace(replace(upper({c}),'-',''),'.',''),'/',''),' ',''),'_',''),'\\','')"      # código sem pontuação: «16.470», «16-470» e «16470» são o mesmo código
@@ -124,12 +127,19 @@ def ficha(pid):
 def compare(ids): return [x for x in (ficha(i) for i in ids[:4]) if x]
 
 def applications(f):
-    p = {}; w = _app_conds(f, p)
-    for i, t in enumerate((f.get("q") or "").split()): p[f"t{i}"] = f"%{t}%"; w.append(f"(({APP_TXT}) LIKE :t{i} OR p.perfect_code LIKE :t{i})")
-    sw = " AND ".join(w) or "1=1"; size = 10**9 if f.get("all") else 100; off = 0 if f.get("all") else (max(int(f.get("page") or 1), 1) - 1) * size
-    base = f"FROM applications a JOIN products p ON p.id=a.product_id WHERE {sw}"
-    return {"total": q1("SELECT COUNT(*) n " + base, p)["n"], "size": size,
-            "rows": q(f"SELECT a.id,a.make,a.model,a.version,a.application_text,a.year_from,a.year_to,a.axle,a.side,p.id product_id,p.perfect_code,p.catalog_position {base} ORDER BY a.make,a.model,a.year_from LIMIT {size} OFFSET {off}", p)}
+    def base(skip=()):
+        p = {}; w = _app_conds(f, p, skip)
+        for i, t in enumerate((f.get("q") or "").split()): p[f"t{i}"] = f"%{t}%"; w.append(f"(({APP_TXT}) LIKE :t{i} OR p.perfect_code LIKE :t{i})")
+        return f"FROM applications a JOIN products p ON p.id=a.product_id WHERE {' AND '.join(w) or '1=1'}", p
+    b, p = base(); size = 10**9 if f.get("all") else 100; off = 0 if f.get("all") else (max(int(f.get("page") or 1), 1) - 1) * size
+    k = q1(f"SELECT COUNT(*) n,COUNT(DISTINCT p.id) products,COUNT(DISTINCT upper(trim(a.make))) makes,COUNT(DISTINCT upper(trim(a.make))||'|'||upper(trim(a.model))) models {b}", p)
+    st = {}                                      # atalhos: cada número ignora o próprio filtro (eixo ou lado) e respeita os demais = total da lista ao clicar
+    bx, px = base(("axle",)); st.update({("axle", r["v"]): r["n"] for r in q(f"SELECT coalesce(nullif(a.axle,''),'sem') v,COUNT(*) n {bx} GROUP BY 1", px)})
+    bs, ps = base(("side",)); sd = {r["v"]: r["n"] for r in q(f"SELECT coalesce(nullif(a.side,''),'sem') v,COUNT(*) n {bs} GROUP BY 1", ps)}
+    st.update({("side", "direito"): sd.get("direito", 0) + sd.get("ambos", 0), ("side", "esquerdo"): sd.get("esquerdo", 0) + sd.get("ambos", 0), ("side", "sem"): sd.get("sem", 0)})
+    return {"total": k["n"], "size": size, "kpis": {"products": k["products"], "makes": k["makes"], "models": k["models"]},
+            "stats": {f"{g}:{v}": st.get((g, v), 0) for g, vs in (("axle", ("dianteiro", "traseiro", "sem")), ("side", ("direito", "esquerdo", "sem"))) for v in vs},
+            "rows": q(f"SELECT a.id,a.make,a.model,a.version,a.application_text,a.year_from,a.year_to,a.axle,a.side,p.id product_id,p.perfect_code,p.description,p.catalog_position {b} ORDER BY a.make,a.model,a.year_from LIMIT {size} OFFSET {off}", p)}
 
 def pendencies(f):
     w, p = [], {}

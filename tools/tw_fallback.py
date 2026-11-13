@@ -21,7 +21,8 @@ STATIC = {"flex": "display:flex", "grid": "display:grid", "block": "display:bloc
           "border": "border-width:1px", "border-2": "border-width:2px", "border-t": "border-top-width:1px", "border-b": "border-bottom-width:1px", "border-r": "border-right-width:1px",
           "border-collapse": "border-collapse:collapse", "border-dashed": "border-style:dashed", "block ": "", "h-auto": "height:auto", "max-w-none": "max-width:none", "w-full": "width:100%", "h-full": "height:100%", "h-screen": "height:100vh", "min-w-0": "min-width:0",
           "shadow-sm": "box-shadow:0 1px 2px 0 rgb(0 0 0/.05)", "shadow-inner": "box-shadow:inset 0 2px 4px 0 rgb(0 0 0/.05)", "ring-1": "box-shadow:0 0 0 1px var(--tw-ring-color,rgba(59,130,246,.5))",
-          "tracking-wide": "letter-spacing:.025em", "tracking-widest": "letter-spacing:.1em", "inset-x-0": "left:0;right:0", "inset-y-0": "top:0;bottom:0", "left-0": "left:0", "top-0": "top:0", "z-10": "z-index:10", "z-40": "z-index:40",
+          "tracking-wide": "letter-spacing:.025em", "tracking-widest": "letter-spacing:.1em", "inset-x-0": "left:0;right:0", "inset-y-0": "top:0;bottom:0", "left-0": "left:0", "top-0": "top:0", "z-10": "z-index:10", "z-20": "z-index:20", "z-40": "z-index:40", "w-44": "width:11rem", "w-72": "width:18rem", "align-top": "vertical-align:top",
+          "shadow-lg": "box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1)",
           "mx-auto": "margin-left:auto;margin-right:auto", "ml-auto": "margin-left:auto", "w-36": "width:9rem", "items-start": "align-items:flex-start", "list-none": "list-style:none","grow": "flex-grow:1", "break-words": "overflow-wrap:break-word", "hidden ": ""}
 SIDES = {"": ["{}"], "x": ["{}-left", "{}-right"], "y": ["{}-top", "{}-bottom"], "t": ["{}-top"], "b": ["{}-bottom"], "l": ["{}-left"], "r": ["{}-right"]}
 

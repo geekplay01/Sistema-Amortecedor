@@ -25,6 +25,7 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Pendências automáticas: produto sem Lmin/Lmax, peso ou EAN.
 - Brands pelo prefixo: `AMD…` PERFECT · `1BP…` BPROAUTO · só números MOTRIO · base ItensMotorcraft MOTORCRAFT.
 - Prefixo `MP-` = item a granel (sem embalagem); é removido para casar com o código do catálogo.
+- Aplicações (`queries._app_conds`): lado direito/esquerdo inclui as aplicações de **ambos** os lados; `axle`/`side = sem` = não informado. Os atalhos de eixo e lado contam cada um ignorando o próprio filtro (`queries.applications · stats`).
 
 ## 3. Desenvolvimento (DES) e Redesenvolvimento (R-D)
 - Tipo vem de `SUGESTAO`: qualquer variação de DES → DESENVOLVIMENTO; R-D/RD/Redes… → REDESENVOLVIMENTO (`kinds.py`).
@@ -90,4 +91,4 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Desenhos: código e revisão pelo nome do arquivo; cadastros mostram a maior revisão; arquivo idêntico é ignorado.
 - «Sem desenho» = produto do catálogo sem nenhum desenho técnico; «Sem projeto» = código DES/R-D fora do catálogo (`rd_projects.product_id` vazio, qualquer status) sem Projeto PERFECT. O número do topo e a lista `where=falta` usam o mesmo conjunto (`drawings._missing`).
 - Damping force (`damping.py · calc/overall`): faixa = DRAWING×(1±tol); se DRAWING < limite (1.000 N na regra atual), mín +ajuste e máx −ajuste (30 N). Ponto aprovado se mín ≤ FOUND ≤ máx. Ensaio: **Reprovado** se algum ponto reprovou; **Aprovado** só se todo ponto com DRAWING foi aprovado; senão **Incompleto**. Os atalhos da tela e o Excel filtram por esse resultado geral (`damping.listing`).
-- Equivalências: só sugestões por similaridade; nada é aprovado automaticamente.
+- Equivalências: só sugestões por similaridade; nada é aprovado automaticamente. Diferença crítica (ex.: lados opostos) deixa a confiança **Baixa** mesmo com pontuação alta. Atalhos de status, confiança e «sem diferenças» contam ignorando o próprio filtro (`equivalence.listing`).

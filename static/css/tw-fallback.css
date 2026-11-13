@@ -1,5 +1,6 @@
 /* GERADO por tools/tw_fallback.py — classes TailwindCSS usadas nas telas (funciona sem internet). Não edite à mão. */
 .absolute{position:absolute}
+.align-top{vertical-align:top}
 .animate-spin{animation:psd-spin 1s linear infinite}
 .bg-amber-500{background-color:#f59e0b}
 .bg-amber-500\/10{background-color:rgba(245,158,11,0.1)}
@@ -75,6 +76,7 @@
 .grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .h-1{height:.25rem}
 .h-1\.5{height:.375rem}
+.h-2{height:.5rem}
 .h-3\.5{height:.875rem}
 .h-4{height:1rem}
 .h-8{height:2rem}
@@ -110,6 +112,7 @@
 .max-w-\[22rem\]{max-width:22rem}
 .max-w-\[24rem\]{max-width:24rem}
 .max-w-\[26rem\]{max-width:26rem}
+.max-w-\[30rem\]{max-width:30rem}
 .max-w-\[34rem\]{max-width:34rem}
 .max-w-\[8rem\]{max-width:8rem}
 .max-w-none{max-width:none}
@@ -183,6 +186,7 @@
 .rounded-full{border-radius:9999px}
 .rounded-lg{border-radius:.5rem}
 .rounded-xl{border-radius:.75rem}
+.shadow-lg{box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1)}
 .shadow-sm{box-shadow:0 1px 2px 0 rgb(0 0 0/.05)}
 .shrink-0{flex-shrink:0}
 .static{position:static}
@@ -224,12 +228,15 @@
 .w-3\.5{width:.875rem}
 .w-36{width:9rem}
 .w-4{width:1rem}
+.w-44{width:11rem}
 .w-64{width:16rem}
+.w-72{width:18rem}
 .w-8{width:2rem}
 .w-\[18px\]{width:18px}
 .w-full{width:100%}
 .whitespace-nowrap{white-space:nowrap}
 .z-10{z-index:10}
+.z-20{z-index:20}
 .z-40{z-index:40}
 .focus\:border-blue-400:focus{border-color:#60a5fa}
 .focus\:border-blue-500:focus{border-color:#3b82f6}
@@ -241,6 +248,7 @@
 .hover\:bg-slate-700\/60:hover{background-color:rgba(51,65,85,0.6)}
 .hover\:border-blue-500:hover{border-color:#3b82f6}
 .hover\:text-ink:hover{color:var(--tx)}
+.hover\:text-red-600:hover{color:#dc2626}
 .hover\:text-slate-200:hover{color:#e2e8f0}
 .hover\:text-white:hover{color:#ffffff}
 @media(min-width:640px){.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
