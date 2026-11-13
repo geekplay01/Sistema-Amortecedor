@@ -1,36 +1,79 @@
-/* Tela · Brands: PERFECT · BPROAUTO · MOTRIO · MOTORCRAFT.
-   Usa o núcleo window.PSD (core.js); registra a tela com PSD.tela(slug, desenhar). Separado do antigo pages.js na etapa 16. */
+/* Tela · Brands: PERFECT · BPROAUTO · MOTRIO · MOTORCRAFT (+ «Sem marca») — visual Tailwind (etapa 16 · B).
+   Cartões de marca, «onde está» (catálogo, DES, R-D, base Motorcraft) e controles de status são atalhos: cada número = total da lista ao clicar
+   (brands.items · counts; cada grupo ignora o próprio filtro e respeita os outros; test_24). Filtros na URL e lembrados (PSDTW.filtros); o Excel segue os filtros. */
 (function () {
-  const { $, $$, esc, J, qs, num, T, lnk, empty, root, page, fail, tag, clip, FLG, flagChips, dwFill, dwCol } = PSD;
-  // ---------- Brands: PERFECT · BPROAUTO · MOTRIO · MOTORCRAFT ----------
-  async function brandsPage() {
-    const BC = { PERFECT: "#d4372c", BPROAUTO: "#2f7de1", MOTRIO: "#f2c12e", MOTORCRAFT: "#7c8cff", OUTROS: "#7b8794" }, NAME = { PERFECT: "PERFECT", BPROAUTO: "BPROAUTO", MOTRIO: "MOTRIO", MOTORCRAFT: "MOTORCRAFT", OUTROS: "Sem marca" };
-    try {
-      const s = await J("/api/brands"); let cur = new URLSearchParams(location.search).get("b") || "PERFECT";
-      const cards = [...s.brands]; if (s.unclassified) cards.push({ brand: "OUTROS", rule: "Não se encaixa em nenhuma regra", total: s.unclassified, catalog: 0, des: 0, rd: 0, base: 0, pend_compras: 0 });
-      root.innerHTML = `<div class="notice">Itens agrupados pelo código: <b>AMD…</b> = PERFECT · <b>1BP…</b> = BPROAUTO · <b>somente números</b> = MOTRIO · itens da base <b>ItensMotorcraft</b> (PN Ford, e mesma família de código) = MOTORCRAFT. Reúne catálogo, desenvolvimento, redesenvolvimento e pedidos de amostra.</div>
-        <div class="brand-grid" id="bg">${cards.map(b => `<button type="button" class="bcard ${b.brand === cur ? "on" : ""}" data-b="${b.brand}" style="--bc:${BC[b.brand]}"><h3>${NAME[b.brand]}</h3><div class="bn">${num(b.total)}</div><small>${esc(b.rule)}</small>
-          <div class="bch">${b.catalog ? `<span>Catálogo ${num(b.catalog)}</span>` : ""}${b.des ? `<span>DES ${num(b.des)}</span>` : ""}${b.rd ? `<span>R-D ${num(b.rd)}</span>` : ""}${b.base ? `<span>Base ${num(b.base)}</span>` : ""}${b.pend_compras ? `<span>Pend. compras ${num(b.pend_compras)}</span>` : ""}</div></button>`).join("")}</div>
-        <form class="toolbar" id="bf"><input name="q" placeholder="Buscar código, descrição ou veículo…" style="flex:1;min-width:240px">
-        <select name="scope"><option value="">Onde está: todos</option><option value="catalog">No catálogo</option><option value="des">Em desenvolvimento (DES)</option><option value="rd">Em redesenvolvimento (R-D)</option><option value="base">Na base Motorcraft</option></select>
-        <select name="flag"><option value="">Controle de status</option>${Object.entries(FLG).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join("")}</select><a class="btn" id="bdl" href="#">⬇ Baixar Excel</a></form>
-        <div class="summary" id="bsum"></div><div id="bt"></div><div class="pager" id="bpg"></div>`;
-      const f = $("#bf"); let pg = 1, tm;
-      const load = async () => { try {
-        const fv = Object.fromEntries(new FormData(f)); $("#bdl").href = "/api/export/brands.xlsx?" + qs({ ...fv, brand: cur === "OUTROS" ? "" : cur });
-        const d = await J(`/api/brands/${cur}/items?` + qs({ ...fv, page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size));
-        $("#bsum").textContent = `${NAME[cur]} · ${num(d.total)} item(ns)`;
-        $("#bt").innerHTML = d.rows.length ? T(["Código", "Código PERFECT", "Descrição", "Veículo / aplicação", "Onde está", "Controle de status", "Desenho", "Amostras"], d.rows.map(i => {
-          const code = i.catalog && i.product_id ? lnk(i.product_id, i.code) : i.des ? `<a href="#" data-rd="des" data-code="${esc(i.code)}">${esc(i.code)}</a>` : i.rd ? `<a href="#" data-rd="rd" data-code="${esc(i.code)}">${esc(i.code)}</a>` : esc(i.code);
-          return `<tr><td>${code}</td><td>${(i.perfect_codes || []).length ? i.perfect_codes.map(c => `<a class="pcode" href="/pesquisa?q=${encodeURIComponent(c)}">${esc(c)}</a>`).join(" ") : (i.brand === "PERFECT" ? '<span class="muted">é o próprio</span>' : '<span class="muted">sem relação</span>')}</td><td>${clip(i.description)}</td><td>${clip(i.vehicle)}</td><td>${[i.catalog && tag("Catálogo"), i.des && tag("DESENVOLVIMENTO"), i.rd && tag("REDESENVOLVIMENTO"), i.base && '<span class="tag">Base Motorcraft</span>'].filter(Boolean).join(" ")}</td><td class="fcell">${flagChips(i.flags)}</td>${dwCol(i.code)}<td>${i.samples ? `<a href="/amostras?q=${encodeURIComponent(i.code)}">${i.samples}</a>` : "–"}</td></tr>`; })) : empty("Nenhum item com esses filtros.");
-        $("#bpg").innerHTML = pages > 1 ? `<button class="btn ghost" data-p="${pg - 1}" ${pg < 2 ? "disabled" : ""}>‹</button> Página ${pg} de ${pages} <button class="btn ghost" data-p="${pg + 1}" ${pg >= pages ? "disabled" : ""}>›</button>` : "";
-        dwFill($("#bt"));
-      } catch (e) { fail(e); } };
-      f.addEventListener("input", () => { clearTimeout(tm); tm = setTimeout(() => { pg = 1; load(); }, 300); }); f.addEventListener("submit", e => e.preventDefault());
-      $("#bpg").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; load(); scrollTo(0, 0); } });
-      $("#bg").addEventListener("click", e => { const b = e.target.closest("[data-b]"); if (!b) return; cur = b.dataset.b; pg = 1; $$(".bcard", root).forEach(x => x.classList.toggle("on", x === b)); load(); });
-      load();
-    } catch (e) { fail(e); }
+  const { $, esc, J, qs, root, fail, FLG, flagChips, dwFill } = PSD;
+  const TW = window.PSDTW, { nf, badge, notice } = TW;
+  const BC = { PERFECT: "#d4372c", BPROAUTO: "#2f7de1", MOTRIO: "#f2c12e", MOTORCRAFT: "#7c8cff", OUTROS: "#7b8794" }, NOME = { OUTROS: "Sem marca" };
+  const ONDE = [["catalog", "No catálogo"], ["des", "Em DES"], ["rd", "Em R-D"], ["base", "Na base Motorcraft"]];
+  const CTRL = ["pend_compras", "pend_validacao", "val_reprovada", "pend_desenho_forn"];
+  const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
+  const botao = "rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10";
+  const primario = "rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700";
+  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
+  const rotulo = t => `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">${t}</span>`;
+  const meio = '<span class="text-mute">–</span>';
+  const pager = (pg, pages) => { const b = (p, dis, l) => `<button type="button" data-p="${p}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${dis ? "disabled" : ""}>${l}</button>`;
+    return pages > 1 ? `${b(pg - 1, pg < 2, "‹")} Página ${pg} de ${pages} ${b(pg + 1, pg >= pages, "›")}` : ""; };
+
+  function brands() {
+    const F = TW.filtros("brands", ["b", "q", "scope", "flag"]); let pg = 1, S = null, d = null, timer;
+    const marca = () => F.get().b || "PERFECT", nome = b => NOME[b] || b, filtrado = () => ["q", "scope", "flag"].some(k => F.get()[k]);
+    root.innerHTML = `<div class="flex flex-col gap-5">
+      <p class="m-0 text-sm text-mute">Itens agrupados pelo código: <b class="text-ink">AMD…</b> = PERFECT · <b class="text-ink">1BP…</b> = BPROAUTO · <b class="text-ink">somente números</b> = MOTRIO · itens da base <b class="text-ink">ItensMotorcraft</b> (PN Ford e a mesma família de código) = MOTORCRAFT. Reúne catálogo, desenvolvimento, redesenvolvimento, base de marcas e pedidos de amostra.</p>
+      <div id="bg" class="grid grid-cols-2 gap-4 lg:grid-cols-5"></div>
+      <div id="bq" class="flex flex-col gap-2"></div>
+      <form id="bf" class="flex flex-wrap items-center gap-2" autocomplete="off"><input name="q" type="search" placeholder="Buscar código, código PERFECT, descrição ou veículo…" class="${campo} min-w-[16rem] flex-1"><button type="button" id="bclr" class="${botao}">Limpar filtros</button></form>
+      <div id="bm" class="flex flex-wrap items-center justify-between gap-3 text-sm text-mute"></div>
+      <div id="bt"></div><div id="bp" class="flex items-center justify-center gap-3 text-sm text-mute"></div>
+    </div>`;
+    $("#bf").q.value = F.get().q || "";
+
+    const cartoes = () => {
+      const cur = marca(), c = d.counts.brand, lista = [...S.brands, ...(S.unclassified ? [{ brand: "OUTROS", rule: "Não se encaixa em nenhuma regra", total: S.unclassified }] : [])];
+      $("#bg").innerHTML = lista.map(b => { const on = b.brand === cur, det = [["Catálogo", b.catalog], ["DES", b.des], ["R-D", b.rd], ["Base", b.base], ["Pend. compras", b.pend_compras]].filter(x => x[1]);
+        return `<button type="button" data-b="${b.brand}" aria-pressed="${on}" class="relative overflow-hidden rounded-2xl border bg-card p-4 text-left shadow-sm ${on ? "border-blue-500 ring-2 ring-blue-500/40" : "border-line hover:bg-slate-500/10"}">
+          <span class="absolute inset-x-0 top-0 h-1" style="background:${BC[b.brand]}"></span>
+          <div class="text-xs font-semibold uppercase tracking-wide text-mute">${esc(nome(b.brand))}</div>
+          <div class="mt-2 text-2xl font-bold leading-none tabular-nums text-ink">${nf(c[b.brand])}</div>
+          <div class="mt-1 text-xs text-mute">${filtrado() ? `com os filtros · de ${nf(b.total)}` : esc(b.rule)}</div>
+          ${det.length ? `<div class="mt-2 flex flex-wrap gap-1">${det.map(([l, n]) => `<span class="rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-mute">${l} ${nf(n)}</span>`).join("")}</div>` : ""}</button>`; }).join("");
+    };
+    const atalhos = () => {
+      const s = F.get(), c = d.counts, onde = ONDE.filter(([k]) => c.scope[k] || s.scope === k), ctrl = CTRL.filter(k => c.flag[k] || s.flag === k);
+      $("#bq").innerHTML = `<div class="flex flex-wrap items-center gap-2">${rotulo("Onde está")}${chip('data-tg="scope" data-v=""', "Todos", !s.scope, c.scope.all)}${onde.map(([k, l]) => chip(`data-tg="scope" data-v="${k}"`, l, s.scope === k, c.scope[k])).join("")}</div>`
+        + (ctrl.length ? `<div class="flex flex-wrap items-center gap-2">${rotulo("Controle")}${ctrl.map(k => chip(`data-tg="flag" data-v="${k}"`, esc(FLG[k] ? FLG[k][0] : k), s.flag === k, c.flag[k], k === "pend_compras")).join("")}</div>` : "");
+    };
+    const tabela = () => {
+      const s = F.get(), cur = marca(), n = ["q", "scope", "flag"].filter(k => s[k]).length, x = { ...s }; delete x.b;
+      $("#bm").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns) ${esc(nome(cur))}${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
+        <a class="${primario}" href="/api/export/brands.xlsx?${qs({ ...x, brand: cur })}">⬇ Baixar Excel</a>`;
+      $("#bt").innerHTML = TW.table([{ h: "Código" }, { h: "Código PERFECT" }, { h: "Descrição" }, { h: "Veículo / aplicação" }, { h: "Onde está" }, { h: "Controle de status", nw: false }, { h: "Desenho" }, { h: "Amostras", r: true }],
+        d.rows.map(i => [
+          i.catalog && i.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${i.product_id}">${esc(i.code)}</a>` : i.des || i.rd ? `<a href="#" class="font-semibold text-blue-600" data-rd="${i.des ? "des" : "rd"}" data-code="${esc(i.code)}">${esc(i.code)}</a>` : `<b class="text-ink">${esc(i.code)}</b>`,
+          (i.perfect_codes || []).length ? i.perfect_codes.map(c => `<a class="font-semibold text-blue-600" href="/pesquisa?q=${encodeURIComponent(c)}">${esc(c)}</a>`).join(" ") : `<span class="text-mute">${i.brand === "PERFECT" ? "é o próprio" : "sem relação"}</span>`,
+          i.description ? `<span class="block max-w-[18rem] truncate" title="${esc(i.description)}">${esc(i.description)}</span>` : meio,
+          i.vehicle ? `<span class="block max-w-[18rem] truncate" title="${esc(i.vehicle)}">${esc(i.vehicle)}</span>` : meio,
+          [i.catalog && badge("Catálogo", "blue"), i.des && badge("DES", "violet"), i.rd && badge("R-D", "green"), i.base && badge("Base Motorcraft", "slate")].filter(Boolean).join(" ") || meio,
+          `<div class="flex min-w-[10rem] flex-wrap gap-1">${flagChips(i.flags)}</div>`, `<span data-dw="${esc(i.code)}"></span>`,
+          i.samples ? `<a class="font-semibold text-blue-600" href="/amostras?q=${encodeURIComponent(i.code)}">${nf(i.samples)}</a>` : meio]), { h: "max-h-[65vh]" });
+      dwFill($("#bt"));
+      $("#bp").innerHTML = pager(pg, Math.max(1, Math.ceil(d.total / d.size)));
+    };
+    const carregar = async () => {
+      try { const s = F.get(), x = { ...s }; delete x.b; d = await J(`/api/brands/${marca()}/items?` + qs({ ...x, page: pg })); }
+      catch (e) { $("#bt").innerHTML = notice(esc(e.message), "red"); return; }
+      cartoes(); atalhos(); tabela();
+    };
+    const aplicar = (patch, logo) => { if (patch) F.set(patch); pg = 1; clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 300); };
+
+    $("#bf").addEventListener("input", e => { if (e.target.name === "q") aplicar({ q: e.target.value }); });
+    $("#bf").addEventListener("submit", e => e.preventDefault());
+    $("#bclr").addEventListener("click", () => { $("#bf").q.value = ""; aplicar({ q: "", scope: "", flag: "" }, true); });
+    $("#bg").addEventListener("click", e => { const b = e.target.closest("[data-b]"); if (b) aplicar({ b: b.dataset.b === "PERFECT" ? "" : b.dataset.b }, true); });
+    $("#bq").addEventListener("click", e => { const b = e.target.closest("[data-tg]"); if (!b) return; if (b.dataset.v) F.toggle(b.dataset.tg, b.dataset.v); else F.set({ [b.dataset.tg]: "" }); aplicar(null, true); });
+    $("#bp").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; carregar(); scrollTo(0, 0); } });
+    (async () => { S = await J("/api/brands"); await carregar(); })().catch(fail);
   }
-  PSD.tela("brands", () => brandsPage());
+  PSD.tela("brands", brands);
 })();

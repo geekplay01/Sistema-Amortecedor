@@ -23,7 +23,7 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Observação: «Sistema: Gás/Óleo» → `system_type`; «Medida emb.» → nota de embalagem; «MIN: x / MÁX: y» → Lmin/Lmax.
 - Números Referência «CÓDIGO (MARCA)»: marca OEM → código OEM; demais → concorrente.
 - Pendências automáticas: produto sem Lmin/Lmax, peso ou EAN.
-- Brands pelo prefixo: `AMD…` PERFECT · `1BP…` BPROAUTO · só números MOTRIO · base ItensMotorcraft MOTORCRAFT.
+- Brands pelo prefixo: `AMD…` PERFECT · `1BP…` BPROAUTO · só números MOTRIO · base ItensMotorcraft MOTORCRAFT. O que não se encaixa vai para «Sem marca» (`OUTROS`), que também tem lista e Excel próprios. Os cartões de marca, «onde está» (catálogo, DES, R-D, base) e os 4 controles contam como a lista: cada grupo ignora o próprio filtro e respeita os outros (`brands.items · counts`).
 - Prefixo `MP-` = item a granel (sem embalagem); é removido para casar com o código do catálogo.
 - Aplicações (`queries._app_conds`): lado direito/esquerdo inclui as aplicações de **ambos** os lados; `axle`/`side = sem` = não informado. Os atalhos de eixo e lado contam cada um ignorando o próprio filtro (`queries.applications · stats`).
 
@@ -35,6 +35,7 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Status do item (várias linhas por aplicação) = o mais avançado do ciclo: PENDENTE COD. PERFECT/PARTNUMBER → PENDENTE CONFIRMAÇÃO → EM COTAÇÃO → PEDIDO CONFIRMADO → FINALIZANDO CIT → ITEM RECEBIDO.
 - O servidor só guarda o status atual: o app grava um snapshot por sincronização e registra as **transições** (eventos com data). 1ª sincronização = marco zero.
 - Controle de status (Pendente validação, Validação reprovada, Pendente desenho do fornecedor, Pendente compras): detectado pelos sub status; a marcação manual prevalece (`statuses.py`).
+- Dashboard (`app.api_dashboard`): cada barra do funil = códigos distintos com alguma aplicação naquele status (= lista DES/R-D com `?status=`); um item com aplicações em status diferentes entra em mais de uma barra, então a soma do funil pode passar do total. Pendências por controle = lista com `?flag=`.
 
 ## 4. Metas & Validação (`goals.py`, `metas.py`)
 - Metas padrão 2026: DESENVOLVIMENTO 125 · REDESENVOLVIMENTO 150 (editáveis; «já realizado antes do rastreio» soma).

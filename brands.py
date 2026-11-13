@@ -76,15 +76,24 @@ def summary():
                     "pend_compras": sum("pend_compras" in i["flags"] for i in xs), "val_reprovada": sum("val_reprovada" in i["flags"] for i in xs)})
     return {"brands": out, "unclassified": sum(1 for i in its if not i["brand"]), "total": len(its)}
 
+SCOPES = ("catalog", "des", "rd", "base")
+FLAGS = ("pend_validacao", "val_reprovada", "pend_desenho_forn", "pend_compras")      # os controles que universe() junta por código
+def _marca(i): return i["brand"] or "OUTROS"
+
 def items(brand, f):
-    its = [i for i in universe() if (i["brand"] == brand if brand != "OUTROS" else not i["brand"])]
-    term = (f.get("q") or "").upper().split(); sc = f.get("scope")
-    def ok(i):
+    """Itens da marca (OUTROS = sem marca) com busca, «onde está» (scope) e controle (flag).
+    counts: atalhos da tela — marca, scope e flag; cada grupo ignora o próprio filtro e respeita os outros, então o número = total da lista ao clicar (test_24)."""
+    uni = universe(); mine = [i for i in uni if _marca(i) == brand]
+    term = (f.get("q") or "").upper().split(); sc = f.get("scope"); fl = f.get("flag")
+    def ok(i, skip=""):
         txt = f"{i['code']} {i['description'] or ''} {i['vehicle'] or ''} {' '.join(i.get('perfect_codes') or [])}".upper()
         if any(t not in txt for t in term): return False
-        if sc in ("catalog", "des", "rd", "base") and not i[sc]: return False
-        if f.get("flag") and f["flag"] not in i["flags"]: return False
+        if skip != "scope" and sc in SCOPES and not i[sc]: return False
+        if skip != "flag" and fl and fl not in i["flags"]: return False
         return True
-    its = sorted((i for i in its if ok(i)), key=lambda i: i["code"])
+    counts = {"brand": {b: sum(1 for i in uni if _marca(i) == b and ok(i)) for b in BRANDS + ["OUTROS"]},
+              "scope": {"all": sum(1 for i in mine if ok(i, "scope")), **{s: sum(1 for i in mine if i[s] and ok(i, "scope")) for s in SCOPES}},
+              "flag": {k: sum(1 for i in mine if k in i["flags"] and ok(i, "flag")) for k in FLAGS}}
+    its = sorted((i for i in mine if ok(i)), key=lambda i: i["code"])
     size = 50 if not f.get("all") else 10**9; page = max(1, int(f.get("page") or 1))
-    return {"total": len(its), "page": page, "size": size, "rows": its[(page - 1) * size: page * size]}
+    return {"total": len(its), "page": page, "size": size, "rows": its[(page - 1) * size: page * size], "counts": counts}

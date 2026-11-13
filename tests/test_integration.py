@@ -417,6 +417,39 @@ class Fluxo(unittest.TestCase):
         r = C.get("/api/equivalences/export.xlsx?crit=" + "|".join(crit)); self.assertEqual(load_workbook(io.BytesIO(r.data)).worksheets[0].max_row - 1, junto)
         ids = [str(x) for x in range(1, 7)]; self.assertLessEqual(len(C.get("/api/compare?ids=" + ",".join(ids)).json), 4)
 
+    def test_24_dashboard_brands_atalhos(self):
+        """Dashboard: totais, barras do funil (status) e pendências por controle abrem a lista de DES/R-D com o mesmo número; produtos = lista de Produtos.
+        Brands: cartões de marca, «onde está» e controles contam como a lista filtrada (cada grupo ignora o próprio filtro); Excel de «Sem marca» só com os sem marca."""
+        import io
+        from urllib.parse import quote
+        from openpyxl import load_workbook
+        d = C.get("/api/dashboard").json
+        self.assertEqual(d["stats"]["products"], C.get("/api/products").json["total"])
+        for r in d["system"]:
+            if r["s"] != "nd": self.assertEqual(C.get(f"/api/products?system={r['s']}").json["total"], r["n"], r["s"])     # botões FORCE GAS / FORCE OIL
+        for k, slug in (("DESENVOLVIMENTO", "des"), ("REDESENVOLVIMENTO", "rd")):
+            self.assertEqual(d["totals"][k], C.get(f"/api/rd/{slug}").json["total"], k)
+            self.assertTrue(d["funnel"][k], k)
+            for r in d["funnel"][k]: self.assertEqual(C.get(f"/api/rd/{slug}?status={quote(r['status'])}").json["total"], r["n"], f"{k} {r['status']}")
+            for fl, n in d["flags"][k].items():
+                if n and fl != "nenhum": self.assertEqual(C.get(f"/api/rd/{slug}?flag={fl}").json["total"], n, f"{k} {fl}")
+        s = C.get("/api/brands").json
+        for flt in ("", "scope=catalog&q=a", "flag=pend_compras"):
+            c = C.get(f"/api/brands/PERFECT/items?{flt}").json["counts"]
+            for m, n in c["brand"].items(): self.assertEqual(C.get(f"/api/brands/{m}/items?{flt}").json["total"], n, f"{flt} marca {m}")
+            for b in ("PERFECT", "MOTORCRAFT"):
+                c = C.get(f"/api/brands/{b}/items?{flt}").json["counts"]
+                base = "&".join(x for x in flt.split("&") if x and not x.startswith("scope="))
+                for sc, n in c["scope"].items(): self.assertEqual(C.get(f"/api/brands/{b}/items?{base}" + ("" if sc == "all" else f"&scope={sc}")).json["total"], n, f"{b} {flt} scope {sc}")
+                base = "&".join(x for x in flt.split("&") if x and not x.startswith("flag="))
+                for fl, n in c["flag"].items(): self.assertEqual(C.get(f"/api/brands/{b}/items?{base}&flag={fl}").json["total"], n, f"{b} {flt} flag {fl}")
+        tot = C.get("/api/brands/PERFECT/items").json
+        self.assertEqual(sum(tot["counts"]["brand"].values()), s["total"]); self.assertEqual(tot["counts"]["brand"]["PERFECT"], tot["total"]); self.assertGreater(tot["total"], 0)
+        r = C.get("/api/export/brands.xlsx?brand=OUTROS"); self.assertEqual(r.status_code, 200)
+        wb = load_workbook(io.BytesIO(r.data)); ws = wb.worksheets[0]; self.assertEqual(ws.max_row - 1, s["unclassified"])
+        r = C.get("/api/export/brands.xlsx?brand=PERFECT&scope=catalog"); n = C.get("/api/brands/PERFECT/items?scope=catalog").json["total"]
+        self.assertEqual(load_workbook(io.BytesIO(r.data)).worksheets[0].max_row - 1, n)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

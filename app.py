@@ -510,11 +510,11 @@ def api_val_undo(vid): goals.undo_validation(vid); return jsonify(ok=True)
 # ---- Dashboard, vendas e estoque ----
 @app.get("/api/dashboard")
 def api_dashboard():
-    y = request.args.get("year"); funnel, fl = {}, {}
-    for k in (kinds.DES, kinds.RD):
-        rows = rd.facets(k)["status"]; rank = data_pipeline.STATUS_RANK
-        funnel[k] = sorted([{"status": r["v"], "n": r["n"]} for r in rows], key=lambda r: rank.get(r["status"], -1)); fl[k] = rd.flag_counts(k)
-    return jsonify(stats=db.stats(), goals=goals.progress(y), tracking=goals.tracking_info(), funnel=funnel, flags=fl, sales=analytics.sales_summary(), stock=analytics.stock_summary(), pipeline=data_pipeline.status(),
+    y = request.args.get("year"); funnel, fl, tot = {}, {}, {}
+    for k in (kinds.DES, kinds.RD):       # cada barra do funil = itens distintos no status = total da lista DES/R-D com ?status= (test_24)
+        fc = rd.facets(k); rank = data_pipeline.STATUS_RANK
+        funnel[k] = sorted([{"status": r["v"], "n": r["n"]} for r in fc["status"]], key=lambda r: rank.get(r["status"], -1)); fl[k] = fc["flags"]; tot[k] = fc["total"]
+    return jsonify(stats=db.stats(), goals=goals.progress(y), tracking=goals.tracking_info(), funnel=funnel, flags=fl, totals=tot, sales=analytics.sales_summary(), stock=analytics.stock_summary(), pipeline=data_pipeline.status(),
                    groups=statuses.public(), system=queries.q("SELECT coalesce(system_type,'nd') s, COUNT(*) n FROM products GROUP BY 1"))
 @app.get("/api/analytics/sales")
 def api_sales(): return jsonify(analytics.sales_summary(int(request.args.get("months") or 12), int(request.args.get("top") or 10)))

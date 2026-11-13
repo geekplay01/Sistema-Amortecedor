@@ -102,10 +102,12 @@ LABELS = {"desenvolvimento": "Em desenvolvimento", "redesenvolvimento": "Em rede
           "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
-          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem", "res": "Resultado"}
+          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem", "res": "Resultado", "scope": "Onde está"}
 FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT"},
           "where": {"cat": "No catálogo", "des": "Em DES", "rd": "Em R-D", "sem": "Sem vínculo", "falta": "Sem desenho"},
-          "res": {"APPROVED": "Aprovados", "DISAPPROVED": "Reprovados", "INCOMPLETO": "Incompletos"}, "axle": {"sem": "não informado"}, "side": {"sem": "não informado"}}          # valor legível no nome do arquivo e na aba «Filtros aplicados»
+          "res": {"APPROVED": "Aprovados", "DISAPPROVED": "Reprovados", "INCOMPLETO": "Incompletos"}, "axle": {"sem": "não informado"}, "side": {"sem": "não informado"},
+          "scope": {"catalog": "No catálogo", "des": "Em DES", "rd": "Em R-D", "base": "Na base Motorcraft"}, "brand": {"OUTROS": "Sem marca"},
+          "flag": {"pend_validacao": "Pend. validação", "val_reprovada": "Validação reprovada", "pend_desenho_forn": "Pend. desenho forn.", "pend_compras": "Pend. compras"}}          # valor legível no nome do arquivo e na aba «Filtros aplicados»
 def _fv(k, v): return FVALUE.get(k, {}).get(v, v)
 
 def friendly_name(module, filtros=None):
@@ -138,7 +140,7 @@ def _brands(a):
     sel = [a["brand"].upper()] if a.get("brand") else brands.BRANDS; sheets, n = [], 0
     for b in sel:
         its = brands.items(b, {**a, "all": 1})["rows"]; n += len(its)
-        sheets.append((b.title(), ["Código", "Código PERFECT relacionado", "Descrição", "Veículo / aplicação", "Catálogo", "Em DES", "Em R-D", "Base Motorcraft", "Pedidos de amostra", "Controle de status"],
+        sheets.append(("Sem marca" if b == "OUTROS" else b.title(), ["Código", "Código PERFECT relacionado", "Descrição", "Veículo / aplicação", "Catálogo", "Em DES", "Em R-D", "Base Motorcraft", "Pedidos de amostra", "Controle de status"],
                        [[i["code"], " / ".join(i.get("perfect_codes") or []), i["description"], i["vehicle"], "Sim" if i["catalog"] else "", "Sim" if i["des"] else "", "Sim" if i["rd"] else "", "Sim" if i["base"] else "", i["samples"] or "", ", ".join(FL[f] for f in i["flags"])] for i in its], [20, 24, 38, 40, 10, 8, 8, 14, 12, 40]))
     return sheets, n
 def _pendente(a):

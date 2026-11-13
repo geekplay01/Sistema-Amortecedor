@@ -1,50 +1,10 @@
-/* Telas novas: Dashboard (gráficos), painel do servidor e busca de preços. (Metas & Validação: static/js/telas/metas.js.)
+/* Painel do servidor (Configurações) e busca de preços (Compra de amostras). (Dashboard: telas/dashboard.js · Metas & Validação: telas/metas.js.)
    Carregado antes do core.js; recebe os utilitários dele (window.PSD_NEW(ctx)). */
 window.PSD_NEW = ctx => {
-  const { J, post, $, $$, esc, num, tag, T, clip, empty, fail, dlg, qs, dmy, root, FLG, FGROUPS } = ctx;
+  const { post, $, esc, num, T, dmy } = ctx, J = ctx.J;
   const brl = v => v == null ? "–" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const when = s => s ? `${dmy(s)} ${String(s).slice(11, 16)}`.trim() : "–";
-  const DES = "DESENVOLVIMENTO", RD = "REDESENVOLVIMENTO";
-  const panel = (title, body, cls = "", extra = "") => `<section class="dpanel ${cls}"><header><h3>${title}</h3>${extra}</header>${body}</section>`;
   const note = (t, cls = "") => `<div class="notice ${cls}">${t}</div>`;
-
-  // ───────────────────────── Dashboard ─────────────────────────
-  async function dashboard() {
-    root.innerHTML = `<div id="dbanner"></div><div class="dash-grid" id="dgrid"><p class="muted">Carregando indicadores…</p></div>`;
-    let d; try { d = await J("/api/dashboard"); } catch (e) { return fail(e); }
-    const g = d.goals.goals, ps = d.pipeline, tr = d.tracking, none = a => `<div class="ch-empty">${a}</div>`;
-    const bn = [];
-    if (!ps.configured) bn.push(note("<b>Servidor SQL não configurado.</b> Abra o arquivo <code>.env</code> (copie o <code>.env.example</code>), preencha <code>DEV_DB_PASSWORD</code> e reinicie. Enquanto isso o sistema usa os dados já gravados.", "warn"));
-    else if (!ps.last_ok_at) bn.push(note("<b>Nenhuma sincronização com o servidor ainda.</b> Clique em <b>Sincronizar</b> no topo da tela para trazer Desenvolvimento, Redesenvolvimento, compras, vendas e estoque.", "warn"));
-    if (ps.last_status === "erro" && ps.last_error) bn.push(note(`<b>A última sincronização falhou:</b> ${esc(ps.last_error)}`, "err"));
-    $("#dbanner").innerHTML = bn.join("");
-    $("#dgrid").innerHTML = [
-      panel("Metas " + d.goals.year, `<div class="gauges"><div id="g-des"></div><div id="g-rd"></div></div><div class="pfoot"><a class="btn ghost sm" href="/metas">Detalhes e validações</a><small class="muted">${tr.since ? "Rastreio de transições desde " + dmy(tr.since) : "Rastreio começa na 1ª sincronização"}</small></div>`, "span2"),
-      panel("Evolução mensal das metas", '<div id="c-evo" class="chart"></div>', "span2"),
-      panel("Funil — " + DES, '<div id="c-fun-des" class="chart"></div>'), panel("Funil — " + RD, '<div id="c-fun-rd" class="chart"></div>'),
-      panel("Pendências por status", `<div class="seg sm" id="pk"><button type="button" data-k="${DES}" class="on">${DES}</button><button type="button" data-k="${RD}">${RD}</button></div><div id="c-flags" class="chart"></div>`, "span2"),
-      panel("Vendas — últimos 12 meses", '<div id="c-sales" class="chart"></div>'), panel("Mais vendidos (12 meses)", '<div id="c-top" class="chart"></div>'),
-      panel("Estoque disponível", '<div id="c-stock"></div>'), panel("Sistema: FORCE GAS × FORCE OIL", '<div id="c-sys" class="chart"></div>')].join("");
-    // metas
-    const gg = (id, k, sub) => PSDCharts.gauge($(id), { value: g[k].done, target: g[k].target, title: k, subtitle: sub });
-    const vb = d.goals.basis === "validacao"; gg("#g-des", DES, vb ? `meta ${g[DES].target} · validações ${d.goals.validacoes.filtro.USER_VALID} em ${d.goals.year}` : `meta ${g[DES].target} · item recebido em ${d.goals.year}`); gg("#g-rd", RD, vb ? `meta ${g[RD].target} · validações ${d.goals.validacoes.filtro.USER_VALID} em ${d.goals.year}` : `meta ${g[RD].target} · recebido e validado (${d.goals.validacoes.filtro.USER_VALID})`);
-    const x = g[DES].series.main.map(m => m.month), bs = d.goals.basis === "validacao" ? "validações ITALOC" : "item recebido";
-    PSDCharts.line($("#c-evo"), { x, series: [{ name: DES + " · " + bs, y: g[DES].series.main.map(m => m.n), color: "#2f6bff" }, { name: RD + " · " + bs, y: g[RD].series.main.map(m => m.n), color: "#10b981" }], height: 260 });
-    // funis
-    const fun = (id, k) => { const f = d.funnel[k]; f.length ? PSDCharts.funnel($(id), { labels: f.map(r => r.status), values: f.map(r => r.n) }) : ($(id).innerHTML = none("Sem itens ainda. Sincronize com o servidor.")); };
-    fun("#c-fun-des", DES); fun("#c-fun-rd", RD);
-    // pendências por status
-    const flags = k => { const f = d.flags[k], rows = d.groups.defs.filter(s => f[s.key]).map(s => [s.label, f[s.key]]).sort((a, b) => b[1] - a[1]); rows.length ? PSDCharts.hbars($("#c-flags"), { labels: rows.map(r => r[0]), values: rows.map(r => r[1]), color: "#64748b" }) : ($("#c-flags").innerHTML = none("Nenhuma pendência de status.")); };
-    flags(DES); $("#pk").onclick = e => { const b = e.target.closest("[data-k]"); if (!b) return; $$("#pk button").forEach(x => x.classList.toggle("on", x === b)); flags(b.dataset.k); };
-    // vendas e estoque
-    const s = d.sales;
-    if (s.available) {
-      PSDCharts.bars($("#c-sales"), { x: s.months.map(m => m.month), series: [{ name: "Quantidade vendida", y: s.months.map(m => m.qty), color: "#2f6bff" }], height: 250 });
-      s.top.length ? PSDCharts.hbars($("#c-top"), { labels: s.top.map(t => `${t.code}${t.description ? " · " + t.description : ""}`), values: s.top.map(t => t.value || t.qty), color: "#10b981" }) : ($("#c-top").innerHTML = none("Sem vendas no período."));
-    } else { $("#c-sales").innerHTML = $("#c-top").innerHTML = none("Vendas ainda não chegaram do servidor (PEDIDOS_VENDA_DETALHADO). Sincronize ou rode <code>python data_pipeline.py probe</code> para conferir as colunas."); }
-    const st = d.stock; $("#c-stock").innerHTML = st.available ? `<div class="kpis"><div><span class="num">${num(st.qty)}</span><small>peças disponíveis</small></div><div><span class="num">${num(st.items)}</span><small>códigos em estoque</small></div><div><span class="num">${num(st.zero)}</span><small>zerados</small></div></div>` : none("Estoque ainda não chegou do servidor (EST DISP).");
-    const sys = d.system, lab = { gas: "FORCE GAS", oleo: "FORCE OIL", nd: "Sem dado" }; PSDCharts.donut($("#c-sys"), { labels: sys.map(r => lab[r.s] || r.s), values: sys.map(r => r.n), colors: ["#2f6bff", "#10b981", "#94a3b8"] });
-  }
 
   // ───────────────────────── Painel do servidor (Configurações) ─────────────────────────
   async function serverPanel(host) {
@@ -95,5 +55,5 @@ window.PSD_NEW = ctx => {
     return { setRefs(r) { const keep = refs.filter(x => x.manual); refs = [...r.map((x, i) => ({ ...x, on: i < 2 })), ...keep]; render(); }, search: go, refs: () => refs };
   }
 
-  return { pages: { dashboard }, serverPanel, priceSearch };
+  return { serverPanel, priceSearch };
 };

@@ -143,4 +143,14 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Na cópia: 963 aplicações (32 sem eixo e sem lado), 259 sugestões, todas pendentes (2 Alta, 36 Média, 221 Baixa; 23 sem diferenças). No navegador aprovei e voltei a pendente uma sugestão na cópia.
 - Próximo: Dashboard e Brands.
 
+### Etapa B · Dashboard e Brands (13/11/2026) ✅
+- Dashboard saiu de `pages_new.js` para `telas/dashboard.js` (Tailwind). `pages_new.js` ficou só com o painel do servidor e a busca de preços.
+- Topo: 4 KPIs (produtos, DES, R-D, vendas 12 meses); os três primeiros abrem a lista inteira. Funis e pendências por controle viraram barras clicáveis que abrem DES/R-D já filtrados (`?status=`, `?flag=`), com o mesmo número; a alternância DES/R-D das pendências fica na URL (`pk`). Mais vendidos em tabela (peças e valor, código abre a Pesquisa); botões FORCE GAS / FORCE OIL abrem Produtos filtrado. API ganhou `totals`.
+- `PSDTW.filtros`: `?limpo=1` abre a tela sem os filtros da última visita (links do Dashboard para a lista inteira).
+- Brands (`telas/brands.js`) em Tailwind: cartões de marca com o número já filtrado («com os filtros · de N»), atalhos «Onde está» e «Controle» com contagem, busca, filtros na URL (`b`, `q`, `scope`, `flag`) + última visita, Excel com os filtros. `brands.items` devolve `counts`.
+- Corrigido: Excel de «Sem marca» trazia as 4 marcas (o front mandava `brand` vazio); agora sai só a aba «Sem marca». Nome do arquivo e aba «Filtros aplicados» mostram «Onde está», controle e «Sem marca» por extenso.
+- Teste `test_24`: totais, barras do funil e controles do Dashboard = listas DES/R-D; produtos e sistema = Produtos; atalhos de Brands = lista (com e sem outros filtros); Excel de «Sem marca» e com `scope`.
+- Na cópia: 914 produtos (772 FORCE GAS, 142 FORCE OIL), 759 DES, 790 R-D; Brands: PERFECT 1.314, BPROAUTO 188, MOTRIO 10, MOTORCRAFT 36, Sem marca 13. Observação para a etapa D: códigos Ford no formato `XXX/18097/XX` fora da base Motorcraft caem em «Sem marca».
+- Próximo: telas de Dados (pendências, fontes, configurações, atualização).
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

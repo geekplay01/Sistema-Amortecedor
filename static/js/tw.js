@@ -24,13 +24,13 @@ window.PSDTW = (() => {
   const csv = (name, head, rows) => { const q = v => '"' + String(v ?? "").replace(/"/g, '""') + '"'; const b = new Blob(["﻿" + [head, ...rows].map(r => r.map(q).join(";")).join("\r\n")], { type: "text/csv;charset=utf-8" }); const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(b), download: name }); document.body.appendChild(a); a.click(); a.remove(); };
 
   /* Estado dos filtros de uma tela (padrão de todas as telas migradas, etapa 16):
-     · a URL manda (links e conectores abrem a tela já filtrada); sem filtros na URL, volta o último uso (localStorage, por tela);
+     · a URL manda (links e conectores abrem a tela já filtrada); sem filtros na URL, volta o último uso (localStorage, por tela) — exceto com ?limpo=1 (link do Dashboard: lista inteira);
      · set() grava na URL (sem recarregar) e no navegador; chip ativo clicado de novo = toggle() limpa o filtro.
      Uso: const F = PSDTW.filtros("desenvolvimento", ["q", "status", ...]);  F.get() → {chave: valor}; F.set({status: "X"}); F.toggle("flag", "pend_compras"); F.clear(); F.restaurado */
   const filtros = (tela, chaves) => {
     const key = "psd-filtros-" + tela, pick = o => Object.fromEntries(chaves.filter(k => o[k] != null && o[k] !== "").map(k => [k, String(o[k])]));
-    const daUrl = pick(Object.fromEntries(new URLSearchParams(location.search)));
-    let salvo = {}; try { salvo = pick(JSON.parse(localStorage.getItem(key) || "{}")); } catch (e) { }
+    const usp = new URLSearchParams(location.search), daUrl = pick(Object.fromEntries(usp));
+    let salvo = {}; try { if (!usp.has("limpo")) salvo = pick(JSON.parse(localStorage.getItem(key) || "{}")); } catch (e) { }
     let restaurado = !Object.keys(daUrl).length && Object.keys(salvo).length > 0;      // vale só até o primeiro filtro mudado (aí já não são os da última visita)
     let st = Object.keys(daUrl).length ? daUrl : salvo;
     const write = () => { const u = new URLSearchParams(st).toString(); history.replaceState(null, "", location.pathname + (u ? "?" + u : "") + location.hash); try { localStorage.setItem(key, JSON.stringify(st)); } catch (e) { } };
