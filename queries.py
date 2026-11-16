@@ -159,6 +159,23 @@ def pendencies(f):
     return {"total": q1("SELECT COUNT(*) n " + base, p)["n"], "size": size, "kinds": [r["kind"] for r in q("SELECT DISTINCT kind FROM pendencies")], "counts": counts,
             "rows": q(f"SELECT x.id,x.kind,x.field,x.description,x.status,x.created_at,p.id product_id,p.perfect_code {base} ORDER BY x.status,x.kind,p.perfect_code LIMIT {size} OFFSET {off}", p)}
 
+CONFLICT_FIELDS = ("package_code", "family", "ean")      # campos de produto que «usar o valor da planilha» pode gravar
+_CONFLICT = re.compile(r"^Valor atual «(.*?)» × importado «(.*?)»")
+def conflict_values(desc):
+    """(valor no banco, valor importado) do texto que loaders._merge grava no conflito, ou None."""
+    m = _CONFLICT.match(desc or ""); return m.groups() if m else None
+def pendency_apply(i):
+    """Conflito aberto → grava no produto o valor que veio da planilha e marca a pendência como resolvida (decisão do usuário, nunca automática)."""
+    c = db.conn()
+    try:
+        x = c.execute("SELECT product_id,kind,field,description,status FROM pendencies WHERE id=?", (i,)).fetchone(); v = x and conflict_values(x["description"])
+        if not x or x["kind"] != "conflito" or x["status"] != "aberta" or x["field"] not in CONFLICT_FIELDS or not v or not x["product_id"]:
+            raise ValueError("Só um conflito aberto de caixa, família ou EAN pode receber o valor da planilha.")
+        c.execute(f"UPDATE products SET {x['field']}=?,updated_at=CURRENT_TIMESTAMP WHERE id=?", (v[1], x["product_id"]))
+        c.execute("UPDATE pendencies SET status='resolvida' WHERE id=?", (i,)); c.commit()
+        return {"field": x["field"], "value": v[1], "old": v[0]}
+    finally: c.close()
+
 def duplicates():
     return q("""SELECT k.code_type,k.normalized_code code,group_concat(DISTINCT p.perfect_code) products,COUNT(DISTINCT k.product_id) n
         FROM codes k JOIN products p ON p.id=k.product_id WHERE k.normalized_code IS NOT NULL AND coalesce(k.source_id,0) NOT IN (SELECT id FROM sources WHERE name LIKE 'CrossCatalogo%') GROUP BY k.code_type,k.normalized_code HAVING COUNT(DISTINCT k.product_id)>1 ORDER BY n DESC,code""")

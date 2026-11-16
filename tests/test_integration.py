@@ -488,6 +488,12 @@ class Fluxo(unittest.TestCase):
         self.assertEqual(h["counts"], {"todas": len(h["batches"]), **n}); self.assertGreaterEqual(n["simulado"], 1); self.assertGreaterEqual(n["ok"], 1)
         for s in n:
             r = C.get(f"/api/export/fontes.xlsx?status={s}"); self.assertEqual(load_workbook(io.BytesIO(r.data)).worksheets[0].max_row - 1, n[s], s)
+        j = next(x["id"] for x in C.get("/api/pendencies?q=T25&status=aberta&field=family").json["rows"])          # «Usar o da planilha» (etapa D)
+        self.assertEqual(C.post(f"/api/pendencies/{j}/apply").json, {"field": "family", "value": "B", "old": "A"})
+        self.assertEqual(C.post(f"/api/pendencies/{j}/apply").status_code, 400)
+        con = sqlite3.connect(DB)
+        try: self.assertEqual(con.execute("SELECT family FROM products WHERE id=?", (p[0],)).fetchone()[0], "B")
+        finally: con.close()
 
 
 if __name__ == "__main__":

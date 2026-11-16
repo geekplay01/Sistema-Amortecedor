@@ -71,12 +71,18 @@ class Ctx:
         s.known.add((pid, norm, ctype))
         s.c.execute("INSERT INTO codes(product_id,code,normalized_code,code_type,brand,source_id) VALUES(?,?,?,?,?,?)", (pid, raw, norm, ctype, brand, s.src)); return True
 
+_BOX_SUFFIX = re.compile(r"(?<=\d)[MB]$")
+def box_base(v):
+    """Caixa sem o sufixo da marca: «PP025M» (versão Motorcraft) e «PP025B» (versão BPROAUTO) → «PP025». A EstruturaAMD traz a caixa sem sufixo."""
+    return _BOX_SUFFIX.sub("", str(v or "").strip().upper())
+
 def _merge(x, pid, vals):
     cur = x.c.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone(); sets = {}
     for k, v in vals.items():
         if v is None: continue
         old = cur[k]
         if old is None: sets[k] = v
+        elif k == "package_code" and str(old) != str(v) and box_base(old) == box_base(v): continue     # só o sufixo M/B difere: o banco está certo, não é conflito
         elif str(old) != str(v) and x.policy == "overwrite": sets[k] = v   # regra escolhida: a planilha prevalece
         elif str(old) != str(v):
             x.n["conflicts"] += 1

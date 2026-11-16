@@ -18,6 +18,9 @@
     return pages > 1 ? `${b(pg - 1, pg < 2, "‹")} Página ${pg} de ${pages} ${b(pg + 1, pg >= pages, "›")}` : ""; };
   const nomeCampo = f => CAMPO[f] || f;
   // «Valor atual «X» × importado «Y» (fonte F). Nada foi sobrescrito.» → valores em destaque (o texto gravado não muda)
+  // conflito de caixa, família ou EAN: o valor da planilha pode ser gravado no produto (queries.pendency_apply)
+  const usavel = x => { if (x.kind !== "conflito" || !x.product_id || !["package_code", "family", "ean"].includes(x.field)) return null;
+    const m = /^Valor atual «(.*?)» × importado «(.*?)»/.exec(x.description || ""); return m ? [m[1], m[2]] : null; };
   const descricao = t => { const m = /^Valor atual «(.*?)» × importado «(.*?)» \(fonte (.*?)\)/.exec(t || "");
     return m ? `No banco <b class="text-ink">${esc(m[1])}</b> × na planilha <b class="text-ink">${esc(m[2])}</b> <span class="text-mute">· ${esc(m[3])} · nada foi sobrescrito</span>` : esc(t || ""); };
 
@@ -50,13 +53,14 @@
     const tabela = () => {
       const s = F.get(), n = ["q", "kind", "field"].filter(k => s[k]).length + (st() !== "aberta" ? 1 : 0);
       $("#pdl").href = "/api/export/pendencias.xlsx?" + qs(api());
-      $("#pm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> pendência(s)${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}`;
+      const ok = $("#pm").dataset.ok; delete $("#pm").dataset.ok;          // aviso do último «Usar o da planilha» (some na próxima atualização)
+      $("#pm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> pendência(s)${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}${ok ? ` · <span class="font-semibold text-emerald-600">${esc(ok)}</span>` : ""}`;
       $("#pt").innerHTML = TW.table([{ h: "Produto" }, { h: "Tipo" }, { h: "Campo" }, { h: "Descrição", nw: false }, { h: "Desde" }, { h: "Status" }, { h: "" }],
         d.rows.map(x => [
           x.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${x.product_id}">${esc(x.perfect_code)}</a>` : '<span class="text-mute">–</span>',
           badge(KIND[x.kind] ? KIND[x.kind][0] : x.kind, KIND[x.kind] ? KIND[x.kind][1] : "slate"), esc(nomeCampo(x.field || "")) || '<span class="text-mute">–</span>',
           `<span class="block min-w-[18rem]">${descricao(x.description)}</span>`, TW.dmy(x.created_at), badge(x.status, STB[x.status]),
-          x.status === "aberta" ? `<span class="flex gap-1"><button type="button" class="${mini}" data-pd="${x.id}" data-s="resolvida">Resolver</button><button type="button" class="${mini}" data-pd="${x.id}" data-s="ignorada">Ignorar</button></span>`
+          x.status === "aberta" ? `<span class="flex gap-1">${usavel(x) ? `<button type="button" class="${mini}" data-ap="${x.id}" title="Grava «${esc(usavel(x)[1])}» no produto (no lugar de «${esc(usavel(x)[0])}») e resolve">Usar o da planilha</button>` : ""}<button type="button" class="${mini}" data-pd="${x.id}" data-s="resolvida">Resolver</button><button type="button" class="${mini}" data-pd="${x.id}" data-s="ignorada">Ignorar</button></span>`
             : `<button type="button" class="${mini}" data-pd="${x.id}" data-s="aberta">Reabrir</button>`]), { h: "max-h-[65vh]" });
       $("#pp").innerHTML = pager(pg, Math.max(1, Math.ceil(d.total / d.size)));
     };
@@ -72,8 +76,9 @@
     $("#pq").addEventListener("click", e => { const a = e.target.closest("[data-st]"), b = e.target.closest("[data-tg]");
       if (a) aplicar({ status: a.dataset.st === "aberta" ? "" : a.dataset.st }, true);
       else if (b) { F.toggle(b.dataset.tg, b.dataset.v); aplicar(null, true); } });
-    $("#pbody").addEventListener("click", async e => { const b = e.target.closest("[data-pd]"), p = e.target.closest("[data-p]");
-      if (b) { b.disabled = true; try { await post("/api/pendencies/" + b.dataset.pd, { status: b.dataset.s }); } catch (er) { fail(er); } carregar(); }
+    $("#pbody").addEventListener("click", async e => { const b = e.target.closest("[data-pd]"), p = e.target.closest("[data-p]"), u = e.target.closest("[data-ap]");
+      if (u) { u.disabled = true; try { const r = await post(`/api/pendencies/${u.dataset.ap}/apply`, {}); $("#pm").dataset.ok = `✔ ${nomeCampo(r.field)} gravado: ${r.value} (antes ${r.old}).`; } catch (er) { fail(er); } carregar(); }
+      else if (b) { b.disabled = true; try { await post("/api/pendencies/" + b.dataset.pd, { status: b.dataset.s }); } catch (er) { fail(er); } carregar(); }
       else if (p && !p.disabled) { pg = +p.dataset.p; carregar(); scrollTo(0, 0); } });
     carregar();
   }

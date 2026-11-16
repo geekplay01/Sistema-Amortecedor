@@ -335,6 +335,10 @@ def api_pend_set(i):
     s = (request.get_json(force=True) or {}).get("status")
     if s not in ("aberta", "resolvida", "ignorada"): abort(400)
     queries.run("UPDATE pendencies SET status=? WHERE id=?", (s, i)); return jsonify(ok=True)
+@app.post("/api/pendencies/<int:i>/apply")
+def api_pend_apply(i):          # conflito: grava no produto o valor que veio da planilha (clique do usuário) e resolve
+    try: return jsonify(queries.pendency_apply(i))
+    except ValueError as e: return jsonify(error=str(e)), 400
 @app.get("/api/duplicates")
 def api_dups(): return jsonify(queries.duplicates())
 @app.get("/api/history")

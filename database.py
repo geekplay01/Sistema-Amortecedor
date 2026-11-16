@@ -157,6 +157,11 @@ def migrate():
             n = _re.sub(r"\s+", " ", t.lstrip("'")).strip(); c.execute("UPDATE rd_projects SET application_text=? WHERE id=?", (None if n in ("-", "") else n, rid))
         c.execute("CREATE INDEX IF NOT EXISTS ix_codes_norm ON codes(normalized_code)")
         c.execute("CREATE INDEX IF NOT EXISTS ix_rd_code ON rd_projects(code)")
+        # caixa «PP025M» × «PP025»: só o sufixo da marca (M Motorcraft, B BPROAUTO) difere → não é conflito (etapa 16 · D); fecha os abertos antes da regra
+        for pid_, d in c.execute("SELECT id,description FROM pendencies WHERE kind='conflito' AND field='package_code' AND status='aberta'").fetchall():
+            m = _re.match(r"Valor atual «(.*?)» × importado «(.*?)»", d or "")
+            if m and _re.sub(r"(?<=\d)[MB]$", "", m.group(1).strip().upper()) == _re.sub(r"(?<=\d)[MB]$", "", m.group(2).strip().upper()):
+                c.execute("UPDATE pendencies SET status='resolvida' WHERE id=?", (pid_,))
         # amostras antigas: deduz o lado a partir do texto da aplicação (LD / LE / LD/LE)
         import re
         for oid, app in c.execute("SELECT id,application FROM sample_orders WHERE side IS NULL AND application IS NOT NULL").fetchall():

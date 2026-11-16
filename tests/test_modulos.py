@@ -163,6 +163,40 @@ class CatalogoPlanilha(_TmpDB):
         self.assertEqual(fc["family"][0], {"v": "CABINE", "n": 1}); self.assertIn({"v": 12.5, "n": 1}, fc["rod"]); self.assertEqual((fc["launch"], fc["system"]["gas"], fc["system"]["oleo"]), (1, 2, 2))
         r = queries.products({"q": "AMD1"})["rows"][0]; self.assertEqual((r["is_launch"], r["rod_diameter_mm"]), ("S", 20.0))
 
+class CaixaComSufixo(_TmpDB):
+    def test_sufixo_m_b_nao_e_conflito_e_usar_valor_da_planilha(self):
+        """Etapa 16 · D: caixa «PP025M» (Motorcraft) / «PP025B» (BPROAUTO) × «PP025» da EstruturaAMD não é conflito e o banco fica como está.
+        Caixa base diferente continua conflito; «usar o valor da planilha» grava o valor importado e resolve. Conflito falso antigo é fechado na migração."""
+        import loaders, importer, queries
+        self.db.init_db()
+        self.sql("INSERT INTO products(perfect_code,description,package_code) VALUES(?,?,?)", [("AMD1", "A", "PP025M"), ("AMD2", "B", "PP014M"), ("AMD3", "C", "PP026B"), ("AMD4", "D", "PP030")])
+        f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); f.close()
+        pd.DataFrame({"Codigo": ["AMD1", "AMD2", "AMD3", "AMD4"], "Componente": ["PP025", "PP030", "PP026", "PP030"], "Descricao Comp.": ["CAIXA"] * 4}).to_excel(f.name, index=False)
+        df, _ = importer.read_table(f.name, None); s = loaders.run(f.name, None, importer.suggest_mapping(df.columns), None, "EstruturaAMD.xls", True); os.remove(f.name)
+        self.assertEqual(s["counts"]["conflicts"], 1)
+        c = self.db.conn()
+        try:
+            box = dict(c.execute("SELECT perfect_code,package_code FROM products").fetchall())
+            pend = c.execute("SELECT x.id,p.perfect_code,x.field FROM pendencies x JOIN products p ON p.id=x.product_id WHERE x.kind='conflito' AND x.status='aberta'").fetchall()
+        finally: c.close()
+        self.assertEqual(box, {"AMD1": "PP025M", "AMD2": "PP014M", "AMD3": "PP026B", "AMD4": "PP030"})
+        self.assertEqual([(r[1], r[2]) for r in pend], [("AMD2", "package_code")])
+        self.assertEqual(queries.pendency_apply(pend[0][0]), {"field": "package_code", "value": "PP030", "old": "PP014M"})
+        c = self.db.conn()
+        try:
+            self.assertEqual(c.execute("SELECT package_code FROM products WHERE perfect_code='AMD2'").fetchone()[0], "PP030")
+            self.assertEqual(c.execute("SELECT status FROM pendencies WHERE id=?", (pend[0][0],)).fetchone()[0], "resolvida")
+            pid = c.execute("SELECT id FROM products WHERE perfect_code='AMD1'").fetchone()[0]          # conflito falso gravado antes da regra
+            c.execute("INSERT INTO pendencies(product_id,kind,field,description) VALUES(?,?,?,?)", (pid, "conflito", "package_code", "Valor atual «PP025M» × importado «PP025» (fonte EstruturaAMD.xls). Nada foi sobrescrito."))
+            c.execute("INSERT INTO pendencies(product_id,kind,field,description) VALUES(?,?,?,?)", (pid, "campo_ausente", "peso", "Campo ausente: peso")); c.commit()
+        finally: c.close()
+        with self.assertRaises(ValueError): queries.pendency_apply(pend[0][0])                    # já resolvida
+        self.db.migrate()
+        c = self.db.conn()
+        try: st = dict(c.execute("SELECT kind,status FROM pendencies WHERE product_id=?", (pid,)).fetchall())
+        finally: c.close()
+        self.assertEqual(st, {"conflito": "resolvida", "campo_ausente": "aberta"})
+
 class BuscaConcorrente(_TmpDB):
     def test_codigo_com_ou_sem_pontuacao(self):
         import queries
