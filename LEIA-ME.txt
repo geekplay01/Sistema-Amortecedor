@@ -85,10 +85,44 @@ ETAPA 15 — 10/11/2026 (regras completas em REGRAS_DE_NEGOCIO.md)
  - Menu em ordem de fluxo (1 Desenvolvimento → 2 Amostras → 3 Catálogo → 4 Compras) com trilho de conectores; faixa «vem de → esta tela → alimenta» em cada página;
    clicar num código (sublinhado tracejado) abre as outras telas onde ele aparece.
 
-ETAPA 16 — em andamento (plano e decisões em DECISOES_ETAPA16.md)
+ETAPA 16 — concluída em 17/11/2026 (decisões em DECISOES_ETAPA16.md, regras em REGRAS_DE_NEGOCIO.md)
  - Sincronização com o app FECHADO: tarefa agendada do Windows «PERFECT Shock Data - sincronizacao diaria», todo dia às 06:30 (com você logado; se o PC
    estava desligado, roda assim que possível). Ela chama sincronizar.bat; se o app já sincronizou no dia, não repete. Log: data\sincronizacao_log.txt.
    App e tarefa nunca sincronizam ao mesmo tempo (trava data\sincronizacao.lock). Para remover: Agendador de Tarefas > a tarefa > Excluir.
    Se mudar a pasta do sistema de lugar, recrie a tarefa (ela aponta para o caminho atual do sincronizar.bat).
  - O app abre ~5 s mais rápido (a migração do banco esperava um lock à toa).
- - Testes: tools\testes.py roda tudo em ~1 min, com banco sintético (nenhum teste usa o banco real).
+ - Testes: tools\testes.py roda tudo em ~2 min, com banco sintético (nenhum teste usa o banco real).
+ - Visual novo em todas as telas do menu. Padrão comum: KPIs no topo, atalhos com contagem (o número do atalho é o total da lista) que ligam/desligam,
+   filtros guardados na URL e lembrados na próxima visita (o link com ?limpo=1 abre sem eles) e Excel que segue os filtros da tela.
+   Os diálogos antigos (ficha do produto, visualizador de desenho, formulários de pedido/envio) seguem no estilo anterior.
+ - Item inativado sai de DES/R-D quando está BLOQUEADO no ERP (view ESTOQUE_ANALISE_REPOSICAO), na sincronização seguinte.
+ - Catálogo (CatalogoAMD.xlsx): lê Sistema (FORCE GAS / FORCE OIL), Família, Diâmetro da haste e Lançamento. REIMPORTE a planilha para esses campos aparecerem.
+ - Caixa com sufixo: M = caixa Motorcraft, B = caixa BPROAUTO. Se só o sufixo difere da planilha, não é conflito (fica o do banco). Caixa base diferente
+   continua conflito. Em Pendências, conflitos de caixa, família e EAN têm o botão «Usar o da planilha».
+ - Anomalias (antigo Equivalências): abas Família catálogo × Inmetro, EAN divergente e Sugestões de equivalência. O Inmetro só preenche família vazia;
+   o CatalogoAMD prevalece. Excel com as abas Família e EAN.
+ - «Pendente compras» automático não vale quando o código já está em ITEM RECEBIDO.
+ - Meta R-D (base validação): conta as validações ITALOC do ano quando o item chega a ITEM RECEBIDO, no mês da validação. Quadro novo em Metas
+   com Todas / Contam / Aguardando / Pend. validação qualidade / Validação reprovada.
+ - Desenhos: «sem projeto» só conta DESENVOLVIMENTO em andamento (sem ITEM RECEBIDO nem cancelado).
+ - Brands: PN Ford (formato XXXX/18xxx/XX) fora da base Motorcraft aparece na lista MOTORCRAFT com o selo «PN Ford fora da base», sem contar no cartão.
+ - Garantia: carregue a planilha «Analítico de Garantias.xlsx» em Atualização de dados (Verificar → Aplicar); cada carga substitui a anterior e a planilha
+   prevalece. Padrão: só garantias, sem canceladas. Defeitos agrupados pelo texto, clientes, lotes, unidade (Mogi × Arujá) e Excel. CNPJ não é guardado.
+   Sem planilha carregada, a tela mostra o resumo do servidor.
+ - Excel da Pesquisa/Produtos: + Família Inmetro, FOB menor (US$ e fornecedor) e estoque disponível/reservado.
+ - Vendas: o padrão é o universo do BI (LINHA = 'AMORTECEDOR' exata; outubro/2026 bate com o BI). Seletor para incluir Linha pesada e Kit.
+   Resumo com último mês fechado, mês atual parcial e acumulado do ano.
+ - Estoque (tela nova no menu fixo): só armazém 04, disponível = estoque − reservado; média de venda dos últimos 12 meses fechados;
+   cobertura = (estoque + pedidos em aberto, sem os parados) ÷ média. Faixas: ruptura · risco (< 6 meses) · OK (6 a 18) · excesso (> 18) · sem giro.
+   Projeção de 6 meses com as chegadas previstas (no mês atual, só os dias que faltam): atalho «Vai faltar», coluna «Falta em» e Excel com o saldo mês a mês.
+ - Pedidos em Aberto: Excel dos saldos parados; lista da previsão com atalhos (vão atrasar, previsão vencida, etapa, fornecedor) e Excel no lugar do CSV
+   (com «vencida», serve para cobrar o fornecedor). Quadro «Previsão × realizado»: a sincronização grava uma foto diária da previsão e, quando o embarque
+   chega, compara com a primeira previsão de cada etapa (erro em dias, % dentro da faixa) por fornecedor e etapa.
+ - Corrigido: «Verificar» da Atualização de dados gravava no banco sem backup. Agora a verificação não grava nada; só «Aplicar» grava (com backup antes).
+   Verificações feitas antes desta correção aparecem em Fontes como «Só verificação».
+
+ DEPOIS DE ATUALIZAR PARA A ETAPA 16 (uma vez, no banco real)
+ 1. Feche e abra o app: os conflitos de caixa só de sufixo e os de família vindos do Inmetro fecham sozinhos.
+ 2. Pendências > Campo «Código da caixa» > «Usar o da planilha» nos 5 itens: AMD0245, AMD0272, AMD0277, AMD17472, AMD4701.
+ 3. Atualização de dados: reimporte o CatalogoAMD.xlsx e carregue o Analítico de Garantias.xlsx.
+ 4. Sincronize normalmente: as fotos da previsão começam na próxima sincronização.
