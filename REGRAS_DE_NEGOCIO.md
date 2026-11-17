@@ -42,11 +42,13 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Status do item (várias linhas por aplicação) = o mais avançado do ciclo: PENDENTE COD. PERFECT/PARTNUMBER → PENDENTE CONFIRMAÇÃO → EM COTAÇÃO → PEDIDO CONFIRMADO → FINALIZANDO CIT → ITEM RECEBIDO.
 - O servidor só guarda o status atual: o app grava um snapshot por sincronização e registra as **transições** (eventos com data). 1ª sincronização = marco zero.
 - Controle de status (Pendente validação, Validação reprovada, Pendente desenho do fornecedor, Pendente compras): detectado pelos sub status; a marcação manual prevalece (`statuses.py`).
+- «Pendente compras» (automático) não vale para item já recebido: se alguma aplicação do código está em ITEM RECEBIDO, o sub status é ignorado (`statuses.view_sql`). A marcação manual prevalece.
 - Dashboard (`app.api_dashboard`): cada barra do funil = códigos distintos com alguma aplicação naquele status (= lista DES/R-D com `?status=`); um item com aplicações em status diferentes entra em mais de uma barra, então a soma do funil pode passar do total. Pendências por controle = lista com `?flag=`.
 
 ## 4. Metas & Validação (`goals.py`, `metas.py`)
 - Metas padrão 2026: DESENVOLVIMENTO 125 · REDESENVOLVIMENTO 150 (editáveis; «já realizado antes do rastreio» soma).
-- Base «validação» (padrão): conta códigos distintos com `USER_VALID` **exatamente** igual a ITALOC, LINHA amortecedor, por SUGESTAO, no ano da `DATA_APROVACAO`.
+- Base «validação» (padrão): a seleção são códigos distintos com `USER_VALID` **exatamente** igual a ITALOC, LINHA amortecedor, por SUGESTAO, no ano da `DATA_APROVACAO` (`metas._select`; o quadro «Validações» mostra esse total).
+- **[mudou em 17/11/2026]** Meta REDESENVOLVIMENTO (base «validação»): conta o código validado no ano **quando ele chegar a ITEM RECEBIDO**, mesmo que chegue depois do fim do ano (conta na meta do ano da validação). Status = estado do servidor por código (`dev_item_state`), senão o mais avançado das aplicações. A tela Metas lista todas as validações R-D do ano (inclusive com validação pendente da qualidade ou reprovada) com status atual, controles e «conta?» (`goals.rd_validations`). Antes contava todas as validações do ano (na cópia: 197 → 173).
 - DESENVOLVIMENTO conta só item que chegou a ITEM RECEBIDO no ano **e** validado por ITALOC.
 - Base «recebido»: R-D conta a transição PENDENTE CONFIRMAÇÃO → ITEM RECEBIDO no ano, com validação ITALOC.
 - **[novo]** A data de recebimento usa também a coluna `DATA_RECEBIDO` do servidor (antes só as transições vistas depois do marco zero).

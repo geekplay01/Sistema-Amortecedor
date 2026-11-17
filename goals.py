@@ -79,6 +79,32 @@ def _events(year):
                 out[(code, kind)] = {"code": code, "kind": kind, "recebido": d, "origem": "coluna", "pend_to_rec": None}
     return out
 
+RD_FLAGS = ("pend_validacao", "pend_validacao_qual", "val_reprovada", "val_reprovada_qual", "pend_compras", "pend_confirmacao")      # controles mostrados na lista de validações R-D
+
+def rd_validations(year=None):
+    """Meta R-D (base «validação», etapa 16 · D5b): TODAS as validações do usuário em itens R-D no ano (DATA APROV), com o status atual.
+    Conta (= entra na meta do ano da validação) quando o status chegar a ITEM RECEBIDO — mesmo que isso aconteça depois do fim do ano.
+    Status: estado do servidor por código (dev_item_state); sem estado, o mais avançado das aplicações em rd_projects."""
+    import metas, data_pipeline as dp
+    year = _year(year); val = metas.validated(year, metas.RD); rk = dp.STATUS_RANK
+    st = {r["code"]: r["status"] for r in q("SELECT code,status FROM dev_item_state WHERE kind=? AND present=1", (kinds.RD,))}
+    rows_rd = {}
+    for r in q("SELECT code,status,description FROM rd_projects WHERE suggestion=?", (kinds.RD,)):
+        b = rows_rd.setdefault(r["code"], {"status": None, "description": r["description"]})
+        s = (r["status"] or "").strip().upper()
+        if s and (b["status"] is None or rk.get(s, -1) > rk.get(b["status"], -1)): b["status"] = s
+    fl = {}
+    for r in q("SELECT * FROM v_rd_flags WHERE suggestion=?", (kinds.RD,)): fl[r["code"]] = [k for k in RD_FLAGS if r.get(k)]
+    rec = {r["code"]: r["d"] for r in q("SELECT code, MAX(substr(at,1,10)) d FROM dev_status_events WHERE field='status' AND to_value=? AND kind=? GROUP BY code", (RECEBIDO, kinds.RD))}
+    meta = _meta(kinds.RD); rows = []
+    for code, d in sorted(val.items()):
+        b = rows_rd.get(code, {}); status = st.get(code) or b.get("status"); ok = status == RECEBIDO
+        rows.append({"code": code, "description": b.get("description"), "valid_at": d, "status": status, "flags": fl.get(code, []), "counts": ok,
+                     "received_at": (rec.get(code) or (meta.get(code) or {}).get("status_date")) if ok else None})
+    n = sum(r["counts"] for r in rows)
+    return {"year": year, "rows": rows, "counts": {"todas": len(rows), "contam": n, "aguardando": len(rows) - n,
+            "pend_validacao_qual": sum("pend_validacao_qual" in r["flags"] for r in rows), "val_reprovada": sum("val_reprovada" in r["flags"] for r in rows)}}
+
 def progress(year=None):
     """Andamento das duas metas + evolução mensal (alimenta os velocímetros do dashboard). Duas bases de contagem (rules.goal_basis, editável na tela):
     «validacao» (padrão) → validações do usuário ITALOC (USER_VALID) em itens de LINHA «Amortecedor», por SUGESTAO DES / R-D, no ano da DATA_APROVACAO (metas.py).
@@ -100,9 +126,13 @@ def progress(year=None):
             parts = {"recebidos_validados": len(counted), "recebidos_sem_validacao": sum(1 for e in items if not meta[e["code"]]["validated"]), "por_coluna_de_data": sum(1 for e in items if e["origem"] == "coluna")}
         for d in counted.values(): evo[d[:7]] += 1
         rec_series = [{"month": m, "n": n} for m, n in evo.items()]
-        if basis == "validacao" and kind != kinds.DES:
-            n_track = vc[k2]; val_evo = {m: (vc["por_mes"].get(m) or {}).get(k2, 0) for m in months()}; series = [{"month": m, "n": n} for m, n in val_evo.items()]
-            parts = {"validacoes": n_track, "validacoes_sem_data": vc["sem_data"], **parts}
+        if basis == "validacao" and kind != kinds.DES:      # R-D: validados no ano que já chegaram a ITEM RECEBIDO (rd_validations); evolução pelo mês da validação
+            rv = rd_validations(year); n_track = rv["counts"]["contam"]; val_evo = months()
+            for r in rv["rows"]:
+                if r["counts"] and r["valid_at"] and r["valid_at"][:7] in val_evo: val_evo[r["valid_at"][:7]] += 1
+            series = [{"month": m, "n": n} for m, n in val_evo.items()]
+            parts = {"validacoes": rv["counts"]["todas"], "recebidas": n_track, "aguardando": rv["counts"]["aguardando"], "pend_validacao_qual": rv["counts"]["pend_validacao_qual"],
+                     "val_reprovada": rv["counts"]["val_reprovada"], "validacoes_sem_data": vc["sem_data"], **parts}
         else: n_track = len(counted); series = rec_series
         goal = g[kind]; done = n_track + goal["prior_done"]; pct = round(100 * done / goal["target"], 1) if goal["target"] else None
         out["goals"][kind] = {"kind": kind, "label": kinds.LABEL[kind], "target": goal["target"], "prior_done": goal["prior_done"], "tracked": n_track, "done": done, "pct": pct, "missing": max(goal["target"] - done, 0), "reached": bool(goal["target"]) and done >= goal["target"],
@@ -113,7 +143,7 @@ def rules_text():
     a = f"Somente LINHA/descrição «{rules.only_desc().title()}»."; u = rules.valid_user()
     des = f"Conta só o item DESENVOLVIMENTO que chegou a ITEM RECEBIDO dentro do ano (data da mudança de status) E foi validado pelo usuário {u} (USER_VALID). {a}"
     if rules.goal_basis() == "validacao":
-        return {kinds.DES: des, kinds.RD: f"Conta os itens de SUGESTÃO «R-D» validados pelo usuário {u} (USER_VALID) no ano da data de aprovação. {a}"}
+        return {kinds.DES: des, kinds.RD: f"Conta o item de SUGESTÃO «R-D» validado pelo usuário {u} (USER_VALID) no ano da data de aprovação, quando ele chegar a ITEM RECEBIDO (mesmo que chegue depois do fim do ano). {a}"}
     return {kinds.DES: des, kinds.RD: f"Conta o item que passou de PENDENTE CONFIRMAÇÃO para ITEM RECEBIDO no ano e que tem a validação do usuário {u}. {a}"}
 
 def tracking_info():

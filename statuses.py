@@ -39,10 +39,13 @@ def view_sql(has_cols):
     parts = ["coalesce(status,'')", "coalesce(drawing_substatus,'')", "coalesce(validation_substatus,'')"]
     for col in ("project_substatus", "inmetro_substatus"):
         if col in has_cols: parts.append(f"coalesce({col},'')")
-    agg = ", ".join(f"MAX({_cond(inc, exc)}) {k}_a" for k, _, _, _, inc, exc in DEFS)
+    # «Pendente compras» de um item já recebido é resíduo do servidor: não vale (etapa 16 · D5). O item está recebido quando alguma aplicação dele está
+    # em ITEM RECEBIDO (= status mais avançado, o que a lista mostra), mesmo que outra aplicação ainda traga o sub status antigo. A marcação manual continua prevalecendo.
+    extra = {"pend_compras": " * (1 - MAX(st='ITEM RECEBIDO'))"}
+    agg = ", ".join(f"MAX({_cond(inc, exc)}){extra.get(k, '')} {k}_a" for k, _, _, _, inc, exc in DEFS)
     eff = ",\n ".join(f"COALESCE((SELECT value FROM rd_flags f WHERE f.code=g.code AND f.suggestion=g.suggestion AND f.flag='{k}'), g.{k}_a) {k}" for k in KEYS)
     auto = ", ".join(f"g.{k}_a a_{k}" for k in KEYS)
-    return (f"CREATE VIEW v_rd_flags AS\nWITH a AS (SELECT code, suggestion, upper({"||' '||".join(parts)}) t FROM rd_projects WHERE {rules.desc_sql()}),\n"
+    return (f"CREATE VIEW v_rd_flags AS\nWITH a AS (SELECT code, suggestion, upper({"||' '||".join(parts)}) t, upper(trim(coalesce(status,''))) st FROM rd_projects WHERE {rules.desc_sql()}),\n"
             f"g AS (SELECT code, suggestion, {agg} FROM a GROUP BY code, suggestion)\nSELECT g.code, g.suggestion,\n {eff},\n {auto} FROM g")
 
 ANY_SQL = " OR ".join(KEYS)

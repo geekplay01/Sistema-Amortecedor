@@ -51,12 +51,9 @@ def prepare(df):
     if "DESCRICAO" in {canon(c) for c in df.columns}: out["DESCRICAO"] = clean_series(df[_find(df, "DESCRICAO")])
     return out
 
-def validation_counts(df, user=None, line=None, year=None):
-    """Dicionário para o dashboard:
-    {"total": n, "DES": n, "R-D": n, "outros": n, "linhas": {...}, "por_mes": {"2026-07": {"DES": a, "R-D": b}, ...}, "filtro": {...}, "avisos": [...]}
-    df: DataFrame com (ao menos) USER_VALID, SUGESTAO e LINHA — nomes em qualquer caixa/acentuação."""
-    user = (user or rules.valid_user()).strip().upper(); line = (line or rules.only_desc() or "AMORTECEDOR").strip().upper(); avisos = []
-    p = prepare(df); n0 = len(p)
+def _select(df, user, line, year):
+    """Linhas validadas pelo usuário, na LINHA certa, com tipo (T = DES / R-D, exclusivos) e, se houver data, no ano. → (p, sel, m_user, m_line, avisos)"""
+    avisos = []; p = prepare(df)
     if not (p["USER_VALID"] != "").any(): avisos.append("coluna USER_VALID ausente ou vazia — nada pôde ser validado")
     if not (p["LINHA"] != "").any():
         if "DESCRICAO" in p.columns: avisos.append("coluna LINHA ausente: usada a DESCRIÇÃO do item (sem COX/KAD)")
@@ -75,6 +72,23 @@ def validation_counts(df, user=None, line=None, year=None):
         has = sel["DATA_APROVACAO"].notna().any()
         if has: sel = sel[sel["DATA_APROVACAO"].dt.year == int(year)]
         else: avisos.append("sem DATA_APROVACAO: o ano não pôde ser aplicado (contagem de todos os anos)")
+    return p, sel, m_user, m_line, avisos
+
+def validated(year, kind=RD):
+    """Códigos validados pelo usuário no ano (mesma seleção da contagem do dashboard) → {código: 'AAAA-MM-DD' da 1ª aprovação} (meta R-D, etapa 16 · D5b)."""
+    _, sel, _, _, _ = _select(load_frame(), rules.valid_user().strip().upper(), (rules.only_desc() or "AMORTECEDOR").strip().upper(), year)
+    out = {}
+    for code, d in sel[(sel["T"] == kind) & (sel["CODIGO"] != "")][["CODIGO", "DATA_APROVACAO"]].itertuples(index=False):
+        ds = d.strftime("%Y-%m-%d") if pd.notna(d) else None
+        if code not in out or (ds and (not out[code] or ds < out[code])): out[code] = ds
+    return out
+
+def validation_counts(df, user=None, line=None, year=None):
+    """Dicionário para o dashboard:
+    {"total": n, "DES": n, "R-D": n, "outros": n, "linhas": {...}, "por_mes": {"2026-07": {"DES": a, "R-D": b}, ...}, "filtro": {...}, "avisos": [...]}
+    df: DataFrame com (ao menos) USER_VALID, SUGESTAO e LINHA — nomes em qualquer caixa/acentuação."""
+    user = (user or rules.valid_user()).strip().upper(); line = (line or rules.only_desc() or "AMORTECEDOR").strip().upper()
+    p, sel, m_user, m_line, avisos = _select(df, user, line, year); n0 = len(p)
     def cnt(t):
         x = sel[sel["T"] == t]
         return int(x["CODIGO"].replace("", pd.NA).dropna().nunique() + (x["CODIGO"] == "").sum()) if len(x) else 0

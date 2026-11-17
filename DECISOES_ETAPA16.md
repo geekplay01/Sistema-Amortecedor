@@ -193,4 +193,11 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Testes: `test_modulos.FamiliaInmetro`, `test_26` (redirecionamento, listas, contagens, Excel); `test_11` inclui a tela.
 - Na cópia: 43 produtos com família divergente (= os 43 conflitos), 6 EAN, 259 sugestões. Pendências abertas: 18 (6 EAN + 12 peso). Sem rolagem lateral no celular, sem erro no console.
 
+### Etapa D · D5/D5b Pendente compras e meta R-D (17/11/2026) ✅
+- `statuses.view_sql`: «Pendente compras» automático vale 0 quando alguma aplicação do código está em ITEM RECEBIDO (o item tem várias aplicações; uma pode trazer o sub status antigo). Manual prevalece. Na cópia, R-D com «Pendente compras»: 247 → 24; DES sem mudança (349).
+- Meta R-D (base «validação»): `metas.validated(ano)` (mesma seleção do quadro de validações) + `goals.rd_validations(ano)` → conta quem já está em ITEM RECEBIDO; evolução mensal pelo mês da validação; `parts` com validações, recebidas, aguardando, pend. validação qualidade, validação reprovada. Rota `/api/goals/rd-validations`.
+- Tela Metas: novo quadro «Validações REDESENVOLVIMENTO · ano» com atalhos (Todas, Contam, Aguardando, Pend. validação qualidade, Validação reprovada; `rdv` na URL), status atual, controles, recebido em e «conta?». Na base «validação», a lista de recebidos mostra só DESENVOLVIMENTO.
+- Testes: `test_modulos.MetaRdPorValidacao` (view e meta, inclusive item que chega depois); `test_04b` atualizado para a regra nova.
+- Na cópia: 197 validações R-D em 2026 → 173 contam (antes a meta mostrava 197), 24 aguardando (FINALIZANDO CIT).
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

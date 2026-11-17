@@ -232,6 +232,46 @@ class FamiliaInmetro(_TmpDB):
         finally: c.close()
         self.assertEqual(st, {"AMD1": "resolvida", "AMD3": "aberta"})
 
+class MetaRdPorValidacao(_TmpDB):
+    """Etapa 16 · D5/D5b: «Pendente compras» some quando o item já é ITEM RECEBIDO (a marcação manual ainda prevalece);
+    meta R-D = itens validados pelo usuário no ano (DATA APROV) que chegaram a ITEM RECEBIDO, mesmo depois do fim do ano. A lista traz todas as validações do ano."""
+    R = "REDESENVOLVIMENTO"
+    def setUp(self):
+        super().setUp(); self.db.init_db(); import goals, json; goals.ensure()
+        v = lambda u, d: json.dumps({"USER APROV": u, "DATA APROV": d})
+        ins = "INSERT INTO rd_projects(code,suggestion,status,validation_substatus,description,line,extra) VALUES(?,?,?,?,?,'AMORTECEDOR',?)"
+        self.sql(ins, [("V1", self.R, "ITEM RECEBIDO", "PENDENTE COMPRAS", "AMORTECEDOR", v("ITALOC", "2026-03-10")),
+                       ("V2", self.R, "FINALIZANDO CIT", "VALIDAÇÃO REPROVADA", "AMORTECEDOR", v("italoc ", "2026-05-02")),
+                       ("V3", self.R, "EM COTAÇÃO", "PENDENTE VALIDAÇÃO QUALIDADE / PENDENTE COMPRAS", "AMORTECEDOR", v("ITALOC", "2026-06-20")),
+                       ("V4", self.R, "ITEM RECEBIDO", None, "AMORTECEDOR", v("ITALOC", "2025-12-01")),
+                       ("V5", self.R, "ITEM RECEBIDO", None, "AMORTECEDOR", v("OUTRO", "2026-02-01"))])
+        self.sql("INSERT INTO dev_item_state(code,kind,status,present) VALUES(?,?,?,1)", [("V1", self.R, "ITEM RECEBIDO"), ("V2", self.R, "FINALIZANDO CIT")])     # V3: sem estado → vale rd_projects
+
+    def flags(self):
+        c = self.db.conn()
+        try: return {r[0]: r[1] for r in c.execute("SELECT code,pend_compras FROM v_rd_flags")}
+        finally: c.close()
+
+    def test_pendente_compras_some_quando_recebido(self):
+        self.assertEqual(self.flags()["V1"], 0); self.assertEqual(self.flags()["V3"], 1)
+        self.sql("INSERT INTO rd_projects(code,suggestion,status,validation_substatus,description,line) VALUES('V4',?,'FINALIZANDO CIT','PENDENTE COMPRAS','AMORTECEDOR','AMORTECEDOR')", [(self.R,)])
+        self.assertEqual(self.flags()["V4"], 0)                                   # outra aplicação do item ainda traz o sub status, mas o item já está recebido
+        self.sql("INSERT INTO rd_flags(code,suggestion,flag,value) VALUES('V1',?,'pend_compras',1)", [(self.R,)])
+        self.assertEqual(self.flags()["V1"], 1)                                   # marcação manual prevalece
+
+    def test_meta_rd_conta_validados_do_ano_quando_recebidos(self):
+        import goals
+        L = goals.rd_validations(2026); r = {x["code"]: x for x in L["rows"]}
+        self.assertEqual(sorted(r), ["V1", "V2", "V3"])
+        self.assertEqual({k: x["counts"] for k, x in r.items()}, {"V1": True, "V2": False, "V3": False})
+        self.assertEqual((r["V1"]["status"], r["V2"]["status"], r["V3"]["status"]), ("ITEM RECEBIDO", "FINALIZANDO CIT", "EM COTAÇÃO"))
+        self.assertIn("val_reprovada", r["V2"]["flags"]); self.assertIn("pend_validacao_qual", r["V3"]["flags"]); self.assertEqual(r["V1"]["valid_at"], "2026-03-10")
+        self.assertEqual(L["counts"], {"todas": 3, "contam": 1, "aguardando": 2, "pend_validacao_qual": 1, "val_reprovada": 1})
+        g = goals.progress(2026)["goals"][self.R]; self.assertEqual(g["tracked"], 1); self.assertEqual((g["parts"]["validacoes"], g["parts"]["recebidas"], g["parts"]["aguardando"]), (3, 1, 2))
+        self.assertEqual(goals.progress(2025)["goals"][self.R]["tracked"], 1)     # V4: validado em 2025
+        self.sql("UPDATE dev_item_state SET status='ITEM RECEBIDO' WHERE code='V2'")
+        self.assertEqual(goals.progress(2026)["goals"][self.R]["tracked"], 2)     # chegou depois: entra na meta do ano da validação
+
 class BuscaConcorrente(_TmpDB):
     def test_codigo_com_ou_sem_pontuacao(self):
         import queries

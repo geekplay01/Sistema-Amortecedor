@@ -514,6 +514,8 @@ def api_goal_set():
     try: goals.set_goal(b.get("year"), b.get("kind"), b.get("target"), b.get("prior_done"), b.get("note"))
     except ValueError as e: return jsonify(error=str(e)), 400
     return jsonify(goals.progress(b.get("year")))
+@app.get("/api/goals/rd-validations")
+def api_goal_rd_val(): return jsonify(goals.rd_validations(request.args.get("year")))
 @app.get("/api/goals/events")
 def api_goal_events(): return jsonify(goals.events_list(request.args.get("year"), request.args.get("kind"), max(request.args.get("limit", 80, type=int), 1)))
 @app.get("/api/validations/pending")

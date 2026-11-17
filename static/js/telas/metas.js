@@ -1,6 +1,7 @@
 /* Tela · Metas & Validação — visual Tailwind (etapa 16 · B).
-   Filtros na URL e lembrados (PSDTW.filtros): ano · tipo (DESENVOLVIMENTO / REDESENVOLVIMENTO; clicar de novo limpa) · «conta?» na lista de recebidos.
-   Fontes: /api/goals (metas + validações), /api/goals/events?kind= (recebidos no ano), /api/validations/pending (R-D aguardando confirmação). */
+   Filtros na URL e lembrados (PSDTW.filtros): ano · tipo (DESENVOLVIMENTO / REDESENVOLVIMENTO; clicar de novo limpa) · «conta?» na lista de recebidos · rdv (atalho da lista de validações R-D).
+   Fontes: /api/goals (metas + validações), /api/goals/rd-validations (validações R-D do ano: contam ao chegar a ITEM RECEBIDO, etapa 16 · D5b),
+   /api/goals/events?kind= (recebidos no ano; na base «validação» só DESENVOLVIMENTO), /api/validations/pending (R-D aguardando confirmação). */
 (function () {
   const { $, esc, J, post, root, fail, dlg } = PSD;
   const TW = window.PSDTW, { nf, dmy, badge, kpi, card, notice, empty } = TW;
@@ -12,13 +13,13 @@
   const put = (u, b) => J(u, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) });
 
   function metas() {
-    const F = TW.filtros("metas", ["year", "tipo", "conta"]); let d = null, ev = null, pv = null, mexeu = false;
+    const F = TW.filtros("metas", ["year", "tipo", "conta", "rdv"]); let d = null, ev = null, pv = null, rv = null, mexeu = false;
     root.innerHTML = `<div class="flex flex-col gap-5">
       <div id="mbar" class="flex flex-wrap items-center gap-2"></div>
       <p id="mtr" class="m-0 text-sm text-mute"></p>
       <div id="mx"></div>
       <div id="mg" class="grid grid-cols-1 gap-4 lg:grid-cols-2"></div>
-      <div id="mevo"></div><div id="mev"></div><div id="mval"></div>
+      <div id="mevo"></div><div id="mrd"></div><div id="mev"></div><div id="mval"></div>
     </div>`;
     const tipos = () => { const t = TIPO[F.get().tipo]; return t ? [t] : [DES, RD]; };
 
@@ -52,7 +53,7 @@
       const ks = tipos(), u = esc(d.validacoes?.filtro?.USER_VALID || "ITALOC"), st = (n, l) => `<div class="rounded-xl bg-slate-500/10 px-3 py-2 text-center"><div class="text-xl font-bold tabular-nums text-ink">${n}</div><div class="text-xs text-mute">${l}</div></div>`;
       $("#mg").innerHTML = ks.map(k => {
         const g = d.goals[k], p = g.parts;
-        const base = d.basis === "validacao" && k === RD ? `Validações ${u} no ano: <b class="text-ink">${nf(p.validacoes)}</b>${p.validacoes_sem_data ? ` · ${nf(p.validacoes_sem_data)} sem data de aprovação` : ""}.`
+        const base = d.basis === "validacao" && k === RD ? `Validações ${u} no ano: <b class="text-ink">${nf(p.validacoes)}</b> · já em ITEM RECEBIDO (contam): <b class="text-ink">${nf(p.recebidas)}</b> · aguardando: <b class="text-ink">${nf(p.aguardando)}</b>${p.validacoes_sem_data ? ` · ${nf(p.validacoes_sem_data)} sem data de aprovação` : ""}. A lista está abaixo.`
           : k === RD ? `Recebidos e validados no ano: <b class="text-ink">${nf(p.recebidos_validados)}</b>${p.recebidos_sem_validacao ? ` · <b class="text-ink">${nf(p.recebidos_sem_validacao)}</b> recebido(s) sem validação de usuário não contam.` : ""}`
           : `Recebidos e validados no ano: <b class="text-ink">${nf(p.recebidos_validados)}</b>${p.recebidos_sem_validacao ? ` · <b class="text-ink">${nf(p.recebidos_sem_validacao)}</b> recebido(s) sem validação não contam` : ""}${p.por_coluna_de_data ? ` · ${nf(p.por_coluna_de_data)} datado(s) pela coluna de status do servidor` : ""}.`;
         return card(`${k} ${g.reached ? badge("meta atingida", "green") : ""}`, `<div id="gg-${SLUG[k]}" class="chart"></div>
@@ -67,11 +68,28 @@
     };
 
     // itens que chegaram a ITEM RECEBIDO no ano (já filtrados por tipo na API) + filtro «conta?» local
+    // validações R-D do ano (base «validação»): todas, com status atual e controles; conta quando chegar a ITEM RECEBIDO (goals.rd_validations)
+    const RDF = { todas: "Todas", contam: "Contam (ITEM RECEBIDO)", aguardando: "Aguardando ITEM RECEBIDO", pend_validacao_qual: "Pend. validação qualidade", val_reprovada: "Validação reprovada" };
+    const desenharRd = () => {
+      if (!rv || !tipos().includes(RD)) { $("#mrd").innerHTML = ""; return; }
+      const s = F.get().rdv || "todas", c = rv.counts, ok = r => s === "contam" ? r.counts : s === "aguardando" ? !r.counts : s === "todas" ? true : r.flags.includes(s), rows = rv.rows.filter(ok);
+      const chips = Object.entries(RDF).filter(([k]) => k === "todas" || c[k] || s === k).map(([k, l]) => chip(`data-rdv="${k}"`, `${l} · ${nf(c[k])}`, s === k)).join("");
+      $("#mrd").innerHTML = card(`Validações ${RD} · ${d.year}`, `<p class="m-0 mb-3 text-sm text-mute">Todas as validações do usuário em ${RD} no ano (data de aprovação), inclusive as que estão com validação pendente da qualidade ou reprovada. Cada item <b class="text-ink">entra na meta de ${d.year} quando chegar a ITEM RECEBIDO</b>, mesmo que chegue depois.</p>
+        <div class="mb-3 flex flex-wrap gap-2">${chips}</div>`
+        + (rows.length ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Validado em" }, { h: "Status atual" }, { h: "Controle de status", nw: false }, { h: "Recebido em" }, { h: "Conta?" }],
+            rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="rd" data-code="${esc(r.code)}">${esc(r.code)}</a>`, r.description ? `<span class="block max-w-[18rem] truncate" title="${esc(r.description)}">${esc(r.description)}</span>` : "–",
+              dmy(r.valid_at), r.status ? badge(r.status, r.counts ? "green" : "slate") : "–", `<div class="flex min-w-[10rem] flex-wrap gap-1">${PSD.flagChips(r.flags)}</div>`,
+              r.received_at ? dmy(r.received_at) : "–", r.counts ? badge("conta", "green") : badge("aguardando", "amber")]), { h: "max-h-[55vh]" })
+          : empty("Nenhuma validação com este filtro.")));
+    };
+
     const desenharEventos = () => {
-      const s = F.get(), rows = ev.rows.filter(r => s.conta === "sim" ? r.counts : s.conta === "nao" ? !r.counts : true), n = ev.rows.filter(r => r.counts).length;
-      const right = `<select name="conta" class="${campo}"><option value="">Conta? todos (${nf(ev.rows.length)})</option><option value="sim" ${s.conta === "sim" ? "selected" : ""}>Contam (${nf(n)})</option><option value="nao" ${s.conta === "nao" ? "selected" : ""}>Não contam (${nf(ev.rows.length - n)})</option></select>`;
-      const aviso = d.basis === "validacao" && tipos().includes(RD) ? `<p class="m-0 mb-3 text-sm text-mute">Na base atual (validações), a meta de ${RD} soma as validações do ano, não estes recebimentos; para ${RD}, «Conta?» mostra a regra da base «item recebido».</p>` : "";
-      $("#mev").innerHTML = card("Itens recebidos no ano e se contam", ev.rows.length ? aviso + TW.table([{ h: "Código" }, { h: "Tipo" }, { h: "Mudança" }, { h: "Data" }, { h: "Conta?", nw: false }],
+      const s = F.get(), soDes = d.basis === "validacao", base = soDes ? ev.rows.filter(r => r.kind === DES) : ev.rows;       // base «validação»: R-D tem a lista própria (validações do ano)
+      if (soDes && !tipos().includes(DES)) { $("#mev").innerHTML = ""; return; }
+      const rows = base.filter(r => s.conta === "sim" ? r.counts : s.conta === "nao" ? !r.counts : true), n = base.filter(r => r.counts).length;
+      const right = `<select name="conta" class="${campo}"><option value="">Conta? todos (${nf(base.length)})</option><option value="sim" ${s.conta === "sim" ? "selected" : ""}>Contam (${nf(n)})</option><option value="nao" ${s.conta === "nao" ? "selected" : ""}>Não contam (${nf(base.length - n)})</option></select>`;
+      ev = { ...ev, rows: base };
+      $("#mev").innerHTML = card(soDes ? `Itens ${DES} recebidos no ano e se contam` : "Itens recebidos no ano e se contam", ev.rows.length ? TW.table([{ h: "Código" }, { h: "Tipo" }, { h: "Mudança" }, { h: "Data" }, { h: "Conta?", nw: false }],
         rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="${SLUG[r.kind]}" data-code="${esc(r.code)}">${esc(r.code)}</a>`, badge(r.kind, r.kind === DES ? "blue" : "green"),
           `${esc(r.from_value || "—")} → <b>${esc(r.to_value)}</b>`, dmy(r.at), r.counts ? badge("conta", "green") : `${badge("não conta", "amber")} <span class="text-xs text-mute">${esc(r.why_not || "")}</span>`]), { h: "max-h-[50vh]" })
         + (ev.rows.length >= LIMITE ? `<p class="m-0 mt-2 text-xs text-mute">Mostrando os ${nf(LIMITE)} mais recentes.</p>` : "")
@@ -90,9 +108,10 @@
 
     const carregar = async () => {
       const s = F.get(), y = encodeURIComponent(s.year || ""), kind = s.tipo ? "&kind=" + s.tipo : "";
-      try { [d, ev, pv] = await Promise.all([J("/api/goals?year=" + y), J(`/api/goals/events?year=${y}${kind}&limit=${LIMITE}`), J("/api/validations/pending")]); }
+      try { [d, ev, pv, rv] = await Promise.all([J("/api/goals?year=" + y), J(`/api/goals/events?year=${y}${kind}&limit=${LIMITE}`), J("/api/validations/pending"), J("/api/goals/rd-validations?year=" + y)]); }
       catch (e) { return fail(e); }
-      desenharBarra(); desenharValidacoes(); desenharMetas(); desenharEventos(); desenharPendentes();
+      if (d.basis !== "validacao") rv = null;
+      desenharBarra(); desenharValidacoes(); desenharMetas(); desenharRd(); desenharEventos(); desenharPendentes();
     };
     const aplicar = patch => { mexeu = true; if (patch) F.set(patch); return carregar(); };
 
@@ -101,7 +120,8 @@
       if (e.target.name === "conta") { mexeu = true; F.set({ conta: e.target.value }); desenharBarra(); desenharEventos(); }
     });
     root.addEventListener("click", async e => {
-      const tg = e.target.closest("[data-tg]"), todos = e.target.closest("[data-tipo-todos]"), ed = e.target.closest("[data-edit]"), vs = e.target.closest("[data-vs]");
+      const tg = e.target.closest("[data-tg]"), todos = e.target.closest("[data-tipo-todos]"), ed = e.target.closest("[data-edit]"), vs = e.target.closest("[data-vs]"), rdv = e.target.closest("[data-rdv]");
+      if (rdv) { mexeu = true; F.set({ rdv: rdv.dataset.rdv === "todas" ? "" : rdv.dataset.rdv }); desenharBarra(); return desenharRd(); }
       if (tg) { mexeu = true; F.toggle(tg.dataset.tg, tg.dataset.v); return carregar(); }
       if (todos) return aplicar({ tipo: "" });
       if (e.target.id === "mclr") { F.clear(); return aplicar(null); }

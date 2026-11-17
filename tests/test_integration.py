@@ -114,12 +114,16 @@ class Fluxo(unittest.TestCase):
         def mark(codes, kind, user, linha="AMORTECEDOR", dt="2026-05-10"):
             server("UPDATE DESENVOLVIMENTO_PRODUTOS SET \"USER APROV\"=?, LINHA=?, \"DATA APROV\"=? WHERE CÓDIGO IN (%s) AND lower(trim(SUGESTÃO)) IN %s" % (",".join("?" * len(codes)), KIND_SQL[kind]), (user, linha, dt, *codes))
         mark(des[:3], DES, " italoc\u00a0"); mark(des[3:4], DES, "ITALOC2"); mark(des[4:5], DES, "ITALOC", linha="BANDEJA"); mark(rd_[:2], RD, "Italoc ", dt="2025-12-30"); mark(rd_[2:4], RD, "ITALOC")
+        set_status(rd_[2:3], "ITEM RECEBIDO", RD); set_status(rd_[3:4], "EM COTA\u00c7\u00c3O", RD)          # meta R-D (etapa D5b): validado no ano conta quando chegar a ITEM RECEBIDO
         run_sync(); C.put("/api/settings", json={"goal_basis": "validacao"})
         v = C.get("/api/metas/validacoes?year=2026").json
         self.assertEqual((v[DES], v[RD], v["total"]), (3, 2, 5)); self.assertEqual(v["por_mes"]["2026-05"], {DES: 3, RD: 2}); self.assertEqual(v["filtro"]["USER_VALID"], "ITALOC")
         self.assertEqual(C.get("/api/metas/validacoes?year=2025").json[RD], 2)
-        g = C.get("/api/goals?year=2026").json; self.assertEqual(g["basis"], "validacao"); self.assertEqual((g["goals"][DES]["tracked"], g["goals"][RD]["tracked"]), (0, 2)); self.assertEqual(g["validacoes"]["total"], 5)      # DES: só ITEM RECEBIDO no ano E validado — nenhum recebido ainda
-        set_status(des[:4], "ITEM RECEBIDO", DES); run_sync(); g = C.get("/api/goals?year=2026").json; n = g["goals"][DES]["tracked"]; self.assertIn(n, (2, 3))      # validados por ITALOC e recebidos neste ano (o ITALOC2 não conta; item já recebido no marco zero não tem data)
+        g = C.get("/api/goals?year=2026").json; self.assertEqual(g["basis"], "validacao"); self.assertEqual((g["goals"][DES]["tracked"], g["goals"][RD]["tracked"]), (0, 1)); self.assertEqual(g["validacoes"]["total"], 5)      # DES: só ITEM RECEBIDO no ano E validado — nenhum recebido ainda; R-D: 2 validados, 1 recebido
+        lv = C.get("/api/goals/rd-validations?year=2026").json; self.assertEqual(sorted(r["code"] for r in lv["rows"]), sorted(rd_[2:4])); self.assertEqual((lv["counts"]["contam"], lv["counts"]["aguardando"]), (1, 1))
+        self.assertEqual(g["goals"][RD]["parts"]["validacoes"], v[RD])
+        set_status(des[:4], "ITEM RECEBIDO", DES); set_status(rd_[3:4], "ITEM RECEBIDO", RD); run_sync(); g = C.get("/api/goals?year=2026").json; n = g["goals"][DES]["tracked"]; self.assertIn(n, (2, 3))      # validados por ITALOC e recebidos neste ano (o ITALOC2 não conta; item já recebido no marco zero não tem data)
+        self.assertEqual(g["goals"][RD]["tracked"], 2)
         self.assertEqual(sum(m["n"] for m in g["goals"][DES]["series"]["main"]), n); self.assertEqual(C.put("/api/settings", json={"goal_basis": "x"}).status_code, 400)
 
     def test_05_validacoes(self):
