@@ -86,6 +86,8 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
   Linha sem embarque há mais de 2× o p90 da produção = «Parado — verificar saldo» (fora do calendário).
 - **[corrigido]** Embarques: o app não lia `ETA_ATUAL`, `DATA_CHEGADA_FILIAL`, `DATA_CHEGADA_PORTO` nem `STATUS_MICRO`; agora lê. O cálculo de previsão empurrada caiu de ~4 min para <1 s.
 
+- Saldos parados: linha pedido × código sem embarque há mais de 2× o p90 da produção do fornecedor (sem histórico: 180 dias de p90). Lista e Excel por pedido × código com descrição, saldo, emissão, dias sem embarque, limite, última previsão e adiamentos (`leadtime.parados`). Só sinaliza; nada é gravado no ERP.
+
 ## 8. Lados (`sides.py`) **[novo]**
 - Escopo padrão: itens do catálogo com LD ou LE separados, ou presentes na planilha Lados (opção «todos os dianteiros/traseiros»).
 - Par LD × LE, nesta ordem: planilha Lados → Produtos Relacionados (mesmo eixo, lado oposto) → mesma aplicação do catálogo → mesma aplicação no servidor.

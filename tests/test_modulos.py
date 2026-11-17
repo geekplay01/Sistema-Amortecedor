@@ -105,6 +105,25 @@ class LeadTime(_TmpDB):
         self.assertEqual(z["E-WIN"]["prazo_real"]["media"], 130); self.assertEqual(z["E-WIN"]["atraso"]["media"], 10)
         lin = r["linhas"][0]; self.assertEqual(lin["codigo"], "MP-1"); self.assertTrue(any("adiada" in a for a in lin["alertas"])); self.assertTrue(any("meta 180" in a for a in lin["alertas"]))
 
+class SaldosParados(_TmpDB):
+    def test_lista_por_pedido_e_codigo(self):
+        """Etapa 16 · D4 (Q19): saldo sem embarque há mais de 2× o p90 da produção do fornecedor → lista por pedido × código com descrição, saldo, emissão,
+        dias sem embarque, última previsão e nº de adiamentos; pedido recente não entra. O Excel traz as mesmas linhas."""
+        import leadtime, datetime, exporter, io
+        from openpyxl import load_workbook
+        ins = "INSERT INTO ds_compras(pedido,code,description,qty_ordered,qty_pending,order_date,due_date,received_date,status,ex_code) VALUES(?,?,?,?,?,?,?,?,?,?)"
+        self.sql(ins, [("P1", "MP-1", "AMORTECEDOR DIANT", 100, 100, "2024-06-01", "2024-12-01", None, "ABERTO", "EX0002116"),
+                       ("P2", "MP-2", "AMORTECEDOR TRAS", 50, 50, "2026-09-01", "2027-02-01", None, "ABERTO", "EX0002116")])
+        self.assertEqual(leadtime.snapshot_due(datetime.date(2026, 8, 1)), 2)
+        self.sql("UPDATE ds_compras SET due_date='2025-03-01' WHERE pedido='P1'"); leadtime.snapshot_due(datetime.date(2026, 8, 2))     # 1 adiamento
+        rows = leadtime.parados(datetime.date(2026, 10, 15))
+        self.assertEqual([(r["pedido"], r["codigo"]) for r in rows], [("P1", "MP-1")])
+        r = rows[0]
+        self.assertEqual((r["descricao"], r["saldo"], r["emissao"], r["ultima_previsao"], r["adiamentos"], r["dias_sem_embarque"]), ("AMORTECEDOR DIANT", 100.0, "2024-06-01", "2025-03-01", 1, 866))
+        self.assertGreater(r["dias_sem_embarque"], r["limite_dias"])
+        bio, fn = exporter.build("parados", {"today": "2026-10-15"}); ws = load_workbook(io.BytesIO(bio.read())).worksheets[0]
+        self.assertEqual(ws.max_row - 1, 1); self.assertEqual(ws.cell(2, 1).value, "P1"); self.assertIn("parados", fn.lower().replace(" ", "_"))
+
 class Conciliacao(_TmpDB):
     def test_bi_x_servidor_e_catalogo(self):
         import conciliacao as cc

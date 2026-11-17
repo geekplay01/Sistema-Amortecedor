@@ -27,11 +27,27 @@ def _codes():
     return out
 from loaders import SYSTEM_LABEL as SYS          # FORCE GAS / FORCE OIL
 
+def _extras():
+    """Por produto: famílias dos certificados Inmetro, FOB (menor preço, US$, e fornecedor) e estoque do servidor (disponível e reservado, somando os armazéns). Etapa 16 · D9."""
+    import re
+    inm, fob, est = {}, {}, {}
+    for r in Q.q("SELECT product_id,group_concat(DISTINCT upper(family)) f FROM certificates WHERE family IS NOT NULL AND product_id IS NOT NULL GROUP BY product_id"): inm[r["product_id"]] = "; ".join(sorted(r["f"].split(",")))
+    for r in Q.q("SELECT id,fob,fob_supplier FROM products WHERE fob IS NOT NULL"): fob[r["id"]] = (r["fob"], r["fob_supplier"])
+    try:
+        for r in Q.q("SELECT code,SUM(qty) qty,SUM(reserved) res FROM ds_estoque GROUP BY code"):
+            k = re.sub(r"[^A-Z0-9]", "", (r["code"] or "").upper()); a = est.setdefault(k, [0, 0]); a[0] += r["qty"] or 0; a[1] += r["res"] or 0
+    except Exception: pass          # sem sincronização ainda: sem estoque
+    return inm, fob, est
+
 def _products(a):
-    rows = Q.products({**a, "all": 1})["rows"]; cd = _codes()
-    return [("Produtos", ["Pos. catálogo", "Código PERFECT", "Descrição", "Grupo", "Família", "Sistema", "Ø haste (mm)", "Lançamento", "EAN", "Peso (kg)", "Lmin (mm)", "Lmax (mm)", "Aplicações", "Códigos OEM", "Códigos fornecedor", "Códigos concorrente", "Pendências abertas"],
-             [[r["catalog_position"], r["perfect_code"], r["description"], r["catalog_group"], r["family"], SYS.get(r["system_type"]), r["rod_diameter_mm"], "Sim" if r["is_launch"] == "S" else "", r["ean"], r["weight_kg"], r["lmin_mm"], r["lmax_mm"], r["apps"],
-               cd.get((r["id"], "oem")), cd.get((r["id"], "fornecedor")), cd.get((r["id"], "concorrente")), r["pend"]] for r in rows], [11, 16, 38, 18, 16, 12, 11, 11, 16, 10, 10, 10, 11, 30, 30, 30, 11])], len(rows)
+    import re
+    rows = Q.products({**a, "all": 1})["rows"]; cd = _codes(); inm, fob, est = _extras()
+    def e(r): return est.get(re.sub(r"[^A-Z0-9]", "", (r["perfect_code"] or "").upper()), [None, None])
+    return [("Produtos", ["Pos. catálogo", "Código PERFECT", "Descrição", "Grupo", "Família", "Família Inmetro", "Sistema", "Ø haste (mm)", "Lançamento", "EAN", "Peso (kg)", "Lmin (mm)", "Lmax (mm)", "Aplicações",
+                          "Códigos OEM", "Códigos fornecedor", "Códigos concorrente", "FOB menor (US$)", "Fornecedor do FOB", "Estoque disponível", "Estoque reservado", "Pendências abertas"],
+             [[r["catalog_position"], r["perfect_code"], r["description"], r["catalog_group"], r["family"], inm.get(r["id"]), SYS.get(r["system_type"]), r["rod_diameter_mm"], "Sim" if r["is_launch"] == "S" else "", r["ean"], r["weight_kg"], r["lmin_mm"], r["lmax_mm"], r["apps"],
+               cd.get((r["id"], "oem")), cd.get((r["id"], "fornecedor")), cd.get((r["id"], "concorrente")), *fob.get(r["id"], (None, None)), *e(r), r["pend"]] for r in rows],
+             [11, 16, 38, 18, 16, 22, 12, 11, 11, 16, 10, 10, 10, 11, 30, 30, 30, 12, 14, 12, 12, 11])], len(rows)
 
 def _apps(a):
     rows = Q.applications({**a, "all": 1})["rows"]
@@ -99,7 +115,7 @@ BUILD = {"desenvolvimento": _rd("DESENVOLVIMENTO"), "redesenvolvimento": _rd("RE
 
 LABELS = {"desenvolvimento": "Em desenvolvimento", "redesenvolvimento": "Em redesenvolvimento", "produtos": "Produtos e códigos", "pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares",
           "comparacao": "Comparação técnica", "pendencias": "Pendências de dados", "fontes": "Fontes e histórico", "amostras": "Compra de amostras", "damping": "Damping force",
-          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
+          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
           "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo"}
@@ -172,6 +188,14 @@ def _envio(a):
 BUILD["lados"] = _lados; BUILD["envio"] = _envio
 BUILD["brands"] = _brands; BUILD["pendente_compras"] = _pendente
 BUILD["desenhos"] = _desenhos
+def _parados(a):
+    """Saldos parados (Q19): pedido × código sem embarque há mais de 2× o p90 da produção do fornecedor. `today` só para teste."""
+    import leadtime, datetime
+    t = datetime.date.fromisoformat(a["today"]) if a.get("today") else None; rows = leadtime.parados(t)
+    return [("Saldos parados", ["Pedido", "Fornecedor", "Código", "Descrição", "Saldo", "Emissão", "Dias sem embarque", "Limite (2× p90, dias)", "Última previsão", "Nº de adiamentos", "Dias adiados"],
+             [[r["pedido"], r["fornecedor"], r["codigo"], r["descricao"], r["saldo"], r["emissao"], r["dias_sem_embarque"], r["limite_dias"], r["ultima_previsao"], r["adiamentos"], r["dias_adiados"]] for r in rows],
+             [12, 14, 16, 38, 10, 12, 14, 16, 14, 12, 12])], len(rows)
+BUILD["parados"] = _parados
 
 def build(name, args):
     if name not in BUILD: raise ValueError("Módulo sem exportação.")

@@ -158,11 +158,11 @@ HIST_MESES = 24; MIN_N = 5; PARADO = "Parado — verificar saldo"
 STAGES = (("producao", "Produção (pedido → embarque)"), ("mar", "Mar (embarque → porto)"), ("desembaraco", "Desembaraço (porto → filial)"), ("total", "Total (pedido → filial)"))
 
 def _q(s, p):
-    s = pd.to_numeric(s, errors="coerce").dropna(); s = s[s >= 0]
+    s = pd.to_numeric(pd.Series(s, dtype="object"), errors="coerce").dropna(); s = s[s >= 0]
     return None if s.empty else float(s.quantile(p))
 
 def _stage_stats(s):
-    s = pd.to_numeric(s, errors="coerce").dropna(); s = s[s >= 0]
+    s = pd.to_numeric(pd.Series(s, dtype="object"), errors="coerce").dropna(); s = s[s >= 0]          # Series sempre (lista vazia = sem histórico de embarques)
     if s.empty: return {"n": 0, "p25": None, "mediana": None, "p75": None, "p90": None, "media": None}
     return {"n": int(len(s)), "p25": round(float(s.quantile(.25))), "mediana": round(float(s.median())), "p75": round(float(s.quantile(.75))), "p90": round(float(s.quantile(.9))), "media": round(float(s.mean()), 1)}
 
@@ -246,6 +246,7 @@ def forecast(today=None):
             parado = pd.notna(r.emissao) and (hoje - r.emissao).days > 2 * p90      # sem embarque há mais que o dobro do p90 da produção: saldo provavelmente «fantasma»
             ship = max(ship, hoje)
             add(r, PARADO if parado else "Aguardando embarque", saldo, ship, ["mar", "desembaraco"], embarque_prev=None if parado else ship)
+            if parado: rows[-1].update(limite_dias=int(round(2 * p90)), dias_sem_embarque=int((hoje - r.emissao).days))
     df = pd.DataFrame(rows)
     if df.empty: return {"available": False}
     stale = df[df["etapa"] == PARADO]; df_all = df; df = df[df["etapa"] != PARADO].copy()     # parados: fora do calendário e dos KPIs de chegada (aparecem à parte)
@@ -265,6 +266,25 @@ def forecast(today=None):
             "risco": {"linhas": int(len(risco)), "quantidade": float(risco["quantidade"].sum()), "atraso_mediano": int(risco["atraso_previsto"].median()) if len(risco) else None},
             "parados": {"linhas": int(len(stale)), "quantidade": float(stale["quantidade"].sum()), "pedidos": int(stale["pedido"].nunique())},
             "proximos_30": float(df[(df["etapa"] != PARADO) & (df["dias_para_chegar"] <= 30)]["quantidade"].sum()), "proximos_90": float(df[(df["etapa"] != PARADO) & (df["dias_para_chegar"] <= 90)]["quantidade"].sum())}
+
+def parados(today=None):
+    """Saldos parados (Q19, etapa 16 · D4): linhas pedido × código sem embarque há mais de 2× o p90 da produção do fornecedor — saldo provavelmente «fantasma»
+    no ERP. Só sinaliza (nada é gravado no ERP). Mais antigos primeiro."""
+    from queries import q
+    import re
+    F = forecast_cached(today)
+    if not F.get("available"): return []
+    k = lambda c: re.sub(r"[^A-Z0-9]", "", str(c or "").upper())
+    desc = {(str(r["pedido"]), k(r["code"])): r["d"] for r in q("SELECT pedido, code, MAX(description) d FROM ds_compras GROUP BY pedido, code")}
+    push = {(str(p), k(c)): v for (p, c), v in (_pushes() or {}).items()}
+    out = []
+    for r in F["linhas"]:
+        if r["etapa"] != PARADO: continue
+        key = (str(r["pedido"]), k(r["codigo"])); pu = push.get(key, {})
+        out.append({"pedido": r["pedido"], "fornecedor": r["fornecedor"], "codigo": r["codigo"], "descricao": desc.get(key), "saldo": float(r["quantidade"] or 0),
+                    "emissao": str(r["emissao"])[:10] if r.get("emissao") is not None else None, "dias_sem_embarque": r.get("dias_sem_embarque"), "limite_dias": r.get("limite_dias"),
+                    "ultima_previsao": str(r["prometido"])[:10] if r.get("prometido") is not None else None, "adiamentos": pu.get("vezes", 0), "dias_adiados": pu.get("dias", 0)})
+    return sorted(out, key=lambda x: (x["emissao"] or "", str(x["pedido"]), x["codigo"]))
 
 _CF = {}
 def forecast_cached(today=None):

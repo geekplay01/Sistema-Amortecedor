@@ -518,6 +518,23 @@ class Fluxo(unittest.TestCase):
         wb = load_workbook(io.BytesIO(C.get("/api/anomalies/export.xlsx?q=T26").data)); self.assertEqual([ws.max_row - 1 for ws in wb.worksheets[:2]], [1, 1])
         self.assertIn("Anomalias", C.get("/anomalias").get_data(as_text=True))
 
+    def test_27_excel_pesquisa_inmetro_fob_estoque(self):
+        """D9: o Excel da Pesquisa (e de Produtos) traz a família do Inmetro, o FOB (menor preço e fornecedor) e o estoque (disponível e reservado)."""
+        import io
+        from openpyxl import load_workbook
+        con = sqlite3.connect(DB)
+        try:
+            p = con.execute("SELECT id FROM products WHERE perfect_code='AMDT26'").fetchone()[0]
+            con.execute("UPDATE products SET fob=12.5, fob_supplier='ZS' WHERE id=?", (p,))
+            con.executemany("INSERT INTO ds_estoque(code,warehouse,qty,reserved) VALUES(?,?,?,?)", [("AMDT26", "01", 30, 5), ("amd-t26", "02", 12, 0)]); con.commit()
+        finally: con.close()
+        for slug in ("pesquisa", "produtos"):
+            ws = load_workbook(io.BytesIO(C.get(f"/api/export/{slug}.xlsx?q=AMDT26").data)).worksheets[0]
+            head = [c.value for c in ws[1]]; row = dict(zip(head, [c.value for c in ws[2]]))
+            self.assertEqual(ws.max_row, 2, slug); self.assertEqual(row["Código PERFECT"], "AMDT26")
+            self.assertEqual(row["Família Inmetro"], "CONVENCIONAL; ESTRUTURAL"); self.assertEqual((row["FOB menor (US$)"], row["Fornecedor do FOB"]), (12.5, "ZS"))
+            self.assertEqual((row["Estoque disponível"], row["Estoque reservado"]), (42, 5))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -205,4 +205,11 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - `brands.is_ford`: PN Ford (`XXXX/18xxx/XX`) fora da base → lista MOTORCRAFT com selo «PN Ford fora da base», fora do cartão (`fora_base` no item, no `summary` e em `items`); Excel: «Base Motorcraft» = «Não (PN Ford fora da base)». Na cópia: cartão MOTORCRAFT 36, lista 48 (12 PN Ford); Sem marca 13 → 1 (48510-79425-2P, código Toyota).
 - Testes: `test_modulos.SemProjeto`, `test_modulos.FordForaDaBase`; `test_24` ajustado (cartão = lista − fora da base).
 
+### Etapa D · D4/D9 Excel de saldos parados e da Pesquisa (17/11/2026) ✅
+- Saldos parados (Q19): `leadtime.parados()` usa as linhas «Parado — verificar saldo» da previsão (sem embarque há mais de 2× o p90 da produção do fornecedor) e junta descrição (ds_compras) e adiamentos (`_pushes`). Excel `/api/export/parados.xlsx`: pedido, fornecedor, código, descrição, saldo, emissão, dias sem embarque, limite (2× p90), última previsão, nº de adiamentos, dias adiados. Link no indicador «Parados» de Pedidos em Aberto. Nada é gravado no ERP.
+- Corrigido: sem histórico de embarques, a previsão quebrava (`_stage_stats([])`); agora devolve estatística vazia.
+- Excel da Pesquisa (e de Produtos): + Família Inmetro (famílias dos certificados), FOB menor (US$) e fornecedor, Estoque disponível e reservado (soma dos armazéns, código sem pontuação) — `exporter._extras`.
+- Testes: `test_modulos.SaldosParados`, `test_27`.
+- Na cópia: 3.185 linhas paradas em 116 pedidos (= indicador da tela; Excel em 11 s). Pesquisa AMD0103: família Inmetro SEMI-ESTRUTURAL, FOB US$ 6,55 (E-WIN), estoque 72 (16 reservados).
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.
