@@ -1,8 +1,8 @@
 /* Telas · Aplicações, Comparação e Equivalências — visual Tailwind (etapa 16). (Produtos e Pesquisa: telas/produtos.js.)
    Aplicações: eixo e lado (inclusive «não informado») são atalhos que batem com a lista (queries.applications · stats; tests: test_23).
    Comparação: 2 a 4 produtos lado a lado, linhas que diferem destacadas, opção «só diferenças»; a última comparação fica lembrada.
-   Equivalências: atalhos por status, confiança e «sem diferenças» (equivalence.listing · *_counts); critérios/diferenças/dados ausentes
-   são listas guardadas na URL juntas por «|». Filtros na URL e lembrados (PSDTW.filtros); o Excel segue os mesmos filtros. */
+   Equivalências (aba «Sugestões de equivalência» da tela Anomalias, etapa 16 · D): atalhos por status, confiança e «sem diferenças» (equivalence.listing · *_counts);
+   critérios/diferenças/dados ausentes são listas guardadas na URL juntas por «|». Filtros na URL e lembrados (PSDTW.filtros); o Excel segue os mesmos filtros. */
 (function () {
   const { $, $$, esc, J, post, qs, root, fail, SYS, yr } = PSD;
   const TW = window.PSDTW, { nf, badge, kpi, notice } = TW;
@@ -17,7 +17,7 @@
   const meio = '<span class="text-mute">–</span>';
   const pager = (pg, pages) => { const b = (p, dis, l) => `<button type="button" data-p="${p}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${dis ? "disabled" : ""}>${l}</button>`;
     return pages > 1 ? `${b(pg - 1, pg < 2, "‹")} Página ${pg} de ${pages} ${b(pg + 1, pg >= pages, "›")}` : ""; };
-  const metaLinha = (total, nome, F, pg, xlsx) => { const n = Object.keys(F.get()).length;
+  const metaLinha = (total, nome, F, pg, xlsx) => { const n = Object.keys(F.get()).filter(k => k !== "tab").length;
     return `<span><b class="text-ink">${nf(total)}</b> ${nome}${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>${xlsx ? `<a class="${primario}" href="${xlsx}">⬇ Baixar Excel</a>` : ""}`; };
 
   // ================= Aplicações =================
@@ -118,9 +118,10 @@
   const DIF = ["Nenhuma aplicação em comum", "Eixo diferente", "Lados diferentes", "São lados opostos", "Lmax difere", "Lmin difere", "Sistema diferente", "Família diferente"];
   const MISS = ["Eixo", "Lado", "Lmax", "Lmin", "Sistema óleo/gás", "Aplicações", "Diâmetro da haste"];
   const ST = { pendente: ["Pendente", "slate"], aprovada: ["Aprovada", "green"], rejeitada: ["Rejeitada", "red"] }, CF = { Alta: "green", "Média": "amber", Baixa: "red" };
-  function equivalencias() {
-    const F = TW.filtros("equivalencias", ["q", "status", "confidence", "diff", "minscore", "crit", "dif", "miss"]); let pg = 1, d = null, timer;
-    root.innerHTML = `<div class="flex flex-col gap-5">
+  // aba «Sugestões de equivalência» da tela Anomalias (telas/anomalias.js chama PSD.equivalencias(host)); «tab» fica na URL junto com os filtros
+  function equivalencias(host) {
+    const F = TW.filtros("equivalencias", ["tab", "q", "status", "confidence", "diff", "minscore", "crit", "dif", "miss"]); let pg = 1, d = null, timer;
+    host.innerHTML = `<div class="flex flex-col gap-5">
       ${notice("A pontuação (0–100%) mede a <b>similaridade dos dados</b> (códigos, aplicação, medidas, sistema). <b>Não comprova intercambialidade</b> e nenhuma sugestão é aprovada automaticamente.", "blue")}
       <div id="ek" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
       <div id="eq" class="flex flex-col gap-2"></div>
@@ -172,9 +173,9 @@
     $("#ef").addEventListener("submit", e => e.preventDefault());
     $("#ef").addEventListener("toggle", e => { if (e.target.open) $$("#ef details[open]").forEach(x => { if (x !== e.target) x.open = false; }); }, true);
     document.addEventListener("click", e => { if (!e.target.closest("[data-ms]")) $$("#ef details[open]").forEach(x => x.open = false); });
-    root.addEventListener("click", async e => {
+    host.addEventListener("click", async e => {
       const tg = e.target.closest("[data-tg]"), b = e.target.closest("[data-eq]"), p = e.target.closest("[data-p]");
-      if (e.target.id === "eclr") { F.clear(); aviso(""); filtrosF(); return aplicar(null, true); }
+      if (e.target.id === "eclr") { F.clear(); F.set({ tab: "sugestoes" }); aviso(""); filtrosF(); return aplicar(null, true); }
       if (tg) { F.toggle(tg.dataset.tg, tg.dataset.v); filtrosF(); return aplicar(null, true); }
       if (b) { try { await post("/api/equivalences/" + b.dataset.eq, { status: b.dataset.s }); carregar(); } catch (er) { aviso(esc(er.message), true); } return; }
       if (p && !p.disabled) { pg = +p.dataset.p; carregar(); scrollTo(0, 0); return; }
@@ -187,5 +188,5 @@
 
   PSD.tela("aplicacoes", aplicacoes);
   PSD.tela("comparacao", comparacao);
-  PSD.tela("equivalencias", equivalencias);
+  PSD.equivalencias = equivalencias;
 })();

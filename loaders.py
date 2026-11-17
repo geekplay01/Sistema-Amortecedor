@@ -76,12 +76,14 @@ def box_base(v):
     """Caixa sem o sufixo da marca: «PP025M» (versão Motorcraft) e «PP025B» (versão BPROAUTO) → «PP025». A EstruturaAMD traz a caixa sem sufixo."""
     return _BOX_SUFFIX.sub("", str(v or "").strip().upper())
 
-def _merge(x, pid, vals):
+def _merge(x, pid, vals, only_fill=()):
+    """`only_fill`: campos que esta fonte só preenche quando vazios; valor diferente não vira conflito (ex.: família do Inmetro — o CatalogoAMD prevalece e a divergência aparece em Anomalias)."""
     cur = x.c.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone(); sets = {}
     for k, v in vals.items():
         if v is None: continue
         old = cur[k]
         if old is None: sets[k] = v
+        elif k in only_fill: continue
         elif k == "package_code" and str(old) != str(v) and box_base(old) == box_base(v): continue     # só o sufixo M/B difere: o banco está certo, não é conflito
         elif str(old) != str(v) and x.policy == "overwrite": sets[k] = v   # regra escolhida: a planilha prevalece
         elif str(old) != str(v):
@@ -319,7 +321,7 @@ def L_certificados(x, rows):
         x.c.execute("INSERT INTO certificates(product_id,perfect_code_raw,inmetro_number,family,cert_description,source_id) VALUES(?,?,?,?,?,?)",
                     (pid, k[0], k[1], fam, k[2], x.src)); x.n["new"] += 1
         if not pid: x.n["unmatched"] += 1; continue
-        _merge(x, pid, {"ean": _s(r.get("ean")), "family": fam})  # nº Inmetro fica só em certificates (um por fornecedor)
+        _merge(x, pid, {"ean": _s(r.get("ean")), "family": fam}, only_fill=("family",))  # nº Inmetro fica só em certificates (um por fornecedor); família: o catálogo prevalece (anomalias.familia)
 
 def L_estrutura(x, rows):
     x.replace("product_components")

@@ -162,6 +162,11 @@ def migrate():
             m = _re.match(r"Valor atual «(.*?)» × importado «(.*?)»", d or "")
             if m and _re.sub(r"(?<=\d)[MB]$", "", m.group(1).strip().upper()) == _re.sub(r"(?<=\d)[MB]$", "", m.group(2).strip().upper()):
                 c.execute("UPDATE pendencies SET status='resolvida' WHERE id=?", (pid_,))
+        # família do catálogo × Inmetro: o catálogo prevalece e a divergência vai para Anomalias (etapa 16 · D1) → fecha o conflito cujo valor importado é a família de um certificado do produto
+        for pid_, prod, d in c.execute("SELECT id,product_id,description FROM pendencies WHERE kind='conflito' AND field='family' AND status='aberta'").fetchall():
+            m = _re.match(r"Valor atual «(.*?)» × importado «(.*?)»", d or "")
+            if m and c.execute("SELECT 1 FROM certificates WHERE product_id=? AND upper(family)=upper(?)", (prod, m.group(2).strip())).fetchone():
+                c.execute("UPDATE pendencies SET status='resolvida' WHERE id=?", (pid_,))
         # amostras antigas: deduz o lado a partir do texto da aplicação (LD / LE / LD/LE)
         import re
         for oid, app in c.execute("SELECT id,application FROM sample_orders WHERE side IS NULL AND application IS NOT NULL").fetchall():

@@ -49,6 +49,21 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - **Git não está instalado neste PC** (nem GitHub Desktop/`gh`); há `winget`.
 - O repositório `geekplay01/Sistema-Amortecedor` é **público** e hoje tem só `README.md` e `perfect_shock_data_etapa14.zip` na branch `main`.
 
+## Rodada 3 — etapa D (17/11/2026)
+
+| # | Tema | Decisão |
+|---|---|---|
+| D1 | Família (43 conflitos catálogo × Inmetro) | O CatalogoAMD prevalece; a família do Inmetro deixa de abrir conflito. **Equivalências vira «Anomalias»**, com abas: Família (catálogo × Inmetro), EAN e Sugestões de equivalência (mantidas como hoje). |
+| D2 | EAN (6 conflitos) | Continuam conflito (botão «Usar o da planilha») e também aparecem em Anomalias. |
+| D3 | Peso ausente (12) | Nada a programar: preencher no CatalogoAMD. |
+| D4 | Saldos parados | Excel por pedido × código (Q19): pedido, fornecedor, código, descrição, saldo, emissão, dias sem embarque, última previsão, nº de adiamentos. Critério 2× p90 da produção do fornecedor. |
+| D5 | «Pendente compras» em R-D | Ignorar o sub status quando o status já for ITEM RECEBIDO. |
+| D5b | Meta R-D | Metas → Redesenvolvimento lista **todas** as validações do usuário (ITALOC) no ano (inclusive em PENDENTE VALIDAÇÃO QUALIDADE e VALIDAÇÃO REPROVADA). O item conta na meta quando chegar a ITEM RECEBIDO; o ano é o da **validação** (validado em 2026 e recebido em 2027 conta na meta de 2026). |
+| D6 | «Sem projeto» em Desenhos | Contar só itens do cadastro DESENVOLVIMENTO em andamento (sem ITEM RECEBIDO e sem cancelados). |
+| D7 | Códigos Ford fora da base Motorcraft | Classificar como MOTORCRAFT pelo formato do código Ford; aparecem na lista marcados «fora da base», **sem contar** no cartão (indicador fica nos 36 da base). |
+| D8 | Garantia | Usar como base a planilha `bases_exemplo\Analítico de Garantias.xlsx` e melhorar a interface. |
+| D9 | Excel da Pesquisa | Acrescentar família do Inmetro, FOB (melhor preço) e estoque, além dos dados atuais. |
+
 ## Checkpoints
 
 ### Passo 0a — rede de segurança dos testes (11/11/2026) ✅
@@ -170,5 +185,12 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Testes: `test_modulos.CaixaComSufixo` (sufixo M e B sem conflito, caixa base diferente continua conflito, aplicar grava e resolve, migração fecha o conflito falso antigo) e `test_25` (rota de aplicar, 400 ao repetir).
 - Na cópia: ao abrir o app, os 31 conflitos falsos foram fechados (abertas 97 → 66). Apliquei os 5 pelo botão: AMD0245 → PP030, AMD0272 → PP014, AMD0277 → PP013, AMD17472 → PP041, AMD4701 → PP025.
 - **No banco real:** os 31 fecham sozinhos ao reabrir o app; os 5 o usuário aplica em Pendências → Campo «Código da caixa» → «Usar o da planilha».
+
+### Etapa D · D1/D2 Anomalias: família e EAN (17/11/2026) ✅
+- Menu: «Equivalências» virou **«Anomalias»** (`/anomalias`, `telas/anomalias.js`), com abas Família: catálogo × Inmetro · EAN divergente · Sugestões de equivalência (a tela antiga, agora `PSD.equivalencias(host)` em `catalogo.js`). `/equivalencias` redireciona para a aba de sugestões mantendo os filtros; cartão «Equivalências a validar» aponta para ela.
+- Família: importação do Inmetro só preenche família vazia (`_merge(only_fill)`), sem conflito; `anomalias.familia` lista produtos com algum certificado de família diferente (com nº, fornecedor e família de cada certificado; marca «fornecedores com famílias diferentes»). A migração fecha os conflitos de família antigos vindos do Inmetro.
+- EAN: os conflitos continuam em Pendências e aparecem também na aba EAN, com «Usar o da planilha» e «Manter o do catálogo». Excel de Anomalias com as abas Família e EAN (`/api/anomalies/export.xlsx`), seguindo a busca.
+- Testes: `test_modulos.FamiliaInmetro`, `test_26` (redirecionamento, listas, contagens, Excel); `test_11` inclui a tela.
+- Na cópia: 43 produtos com família divergente (= os 43 conflitos), 6 EAN, 259 sugestões. Pendências abertas: 18 (6 EAN + 12 peso). Sem rolagem lateral no celular, sem erro no console.
 
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

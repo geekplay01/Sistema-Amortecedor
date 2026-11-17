@@ -197,6 +197,41 @@ class CaixaComSufixo(_TmpDB):
         finally: c.close()
         self.assertEqual(st, {"conflito": "resolvida", "campo_ausente": "aberta"})
 
+class FamiliaInmetro(_TmpDB):
+    def test_catalogo_prevalece_e_vira_anomalia(self):
+        """Etapa 16 · D1/D2: família do certificado Inmetro diferente da do catálogo não abre conflito (o CatalogoAMD prevalece) e aparece em Anomalias;
+        família vazia é preenchida; EAN diferente continua conflito e também aparece em Anomalias. Conflito de família antigo vindo do Inmetro é fechado na migração."""
+        import loaders, importer, anomalias
+        self.db.init_db()
+        self.sql("INSERT INTO products(perfect_code,description,family,ean) VALUES(?,?,?,?)", [("AMD1", "A", "CONVENCIONAL", "111"), ("AMD2", "B", None, None), ("AMD3", "C", "CABINE", "555")])
+        f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); f.close()
+        pd.DataFrame({"Perfect": ["AMD1", "AMD1", "AMD2", "AMD3"], "Inmetro": ["001/2018", "009/2017", "002/2018", "003/2018"], "Familia": ["Semi-estrutural", "Convencional", "Estrutural", "Cabine"],
+                      "Cod. Barras": ["222", "222", "333", "555"]}).to_excel(f.name, index=False)
+        df, _ = importer.read_table(f.name, None); loaders.run(f.name, None, importer.suggest_mapping(df.columns), None, "InmetroE-win - Todos - Certificado.xlsx", True); os.remove(f.name)
+        c = self.db.conn()
+        try:
+            P = {r[0]: (r[1], r[2]) for r in c.execute("SELECT perfect_code,family,ean FROM products")}
+            pend = sorted((r[0], r[1]) for r in c.execute("SELECT p.perfect_code,x.field FROM pendencies x JOIN products p ON p.id=x.product_id WHERE x.kind='conflito' AND x.status='aberta'"))
+        finally: c.close()
+        self.assertEqual(P, {"AMD1": ("CONVENCIONAL", "111"), "AMD2": ("ESTRUTURAL", "333"), "AMD3": ("CABINE", "555")})
+        self.assertEqual(pend, [("AMD1", "ean")])
+        fam = anomalias.familia(); self.assertEqual([r["perfect_code"] for r in fam], ["AMD1"])
+        self.assertEqual(fam[0]["family"], "CONVENCIONAL"); self.assertEqual(fam[0]["inmetro_families"], ["CONVENCIONAL", "SEMI-ESTRUTURAL"]); self.assertTrue(fam[0]["mixed"])
+        e = anomalias.ean(); self.assertEqual([(r["perfect_code"], r["current"], r["imported"]) for r in e], [("AMD1", "111", "222")])
+        self.assertEqual(anomalias.counts()["familia"], 1); self.assertEqual(anomalias.familia("amd3"), [])
+        c = self.db.conn()
+        try:
+            for code, imp in (("AMD1", "SEMI-ESTRUTURAL"), ("AMD3", "ESTRUTURAL")):          # o 1º veio do Inmetro (está nos certificados); o 2º não
+                pid = c.execute("SELECT id FROM products WHERE perfect_code=?", (code,)).fetchone()[0]
+                c.execute("INSERT INTO pendencies(product_id,kind,field,description) VALUES(?,?,?,?)", (pid, "conflito", "family", f"Valor atual «X» × importado «{imp}» (fonte antiga.xlsx). Nada foi sobrescrito."))
+            c.commit()
+        finally: c.close()
+        self.db.migrate()
+        c = self.db.conn()
+        try: st = dict(c.execute("SELECT p.perfect_code,x.status FROM pendencies x JOIN products p ON p.id=x.product_id WHERE x.field='family'").fetchall())
+        finally: c.close()
+        self.assertEqual(st, {"AMD1": "resolvida", "AMD3": "aberta"})
+
 class BuscaConcorrente(_TmpDB):
     def test_codigo_com_ou_sem_pontuacao(self):
         import queries

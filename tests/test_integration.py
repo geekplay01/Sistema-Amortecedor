@@ -235,11 +235,12 @@ class Fluxo(unittest.TestCase):
 
     def test_11_paginas_carregam(self):
         import re
-        for slug in ("dashboard", "metas", "pedidos-aberto", "vendas", "garantia", "desenvolvimento", "redesenvolvimento", "amostras", "configuracoes", "brands", "lados", "envio", "desenhos", "pendencias", "fontes", "atualizacao"):
+        for slug in ("dashboard", "metas", "pedidos-aberto", "vendas", "garantia", "desenvolvimento", "redesenvolvimento", "amostras", "configuracoes", "brands", "lados", "envio", "desenhos", "pendencias", "fontes", "atualizacao", "anomalias"):
             r = C.get("/" + slug); self.assertEqual(r.status_code, 200, slug); html = r.get_data(as_text=True)
             self.assertIn("syncchip", html); self.assertIn("PSD_STATUS", html); self.assertIn("bg-slate-800", html); self.assertIn("psd-nav", html)         # sidebar fixa slate-800 em Tailwind
         telas = re.findall(r'/static/js/telas/([\w-]+)\.js', html); self.assertIn("pendencias", telas); self.assertNotIn("dados", telas)
-        for t in telas: self.assertEqual(C.get(f"/static/js/telas/{t}.js").status_code, 200, t)                                                       # todo script de tela citado existe
+        for t in telas:
+            with C.get(f"/static/js/telas/{t}.js") as r: self.assertEqual(r.status_code, 200, t)                                                       # todo script de tela citado existe
         self.assertIn("Desenvolvimento", C.get("/desenvolvimento").get_data(as_text=True)); self.assertNotIn("Em desenvolvimento", C.get("/desenvolvimento").get_data(as_text=True))
 
     def test_12_favicon_e_menu_sem_pedidos(self):
@@ -494,6 +495,23 @@ class Fluxo(unittest.TestCase):
         con = sqlite3.connect(DB)
         try: self.assertEqual(con.execute("SELECT family FROM products WHERE id=?", (p[0],)).fetchone()[0], "B")
         finally: con.close()
+
+    def test_26_anomalias(self):
+        """Anomalias (antiga Equivalências): família catálogo × Inmetro e EAN em conflito; /equivalencias redireciona para a aba de sugestões; Excel com as duas abas."""
+        import io
+        from openpyxl import load_workbook
+        r = C.get("/equivalencias?status=pendente"); self.assertEqual(r.status_code, 302); self.assertIn("/anomalias?", r.headers["Location"]); self.assertIn("tab=sugestoes", r.headers["Location"]); self.assertIn("status=pendente", r.headers["Location"])
+        con = sqlite3.connect(DB)
+        try:
+            p = con.execute("INSERT INTO products(perfect_code,description,family,ean) VALUES('AMDT26','T26 AMORTECEDOR','CONVENCIONAL','789')").lastrowid
+            con.executemany("INSERT INTO certificates(product_id,perfect_code_raw,inmetro_number,family,supplier) VALUES(?,?,?,?,?)", [(p, "AMDT26", "001/2026", "ESTRUTURAL", "ZS"), (p, "AMDT26", "002/2026", "CONVENCIONAL", "E-WIN")])
+            con.execute("INSERT INTO pendencies(product_id,kind,field,description) VALUES(?,?,?,?)", (p, "conflito", "ean", "Valor atual «789» × importado «790» (fonte T26.xlsx). Nada foi sobrescrito.")); con.commit()
+        finally: con.close()
+        f = C.get("/api/anomalies?q=T26").json; self.assertEqual([x["perfect_code"] for x in f["rows"]], ["AMDT26"]); self.assertEqual(f["rows"][0]["inmetro_families"], ["CONVENCIONAL", "ESTRUTURAL"])
+        e = C.get("/api/anomalies?tab=ean&q=T26").json; self.assertEqual([(x["current"], x["imported"], x["source"]) for x in e["rows"]], [("789", "790", "T26.xlsx")])
+        self.assertEqual((f["counts"]["familia"], f["counts"]["ean"]), (1, 1))
+        wb = load_workbook(io.BytesIO(C.get("/api/anomalies/export.xlsx?q=T26").data)); self.assertEqual([ws.max_row - 1 for ws in wb.worksheets[:2]], [1, 1])
+        self.assertIn("Anomalias", C.get("/anomalias").get_data(as_text=True))
 
 
 if __name__ == "__main__":

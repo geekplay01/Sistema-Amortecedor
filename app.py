@@ -26,7 +26,7 @@ PAGES = [
  ("produtos", "Produtos e códigos", "M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10", 3),
  ("aplicacoes", "Aplicações veiculares", "M5 16l1.5-5h11L19 16M4 16h16v3H4zM7 19v1.5M17 19v1.5", 3),
  ("comparacao", "Comparação técnica", "M8 4v16M16 4v16M3 8h5M16 14h5", 4),
- ("equivalencias", "Equivalências", "M7 7h11l-3-3M17 17H6l3 3", 4),
+ ("anomalias", "Anomalias", "M12 3l10 18H2zM12 10v5M12 18v.5M7 7h4", 4),          # antiga «Equivalências» (agora uma das abas); /equivalencias redireciona
  ("atualizacao", "Atualização de dados", "M4 12a8 8 0 0114-5l2 2M20 4v5h-5M20 12a8 8 0 01-14 5l-2-2M4 20v-5h5", 2),
  ("lados", "Lados", "M12 3v18M7 7l-4 5 4 5M17 7l4 5-4 5", 3),
  ("envio", "Envio de amostra", "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10M16 9.5l-8-3.5", 3),
@@ -59,7 +59,7 @@ CARDS = [  # chave, rótulo, destino, dica
  ("imports", "Bases importadas", "fontes", "Planilhas já importadas"),
  ("pendencies", "Pendências técnicas", "pendencias", "Dados ausentes ou inconsistentes"),
  ("duplicates", "Possíveis duplicidades", "pendencias?tab=dup", "Mesmo código em produtos diferentes"),
- ("equivalences_pending", "Equivalências a validar", "equivalencias", "Sugestões aguardando decisão"),
+ ("equivalences_pending", "Equivalências a validar", "anomalias?tab=sugestoes", "Sugestões aguardando decisão"),
 ]
 
 PRIMARY = ["metas", "pedidos-aberto", "vendas", "garantia"]     # menu fixo da sidebar (Metas & Validação · Pedidos em Aberto · Vendas (Curva A) · Garantia)
@@ -67,7 +67,7 @@ PRIMARY = ["metas", "pedidos-aberto", "vendas", "garantia"]     # menu fixo da s
 MENU = [("Visão geral", ["dashboard", "brands"]),
         ("1 · Desenvolvimento", ["desenvolvimento", "redesenvolvimento", "desenhos", "damping"]),
         ("2 · Amostras", ["amostras", "envio"]),
-        ("3 · Catálogo", ["pesquisa", "produtos", "aplicacoes", "lados", "comparacao", "equivalencias"]),
+        ("3 · Catálogo", ["pesquisa", "produtos", "aplicacoes", "lados", "comparacao", "anomalias"]),
         ("4 · Compras", ["fob"]),
         ("Dados", ["atualizacao", "importacao", "fontes", "pendencias"])]
 FLOW_GROUPS = {"1 · Desenvolvimento", "2 · Amostras", "3 · Catálogo", "4 · Compras"}
@@ -79,7 +79,7 @@ RELATED = {
  "lados": (["produtos", "desenvolvimento"], ["pedidos-aberto", "vendas"]), "aplicacoes": (["produtos"], ["lados"]),
  "pedidos-aberto": (["fob", "amostras"], ["vendas", "lados"]), "vendas": (["pedidos-aberto", "produtos"], ["garantia", "lados"]),
  "garantia": (["vendas"], ["redesenvolvimento"]), "metas": (["desenvolvimento", "redesenvolvimento"], []), "fob": (["produtos"], ["pedidos-aberto"]),
- "atualizacao": ([], ["produtos", "lados"]), "equivalencias": (["produtos"], ["pesquisa"]), "desenhos": (["desenvolvimento"], ["envio"]),
+ "atualizacao": ([], ["produtos", "lados"]), "anomalias": (["produtos", "pendencias"], ["pesquisa"]), "desenhos": (["desenvolvimento"], ["envio"]),
 }
 _NAMES = {"pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares", "comparacao": "Comparação técnica", "desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvolvimento"}
 
@@ -109,6 +109,10 @@ def home():
 
 @app.route("/<slug>")
 def page(slug):
+    if slug == "equivalencias":         # tela antiga: agora é a aba «Sugestões de equivalência» de Anomalias (links e favoritos antigos continuam valendo)
+        from flask import redirect
+        from urllib.parse import urlencode
+        return redirect("/anomalias?" + urlencode({**request.args.to_dict(), "tab": "sugestoes"}))
     p = next((x for x in PAGES if x[0] == slug), None)
     if not p: abort(404)
     return render_template("page.html", cur=p, cards=CARDS, user=auth.current_user(), tw_page=True)
@@ -349,6 +353,17 @@ def api_src(i):
 def _eqf():
     g = request.args; lst = lambda k: [x for v in g.getlist(k) for x in v.split("|") if x]          # crit/dif/miss: repetidos (crit=a&crit=b) ou juntos por «|» (URL da tela)
     return dict(status=g.get("status") or None, conf=g.get("confidence") or None, qtxt=g.get("q") or None, crit=lst("crit"), dif=lst("dif"), miss=lst("miss"), diff=g.get("diff") or None, minscore=g.get("minscore") or None)
+@app.get("/api/anomalies")
+def api_anomalies():
+    import anomalias
+    q = request.args.get("q", ""); tab = request.args.get("tab") or "familia"
+    return jsonify(rows=anomalias.ean(q) if tab == "ean" else anomalias.familia(q), counts=anomalias.counts(q), tab="ean" if tab == "ean" else "familia")
+@app.get("/api/anomalies/export.xlsx")
+def api_anomalies_xlsx():
+    import anomalias
+    from flask import send_file
+    bio, _ = anomalias.export_xlsx(request.args.get("q", ""))
+    return send_file(bio, as_attachment=True, download_name=exporter.friendly_name("anomalias", {"q": request.args.get("q")}), mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 @app.get("/api/equivalences")
 def api_eq(): return jsonify(equivalence.listing(page=int(request.args.get("page") or 1), **_eqf()))
 @app.get("/api/equivalences/export.xlsx")
