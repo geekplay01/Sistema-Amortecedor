@@ -48,7 +48,7 @@
       $("#dw-k").innerHTML = kpi(k === "projeto" ? "Códigos com projeto" : "Códigos com desenho", nf(s.codes), `${nf(s.files)} arquivo(s) guardado(s)`, "blue") +
         kpi("Revisões anteriores", nf(s.old), "guardadas no histórico", "slate") +
         kpi("Sem vínculo", nf(s.orphans), s.orphans ? "arquivos sem código: abra o cartão e informe" : "todo arquivo tem código", s.orphans ? "amber" : "green") +
-        kpi(k === "projeto" ? "DES/R-D fora do catálogo sem projeto" : "Catálogo sem desenho", nf(s.missing), "use o atalho para ver a lista", s.missing ? "red" : "green");
+        kpi(k === "projeto" ? "DES em andamento sem projeto" : "Catálogo sem desenho", nf(s.missing), k === "projeto" ? "fora do catálogo, sem recebidos e cancelados · use o atalho" : "use o atalho para ver a lista", s.missing ? "red" : "green");
       $("#dw-q").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` +
         ATALHOS.map(([l, v, forte]) => chip(`data-w="${v}"`, l || semNome(), w === v, v === "sem" ? s.orphans : v === "falta" ? s.missing : s[v], forte)).join("");
     };

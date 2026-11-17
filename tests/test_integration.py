@@ -444,7 +444,8 @@ class Fluxo(unittest.TestCase):
         s = C.get("/api/brands").json
         for flt in ("", "scope=catalog&q=a", "flag=pend_compras"):
             c = C.get(f"/api/brands/PERFECT/items?{flt}").json["counts"]
-            for m, n in c["brand"].items(): self.assertEqual(C.get(f"/api/brands/{m}/items?{flt}").json["total"], n, f"{flt} marca {m}")
+            for m, n in c["brand"].items():
+                x = C.get(f"/api/brands/{m}/items?{flt}").json; self.assertEqual(x["total"] - x["fora_base"], n, f"{flt} marca {m}")      # PN Ford fora da base: na lista, fora do cartão (D7)
             for b in ("PERFECT", "MOTORCRAFT"):
                 c = C.get(f"/api/brands/{b}/items?{flt}").json["counts"]
                 base = "&".join(x for x in flt.split("&") if x and not x.startswith("scope="))
@@ -452,7 +453,7 @@ class Fluxo(unittest.TestCase):
                 base = "&".join(x for x in flt.split("&") if x and not x.startswith("flag="))
                 for fl, n in c["flag"].items(): self.assertEqual(C.get(f"/api/brands/{b}/items?{base}&flag={fl}").json["total"], n, f"{b} {flt} flag {fl}")
         tot = C.get("/api/brands/PERFECT/items").json
-        self.assertEqual(sum(tot["counts"]["brand"].values()), s["total"]); self.assertEqual(tot["counts"]["brand"]["PERFECT"], tot["total"]); self.assertGreater(tot["total"], 0)
+        self.assertEqual(sum(tot["counts"]["brand"].values()) + s["fora_base"], s["total"]); self.assertEqual(tot["counts"]["brand"]["PERFECT"], tot["total"]); self.assertGreater(tot["total"], 0)
         r = C.get("/api/export/brands.xlsx?brand=OUTROS"); self.assertEqual(r.status_code, 200)
         wb = load_workbook(io.BytesIO(r.data)); ws = wb.worksheets[0]; self.assertEqual(ws.max_row - 1, s["unclassified"])
         r = C.get("/api/export/brands.xlsx?brand=PERFECT&scope=catalog"); n = C.get("/api/brands/PERFECT/items?scope=catalog").json["total"]

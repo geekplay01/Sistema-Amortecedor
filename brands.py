@@ -8,6 +8,8 @@ from queries import q, q1
 BRANDS = ["PERFECT", "BPROAUTO", "MOTRIO", "MOTORCRAFT"]
 RULE = {"PERFECT": "Códigos AMD…", "BPROAUTO": "Códigos 1BP…", "MOTRIO": "Códigos somente numéricos", "MOTORCRAFT": "Base ItensMotorcraft (PN Ford)"}
 def _k(c): return re.sub(r"[^A-Z0-9]", "", (c or "").upper())
+_FORD = re.compile(r"^[A-Z0-9]{2,5}/18[A-Z0-9]{3,4}/[A-Z]{1,3}\d?(/\d*)?$")       # PN Ford de amortecedor: prefixo / base 18xxx / sufixo (ex.: BJ3A/18045/AA/, ENS1/18097/AC, MB5A/18K001/AA/)
+def is_ford(code): return bool(_FORD.match(re.sub(r"\s", "", (code or "").upper())))
 
 def _motor():
     norms = {r["norm_code"] for r in q("SELECT norm_code FROM brand_items WHERE brand='MOTORCRAFT'")}
@@ -65,16 +67,20 @@ def universe():
     fl = {}
     for v in q("SELECT code,suggestion,pend_validacao,val_reprovada,pend_desenho_forn,pend_compras FROM v_rd_flags"):
         fl.setdefault(_k(v["code"]), set()).update(k for k in ("pend_validacao", "val_reprovada", "pend_desenho_forn", "pend_compras") if v[k])
-    for k, it in items.items(): it["flags"] = sorted(fl.get(k, ()))
+    for k, it in items.items():
+        it["flags"] = sorted(fl.get(k, ()))
+        it["fora_base"] = not it["brand"] and is_ford(it["code"])          # PN Ford fora da base ItensMotorcraft (etapa 16 · D7): entra na lista MOTORCRAFT, sem contar no indicador
+        if it["fora_base"]: it["brand"] = "MOTORCRAFT"
     return list(items.values())
 
 def summary():
+    """Indicador por marca: `total` não conta os PN Ford fora da base (`fora_base`, só na lista); `total` geral = todos os itens conhecidos."""
     its = universe(); out = []
     for b in BRANDS:
-        xs = [i for i in its if i["brand"] == b]
+        xs = [i for i in its if i["brand"] == b and not i["fora_base"]]
         out.append({"brand": b, "rule": RULE[b], "total": len(xs), "catalog": sum(i["catalog"] for i in xs), "des": sum(i["des"] for i in xs), "rd": sum(i["rd"] for i in xs), "base": sum(i["base"] for i in xs),
-                    "pend_compras": sum("pend_compras" in i["flags"] for i in xs), "val_reprovada": sum("val_reprovada" in i["flags"] for i in xs)})
-    return {"brands": out, "unclassified": sum(1 for i in its if not i["brand"]), "total": len(its)}
+                    "pend_compras": sum("pend_compras" in i["flags"] for i in xs), "val_reprovada": sum("val_reprovada" in i["flags"] for i in xs), "fora_base": sum(1 for i in its if i["brand"] == b and i["fora_base"])})
+    return {"brands": out, "unclassified": sum(1 for i in its if not i["brand"]), "total": len(its), "fora_base": sum(1 for i in its if i["fora_base"])}
 
 SCOPES = ("catalog", "des", "rd", "base")
 FLAGS = ("pend_validacao", "val_reprovada", "pend_desenho_forn", "pend_compras")      # os controles que universe() junta por código
@@ -91,9 +97,9 @@ def items(brand, f):
         if skip != "scope" and sc in SCOPES and not i[sc]: return False
         if skip != "flag" and fl and fl not in i["flags"]: return False
         return True
-    counts = {"brand": {b: sum(1 for i in uni if _marca(i) == b and ok(i)) for b in BRANDS + ["OUTROS"]},
+    counts = {"brand": {b: sum(1 for i in uni if _marca(i) == b and not i["fora_base"] and ok(i)) for b in BRANDS + ["OUTROS"]},      # cartão: sem os PN Ford fora da base
               "scope": {"all": sum(1 for i in mine if ok(i, "scope")), **{s: sum(1 for i in mine if i[s] and ok(i, "scope")) for s in SCOPES}},
               "flag": {k: sum(1 for i in mine if k in i["flags"] and ok(i, "flag")) for k in FLAGS}}
     its = sorted((i for i in mine if ok(i)), key=lambda i: i["code"])
     size = 50 if not f.get("all") else 10**9; page = max(1, int(f.get("page") or 1))
-    return {"total": len(its), "page": page, "size": size, "rows": its[(page - 1) * size: page * size], "counts": counts}
+    return {"total": len(its), "page": page, "size": size, "rows": its[(page - 1) * size: page * size], "counts": counts, "fora_base": sum(1 for i in its if i["fora_base"])}

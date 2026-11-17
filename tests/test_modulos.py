@@ -272,6 +272,35 @@ class MetaRdPorValidacao(_TmpDB):
         self.sql("UPDATE dev_item_state SET status='ITEM RECEBIDO' WHERE code='V2'")
         self.assertEqual(goals.progress(2026)["goals"][self.R]["tracked"], 2)     # chegou depois: entra na meta do ano da validação
 
+class FordForaDaBase(_TmpDB):
+    def test_pn_ford_entra_na_lista_motorcraft_sem_contar(self):
+        """Etapa 16 · D7: código no formato Ford (XXXX/18xxx/XX) fora da base ItensMotorcraft vai para a lista MOTORCRAFT marcado «fora da base»,
+        mas NÃO conta no indicador (cartão) da marca; código que não é Ford continua «Sem marca»."""
+        import brands
+        self.db.init_db()
+        self.sql("INSERT INTO brand_items(brand,code,norm_code) VALUES('MOTORCRAFT','BJ3A/18045/AA/','BJ3A18045AA')")
+        self.sql("INSERT INTO rd_projects(code,suggestion,status,description,line) VALUES(?,?,?,?,'AMORTECEDOR')",
+                 [("ENS1/18097/AC", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR"), ("NZ6Z/18124/N", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR"), ("48510-79425-2P", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR")])
+        self.assertTrue(brands.is_ford("MB5A/18K001/AA/")); self.assertFalse(brands.is_ford("48510-79425-2P")); self.assertFalse(brands.is_ford("AMD0103"))
+        s = {b["brand"]: b for b in brands.summary()["brands"]}
+        self.assertEqual((s["MOTORCRAFT"]["total"], s["MOTORCRAFT"]["fora_base"]), (1, 2)); self.assertEqual(brands.summary()["unclassified"], 1)
+        d = brands.items("MOTORCRAFT", {})
+        self.assertEqual(d["total"], 3); self.assertEqual(d["fora_base"], 2); self.assertEqual(d["counts"]["brand"]["MOTORCRAFT"], 1)
+        self.assertEqual(sorted(i["code"] for i in d["rows"] if i["fora_base"]), ["ENS1/18097/AC", "NZ6Z/18124/N"])
+        self.assertEqual([i["code"] for i in brands.items("OUTROS", {})["rows"]], ["48510-79425-2P"])
+
+class SemProjeto(_TmpDB):
+    def test_so_desenvolvimento_em_andamento(self):
+        """Etapa 16 · D6: «Sem projeto» (Desenhos) conta só DESENVOLVIMENTO em andamento fora do catálogo: sem ITEM RECEBIDO (em nenhuma aplicação), sem cancelado, sem R-D."""
+        import drawings
+        self.db.init_db(); self.sql("INSERT INTO products(perfect_code,description) VALUES('AMD9','AMORTECEDOR')")
+        D, R = "DESENVOLVIMENTO", "REDESENVOLVIMENTO"
+        self.sql("INSERT INTO rd_projects(code,suggestion,status,description,line,product_id) VALUES(?,?,?,?,'AMORTECEDOR',?)",
+                 [("A1", D, "EM COTAÇÃO", "AMORTECEDOR", None), ("A2", D, "ITEM RECEBIDO", "AMORTECEDOR", None), ("A3", D, "EM COTAÇÃO", "AMORTECEDOR", None), ("A3", D, "ITEM RECEBIDO", "AMORTECEDOR", None),
+                  ("A4", D, "CANCELADO", "AMORTECEDOR", None), ("R1", R, "EM COTAÇÃO", "AMORTECEDOR", None), ("AMD9", D, "EM COTAÇÃO", "AMORTECEDOR", 1)])
+        self.assertEqual(drawings._missing("projeto", set()), {"A1"})
+        self.assertEqual(drawings.stats("projeto")["missing"], 1)
+
 class BuscaConcorrente(_TmpDB):
     def test_codigo_com_ou_sem_pontuacao(self):
         import queries

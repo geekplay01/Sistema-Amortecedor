@@ -46,7 +46,7 @@
     };
     const tabela = () => {
       const s = F.get(), cur = marca(), n = ["q", "scope", "flag"].filter(k => s[k]).length, x = { ...s }; delete x.b;
-      $("#bm").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns) ${esc(nome(cur))}${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
+      $("#bm").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns) ${esc(nome(cur))}${d.fora_base ? ` · inclui <b class="text-amber-700">${nf(d.fora_base)}</b> PN Ford fora da base (não contam no cartão)` : ""}${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
         <a class="${primario}" href="/api/export/brands.xlsx?${qs({ ...x, brand: cur })}">⬇ Baixar Excel</a>`;
       $("#bt").innerHTML = TW.table([{ h: "Código" }, { h: "Código PERFECT" }, { h: "Descrição" }, { h: "Veículo / aplicação" }, { h: "Onde está" }, { h: "Controle de status", nw: false }, { h: "Desenho" }, { h: "Amostras", r: true }],
         d.rows.map(i => [
@@ -54,7 +54,7 @@
           (i.perfect_codes || []).length ? i.perfect_codes.map(c => `<a class="font-semibold text-blue-600" href="/pesquisa?q=${encodeURIComponent(c)}">${esc(c)}</a>`).join(" ") : `<span class="text-mute">${i.brand === "PERFECT" ? "é o próprio" : "sem relação"}</span>`,
           i.description ? `<span class="block max-w-[18rem] truncate" title="${esc(i.description)}">${esc(i.description)}</span>` : meio,
           i.vehicle ? `<span class="block max-w-[18rem] truncate" title="${esc(i.vehicle)}">${esc(i.vehicle)}</span>` : meio,
-          [i.catalog && badge("Catálogo", "blue"), i.des && badge("DES", "violet"), i.rd && badge("R-D", "green"), i.base && badge("Base Motorcraft", "slate")].filter(Boolean).join(" ") || meio,
+          [i.catalog && badge("Catálogo", "blue"), i.des && badge("DES", "violet"), i.rd && badge("R-D", "green"), i.base && badge("Base Motorcraft", "slate"), i.fora_base && badge("PN Ford fora da base", "amber")].filter(Boolean).join(" ") || meio,
           `<div class="flex min-w-[10rem] flex-wrap gap-1">${flagChips(i.flags)}</div>`, `<span data-dw="${esc(i.code)}"></span>`,
           i.samples ? `<a class="font-semibold text-blue-600" href="/amostras?q=${encodeURIComponent(i.code)}">${nf(i.samples)}</a>` : meio]), { h: "max-h-[65vh]" });
       dwFill($("#bt"));

@@ -200,4 +200,9 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Testes: `test_modulos.MetaRdPorValidacao` (view e meta, inclusive item que chega depois); `test_04b` atualizado para a regra nova.
 - Na cópia: 197 validações R-D em 2026 → 173 contam (antes a meta mostrava 197), 24 aguardando (FINALIZANDO CIT).
 
+### Etapa D · D6/D7 Sem projeto e PN Ford (17/11/2026) ✅
+- `drawings._missing("projeto")`: só DESENVOLVIMENTO em andamento fora do catálogo (universo amortecedor/não bloqueado, nenhuma aplicação em ITEM RECEBIDO, sem CANCEL…). Cartão em Desenhos: «DES em andamento sem projeto». Na cópia: 955 → 409 (lista `where=falta` igual).
+- `brands.is_ford`: PN Ford (`XXXX/18xxx/XX`) fora da base → lista MOTORCRAFT com selo «PN Ford fora da base», fora do cartão (`fora_base` no item, no `summary` e em `items`); Excel: «Base Motorcraft» = «Não (PN Ford fora da base)». Na cópia: cartão MOTORCRAFT 36, lista 48 (12 PN Ford); Sem marca 13 → 1 (48510-79425-2P, código Toyota).
+- Testes: `test_modulos.SemProjeto`, `test_modulos.FordForaDaBase`; `test_24` ajustado (cartão = lista − fora da base).
+
 - (plano anterior) **B** — Desenvolvimento/Redesenvolvimento (curtidas primeiro, filtro Curtiu, «Pendente compras» como atalho que liga/desliga, barra de filtros na URL) e migração visual dessa tela.

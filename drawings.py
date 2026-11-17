@@ -180,9 +180,13 @@ def gallery(p):
     return {"total": len(cards), "page": page, "size": size, "rows": cards[(page - 1) * size: page * size]}
 
 def _missing(kind, have, prod=None):
-    """Chaves sem arquivo: desenho = produtos do catálogo sem desenho · projeto = itens DES/R-D fora do catálogo sem projeto."""
+    """Chaves sem arquivo: desenho = produtos do catálogo sem desenho · projeto = itens DESENVOLVIMENTO em andamento, fora do catálogo, sem projeto
+    (etapa 16 · D6: só o cadastro DESENVOLVIMENTO, no universo — amortecedor, não bloqueado —, sem aplicação em ITEM RECEBIDO e sem cancelado)."""
     if kind == "desenho": return set(prod if prod is not None else _prod_index()) - have
-    return {_key(r["code"]) for r in q("SELECT DISTINCT code FROM rd_projects WHERE product_id IS NULL")} - have
+    import rules, kinds
+    rows = q(f"""SELECT r.code FROM rd_projects r WHERE r.suggestion=? AND r.product_id IS NULL AND {rules.desc_sql('r.description')}
+                 GROUP BY r.code HAVING MAX(upper(coalesce(r.status,''))='ITEM RECEBIDO')=0 AND MAX(upper(coalesce(r.status,'')) LIKE 'CANCEL%')=0""", (kinds.DES,))
+    return {_key(r["code"]) for r in rows} - have
 
 def stats(kind="desenho"):
     kind = _kind(kind); K = "coalesce(f.kind,'desenho')=?"

@@ -143,7 +143,7 @@ def _brands(a):
     for b in sel:
         its = brands.items(b, {**a, "all": 1})["rows"]; n += len(its)
         sheets.append(("Sem marca" if b == "OUTROS" else b.title(), ["Código", "Código PERFECT relacionado", "Descrição", "Veículo / aplicação", "Catálogo", "Em DES", "Em R-D", "Base Motorcraft", "Pedidos de amostra", "Controle de status"],
-                       [[i["code"], " / ".join(i.get("perfect_codes") or []), i["description"], i["vehicle"], "Sim" if i["catalog"] else "", "Sim" if i["des"] else "", "Sim" if i["rd"] else "", "Sim" if i["base"] else "", i["samples"] or "", ", ".join(FL[f] for f in i["flags"])] for i in its], [20, 24, 38, 40, 10, 8, 8, 14, 12, 40]))
+                       [[i["code"], " / ".join(i.get("perfect_codes") or []), i["description"], i["vehicle"], "Sim" if i["catalog"] else "", "Sim" if i["des"] else "", "Sim" if i["rd"] else "", "Sim" if i["base"] else "Não (PN Ford fora da base)" if i.get("fora_base") else "", i["samples"] or "", ", ".join(FL[f] for f in i["flags"])] for i in its], [20, 24, 38, 40, 10, 8, 8, 14, 12, 40]))
     return sheets, n
 def _pendente(a):
     import purchases
