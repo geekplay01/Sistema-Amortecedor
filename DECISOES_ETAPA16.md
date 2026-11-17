@@ -222,6 +222,7 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Testes: `test_modulos.GarantiaAnalitico` (cabeçalho na 2ª linha, verificação não grava, padrão, defeito agrupado, cada atalho = lista, substituição, sem CNPJ), `test_28`.
 - Na cópia: 35.718 linhas (07/2017 a 11/11/2026), carga em 20 s, tela em 0,9 s. Padrão 2026: 8.758 peças, 965 ocorrências, R$ 1.153.674, 82,3% procedentes; maior defeito «não informado» (2.213 peças, itens ainda sem análise), depois AM-014 sem pressão (1.407). Mogi 350 × Arujá 6.090 itens.
 - **No banco real:** carregar a planilha em Atualização de dados (Verificar → Aplicar).
+- **Etapa D concluída** (D1–D9 da rodada 3). Pendências para o usuário no banco real: reabrir o app (fecha os 31 conflitos de caixa e os 43 de família), aplicar os 5 de caixa em Pendências, reimportar o CatalogoAMD e carregar o Analítico de Garantias. Próximo: etapa **C** (vendas × estoque).
 
 ### Etapa D · D4/D9 Excel de saldos parados e da Pesquisa (17/11/2026) ✅
 - Saldos parados (Q19): `leadtime.parados()` usa as linhas «Parado — verificar saldo» da previsão (sem embarque há mais de 2× o p90 da produção do fornecedor) e junta descrição (ds_compras) e adiamentos (`_pushes`). Excel `/api/export/parados.xlsx`: pedido, fornecedor, código, descrição, saldo, emissão, dias sem embarque, limite (2× p90), última previsão, nº de adiamentos, dias adiados. Link no indicador «Parados» de Pedidos em Aberto. Nada é gravado no ERP.
