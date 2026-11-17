@@ -215,6 +215,14 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Teste `test_modulos.AtualizacaoVerificacao`.
 - **No banco real:** verificações feitas antes desta correção podem ter gravado dados das planilhas (sem backup antes). Os lotes aparecem em Fontes com status «Só verificação».
 
+### Etapa D · D8 Garantia pela planilha «Analítico de Garantias» (17/11/2026) ✅
+- `garantias.py`: lê a planilha (cabeçalho na 2ª linha; guarda só as colunas usadas, sem CNPJ) para a tabela `garantias`. Entra por Atualização de dados (nome «Analítico de Garantias», também com «(1)» ou sem acento) e substitui a carga anterior; a verificação mostra novos/já existiam/saem.
+- Tela `telas/garantia.js` (saiu de `pages_exec.js`): 4 KPIs (peças, ocorrências, valor c/ IPI, % procedente), atalhos de ano, tipo («Só garantias» padrão / Todos / cada tipo), status («Sem canceladas» padrão), fornecedor, procedência e unidade (Mogi × Arujá), busca (código, cliente, grupo, lote, autorização, NF), peças por mês, defeitos (agrupados sem AM-xxx; clicar filtra), códigos, clientes, lotes (com «erro de lote») e a lista paginada. Filtros na URL e lembrados; Excel `/api/export/garantia.xlsx` com as abas Ocorrências, Defeitos, Códigos, Clientes e Lotes.
+- Sem planilha: a tela mostra o resumo do servidor (view ANALITICO_GARANTIA_DEVOLUCAO) e explica como carregar a planilha.
+- Testes: `test_modulos.GarantiaAnalitico` (cabeçalho na 2ª linha, verificação não grava, padrão, defeito agrupado, cada atalho = lista, substituição, sem CNPJ), `test_28`.
+- Na cópia: 35.718 linhas (07/2017 a 11/11/2026), carga em 20 s, tela em 0,9 s. Padrão 2026: 8.758 peças, 965 ocorrências, R$ 1.153.674, 82,3% procedentes; maior defeito «não informado» (2.213 peças, itens ainda sem análise), depois AM-014 sem pressão (1.407). Mogi 350 × Arujá 6.090 itens.
+- **No banco real:** carregar a planilha em Atualização de dados (Verificar → Aplicar).
+
 ### Etapa D · D4/D9 Excel de saldos parados e da Pesquisa (17/11/2026) ✅
 - Saldos parados (Q19): `leadtime.parados()` usa as linhas «Parado — verificar saldo» da previsão (sem embarque há mais de 2× o p90 da produção do fornecedor) e junta descrição (ds_compras) e adiamentos (`_pushes`). Excel `/api/export/parados.xlsx`: pedido, fornecedor, código, descrição, saldo, emissão, dias sem embarque, limite (2× p90), última previsão, nº de adiamentos, dias adiados. Link no indicador «Parados» de Pedidos em Aberto. Nada é gravado no ERP.
 - Corrigido: sem histórico de embarques, a previsão quebrava (`_stage_stats([])`); agora devolve estatística vazia.

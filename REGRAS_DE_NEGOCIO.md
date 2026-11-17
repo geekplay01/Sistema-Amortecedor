@@ -15,7 +15,7 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 
 - O servidor é **somente leitura**: só `SELECT` passa (`assert_select`). O servidor **nunca grava no catálogo**.
 - A planilha antiga `DadosR-D e DES.xlsx` é ignorada: DES/R-D vêm só do servidor.
-- Atualização por planilha: insere só o que falta, nada é apagado, backup automático antes de aplicar (`updater.py`).
+- Atualização por planilha: insere só o que falta, nada é apagado, backup automático antes de aplicar (`updater.py`). A verificação roda numa transação desfeita no fim e **não grava nada** (corrigido em 17/11/2026: antes gravava). Exceção: «Analítico de Garantias» substitui a carga anterior.
 - Cada leitura de planilha fica no histórico (`import_batches`): status `ok` = gravada; `simulado` = só verificação (lida e comparada, nada gravado). A tela Fontes conta as duas sobre as últimas 200 e o Excel segue o filtro (`queries.history`).
 - Conflito na importação: o valor do banco **nunca** é sobrescrito sozinho; vira pendência «conflito» (valor atual × importado, com a fonte). A prioridade da fonte (1–9) só orienta a análise manual.
 
@@ -98,7 +98,7 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 ## 9. Amostras, envio, garantia, FOB, desenhos
 - Sugestões de compra: só DES/R-D com PENDENTE COMPRAS, sem amostra comprada, fora do catálogo e não ITEM RECEBIDO.
 - Envio: Compra (SC) → Chegou ⇒ Pendente projeto → Enviada (com EX do fornecedor) → Finalizada. Na importação de Compra_de_amostra só campos vazios são preenchidos.
-- Garantia: do servidor quando há dados; senão planilha (só código, defeito, quantidade; linha «Total» descartada).
+- Garantia **[mudou em 17/11/2026]**: a planilha **Analítico de Garantias** prevalece (`garantias.py`): entra por Atualização de dados e substitui a carga anterior; sem ela, vale o servidor (`warranty.py`, view ANALITICO_GARANTIA_DEVOLUCAO). Padrão da tela: tipos GARANTIA, GARANTIA AUTOMATICA, CRÉDITO GARANTIA e GARANTIA EM DEVOLUÇÃO, sem OCORRÊNCIA CANCELADA, no ano atual (data de cadastro). Defeito agrupado sem o prefixo AM-xxx/O-xxx. % procedente = peças procedentes ÷ (procedentes + improcedentes). Clientes ficam só no banco local; o CNPJ não é guardado.
 - FOB: chave = PartNumber; repetido fica com o menor FOB; menor entre E-WIN/ZS/XGM = «Melhor Preço».
 - Desenhos: código e revisão pelo nome do arquivo; cadastros mostram a maior revisão; arquivo idêntico é ignorado.
 - «Sem desenho» = produto do catálogo sem nenhum desenho técnico; «Sem projeto» = código **DESENVOLVIMENTO em andamento** fora do catálogo (`rd_projects.product_id` vazio, no universo amortecedor/não bloqueado, nenhuma aplicação em ITEM RECEBIDO, sem cancelado) sem Projeto PERFECT (desde 17/11/2026; antes contava DES e R-D em qualquer status). O número do topo e a lista `where=falta` usam o mesmo conjunto (`drawings._missing`).

@@ -239,7 +239,7 @@ class Fluxo(unittest.TestCase):
 
     def test_11_paginas_carregam(self):
         import re
-        for slug in ("dashboard", "metas", "pedidos-aberto", "vendas", "garantia", "desenvolvimento", "redesenvolvimento", "amostras", "configuracoes", "brands", "lados", "envio", "desenhos", "pendencias", "fontes", "atualizacao", "anomalias"):
+        for slug in ("dashboard", "metas", "pedidos-aberto", "vendas", "garantia", "desenvolvimento", "redesenvolvimento", "amostras", "configuracoes", "brands", "lados", "envio", "desenhos", "pendencias", "fontes", "atualizacao", "anomalias", "garantia"):
             r = C.get("/" + slug); self.assertEqual(r.status_code, 200, slug); html = r.get_data(as_text=True)
             self.assertIn("syncchip", html); self.assertIn("PSD_STATUS", html); self.assertIn("bg-slate-800", html); self.assertIn("psd-nav", html)         # sidebar fixa slate-800 em Tailwind
         telas = re.findall(r'/static/js/telas/([\w-]+)\.js', html); self.assertIn("pendencias", telas); self.assertNotIn("dados", telas)
@@ -534,6 +534,23 @@ class Fluxo(unittest.TestCase):
             self.assertEqual(ws.max_row, 2, slug); self.assertEqual(row["Código PERFECT"], "AMDT26")
             self.assertEqual(row["Família Inmetro"], "CONVENCIONAL; ESTRUTURAL"); self.assertEqual((row["FOB menor (US$)"], row["Fornecedor do FOB"]), (12.5, "ZS"))
             self.assertEqual((row["Estoque disponível"], row["Estoque reservado"]), (42, 5))
+
+    def test_28_garantia_planilha(self):
+        """D8: sem planilha, /api/garantias avisa (a tela usa o servidor) e o Excel recusa; com a planilha carregada, rota e Excel seguem os filtros."""
+        import io, datetime, garantias
+        from openpyxl import load_workbook
+        self.assertFalse(C.get("/api/garantias").json["available"]); self.assertEqual(C.get("/api/export/garantia.xlsx").status_code, 400)
+        y = datetime.date.today().year; con = sqlite3.connect(DB)
+        try:
+            for s in garantias.TABLE.split(";"):
+                if s.strip(): con.execute(s)
+            con.executemany("INSERT INTO garantias(autorizacao,data_cadastro,tipo,status,codigo,qtd,valor,defeito,fornecedor,procedencia,unidade,cliente) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                            [("1", f"{y}-01-05", "GARANTIA", "GARANTIA FINALIZADA", "AMD1", 2, 20.0, "SEM AÇÃO", "ZS", "PROCEDENTE", "PRIVATE-MOGI", "C1"),
+                             ("2", f"{y}-02-05", "ACORDO COMERCIAL", "PAGAMENTO FINALIZADO", "AMD2", 4, 40.0, "VAZAMENTO", "E-WIN", None, "PRIVATE-ARUJA", "C2")]); con.commit()
+        finally: con.close()
+        d = C.get("/api/garantias").json; self.assertTrue(d["available"]); self.assertEqual((d["total"], d["kpis"]["pecas"]), (1, 2))
+        self.assertEqual(C.get("/api/garantias?tipo=todos").json["total"], 2); self.assertEqual(C.get("/api/garantias?tipo=todos&fornecedor=E-WIN").json["kpis"]["pecas"], 4)
+        wb = load_workbook(io.BytesIO(C.get("/api/export/garantia.xlsx?tipo=todos").data)); self.assertEqual(wb.worksheets[0].max_row - 1, 2); self.assertEqual(wb.worksheets[0].title, "Ocorrências")
 
 
 if __name__ == "__main__":

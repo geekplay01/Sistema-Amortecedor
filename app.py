@@ -589,6 +589,11 @@ def api_warranty_parse():
     if request.values.get("save", "1") != "0": warranty.save(r["rows"], f.filename)
     if request.values.get("rows", "1") == "0": r = {k: v for k, v in r.items() if k != "rows"}
     return jsonify(r)
+@app.get("/api/garantias")
+def api_garantias():            # planilha «Analítico de Garantias» (etapa 16 · D8); sem planilha → available=False e a tela usa /api/warranty (servidor)
+    import garantias
+    f = {k: request.args.get(k, "") for k in garantias.FILTROS}
+    return jsonify(garantias.summary(f, request.args.get("page", 1, type=int)))
 @app.get("/api/warranty")
 def api_warranty(): return jsonify(warranty.summary(int(request.args.get("top") or 15), request.args.get("code")))
 

@@ -106,6 +106,7 @@
 .list-none{list-style:none}
 .m-0{margin:0}
 .max-h-\[22rem\]{max-height:22rem}
+.max-h-\[24rem\]{max-height:24rem}
 .max-h-\[40vh\]{max-height:40vh}
 .max-h-\[45vh\]{max-height:45vh}
 .max-h-\[50vh\]{max-height:50vh}
@@ -256,6 +257,7 @@
 .w-36{width:9rem}
 .w-4{width:1rem}
 .w-44{width:11rem}
+.w-48{width:12rem}
 .w-64{width:16rem}
 .w-72{width:18rem}
 .w-8{width:2rem}
@@ -285,6 +287,7 @@
 @media(min-width:640px){.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:640px){.sm\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:640px){.sm\:w-48{width:12rem}}
+@media(min-width:640px){.sm\:w-72{width:18rem}}
 @media(min-width:768px){.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:768px){.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:768px){.md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}

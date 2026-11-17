@@ -1,4 +1,4 @@
-/* Telas executivas em TailwindCSS: Pedidos em Aberto · Vendas (Curva A) · Garantia.
+/* Telas executivas em TailwindCSS: Pedidos em Aberto · Vendas (Curva A) · FOB. (Garantia: telas/garantia.js.)
    (Metas & Validação usa o bloco PSDTW.validationBlock dentro de pages_new.js.) Recebe os utilitários do core.js (window.PSD_EXEC(ctx)). */
 window.PSD_EXEC = ctx => {
   const { J, $, root, fail } = ctx, TW = window.PSDTW, { esc, nf, brl, brl0, dmy } = TW;
@@ -179,35 +179,7 @@ window.PSD_EXEC = ctx => {
     load();
   }
 
-  // ───────────────────────── Garantia ─────────────────────────
-  async function garantia() {
-    root.innerHTML = `<div class="flex flex-col gap-6"><div id="gup"></div><div id="gbody"></div></div>`;
-    let rep = null;
-    let fromServer = false;
-    const upload = () => { if (fromServer) { $("#gup").innerHTML = ""; return; } $("#gup").innerHTML = TW.card("Planilha de garantia", `<label for="gfile" class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line px-6 py-8 text-center hover:bg-slate-500/10">
-        <svg class="h-8 w-8 text-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
-        <span class="text-sm font-semibold text-ink">Clique para enviar o Excel/CSV de garantia</span><span class="text-xs text-mute">Só <b>código</b>, <b>defeito</b> e <b>quantidade</b> são mantidos; as demais colunas (cliente, valor, fabricante…) são descartadas.</span></label>
-        <input id="gfile" type="file" accept=".xlsx,.xls,.csv,.txt" class="hidden"><div id="gmsg" class="mt-4">${rep || ""}</div>`);
-      $("#gfile").onchange = async e => { const f = e.target.files[0]; if (!f) return; const fd = new FormData(); fd.append("file", f); $("#gmsg").innerHTML = waiting(`Lendo ${esc(f.name)}…`);
-        try { const r = await J("/api/warranty/parse?rows=0", { method: "POST", body: fd }), ds = r.descartadas;
-          rep = TW.notice(`<b>${nf(r.validas)}</b> de ${nf(r.lidas)} linhas válidas. Descartadas: ${nf(ds.sem_codigo)} sem código, ${nf(ds.sem_quantidade)} sem quantidade${ds.linha_de_total ? `, ${nf(ds.linha_de_total)} linha de total` : ""}. Colunas removidas: ${r.colunas_removidas.length ? r.colunas_removidas.map(esc).join(", ") : "nenhuma"}.`, "blue"); upload(); body(); }
-        catch (er) { rep = TW.notice(esc(er.message), "red"); upload(); } };
-    };
-    const body = async (code = "") => {
-      let d; try { d = await J("/api/warranty?top=15" + (code ? "&code=" + encodeURIComponent(code) : "")); } catch (e) { return fail(e); }
-      if (!d.available) { $("#gbody").innerHTML = TW.empty("Nenhum dado de garantia ainda. Aguarde a sincronização com o servidor (ANALITICO_GARANTIA_DEVOLUCAO) ou envie a planilha acima."); return; }
-      if ((d.meta.origem === "servidor") !== fromServer) { fromServer = d.meta.origem === "servidor"; upload(); }
-      $("#gbody").innerHTML = `<div class="flex flex-col gap-6"><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi("Peças em garantia", nf(d.total), code ? `filtro «${esc(code)}»` : "soma das quantidades", "red")}${TW.kpi("Códigos", nf(d.codigos), "com ocorrência", "blue")}
-        ${TW.kpi("Tipos de defeito", nf(d.defeitos), "relatados", "amber")}${TW.kpi(d.meta.origem === "servidor" ? "Origem" : "Arquivo", `<span class="text-lg">${d.meta.origem === "servidor" ? "Servidor · " : ""}${esc(d.meta.filename || "–")}</span>`, `${nf(d.meta.rows)} linhas · ${dmy(d.meta.loaded_at)}`, "slate")}</div>
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">${TW.card("Defeitos mais frequentes", '<div id="gd" class="chart"></div>')}${TW.card("Códigos com mais peças em garantia", '<div id="gc" class="chart"></div>')}</div>
-        ${TW.card("Código × defeito", '<div id="gt"></div>', `<div class="w-64">${TW.input("gq", "Filtrar por código…")}</div>`)}</div>`;
-      PSDCharts.hbars($("#gd"), { labels: d.top_defeitos.map(r => r.defeito), values: d.top_defeitos.map(r => r.quantidade), color: "#f43f5e" });
-      PSDCharts.hbars($("#gc"), { labels: d.top_codigos.map(r => r.codigo), values: d.top_codigos.map(r => r.quantidade), color: "#2f6bff" });
-      $("#gt").innerHTML = TW.table([{ h: "Código" }, { h: "Defeito relatado", nw: false }, { h: "Quantidade", r: 1 }], d.lista.map(r => [`<b>${esc(r.codigo)}</b>`, esc(r.defeito), nf(r.quantidade)]));
-      const gq = $("#gq"); gq.value = code; gq.oninput = debounce(e => body(e.target.value.trim()), 350); if (code) { gq.focus(); gq.setSelectionRange(code.length, code.length); }
-    };
-    upload(); body();
-  }
+  // (Garantia: telas/garantia.js — planilha «Analítico de Garantias», etapa 16 · D8)
   // ───────────────────────── FOB (preços de compra em US$) ─────────────────────────
   async function fob() {
     const st = { q: "", filtro: "", page: 1 }; let msg = "", d;
@@ -239,5 +211,5 @@ window.PSD_EXEC = ctx => {
     upload(); load();
   }
 
-  return { pages: { "pedidos-aberto": pedidos, vendas, garantia, fob } };
+  return { pages: { "pedidos-aberto": pedidos, vendas, fob } };
 };

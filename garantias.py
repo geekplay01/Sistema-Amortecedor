@@ -16,7 +16,8 @@ CREATE INDEX IF NOT EXISTS ix_gar_cod ON garantias(codigo); CREATE INDEX IF NOT 
 GARANTIA = ("GARANTIA", "GARANTIA AUTOMATICA", "CRÉDITO GARANTIA", "GARANTIA EM DEVOLUÇÃO")       # «Só garantias» (padrão)
 CANCEL = "OCORRÊNCIA CANCELADA"
 LABEL = "Garantias (Analítico de Garantias)"
-COLS = {"autorizacao": ["N Autorizacao", "Numero Autorizacao", "Autorizacao"], "unidade": ["Unidade"], "data_cadastro": ["Data Cadastro"], "tipo": ["Tipo Ocorrencia"],
+# nomes de coluna aceitos (comparados sem acento/pontuação: «Nº Autorização» vira «noautorizacao»)
+COLS = {"autorizacao": ["Nº Autorização", "N Autorizacao", "Numero Autorizacao", "Autorizacao"], "unidade": ["Unidade"], "data_cadastro": ["Data Cadastro"], "tipo": ["Tipo Ocorrencia"],
         "status": ["Status Ocorrencia"], "grupo_cliente": ["Grupo Cliente"], "cliente": ["Razao Social"], "nf": ["NF"], "data_entrada": ["Data Entrada"], "linha": ["Linha"],
         "codigo": ["Codigo"], "qtd": ["Qtd"], "valor": ["Valor C.IPI", "Valor CIPI"], "data_analise": ["D.Analise", "Data Analise"], "defeito": ["Defeito"], "lote": ["Lote"],
         "data_fabricacao": ["Data Fabricacao"], "fornecedor": ["Fornecedor Short"], "procedencia": ["Tipo I/P"], "responsavel": ["Responsavel"], "erro_lote": ["Erro Lote"]}
