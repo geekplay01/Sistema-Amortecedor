@@ -267,6 +267,81 @@ def forecast(today=None):
             "parados": {"linhas": int(len(stale)), "quantidade": float(stale["quantidade"].sum()), "pedidos": int(stale["pedido"].nunique())},
             "proximos_30": float(df[(df["etapa"] != PARADO) & (df["dias_para_chegar"] <= 30)]["quantidade"].sum()), "proximos_90": float(df[(df["etapa"] != PARADO) & (df["dias_para_chegar"] <= 90)]["quantidade"].sum())}
 
+# ---- previsão × realizado (etapa 16 · A2) ----
+def _ensure_fc(c):
+    c.execute("""CREATE TABLE IF NOT EXISTS forecast_snapshots(dia TEXT NOT NULL, pedido TEXT NOT NULL, codigo TEXT NOT NULL, processo TEXT NOT NULL DEFAULT '', etapa TEXT NOT NULL,
+                 fornecedor TEXT, quantidade REAL, chegada_prevista TEXT, faixa_de TEXT, faixa_ate TEXT, PRIMARY KEY(dia, pedido, codigo, processo, etapa))""")
+
+def snapshot_forecast(today=None):
+    """Chamada a cada sincronização: grava a previsão de cada linha em aberto (sem os parados), no máximo uma foto por dia. Devolve quantas linhas gravou."""
+    import database as db
+    t = today or datetime.date.today(); F = forecast_cached(t) or {}
+    if not F.get("available"): return 0
+    rows = [(t.isoformat(), str(r["pedido"]), str(r["codigo"]).upper(), r.get("processo") or "", r["etapa"], r.get("fornecedor"), r.get("quantidade"), r.get("chegada_prevista"), r.get("faixa_de"), r.get("faixa_ate"))
+            for r in F["linhas"] if r.get("etapa") != PARADO and r.get("chegada_prevista")]
+    c = db.conn()
+    try:
+        _ensure_fc(c)
+        if c.execute("SELECT 1 FROM forecast_snapshots WHERE dia=? LIMIT 1", (t.isoformat(),)).fetchone(): return 0
+        c.executemany("INSERT OR IGNORE INTO forecast_snapshots VALUES(?,?,?,?,?,?,?,?,?,?)", rows); c.commit(); return len(rows)
+    finally: c.close()
+
+def acerto():
+    """Previsão × realizado: para cada linha que já chegou (ds_embarques.arrival_date), compara a chegada real com a 1ª previsão feita em cada etapa
+    (linha que demora não pesa mais por ter mais fotos). Erro em dias (+ = chegou depois do previsto); «na faixa» = dentro do p25–p75. Por fornecedor e por etapa."""
+    import database as db
+    c = db.conn()
+    try:
+        _ensure_fc(c)
+        snaps = c.execute("""SELECT s.pedido, s.codigo, s.processo, s.etapa, s.fornecedor, s.dia, s.chegada_prevista, s.faixa_de, s.faixa_ate FROM forecast_snapshots s
+                             JOIN (SELECT pedido, codigo, processo, etapa, MIN(dia) d FROM forecast_snapshots GROUP BY 1, 2, 3, 4) m
+                               ON m.pedido=s.pedido AND m.codigo=s.codigo AND m.processo=s.processo AND m.etapa=s.etapa AND m.d=s.dia""").fetchall()
+        try: arr = c.execute("SELECT COALESCE(pedido,''), upper(code), COALESCE(process,''), MIN(substr(arrival_date,1,10)) FROM ds_embarques WHERE arrival_date IS NOT NULL GROUP BY 1, 2, 3").fetchall()
+        except Exception: arr = []
+        desde = c.execute("SELECT MIN(dia) FROM forecast_snapshots").fetchone()[0]
+    finally: c.close()
+    by_proc = {(str(p), k, pr): d for p, k, pr, d in arr}; by_line = {}
+    for p, k, pr, d in arr: by_line.setdefault((str(p), k), []).append(d)
+    D = lambda s: datetime.date.fromisoformat(str(s)[:10])
+    res, aguardando = [], 0
+    for p, k, pr, et, fo, dia, prev, de, ate in snaps:
+        real = by_proc.get((p, k, pr)) if pr else min((x for x in by_line.get((p, k), []) if x >= dia), default=None)   # sem processo (ainda não embarcado): 1ª chegada depois da foto
+        if not real: aguardando += 1; continue
+        res.append({"fornecedor": fo, "etapa": et, "erro": (D(real) - D(prev)).days, "na_faixa": bool(de and ate and de <= real <= ate)})
+    def stats(xs):
+        if not xs: return {"n": 0, "erro_mediano": None, "erro_medio_abs": None, "pct_faixa": None, "pct_7d": None}
+        e = sorted(x["erro"] for x in xs); n = len(e); med = e[n // 2] if n % 2 else (e[n // 2 - 1] + e[n // 2]) / 2
+        return {"n": n, "erro_mediano": med, "erro_medio_abs": round(sum(abs(v) for v in e) / n, 1), "pct_faixa": round(100 * sum(x["na_faixa"] for x in xs) / n, 1), "pct_7d": round(100 * sum(abs(v) <= 7 for v in e) / n, 1)}
+    grp = lambda key: [{key: v, **stats([x for x in res if x[key] == v])} for v in sorted({x[key] for x in res})]
+    return {"desde": desde, "aguardando": aguardando, "geral": stats(res), "por_fornecedor": grp("fornecedor"), "por_etapa": grp("etapa")}
+
+ATRASO_ALERTA = 15
+def _alertas(r):
+    if r.get("etapa") == PARADO: return set()
+    a = set()
+    if (r.get("atraso_previsto") or 0) > ATRASO_ALERTA: a.add("atrasar")
+    if r.get("dias_para_chegar") is not None and r["dias_para_chegar"] < 0: a.add("vencida")
+    return a
+
+def previsao_linhas(f, today=None, size=200):
+    """Lista da previsão (Pedidos em Aberto, etapa 16 · A3/A4) filtrada no servidor: etapa, fornecedor, alerta (atrasar = previsão > promessa + 15 d · vencida = previsão já passou
+    e não chegou), busca (código ou pedido). `counts`: cada grupo ignora o próprio filtro e respeita os outros (número = lista ao clicar)."""
+    F = forecast_cached(today) or {}
+    if not F.get("available"): return {"available": False, "rows": [], "total": 0, "counts": {"etapa": {}, "fornecedor": {}, "alerta": {"atrasar": 0, "vencida": 0}}}
+    lin = F["linhas"]; term = (f.get("q") or "").upper().split()
+    def ok(r, skip=""):
+        if skip != "etapa" and f.get("etapa") and r.get("etapa") != f["etapa"]: return False
+        if skip != "fornecedor" and f.get("fornecedor") and r.get("fornecedor") != f["fornecedor"]: return False
+        if skip != "alerta" and f.get("alerta") and f["alerta"] not in _alertas(r): return False
+        return all(t in f"{r.get('codigo') or ''} {r.get('pedido') or ''}".upper() for t in term)
+    from collections import Counter
+    cnt = lambda key: {k: n for k, n in sorted(Counter(r.get(key) for r in lin if ok(r, key)).items(), key=lambda x: -x[1]) if k}
+    counts = {"etapa": cnt("etapa"), "fornecedor": cnt("fornecedor"), "alerta": {a: sum(1 for r in lin if a in _alertas(r) and ok(r, "alerta")) for a in ("atrasar", "vencida")}}
+    sel = [dict(r, alertas=sorted(_alertas(r)), dias_vencida=-r["dias_para_chegar"] if "vencida" in _alertas(r) else None) for r in lin if ok(r)]
+    if f.get("alerta") == "vencida": sel.sort(key=lambda r: (-(r["dias_vencida"] or 0), str(r.get("pedido")), r.get("codigo") or ""))      # vencidas: a mais atrasada primeiro
+    page = max(int(f.get("page") or 1), 1); n = 10**9 if f.get("all") else size
+    return {"available": True, "total": len(sel), "page": page, "size": n, "rows": sel[(page - 1) * n: page * n], "counts": counts}
+
 def parados(today=None):
     """Saldos parados (Q19, etapa 16 · D4): linhas pedido × código sem embarque há mais de 2× o p90 da produção do fornecedor — saldo provavelmente «fantasma»
     no ERP. Só sinaliza (nada é gravado no ERP). Mais antigos primeiro."""

@@ -78,6 +78,17 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 | C4 | Cobertura | (estoque disponível + pedidos em aberto, sem os parados) ÷ venda média mensal. Faixas: **Ruptura** = vende e está sem estoque · **Risco** < 6 meses (meta de lead time) · **OK** 6 a 18 · **Excesso** > 18 · **Sem giro** = estoque sem venda em 12 meses. |
 | C5 | Onde | Tela nova **«Estoque»** no menu, ao lado de Vendas. |
 
+## Rodada 5 — etapa A (17/11/2026)
+
+| # | Tema | Decisão |
+|---|---|---|
+| A1 | Projeção de estoque | Na tela Estoque, por código, mês a mês por **6 meses**: estoque disponível + chegadas previstas − venda média. Lista «vai faltar antes de chegar» com o mês da falta prevista. |
+| A2 | Previsão × realizado | Guardar a previsão a cada sincronização e medir o erro quando o embarque chega (acerto por fornecedor e etapa). |
+| A3 | Pedidos em Aberto | Padrão novo: filtros na URL e lembrados, atalhos com contagem (etapa, fornecedor, vai atrasar, vencida), Excel da previsão no lugar do CSV. |
+| A4 | Previsões vencidas | Lista das linhas com previsão já passada e sem chegada (149 na cópia), com Excel, para cobrar o fornecedor. |
+
+Fatos (cópia, 17/11/2026): 9.750 embarques entregues no histórico; total típico 141 dias (p90 182); só 33% no prazo prometido; 6.618 linhas em aberto, 1.985 vão atrasar > 15 dias, 149 com previsão vencida.
+
 ## Checkpoints
 
 ### Passo 0a — rede de segurança dos testes (11/11/2026) ✅
@@ -239,6 +250,14 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Testes: `test_modulos.VendasUniverso`, `test_modulos.EstoqueCobertura`, `test_29`; `test_17` atualizado (padrão sem linha pesada).
 - Na cópia: outubro/2026 = R$ 25.467.648 (BI R$ 25.467.272); com linha pesada R$ 25.522.040. Acumulado 2026 R$ 187,8 mi (+42,4%). Estoque: 1.059 itens, 268.478 peças disponíveis no 04, 1,39 mi a caminho, cobertura 10,1 meses; ruptura 197 · risco 236 · OK 390 · excesso 166 · sem giro 70. Ex.: AMD0637 vende 2.810/mês e tem 85 no 04 com 249 reservadas → ruptura. Estoque abre em 5,9 s na primeira vez (calcula a previsão de chegadas), depois 0,1 s.
 - Próximo: etapa **A** (previsão de chegadas).
+
+### Etapa A · previsão de chegadas (17/11/2026) ✅
+- A1 · Projeção de estoque (tela Estoque): 6 meses, saldo mês a mês com as chegadas previstas; no mês atual desconta só os dias que faltam (sem isso, 511 itens «faltavam» em novembro, a maioria com cobertura folgada; agora 448). Atalho «Vai faltar em 6 meses» (o que falta primeiro em cima), coluna «Falta em» (dica com chegadas e saldo de cada mês), «antes de chegar»; Excel com chegada e saldo por mês.
+- A3/A4 · Pedidos em Aberto: lista da previsão no servidor (`/api/pedidos/previsao/linhas`) com atalhos de alerta (vão atrasar · previsão vencida), etapa e fornecedor, contagem = lista; clicar numa etapa do fluxo filtra. Filtros da previsão e da lista de pedidos num só estado na URL + última visita (`q`, `forn`, `st`, `rec`, `tipo`, `etapa`, `pvforn`, `alerta`, `pvq`). Excel da previsão no lugar do CSV; com «vencida», serve para cobrar o fornecedor (dias vencida, processo, ETA).
+- A2 · Previsão × realizado: tabela `forecast_snapshots` (1 foto por dia na sincronização, sem parados), `leadtime.acerto()`, quadro em Pedidos em Aberto. Começa a medir hoje; os números aparecem quando os embarques fotografados chegarem.
+- Testes: `test_modulos.EstoqueProjecao`, `PrevisaoLinhas`, `PrevisaoRealizado`; `test_29` cobre a projeção.
+- Na cópia: 448 itens com falta prevista (166 em nov/2026, quase todos já em ruptura), 320 com pedido que chega tarde; previsão: 1.985 vão atrasar, 149 vencidas (todas no porto/desembaraço, até 4 dias); Excel das vencidas 149 linhas. Foto da previsão na cópia: 3.433 linhas (3 s).
+- **Etapa 16 concluída** (0 → B → D → C → A).
 
 - **Etapa D concluída** (D1–D9 da rodada 3). Pendências para o usuário no banco real: reabrir o app (fecha os 31 conflitos de caixa e os 43 de família), aplicar os 5 de caixa em Pendências, reimportar o CatalogoAMD e carregar o Analítico de Garantias. Próximo: etapa **C** (vendas × estoque).
 

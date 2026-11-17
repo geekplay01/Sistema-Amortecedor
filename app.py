@@ -566,6 +566,14 @@ def api_leadtime():
     try: return jsonify(leadtime.payload())
     except ValueError as e: return jsonify(error=str(e)), 400
 
+@app.get("/api/pedidos/previsao/acerto")
+def api_previsao_acerto():      # previsão × realizado (etapa 16 · A2)
+    import leadtime
+    return jsonify(leadtime.acerto())
+@app.get("/api/pedidos/previsao/linhas")
+def api_previsao_linhas():      # lista da previsão com filtros e atalhos (etapa 16 · A3/A4)
+    import leadtime
+    return jsonify(leadtime.previsao_linhas({k: request.args.get(k, "") for k in ("etapa", "fornecedor", "alerta", "q", "page")}))
 @app.get("/api/pedidos/previsao")
 def api_previsao():
     """Previsão de embarques e chegadas (etapas produção → mar → desembaraço medidas no histórico de cada fornecedor)."""
@@ -593,7 +601,7 @@ def api_warranty_parse():
 @app.get("/api/estoque")
 def api_estoque():              # vendas × estoque (etapa 16 · C2–C4)
     import estoque
-    return jsonify(estoque.listing({k: request.args.get(k, "") for k in ("situacao", "classe", "q", "page")}))
+    return jsonify(estoque.listing({k: request.args.get(k, "") for k in ("situacao", "classe", "q", "falta", "page")}))
 @app.get("/api/garantias")
 def api_garantias():            # planilha «Analítico de Garantias» (etapa 16 · D8); sem planilha → available=False e a tela usa /api/warranty (servidor)
     import garantias

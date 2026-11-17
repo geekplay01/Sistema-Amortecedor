@@ -566,7 +566,9 @@ class Fluxo(unittest.TestCase):
         for k, n in d["counts"]["classe"].items(): self.assertEqual(C.get(f"/api/estoque?classe={k}").json["total"], n, k)
         self.assertEqual(C.get("/api/estoque?q=ZZT29").json["rows"][0]["situacao"], "sem_giro")
         self.assertEqual(load_workbook(io.BytesIO(C.get("/api/export/estoque.xlsx?q=ZZT29").data)).worksheets[0].max_row - 1, 1)
-        r = C.get("/api/vendas/resumo").json["resumo"]; self.assertIn("fechado", r); self.assertIn("parcial", r)
+        o = C.get("/api/vendas/resumo").json
+        if o.get("available") and not o.get("sem_data"): self.assertIn("fechado", o["resumo"]); self.assertIn("parcial", o["resumo"])
+        self.assertEqual(len(d["meses"]), 6); self.assertEqual(C.get("/api/estoque?falta=1").json["total"], d["counts"]["falta"])      # projeção (A1)
 
 
 if __name__ == "__main__":

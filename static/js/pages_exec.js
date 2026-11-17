@@ -39,10 +39,10 @@ window.PSD_EXEC = ctx => {
   // ───────────────────────── Previsão de embarques e chegadas (etapas medidas no histórico) ─────────────────────────
   const ETAPAS = ["Aguardando embarque", "No mar", "No porto / desembaraço"], PARADO = "Parado — verificar saldo";
   const FCLR = { "ZS": "#2f6bff", "E-WIN": "#10b981", "XGM": "#8b5cf6", "VERIFICAR": "#f59e0b" };
-  async function previsaoBlock(el) {
+  async function previsaoBlock(el, PF) {
     let F; try { F = await J("/api/pedidos/previsao"); } catch (e) { el.innerHTML = ""; return; }
     if (!F.available) { el.innerHTML = ""; return; }
-    const M = F.modelo, G = M.Geral, st = { etapa: "", forn: "", q: "" };
+    const M = F.modelo, G = M.Geral;
     const by = Object.fromEntries(F.por_etapa.map(x => [x.etapa, x]));
     const stg = (k, l, sub, cls = "") => `<div class="st ${cls}" data-et="${esc(k)}"><small>${l}</small><b>${nf((by[k] || {}).quantidade || 0)}</b><span>${nf((by[k] || {}).linhas || 0)} linha(s) · ${sub}</span></div>`;
     const cn = t => `<i class="cn"><em>${t}</em></i>`;
@@ -58,27 +58,63 @@ window.PSD_EXEC = ctx => {
       ${TW.card("Etapas por fornecedor (dias · mediana e faixa p25–p75)", TW.table([{ h: "Fornecedor" }, { h: "Produção", r: 1 }, { h: "Mar", r: 1 }, { h: "Desembaraço", r: 1 }, { h: "Total", r: 1 }, { h: "p90 total", r: 1 }, { h: "Chegou até a promessa", r: 1 }, { h: "Atraso mediano", r: 1 }, { h: "Embarques", r: 1 }],
         [...fornList, "Geral"].map(f => { const m = M[f], c = m.confiabilidade || {}, rg = s => s && s.mediana != null ? `<b>${nf(s.mediana)}</b> <span class="rng">${nf(s.p25)}–${nf(s.p75)}</span>` : "–";
           return [f === "Geral" ? "<b>Geral</b>" : TW.badge(f, FORN[f]), rg(m.producao), rg(m.mar), rg(m.desembaraco), rg(m.total), m.total.p90 == null ? "–" : nf(m.total.p90), c.no_prazo_pct == null ? "–" : TW.badge(nf(c.no_prazo_pct, 0) + "%", c.no_prazo_pct >= 70 ? "green" : c.no_prazo_pct >= 40 ? "amber" : "red"), c.atraso_mediano == null ? "–" : (c.atraso_mediano > 0 ? "+" : "") + nf(c.atraso_mediano) + " d", nf(m.total.n)]; }), { h: "max-h-[40vh]" }))}
-      ${TW.card("Linhas previstas", `<div class="mb-3 flex flex-wrap items-center gap-3"><div class="min-w-[200px] flex-1">${TW.input("pvq", "Buscar código ou pedido…")}</div>${TW.select("pvf", [["", "Fornecedor: todos"], ...fornList.map(f => [f, f])], "")}${TW.select("pvs", [["", "Etapa: todas"], ...[...ETAPAS, PARADO].map(e => [e, e])], "")}${TW.btn("pvcsv", "Exportar (CSV)")}</div><div id="pvt"></div>`, `<span id="pvn" class="text-sm text-mute"></span>`)}</div>`);
+      <div id="pacc"></div>
+      ${TW.card("Linhas previstas", `<div id="pva" class="mb-3 flex flex-col gap-2"></div><div class="mb-3 flex flex-wrap items-center gap-3"><div class="min-w-[200px] flex-1">${TW.input("pvq", "Buscar código ou pedido…")}</div><a id="pvx" class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white no-underline hover:bg-blue-700" href="/api/export/previsao.xlsx">⬇ Baixar Excel</a></div><div id="pvt"></div><div id="pvp" class="mt-3 flex items-center justify-center gap-3 text-sm text-mute"></div>`, `<span id="pvn" class="text-sm text-mute"></span>`)}</div>`);
     const cal = (id, C) => PSDCharts.bars($("#" + id), { x: C.meses.map(m => m === "depois" ? "depois" : m), stacked: true, series: C.series.map(s => ({ name: s.fornecedor, y: s.qtd, color: FCLR[s.fornecedor] })) });
     cal("pvc", F.calendario); cal("pve", F.calendario_embarques);
-    const rows = () => F.linhas.filter(r => (!st.etapa || r.etapa === st.etapa) && (!st.forn || r.fornecedor === st.forn) && (!st.q || r.codigo.includes(st.q) || String(r.pedido).includes(st.q)));
-    const draw = () => { const v = rows(); $("#pvn").textContent = `${nf(v.length)} de ${nf(F.linhas_total)} linha(s)`;
-      el.querySelectorAll(".flowx .st").forEach(x => x.classList.toggle("on", !!st.etapa && x.dataset.et === st.etapa));
-      $("#pvt").innerHTML = TW.table([{ h: "Código" }, { h: "Pedido" }, { h: "Fornecedor" }, { h: "Qtd", r: 1 }, { h: "Etapa" }, { h: "Emissão" }, { h: "Promessa" }, { h: "Embarque" }, { h: "ETA servidor" }, { h: "Chegada prevista" }, { h: "Faixa" }, { h: "vs. promessa", r: 1 }, { h: "Confiança" }],
-        v.slice(0, 400).map(r => [pc(r.codigo), esc(r.pedido), TW.badge(r.fornecedor, FORN[r.fornecedor]), nf(r.quantidade), TW.badge(r.etapa, r.etapa === PARADO ? "amber" : r.etapa === "No mar" ? "blue" : r.etapa.startsWith("No porto") ? "violet" : "slate"),
+    // lista filtrada no servidor (leadtime.previsao_linhas): etapa · fornecedor · alerta (vai atrasar / vencida) · busca; filtros na URL (PF, compartilhado com a lista de pedidos)
+    let pg = 1, seq = 0, d;
+    const chip = (attrs, label, on, n, cor = "") => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : `border-line bg-card text-ink hover:bg-slate-500/10 ${cor}`}">${label} · ${nf(n)}</button>`;
+    const rot = t => `<span class="mr-1 w-24 shrink-0 text-xs font-semibold uppercase tracking-wide text-mute">${t}</span>`;
+    const desenhar = () => {
+      const s = PF.get(), c = d.counts;
+      el.querySelectorAll(".flowx .st").forEach(x => x.classList.toggle("on", !!s.etapa && x.dataset.et === s.etapa));
+      $("#pva").innerHTML = `<div class="flex flex-wrap items-center gap-2">${rot("Alerta")}${chip('data-pk="alerta" data-pv="atrasar"', "Vão atrasar (> 15 d)", s.alerta === "atrasar", c.alerta.atrasar, "border-amber-500")}${chip('data-pk="alerta" data-pv="vencida"', "Previsão vencida (cobrar)", s.alerta === "vencida", c.alerta.vencida, "border-red-500")}</div>
+        <div class="flex flex-wrap items-center gap-2">${rot("Etapa")}${Object.entries(c.etapa).map(([k, n]) => chip(`data-pk="etapa" data-pv="${esc(k)}"`, esc(k), s.etapa === k, n)).join("")}</div>
+        <div class="flex flex-wrap items-center gap-2">${rot("Fornecedor")}${Object.entries(c.fornecedor).map(([k, n]) => chip(`data-pk="pvforn" data-pv="${esc(k)}"`, esc(k), s.pvforn === k, n)).join("")}</div>`;
+      const n = ["etapa", "pvforn", "alerta", "pvq"].filter(k => s[k]).length;
+      $("#pvn").innerHTML = `${nf(d.total)} linha(s)${n ? ` · ${n} filtro(s)` : ""}${PF.restaurado ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}`;
+      $("#pvx").href = "/api/export/previsao.xlsx?" + new URLSearchParams(Object.fromEntries(Object.entries({ etapa: s.etapa, fornecedor: s.pvforn, alerta: s.alerta, q: s.pvq }).filter(x => x[1])));
+      const venc = s.alerta === "vencida";
+      $("#pvt").innerHTML = TW.table([{ h: "Código" }, { h: "Pedido" }, { h: "Fornecedor" }, { h: "Qtd", r: 1 }, { h: "Etapa" }, { h: "Emissão" }, { h: "Promessa" }, { h: "Embarque" }, { h: "ETA servidor" }, { h: "Chegada prevista" }, { h: venc ? "Vencida há" : "Faixa" }, { h: "vs. promessa", r: 1 }, { h: "Confiança" }],
+        d.rows.map(r => [pc(r.codigo), esc(r.pedido), TW.badge(r.fornecedor, FORN[r.fornecedor]), nf(r.quantidade), TW.badge(r.etapa, r.etapa === PARADO ? "amber" : r.etapa === "No mar" ? "blue" : r.etapa.startsWith("No porto") ? "violet" : "slate"),
           dmy(r.emissao), dmy(r.prometido), r.embarque ? dmy(r.embarque) : r.embarque_previsto ? `<span class="text-mute">~${dmy(r.embarque_previsto)}</span>` : "–", dmy(r.eta_servidor),
-          r.etapa === PARADO ? '<span class="text-mute">–</span>' : `<b>${dmy(r.chegada_prevista)}</b>${r.dias_para_chegar < 0 ? ` ${TW.badge("vencida", "red")}` : ""}`, r.etapa === PARADO ? "–" : `<span class="rng">${dmy(r.faixa_de)} – ${dmy(r.faixa_ate)}</span>`,
-          r.atraso_previsto == null || r.etapa === PARADO ? "–" : r.atraso_previsto > 15 ? TW.badge(`+${nf(r.atraso_previsto)} d`, "red") : r.atraso_previsto > 0 ? TW.badge(`+${nf(r.atraso_previsto)} d`, "amber") : TW.badge("no prazo", "green"), TW.badge(r.confianca, r.confianca === "alta" ? "green" : r.confianca === "média" ? "amber" : "slate")]), { h: "max-h-[60vh]" }); };
-    el.querySelector(".flowx").onclick = e => { const s = e.target.closest(".st[data-et]"); if (!s) return; st.etapa = st.etapa === s.dataset.et ? "" : s.dataset.et; $("#pvs").value = st.etapa; draw(); };
-    $("#pvq").oninput = debounce(e => { st.q = e.target.value.trim().toUpperCase(); draw(); }); $("#pvf").onchange = e => { st.forn = e.target.value; draw(); }; $("#pvs").onchange = e => { st.etapa = e.target.value; draw(); };
-    $("#pvcsv").onclick = () => { const cols = ["codigo", "pedido", "fornecedor", "quantidade", "etapa", "emissao", "prometido", "embarque", "embarque_previsto", "eta_servidor", "chegada_prevista", "faixa_de", "faixa_ate", "atraso_previsto", "confianca"]; TW.csv("previsao_chegadas.csv", cols, rows().map(r => cols.map(c => r[c]))); };
-    draw();
+          r.etapa === PARADO ? '<span class="text-mute">–</span>' : `<b>${dmy(r.chegada_prevista)}</b>${r.dias_para_chegar < 0 ? ` ${TW.badge("vencida", "red")}` : ""}`,
+          venc ? TW.badge(`${nf(r.dias_vencida)} d`, "red") : r.etapa === PARADO ? "–" : `<span class="rng">${dmy(r.faixa_de)} – ${dmy(r.faixa_ate)}</span>`,
+          r.atraso_previsto == null || r.etapa === PARADO ? "–" : r.atraso_previsto > 15 ? TW.badge(`+${nf(r.atraso_previsto)} d`, "red") : r.atraso_previsto > 0 ? TW.badge(`+${nf(r.atraso_previsto)} d`, "amber") : TW.badge("no prazo", "green"), TW.badge(r.confianca, r.confianca === "alta" ? "green" : r.confianca === "média" ? "amber" : "slate")]), { h: "max-h-[60vh]" });
+      const pages = Math.max(1, Math.ceil(d.total / d.size));
+      $("#pvp").innerHTML = pages > 1 ? `<button type="button" data-pp="${pg - 1}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${pg < 2 ? "disabled" : ""}>‹</button> Página ${pg} de ${pages} <button type="button" data-pp="${pg + 1}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${pg >= pages ? "disabled" : ""}>›</button>` : "";
+    };
+    const carregar = async () => { const meu = ++seq, s = PF.get();
+      let r; try { r = await J("/api/pedidos/previsao/linhas?" + new URLSearchParams({ etapa: s.etapa || "", fornecedor: s.pvforn || "", alerta: s.alerta || "", q: s.pvq || "", page: pg })); } catch (e) { $("#pvt").innerHTML = TW.notice(esc(e.message), "red"); return; }
+      if (meu === seq) { d = r; desenhar(); } };
+    el.querySelector(".flowx").onclick = e => { const s = e.target.closest(".st[data-et]"); if (!s || !s.dataset.et) return; PF.toggle("etapa", s.dataset.et); pg = 1; carregar(); };
+    $("#pva").onclick = e => { const b = e.target.closest("[data-pk]"); if (!b) return; PF.toggle(b.dataset.pk, b.dataset.pv); pg = 1; carregar(); };
+    $("#pvp").onclick = e => { const b = e.target.closest("[data-pp]"); if (b && !b.disabled) { pg = +b.dataset.pp; carregar(); } };
+    $("#pvq").value = PF.get().pvq || ""; $("#pvq").oninput = debounce(e => { PF.set({ pvq: e.target.value.trim() }); pg = 1; carregar(); }, 300);
+    carregar(); acerto($("#pacc"));
+  }
+
+  // previsão × realizado (etapa 16 · A2): a previsão é fotografada a cada sincronização e comparada com a chegada real
+  async function acerto(el) {
+    let a; try { a = await J("/api/pedidos/previsao/acerto"); } catch (e) { el.innerHTML = ""; return; }
+    const sg = v => v == null ? "–" : `${v > 0 ? "+" : ""}${nf(v, Number.isInteger(v) ? 0 : 1)} d`, pc_ = v => v == null ? "–" : nf(v, 0) + "%";
+    const linha = (rot, s) => [rot, nf(s.n), sg(s.erro_mediano), s.erro_medio_abs == null ? "–" : nf(s.erro_medio_abs, 1) + " d", pc_(s.pct_faixa), pc_(s.pct_7d)];
+    const corpo = !a.desde ? TW.notice("A previsão passa a ser fotografada a cada sincronização a partir de hoje. Quando os embarques previstos chegarem, aqui aparece o acerto por fornecedor e por etapa.", "blue")
+      : !a.geral.n ? TW.notice(`Fotos da previsão desde ${dmy(a.desde)}; ${nf(a.aguardando)} linha(s) previstas aguardando chegar. O acerto aparece quando as primeiras chegarem.`, "blue")
+      : `<p class="mb-3 mt-0 text-sm text-mute">Desde ${dmy(a.desde)}: ${nf(a.geral.n)} previsões já conferidas com a chegada real · ${nf(a.aguardando)} aguardando. Erro + = chegou <b>depois</b> do previsto; «na faixa» = dentro do p25–p75. Vale a 1ª previsão de cada etapa.</p>`
+        + TW.table([{ h: "Grupo" }, { h: "Previsões", r: 1 }, { h: "Erro mediano", r: 1 }, { h: "Erro médio (absoluto)", r: 1 }, { h: "Na faixa", r: 1 }, { h: "Até 7 dias", r: 1 }],
+            [linha("<b>Geral</b>", a.geral), ...a.por_fornecedor.map(f => linha(TW.badge(f.fornecedor, FORN[f.fornecedor]), f)), ...a.por_etapa.map(e => linha(`<span class="text-mute">etapa</span> ${esc(e.etapa)}`, e))], { h: "max-h-[40vh]" });
+    el.innerHTML = TW.card("Previsão × realizado", corpo);
   }
 
   // ───────────────────────── Pedidos em Aberto ─────────────────────────
   async function pedidos() {
     root.innerHTML = waiting("Carregando pedidos em aberto…");
-    const st0 = { q: (new URLSearchParams(location.search).get("q") || "").trim(), forn: "", st: "", rec: "0", tipo: "compra", page: 1 };
+    // filtros na URL e lembrados (etapa 16 · A3): lista de pedidos (q, forn, st, rec, tipo) + lista da previsão (etapa, pvforn, alerta, pvq) num só estado
+    const PF = TW.filtros("pedidos-aberto", ["q", "forn", "st", "rec", "tipo", "etapa", "pvforn", "alerta", "pvq"]), s0 = PF.get();
+    const st0 = { q: (s0.q || "").trim(), forn: s0.forn || "", st: s0.st || "", rec: s0.rec || "0", tipo: s0.tipo || "compra", page: 1 };
+    const guarda = () => PF.set({ q: st0.q, forn: st0.forn, st: st0.st, rec: st0.rec === "0" ? "" : st0.rec, tipo: st0.tipo === "compra" ? "" : st0.tipo });
     const get = () => J("/api/pedidos-em-aberto?" + new URLSearchParams({ q: st0.q, fornecedor: st0.forn, status: st0.st, recebidos: st0.rec, tipo: st0.tipo, page: st0.page, size: 200 }).toString());
     let d, lt; try { [d, lt] = await Promise.all([get(), J("/api/pedidos/leadtime").catch(() => ({ available: false }))]); } catch (e) { root.innerHTML = ""; return fail(e); }
     if (!d.available) { root.innerHTML = nodata("PEDIDOS_COMPRA_DETALHADO"); return; }
@@ -91,9 +127,9 @@ window.PSD_EXEC = ctx => {
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi("Pedidos em aberto", nf(S.pedidos), `${nf(S.linhas)} linhas`, "blue")}${TW.kpi("Itens (códigos)", nf(S.itens), "", "green")}
         ${TW.kpi("Quantidade em aberto", nf(S.quantidade), "peças aguardando entrega", "slate")}${TW.kpi("Com previsão vencida", nf(S.vencidas), S.verificar ? `${nf(S.verificar)} linha(s) com fornecedor a VERIFICAR` : "entrega após a previsão", S.vencidas ? "red" : "green")}</div>
       ${TW.card("Pedidos", `<div class="mb-4 flex flex-wrap items-center gap-3"><div class="min-w-[220px] flex-1">${TW.input("pq", "Buscar código ou nº do pedido…")}</div>
-        ${TW.select("pst", [["", "STATUS_PC: todos"], ...(d.status_pc || []).map(x => [x.status, `${x.status} (${nf(x.linhas)})`])], "")}
-        ${TW.select("pab", [["0", "Somente em aberto"], ["1", "Incluir já recebidos"]], "0")}
-        ${TW.select("ptp", [["compra", "Tipo: Compra (servidor)"], ["amostra", `Tipo: Amostra (${nf(d.n_amostras || 0)})`], ["todos", "Tipo: Compra + Amostra"]], "compra")}
+        ${TW.select("pst", [["", "STATUS_PC: todos"], ...(d.status_pc || []).map(x => [x.status, `${x.status} (${nf(x.linhas)})`])], st0.st)}
+        ${TW.select("pab", [["0", "Somente em aberto"], ["1", "Incluir já recebidos"]], st0.rec)}
+        ${TW.select("ptp", [["compra", "Tipo: Compra (servidor)"], ["amostra", `Tipo: Amostra (${nf(d.n_amostras || 0)})`], ["todos", "Tipo: Compra + Amostra"]], st0.tipo)}
         <div id="pf" class="flex flex-wrap gap-2"></div>${TW.btn("pcsv", "Exportar página (CSV)")}</div><div id="ptab"></div><div id="ppg" class="mt-3 flex items-center justify-between text-sm text-mute"></div>`, `<span id="pcount" class="text-sm text-mute"></span>`)}</div>`;
     const chips = () => { $("#pf").innerHTML = [["", "Todos", S.linhas], ...S.por_fornecedor.map(f => [f.fornecedor, f.fornecedor, null])]
       .map(([v, l, n]) => `<button type="button" data-f="${esc(v)}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${st0.forn === v ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${esc(l)}${n != null ? ` · ${nf(n)}` : ""}</button>`).join(""); };
@@ -104,8 +140,8 @@ window.PSD_EXEC = ctx => {
             !r.em_aberto ? TW.badge("Recebido", "slate") : late ? TW.badge("Atrasado", "red") : r.DATA_PREV_ENT ? TW.badge("No prazo", "green") : TW.badge("Sem previsão", "slate")]; }));
       $("#ppg").innerHTML = pages > 1 ? `<span>Página ${d.page} de ${pages}</span><span class="flex gap-2">${TW.btn("ppv", "‹ Anterior")}${TW.btn("pnx", "Próxima ›")}</span>` : "";
       if (pages > 1) { $("#ppv").disabled = d.page <= 1; $("#pnx").disabled = d.page >= pages; $("#ppv").onclick = () => reload(d.page - 1); $("#pnx").onclick = () => reload(d.page + 1); } };
-    const reload = async (pg = 1) => { st0.page = pg; $("#ptab").style.opacity = .5; try { d = await get(); } catch (e) { return fail(e); } $("#ptab").style.opacity = 1; draw(); };
-    previsaoBlock($("#pprev")); $("#pq").value = st0.q;
+    const reload = async (pg = 1) => { st0.page = pg; guarda(); $("#ptab").style.opacity = .5; try { d = await get(); } catch (e) { return fail(e); } $("#ptab").style.opacity = 1; draw(); };
+    previsaoBlock($("#pprev"), PF); $("#pq").value = st0.q;
     $("#pq").oninput = debounce(e => { st0.q = e.target.value.trim(); reload(); }, 300); $("#pst").onchange = e => { st0.st = e.target.value; reload(); }; $("#pab").onchange = e => { st0.rec = e.target.value; reload(); }; $("#ptp").onchange = e => { st0.tipo = e.target.value; reload(); };
     $("#pf").onclick = e => { const b = e.target.closest("[data-f]"); if (b) { st0.forn = b.dataset.f; reload(); } };
     $("#pcsv").onclick = () => TW.csv("pedidos_em_aberto.csv", [...d.columns, "TIPO_PEDIDO"], d.rows.map(r => [...d.columns, "TIPO_PEDIDO"].map(c => r[c]))); draw();

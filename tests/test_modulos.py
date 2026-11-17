@@ -231,6 +231,76 @@ class EstoqueCobertura(_TmpDB):
             self.assertEqual(estoque.listing({"q": "f"}, today=datetime.date(2026, 11, 17))["total"], 1)
             bio, _ = exporter.build("estoque", {"situacao": "ruptura", "today": "2026-11-17"}); self.assertEqual(load_workbook(io.BytesIO(bio.read())).worksheets[0].max_row - 1, 2)
 
+class EstoqueProjecao(_TmpDB):
+    def test_vai_faltar_antes_de_chegar(self):
+        """Etapa 16 · A1: projeção mês a mês (6 meses, a partir do atual): saldo = estoque + chegadas previstas do mês − venda média (mês atual: só os dias que faltam).
+        «Falta em» = 1º mês com saldo negativo; previsão vencida conta no mês atual; parado não chega."""
+        import estoque, datetime, data_pipeline as dp
+        from unittest import mock
+        self.db.init_db(); dp.Store(self.f.name)
+        mes = lambda i: f"{2025 + (10 + i) // 12}-{(10 + i) % 12 + 1:02d}-01"
+        v = []
+        for code, qtd in (("A", 10), ("C", 2), ("F", 1), ("G", 3)): v += [(code, qtd, qtd * 10.0, mes(i), "AMORTECEDOR") for i in range(12)]
+        self.sql("INSERT INTO ds_vendas(code,qty,total,sale_date,line) VALUES(?,?,?,?,?)", v)
+        self.sql("INSERT INTO ds_estoque(code,warehouse,qty,reserved) VALUES(?,?,?,?)", [("A", "04", 25, 0), ("F", "04", 5, 0)])
+        prev = {"available": True, "linhas": [{"codigo": "MP-C", "quantidade": 20, "etapa": "No mar", "chegada_prevista": "2027-02-10"},
+                                              {"codigo": "MP-F", "quantidade": 5, "etapa": "No mar", "chegada_prevista": "2026-12-05"},
+                                              {"codigo": "MP-G", "quantidade": 10, "etapa": "No porto / desembaraço", "chegada_prevista": "2026-10-01"},      # vencida: conta em nov/2026
+                                              {"codigo": "MP-A", "quantidade": 999, "etapa": "Parado — verificar saldo", "chegada_prevista": "2026-12-01"}]}
+        hoje = datetime.date(2026, 11, 17)
+        with mock.patch("leadtime.forecast_cached", return_value=prev):
+            d = estoque.listing({"all": 1}, today=hoje); r = {x["codigo"]: x for x in d["rows"]}
+            self.assertEqual(d["meses"], ["2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04"])
+            self.assertEqual({k: x["falta_em"] for k, x in r.items()}, {"A": "2027-02", "C": "2026-11", "F": None, "G": "2027-02"})
+            self.assertEqual(r["A"]["projecao"][:4], [20.3, 10.3, 0.3, -9.7]);          # novembro: só 14 dos 30 dias (hoje é 17/11) self.assertEqual(r["F"]["chegadas"], [0, 5, 0, 0, 0, 0]); self.assertEqual(r["G"]["chegadas"][0], 10)
+            self.assertTrue(r["C"]["antes_de_chegar"]); self.assertFalse(r["A"]["antes_de_chegar"])      # C tem pedido, mas chega depois da falta; A não tem pedido nenhum
+            self.assertEqual(d["counts"]["falta"], 3); self.assertEqual(estoque.listing({"falta": "1"}, today=hoje)["total"], 3)
+            com_falta = estoque.listing({"falta": "1"}, today=hoje)["counts"]["situacao"]          # atalho de situação respeita o filtro «vai faltar»
+            for k, n in com_falta.items(): self.assertEqual(estoque.listing({"falta": "1", "situacao": k}, today=hoje)["total"], n, k)
+
+class PrevisaoLinhas(_TmpDB):
+    def test_atalhos_vencidas_e_excel(self):
+        """Etapa 16 · A3/A4: lista da previsão filtrada no servidor; atalhos de etapa, fornecedor e alerta (vai atrasar > 15 d, vencida) com contagem = lista; Excel com os filtros."""
+        import leadtime, exporter, io
+        from unittest import mock
+        from openpyxl import load_workbook
+        L = [{"codigo": "MP-A", "pedido": "1", "fornecedor": "ZS", "quantidade": 10, "etapa": "No mar", "chegada_prevista": "2026-10-01", "dias_para_chegar": -47, "atraso_previsto": 30, "prometido": "2026-09-01", "emissao": "2026-04-01"},
+             {"codigo": "MP-B", "pedido": "2", "fornecedor": "E-WIN", "quantidade": 5, "etapa": "Aguardando embarque", "chegada_prevista": "2027-01-10", "dias_para_chegar": 54, "atraso_previsto": 20, "prometido": "2026-12-20", "emissao": "2026-09-01"},
+             {"codigo": "MP-C", "pedido": "3", "fornecedor": "ZS", "quantidade": 7, "etapa": "No porto / desembaraço", "chegada_prevista": "2026-11-20", "dias_para_chegar": 3, "atraso_previsto": 0, "prometido": "2026-11-25", "emissao": "2026-05-01"},
+             {"codigo": "MP-D", "pedido": "4", "fornecedor": "ZS", "quantidade": 9, "etapa": "Parado — verificar saldo", "chegada_prevista": "2026-11-17", "dias_para_chegar": 0, "atraso_previsto": None, "prometido": "2024-01-01", "emissao": "2023-01-01"}]
+        with mock.patch("leadtime.forecast_cached", return_value={"available": True, "linhas": L}):
+            d = leadtime.previsao_linhas({})
+            self.assertEqual(d["total"], 4); self.assertEqual(d["counts"]["alerta"], {"atrasar": 2, "vencida": 1}); self.assertEqual(d["counts"]["fornecedor"], {"ZS": 3, "E-WIN": 1})
+            for grp in ("etapa", "fornecedor", "alerta"):
+                for v, n in leadtime.previsao_linhas({"fornecedor": "ZS"})["counts"][grp].items():
+                    self.assertEqual(leadtime.previsao_linhas({"fornecedor": "ZS", grp: v})["total"], n, f"{grp}={v}")
+            v = leadtime.previsao_linhas({"alerta": "vencida"}); self.assertEqual([r["codigo"] for r in v["rows"]], ["MP-A"]); self.assertEqual(v["rows"][0]["dias_vencida"], 47)
+            self.assertEqual(leadtime.previsao_linhas({"q": "mp-c"})["total"], 1); self.assertEqual(leadtime.previsao_linhas({"q": "2"})["rows"][0]["codigo"], "MP-B")
+            bio, fn = exporter.build("previsao", {"alerta": "atrasar"}); ws = load_workbook(io.BytesIO(bio.read())).worksheets[0]; self.assertEqual(ws.max_row - 1, 2)
+
+class PrevisaoRealizado(_TmpDB):
+    def test_foto_diaria_e_erro_na_chegada(self):
+        """Etapa 16 · A2: uma foto da previsão por dia (sem parados); quando o embarque chega, compara com a 1ª previsão de cada etapa
+        (erro em dias: + = chegou depois do previsto; «na faixa» = dentro do p25–p75)."""
+        import leadtime, datetime, data_pipeline as dp
+        from unittest import mock
+        self.db.init_db(); dp.Store(self.f.name)
+        def linhas(prev_p1):
+            return {"available": True, "linhas": [
+                {"pedido": "P1", "codigo": "MP-1", "processo": "IP1", "etapa": "No mar", "fornecedor": "ZS", "quantidade": 10, "chegada_prevista": prev_p1, "faixa_de": "2026-10-15", "faixa_ate": "2026-10-25"},
+                {"pedido": "P2", "codigo": "MP-2", "processo": None, "etapa": "Aguardando embarque", "fornecedor": "E-WIN", "quantidade": 5, "chegada_prevista": "2026-12-01", "faixa_de": "2026-11-20", "faixa_ate": "2026-12-10"},
+                {"pedido": "P3", "codigo": "MP-3", "processo": None, "etapa": "Aguardando embarque", "fornecedor": "ZS", "quantidade": 5, "chegada_prevista": "2027-01-01", "faixa_de": "2026-12-20", "faixa_ate": "2027-01-10"},
+                {"pedido": "P4", "codigo": "MP-4", "processo": None, "etapa": "Parado — verificar saldo", "fornecedor": "ZS", "quantidade": 5, "chegada_prevista": "2026-10-01", "faixa_de": None, "faixa_ate": None}]}
+        with mock.patch("leadtime.forecast_cached", return_value=linhas("2026-10-20")):
+            self.assertEqual(leadtime.snapshot_forecast(datetime.date(2026, 10, 1)), 3); self.assertEqual(leadtime.snapshot_forecast(datetime.date(2026, 10, 1)), 0)      # 1 por dia, sem parado
+        with mock.patch("leadtime.forecast_cached", return_value=linhas("2026-10-22")): leadtime.snapshot_forecast(datetime.date(2026, 10, 5))     # 2ª foto: vale a 1ª de cada etapa
+        self.assertEqual(leadtime.acerto()["geral"]["n"], 0)
+        self.sql("INSERT INTO ds_embarques(pedido,code,process,arrival_date) VALUES(?,?,?,?)", [("P1", "MP-1", "IP1", "2026-10-23"), ("P2", "MP-2", "IP9", "2026-11-25")])
+        a = leadtime.acerto(); g = a["geral"]
+        self.assertEqual((g["n"], g["erro_mediano"], g["pct_faixa"]), (2, -1.5, 100.0)); self.assertEqual(a["aguardando"], 1); self.assertEqual(a["desde"], "2026-10-01")
+        e = {x["etapa"]: x for x in a["por_etapa"]}; self.assertEqual((e["No mar"]["erro_mediano"], e["Aguardando embarque"]["erro_mediano"]), (3, -6))
+        f = {x["fornecedor"]: x for x in a["por_fornecedor"]}; self.assertEqual((f["ZS"]["n"], f["E-WIN"]["n"]), (1, 1))
+
 class Conciliacao(_TmpDB):
     def test_bi_x_servidor_e_catalogo(self):
         import conciliacao as cc

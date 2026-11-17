@@ -17,8 +17,12 @@
   const barra = (c, L) => { if (c == null) return '<span class="text-mute">–</span>'; const w = Math.min(100, c / 24 * 100), cor = c < L.risco ? "bg-amber-500" : c <= L.excesso ? "bg-emerald-500" : "bg-violet-500";
     return `<div class="flex items-center gap-2"><div class="relative h-2 w-28 rounded-full bg-slate-500/15"><span class="absolute inset-y-0 left-0 rounded-full ${cor}" style="width:${w}%"></span></div><span class="tabular-nums text-ink">${nf(c, 1)}</span></div>`; };
 
+  // «Falta em»: mês da 1ª projeção negativa; a dica mostra o saldo e as chegadas de cada mês
+  const falta = (r, M) => { const tip = M.map((m, i) => `${mesAno(m + "-01")}: ${r.chegadas[i] ? "+" + nf(r.chegadas[i]) + " chega · " : ""}saldo ${nf(r.projecao[i])}`).join("\n");
+    return r.falta_em ? `<span title="${esc(tip)}">${badge(mesAno(r.falta_em + "-01"), "red")}${r.antes_de_chegar ? ' <span class="text-xs text-mute">antes de chegar</span>' : ""}</span>` : `<span class="text-mute" title="${esc(tip)}">não falta</span>`; };
+
   function estoque() {
-    const F = TW.filtros("estoque", ["situacao", "classe", "q"]); let pg = 1, d = null, timer;
+    const F = TW.filtros("estoque", ["situacao", "classe", "falta", "q"]); let pg = 1, d = null, timer;
     root.innerHTML = `<div class="flex flex-col gap-5">
       <div id="ek" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div><p id="en" class="m-0 text-sm text-mute"></p>
       <div id="eq" class="flex flex-col gap-2"></div>
@@ -32,13 +36,15 @@
       const [ay, am] = d.janela.ate.split("-").map(Number), ult = am === 1 ? `12/${ay - 1}` : `${String(am - 1).padStart(2, "0")}/${ay}`;
       $("#en").innerHTML = `Venda média: ${mesAno(d.janela.de)} a ${ult} (12 meses fechados; o mês atual fica de fora) · risco abaixo de <b class="text-ink">${nf(L.risco, 1)} meses</b> (meta de lead time) · excesso acima de <b class="text-ink">${L.excesso} meses</b>.`;
       const cls = Object.keys(c.classe).sort();
-      $("#eq").innerHTML = `<div class="flex flex-wrap items-center gap-2">${rotulo("Situação")}${Object.entries(SIT).map(([key, [l]]) => chip(`data-k="situacao" data-v="${key}" title="${esc(SIT[key][2])}"`, l, s.situacao === key, c.situacao[key], key === "ruptura" && c.situacao[key] ? "border-red-500" : "")).join("")}</div>
+      $("#eq").innerHTML = `<div class="flex flex-wrap items-center gap-2">${rotulo("Projeção")}${chip('data-k="falta" data-v="1"', `Vai faltar em ${d.meses.length} meses`, s.falta === "1", c.falta, c.falta ? "border-red-500" : "")}
+          <span class="text-xs text-mute">${nf(c.antes_de_chegar)} com pedido a caminho que chega tarde · saldo mês a mês = estoque + chegadas previstas − venda média (${mesAno(d.meses[0] + "-01")} a ${mesAno(d.meses[d.meses.length - 1] + "-01")})</span></div>
+        <div class="flex flex-wrap items-center gap-2">${rotulo("Situação")}${Object.entries(SIT).map(([key, [l]]) => chip(`data-k="situacao" data-v="${key}" title="${esc(SIT[key][2])}"`, l, s.situacao === key, c.situacao[key], key === "ruptura" && c.situacao[key] ? "border-red-500" : "")).join("")}</div>
         <div class="flex flex-wrap items-center gap-2">${rotulo("Classe ABC")}${cls.map(x => chip(`data-k="classe" data-v="${esc(x)}"`, x === "—" ? "sem venda" : "Classe " + x, s.classe === x, c.classe[x])).join("")}</div>`;
-      const n = ["situacao", "classe", "q"].filter(x => s[x]).length;
+      const n = ["situacao", "classe", "falta", "q"].filter(x => s[x]).length;
       $("#em").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns)${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span><a class="${primario}" href="/api/export/estoque.xlsx?${qs(s)}">⬇ Baixar Excel</a>`;
-      $("#et").innerHTML = d.rows.length ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Situação" }, { h: "Classe" }, { h: "Venda 12 m", r: true }, { h: "Média/mês", r: true }, { h: "Estoque", r: true }, { h: "A caminho", r: true }, { h: "Cobertura (meses)" }, { h: "Valor 12 m", r: true }],
+      $("#et").innerHTML = d.rows.length ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Situação" }, { h: "Classe" }, { h: "Venda 12 m", r: true }, { h: "Média/mês", r: true }, { h: "Estoque", r: true }, { h: "A caminho", r: true }, { h: "Cobertura (meses)" }, { h: "Falta em" }, { h: "Valor 12 m", r: true }],
           d.rows.map(r => [window.psdCode ? psdCode(r.codigo) : `<b>${esc(r.codigo)}</b>`, r.descricao ? `<span class="block max-w-[18rem] truncate" title="${esc(r.descricao)}">${esc(r.descricao)}</span>` : '<span class="text-mute">–</span>',
-            badge(SIT[r.situacao][0], SIT[r.situacao][1]), esc(r.classe), nf(r.venda_12m), nf(r.media_mensal, 1), nf(r.estoque), r.a_caminho ? nf(r.a_caminho) : '<span class="text-mute">–</span>', barra(r.cobertura, L), brl0(r.valor_12m)]), { h: "max-h-[65vh]" })
+            badge(SIT[r.situacao][0], SIT[r.situacao][1]), esc(r.classe), nf(r.venda_12m), nf(r.media_mensal, 1), nf(r.estoque), r.a_caminho ? nf(r.a_caminho) : '<span class="text-mute">–</span>', barra(r.cobertura, L), falta(r, d.meses), brl0(r.valor_12m)]), { h: "max-h-[65vh]" })
         : empty("Nenhum item com estes filtros.");
       $("#ep").innerHTML = pager(pg, Math.max(1, Math.ceil(d.total / d.size)));
     };

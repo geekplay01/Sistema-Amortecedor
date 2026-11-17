@@ -115,7 +115,7 @@ BUILD = {"desenvolvimento": _rd("DESENVOLVIMENTO"), "redesenvolvimento": _rd("RE
 
 LABELS = {"desenvolvimento": "Em desenvolvimento", "redesenvolvimento": "Em redesenvolvimento", "produtos": "Produtos e códigos", "pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares",
           "comparacao": "Comparação técnica", "pendencias": "Pendências de dados", "fontes": "Fontes e histórico", "amostras": "Compra de amostras", "damping": "Damping force",
-          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Vendas x estoque", "brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
+          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Vendas x estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
           "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito"}
@@ -213,10 +213,25 @@ def _estoque(a):
     """Vendas × estoque com os filtros da tela (situação, classe, busca). `today` só para teste."""
     import estoque, datetime
     t = datetime.date.fromisoformat(a["today"]) if a.get("today") else None; d = estoque.listing({**a, "all": 1}, today=t); S = {"ruptura": "Ruptura", "risco": "Risco", "ok": "OK", "excesso": "Excesso", "sem_giro": "Sem giro"}
-    return [("Vendas × estoque", ["Código", "Descrição", "Situação", "Classe", "Venda 12 meses (peças)", "Valor 12 meses", "Venda média/mês", f"Estoque disponível (arm. {d['armazem']})", "Reservado", "A caminho", "Cobertura (meses)"],
-             [[r["codigo"], r["descricao"], S[r["situacao"]], r["classe"], r["venda_12m"], r["valor_12m"], r["media_mensal"], r["estoque"], r["reservado"], r["a_caminho"], r["cobertura"]] for r in d["rows"]],
-             [16, 38, 11, 8, 14, 14, 12, 16, 10, 11, 12])], d["total"]
+    M = d["meses"]
+    return [("Vendas × estoque", ["Código", "Descrição", "Situação", "Classe", "Venda 12 meses (peças)", "Valor 12 meses", "Venda média/mês", f"Estoque disponível (arm. {d['armazem']})", "Reservado", "A caminho", "Cobertura (meses)",
+                                  "Falta em", "Falta antes de chegar o pedido", *[f"Chegada {m}" for m in M], *[f"Saldo fim {m}" for m in M]],
+             [[r["codigo"], r["descricao"], S[r["situacao"]], r["classe"], r["venda_12m"], r["valor_12m"], r["media_mensal"], r["estoque"], r["reservado"], r["a_caminho"], r["cobertura"],
+               r["falta_em"], "Sim" if r["antes_de_chegar"] else "", *r["chegadas"], *r["projecao"]] for r in d["rows"]],
+             [16, 38, 11, 8, 14, 14, 12, 16, 10, 11, 12, 10, 14] + [11] * (2 * len(M)))], d["total"]
 BUILD["estoque"] = _estoque
+def _previsao(a):
+    """Previsão de chegadas (linhas) com os filtros da tela: etapa, fornecedor, alerta (atrasar / vencida), busca. Com «vencida» serve para cobrar o fornecedor."""
+    import leadtime
+    d = leadtime.previsao_linhas({**a, "all": 1}); desc = {(str(r["pedido"]), (r["code"] or "").upper()): r["d"] for r in Q.q("SELECT pedido, code, MAX(description) d FROM ds_compras GROUP BY pedido, code")} if d["total"] else {}
+    A = {"atrasar": "vai atrasar", "vencida": "previsão vencida"}
+    return [("Previsão de chegadas", ["Pedido", "Fornecedor", "Código", "Descrição", "Quantidade", "Etapa", "Processo", "Emissão", "Promessa", "Embarque", "ETA servidor", "Chegada prevista", "Faixa de", "Faixa até",
+                                      "Atraso previsto (dias)", "Dias vencida", "Alertas", "Confiança"],
+             [[r.get("pedido"), r.get("fornecedor"), r.get("codigo"), desc.get((str(r.get("pedido")), (r.get("codigo") or "").upper())), r.get("quantidade"), r.get("etapa"), r.get("processo"), str(r.get("emissao") or "")[:10] or None,
+               str(r.get("prometido") or "")[:10] or None, r.get("embarque") or r.get("embarque_previsto"), r.get("eta_servidor"), r.get("chegada_prevista"), r.get("faixa_de"), r.get("faixa_ate"), r.get("atraso_previsto"),
+               r.get("dias_vencida"), ", ".join(A[x] for x in r["alertas"]), r.get("confianca")] for r in d["rows"]],
+             [10, 10, 16, 34, 10, 20, 14, 11, 11, 11, 11, 13, 11, 11, 12, 10, 22, 10])], d["total"]
+BUILD["previsao"] = _previsao
 
 def build(name, args):
     if name not in BUILD: raise ValueError("Módulo sem exportação.")

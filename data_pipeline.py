@@ -782,6 +782,8 @@ def _sync(cfg, store, conn_factory):
         if (dss.get("compras") or {}).get("status") == "ok":      # guarda a data prevista de cada pedido: mostra quantas vezes o fornecedor empurrou a previsão
             try: import leadtime; dss["compras"]["previsoes_gravadas"] = leadtime.snapshot_due()
             except Exception as e: log.warning("histórico de previsões falhou: %s", e)
+            try: import leadtime; dss["compras"]["foto_previsao"] = leadtime.snapshot_forecast()      # previsão × realizado (etapa 16 · A2): uma foto por dia
+            except Exception as e: log.warning("foto da previsão de chegadas falhou: %s", e)
         return {"ok": True, **out, "source_rows": len(res.rows), "items": len(res.items), "warnings": res.warnings, "unmapped_columns": len(res.unmapped), "datasets": dss, "backup": backup,
                 "object": found[cfg.dev_object]["sql"], "seconds": round(time.time() - t0, 1), "finished_at": now()}
     except Exception as e:
