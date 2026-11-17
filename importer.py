@@ -50,7 +50,7 @@ def normalize_code(raw):
 
 def list_sheets(path):
     if path.lower().endswith((".csv", ".txt")): return ["(csv)"]
-    return pd.ExcelFile(path).sheet_names
+    with pd.ExcelFile(path) as x: return x.sheet_names          # fecha o arquivo (no Windows, aberto = não dá para apagar/substituir)
 
 def read_table(path, sheet=None):
     """Lê tudo como texto. Detecta a linha de cabeçalho e descarta colunas totalmente vazias."""

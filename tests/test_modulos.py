@@ -105,6 +105,66 @@ class LeadTime(_TmpDB):
         self.assertEqual(z["E-WIN"]["prazo_real"]["media"], 130); self.assertEqual(z["E-WIN"]["atraso"]["media"], 10)
         lin = r["linhas"][0]; self.assertEqual(lin["codigo"], "MP-1"); self.assertTrue(any("adiada" in a for a in lin["alertas"])); self.assertTrue(any("meta 180" in a for a in lin["alertas"]))
 
+class AtualizacaoVerificacao(_TmpDB):
+    def test_verificacao_nao_grava(self):
+        """Corrigido (etapa 16 · D8): cada planilha roda num SAVEPOINT; sem BEGIN antes, o RELEASE fazia commit e a «verificação» gravava no banco."""
+        import updater
+        from unittest import mock
+        self.db.init_db()
+        f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); f.close()
+        pd.DataFrame({"Coluna X": ["a", "b"], "Coluna Y": [1, 2]}).to_excel(f.name, index=False)       # planilha nova: dados avulsos
+        def conta():
+            c = self.db.conn()
+            try: return c.execute("SELECT (SELECT COUNT(*) FROM generic_rows)+(SELECT COUNT(*) FROM import_batches)").fetchone()[0]
+            finally: c.close()
+        try:
+            updater.run([("planilha qualquer.xlsx", f.name)], confirm=False); self.assertEqual(conta(), 0)
+            with mock.patch("queries.backup_create", return_value="x.db"): updater.run([("planilha qualquer.xlsx", f.name)], confirm=True)
+            self.assertGreater(conta(), 0)
+        finally: os.remove(f.name)
+
+class GarantiaAnalitico(_TmpDB):
+    def test_planilha_substitui_filtros_e_atalhos(self):
+        """Etapa 16 · D8: «Analítico de Garantias» (cabeçalho na 2ª linha) entra pela Atualização de dados e substitui a carga anterior; verificação não grava.
+        Padrão: só garantias, sem canceladas, ano atual; defeito agrupado sem o prefixo AM-xxx; cada atalho = linhas da lista ao clicar."""
+        import garantias, updater, datetime
+        from openpyxl import Workbook
+        self.db.init_db(); y = datetime.date.today().year
+        head = ["Unidade", "Nº Autorização", "Data Cadastro", "Tipo Ocorrência", "Status Ocorrência", "Grupo Cliente", "Razão Social", "CNPJ", "NF", "Linha", "Codigo", "Qtd", "Valor C.IPI",
+                "Defeito", "Lote", "Data Fabricacao", "Fornecedor Short", "Tipo I/P", "Responsável", "Erro Lote"]
+        L = [("PRIVATE-MOGI", 1, f"{y}-02-03", "GARANTIA", "GARANTIA FINALIZADA", "G1", "CLIENTE A", "00", "N1", "AMORTECEDOR", "AMD1", 2, 100.0, "AM-006 AMORTECEDOR SEM AÇÃO", "L1", "2025-01-01", "ZS", "PROCEDENTE", "INSPEÇÃO", None),
+             ("PRIVATE-ARUJA", 2, f"{y}-03-04", "GARANTIA AUTOMATICA", "PAGAMENTO FINALIZADO", "G2", "CLIENTE B", "00", "N2", "AMORTECEDOR", "AMD1", 1, 50.0, "AMORTECEDOR SEM AÇÃO", "L1", "2025-01-01", "ZS", "IMPROCEDENTE", "CLIENTE_x000D_", "SIM"),
+             ("PRIVATE-MOGI", 3, f"{y}-03-10", "ACORDO COMERCIAL", "PAGAMENTO FINALIZADO", "G1", "CLIENTE A", "00", "N3", "AMORTECEDOR", "AMD2", 5, 10.0, "BATENDO FIM DE CURSO", None, None, "E-WIN", None, None, None),
+             ("PRIVATE-MOGI", 4, f"{y}-04-01", "GARANTIA", "OCORRÊNCIA CANCELADA", "G1", "CLIENTE A", "00", "N4", "AMORTECEDOR", "AMD2", 7, 70.0, "VAZAMENTO", None, None, "E-WIN", None, None, None),
+             ("PRIVATE-MOGI", 5, f"{y - 1}-12-01", "GARANTIA", "GARANTIA FINALIZADA", "G1", "CLIENTE A", "00", "N5", "AMORTECEDOR", "AMD3", 3, 30.0, "AM-014 SEM PRESSÃO", None, None, "E-WIN", "PROCEDENTE", None, None)]
+        def planilha(linhas):
+            wb = Workbook(); ws = wb.active; ws.append([None] * 11 + [sum(r[11] for r in linhas)]); ws.append(head)
+            for r in linhas: ws.append(list(r))
+            f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); f.close(); wb.save(f.name); return f.name
+        p = planilha(L)
+        v = updater.run([("Analítico de Garantias.xlsx", p)], confirm=False)          # verificação: lê, mas não grava
+        self.assertEqual(v["results"][0]["label"], garantias.LABEL); self.assertEqual(v["results"][0]["counts"]["new"], 5); self.assertFalse(garantias.available())
+        from unittest import mock                                                      # o backup de verdade iria para backups\ do projeto
+        with mock.patch("queries.backup_create", return_value="x.db"): r = updater.run([("Analitico de Garantias (1).xlsx", p)], confirm=True)
+        os.remove(p); self.assertEqual(r["results"][0]["status"], "ok")
+        s = garantias.summary({})
+        self.assertEqual((s["kpis"]["linhas"], s["kpis"]["pecas"], s["kpis"]["valor"]), (2, 3, 150.0))          # só garantias, sem canceladas, ano atual
+        self.assertEqual(s["kpis"]["pct_procedente"], 66.7); self.assertEqual(s["defeitos"][0]["defeito"], "AMORTECEDOR SEM AÇÃO"); self.assertEqual(s["defeitos"][0]["pecas"], 3)
+        self.assertEqual(s["defeitos"][0]["cod"], "AM-006"); self.assertEqual(s["clientes"][0]["cliente"], "CLIENTE A"); self.assertEqual(s["lotes"][0]["lote"], "L1"); self.assertEqual(s["lotes"][0]["erro_lote"], 1)
+        c = s["counts"]
+        for grp, base in (("ano", {}), ("tipo", {}), ("status", {}), ("fornecedor", {}), ("procedencia", {}), ("unidade", {}), ("tipo", {"ano": "todos"})):
+            cc = garantias.summary(base)["counts"][grp]
+            for val, n in cc.items(): self.assertEqual(garantias.summary({**base, grp: val})["total"], n, f"{grp}={val} {base}")
+        self.assertEqual(garantias.summary({"tipo": "todos", "status": "todos"})["total"], 4); self.assertEqual(garantias.summary({"ano": "todos"})["total"], 3)
+        self.assertEqual(garantias.summary({"q": "cliente b"})["total"], 1); self.assertEqual(garantias.summary({"defeito": "AMORTECEDOR SEM AÇÃO"})["kpis"]["pecas"], 3)
+        p = planilha(L[:2])
+        with mock.patch("queries.backup_create", return_value="x.db"): r = updater.run([("Analítico de Garantias.xlsx", p)], confirm=True)
+        os.remove(p); self.assertEqual(r["results"][0]["counts"]["present"], 2); self.assertTrue(r["results"][0]["messages"])
+        self.assertEqual(garantias.summary({"ano": "todos", "tipo": "todos", "status": "todos"})["total"], 2)     # substituiu
+        c = self.db.conn()
+        try: self.assertNotIn("cnpj", [x[1] for x in c.execute("PRAGMA table_info(garantias)")])
+        finally: c.close()
+
 class SaldosParados(_TmpDB):
     def test_lista_por_pedido_e_codigo(self):
         """Etapa 16 · D4 (Q19): saldo sem embarque há mais de 2× o p90 da produção do fornecedor → lista por pedido × código com descrição, saldo, emissão,

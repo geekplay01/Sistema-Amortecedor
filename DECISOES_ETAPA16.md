@@ -63,6 +63,10 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 | D7 | Códigos Ford fora da base Motorcraft | Classificar como MOTORCRAFT pelo formato do código Ford; aparecem na lista marcados «fora da base», **sem contar** no cartão (indicador fica nos 36 da base). |
 | D8 | Garantia | Usar como base a planilha `bases_exemplo\Analítico de Garantias.xlsx` e melhorar a interface. |
 | D9 | Excel da Pesquisa | Acrescentar família do Inmetro, FOB (melhor preço) e estoque, além dos dados atuais. |
+| D8a | Garantia · tipos | Padrão: GARANTIA, GARANTIA AUTOMATICA, CRÉDITO GARANTIA e GARANTIA EM DEVOLUÇÃO, sem as ocorrências canceladas; os outros tipos (acordos, devoluções) ficam num filtro. |
+| D8b | Garantia · defeitos | Juntar pelo texto: o prefixo AM-xxx / O-xxx é ignorado ao agrupar. |
+| D8c | Garantia · indicadores | Além de defeito, código, fornecedor, mês, status e procedente × improcedente: **clientes** (só no PC), **lote e fabricação** (inclui «Erro lote») e **unidade** (Mogi × Arujá). |
+| D8d | Garantia · fonte | A planilha `Analítico de Garantias` prevalece: entra por Atualização de dados e substitui a carga anterior; a view do servidor só vale sem planilha. |
 
 ## Checkpoints
 
@@ -204,6 +208,12 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - `drawings._missing("projeto")`: só DESENVOLVIMENTO em andamento fora do catálogo (universo amortecedor/não bloqueado, nenhuma aplicação em ITEM RECEBIDO, sem CANCEL…). Cartão em Desenhos: «DES em andamento sem projeto». Na cópia: 955 → 409 (lista `where=falta` igual).
 - `brands.is_ford`: PN Ford (`XXXX/18xxx/XX`) fora da base → lista MOTORCRAFT com selo «PN Ford fora da base», fora do cartão (`fora_base` no item, no `summary` e em `items`); Excel: «Base Motorcraft» = «Não (PN Ford fora da base)». Na cópia: cartão MOTORCRAFT 36, lista 48 (12 PN Ford); Sem marca 13 → 1 (48510-79425-2P, código Toyota).
 - Testes: `test_modulos.SemProjeto`, `test_modulos.FordForaDaBase`; `test_24` ajustado (cartão = lista − fora da base).
+
+### Corrigido: a verificação da Atualização de dados gravava no banco (17/11/2026) ✅
+- `updater.run` roda cada planilha num SAVEPOINT; sem `BEGIN` antes, o RELEASE de cada um fazia **commit**. Resultado: «Verificar» gravava o que encontrava (sem backup), e «Aplicar» depois achava tudo «já existia». Evidência na cópia: 23 lotes «só verificação» gravados em Fontes. Agora há uma transação externa (`BEGIN`), e a verificação desfaz tudo no fim.
+- `importer.list_sheets` fechava mal o Excel (arquivo preso no Windows).
+- Teste `test_modulos.AtualizacaoVerificacao`.
+- **No banco real:** verificações feitas antes desta correção podem ter gravado dados das planilhas (sem backup antes). Os lotes aparecem em Fontes com status «Só verificação».
 
 ### Etapa D · D4/D9 Excel de saldos parados e da Pesquisa (17/11/2026) ✅
 - Saldos parados (Q19): `leadtime.parados()` usa as linhas «Parado — verificar saldo» da previsão (sem embarque há mais de 2× o p90 da produção do fornecedor) e junta descrição (ds_compras) e adiamentos (`_pushes`). Excel `/api/export/parados.xlsx`: pedido, fornecedor, código, descrição, saldo, emissão, dias sem embarque, limite (2× p90), última previsão, nº de adiamentos, dias adiados. Link no indicador «Parados» de Pedidos em Aberto. Nada é gravado no ERP.
