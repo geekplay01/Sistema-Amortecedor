@@ -70,8 +70,10 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 ## 6. Vendas (`curva_abc.py`, `analytics.py`, `conciliacao.py`)
 - **[corrigido]** A view usa `DATA_FATUR` e `VALOR_TOTAL_CIPI`/`VALOR_TOTAL_NET`; o app procurava outros nomes → data e valor vazios, e trazia só 300 mil de ~9 milhões de linhas. Além disso a tela chamava uma função inexistente e travava.
 - Valor «faturado» = `VALOR_TOTAL_CIPI` (com IPI). O líquido (`VALOR_TOTAL_NET`) é guardado junto. Troque com `DEV_VENDAS_VALOR` se o BI usar outro.
-- Curva ABC: agrupa por SKU, ordena por valor; classe A até 80% acumulado, B até 95%, C o resto; só LINHA contendo «AMORTECEDOR».
-- Resumo: acumulado do ano vs. mesmo período do ano anterior, evolução mensal, participação por linha e % do faturamento em SKUs do catálogo.
+- **[mudou em 17/11/2026 · Q10]** Universo padrão = o do BI: `LINHA = 'AMORTECEDOR'` **exata** (sem caixa/espaços). Linha pesada e kit só pelo seletor da tela (`linhas=amortecedor,pesada,kit`; `curva_abc.linha_sql`). Vale para Curva ABC, resumo e o «Vendas 12 meses» do Dashboard. LINHA vazia (servidor antigo): a descrição decide (KIT → kit, «LINHA PESADA» → pesada, «AMORTECEDOR» → amortecedor). Conferido: outubro/2026 = R$ 25.467.648 (BI: R$ 25.467.272).
+- Curva ABC: agrupa por SKU, ordena por valor; classe A até 80% acumulado, B até 95%, C o resto.
+- Resumo: **último mês fechado** (mês anterior ao atual) · **mês atual parcial** (até a última sincronização) · **acumulado do ano** vs. mesmo período do ano anterior; evolução mensal, participação por linha (todas) e % do faturamento em SKUs do catálogo.
+- **Estoque (vendas × estoque, `estoque.py`)**: um item por código (sem pontuação; o MP- dos pedidos sai). Venda média = peças dos 12 meses fechados ÷ 12 (as três linhas, pois vale a venda do próprio SKU). Estoque disponível = armazém **04** − reservado (negativo vira 0). A caminho = pedidos em aberto da previsão de chegadas, sem os «Parado — verificar saldo». Cobertura = (estoque + a caminho) ÷ venda média. Situação: **ruptura** (vende e o disponível é 0, mesmo com pedido a caminho) · **risco** (< meta de lead time em meses; 180 d = 6) · **ok** (até 18) · **excesso** (> 18) · **sem giro** (estoque sem venda em 12 meses). Classe ABC pelo valor dos 12 meses.
 - «Conferir com o BI»: compara o export VENDA_POR_SKU com o servidor (mesmos filtros) e lista SKUs vendidos fora do catálogo.
 
 ## 7. Pedidos em Aberto e Lead time (`orders.py`, `leadtime.py`)

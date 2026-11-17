@@ -239,7 +239,7 @@ class Fluxo(unittest.TestCase):
 
     def test_11_paginas_carregam(self):
         import re
-        for slug in ("dashboard", "metas", "pedidos-aberto", "vendas", "garantia", "desenvolvimento", "redesenvolvimento", "amostras", "configuracoes", "brands", "lados", "envio", "desenhos", "pendencias", "fontes", "atualizacao", "anomalias", "garantia"):
+        for slug in ("dashboard", "metas", "pedidos-aberto", "vendas", "garantia", "desenvolvimento", "redesenvolvimento", "amostras", "configuracoes", "brands", "lados", "envio", "desenhos", "pendencias", "fontes", "atualizacao", "anomalias", "garantia", "estoque"):
             r = C.get("/" + slug); self.assertEqual(r.status_code, 200, slug); html = r.get_data(as_text=True)
             self.assertIn("syncchip", html); self.assertIn("PSD_STATUS", html); self.assertIn("bg-slate-800", html); self.assertIn("psd-nav", html)         # sidebar fixa slate-800 em Tailwind
         telas = re.findall(r'/static/js/telas/([\w-]+)\.js', html); self.assertIn("pendencias", telas); self.assertNotIn("dados", telas)
@@ -301,9 +301,11 @@ class Fluxo(unittest.TestCase):
         c = sqlite3.connect(DB); c.execute("DELETE FROM ds_vendas")
         c.executemany("INSERT INTO ds_vendas(pedido,code,qty,total,sale_date,line) VALUES(?,?,?,?,?,?)", [("1", "AMD1", 2, 200, "2026-10-02", "AMORTECEDOR"), ("2", "AMD1", 3, 310, "2026-10-09", "AMORTECEDOR"), ("3", "AMD2", 1, 900, "2026-10-10", "AMORTECEDOR LINHA PESADA"),
                        ("4", "AMD3", 5, 40, "2026-09-10", "AMORTECEDOR"), ("5", "TRM1", 9, 9999, "2026-10-10", "TERMINAL")]); c.commit(); c.close()
-        r = C.get("/api/vendas/curva-a?year=2026&month=10").json
-        self.assertEqual([(x["PRODUTO"], x["QTD"], x["VALOR"]) for x in r["rows"]], [("AMD2", 1, 900), ("AMD1", 5, 510)]); self.assertEqual(r["rows"][0]["classe"], "A")
-        self.assertEqual([x["PRODUTO"] for x in C.get("/api/vendas/curva-a?year=2026").json["rows"]], ["AMD2", "AMD1", "AMD3"]); self.assertIn("2026", r["years"])
+        r = C.get("/api/vendas/curva-a?year=2026&month=10").json                      # padrão = BI: LINHA = AMORTECEDOR exata (etapa C1)
+        self.assertEqual([(x["PRODUTO"], x["QTD"], x["VALOR"]) for x in r["rows"]], [("AMD1", 5, 510)]); self.assertEqual(r["rows"][0]["classe"], "A")
+        r2 = C.get("/api/vendas/curva-a?year=2026&month=10&linhas=amortecedor,pesada").json
+        self.assertEqual([(x["PRODUTO"], x["QTD"], x["VALOR"]) for x in r2["rows"]], [("AMD2", 1, 900), ("AMD1", 5, 510)])
+        self.assertEqual([x["PRODUTO"] for x in C.get("/api/vendas/curva-a?year=2026").json["rows"]], ["AMD1", "AMD3"]); self.assertIn("2026", r["years"])
 
     def test_18_garantia_e_fob(self):
         import io, pandas as pd
@@ -551,6 +553,20 @@ class Fluxo(unittest.TestCase):
         d = C.get("/api/garantias").json; self.assertTrue(d["available"]); self.assertEqual((d["total"], d["kpis"]["pecas"]), (1, 2))
         self.assertEqual(C.get("/api/garantias?tipo=todos").json["total"], 2); self.assertEqual(C.get("/api/garantias?tipo=todos&fornecedor=E-WIN").json["kpis"]["pecas"], 4)
         wb = load_workbook(io.BytesIO(C.get("/api/export/garantia.xlsx?tipo=todos").data)); self.assertEqual(wb.worksheets[0].max_row - 1, 2); self.assertEqual(wb.worksheets[0].title, "Ocorrências")
+
+    def test_29_estoque_atalhos(self):
+        """C2–C4: cada atalho de situação/classe = total da lista; resumo do Q10 na rota de vendas; Excel do Estoque com os filtros."""
+        import io
+        from openpyxl import load_workbook
+        con = sqlite3.connect(DB)
+        try: con.executemany("INSERT INTO ds_estoque(code,warehouse,qty,reserved) VALUES(?,?,?,?)", [("AMD1", "04", 500, 0), ("ZZT29", "04", 7, 0)]); con.commit()
+        finally: con.close()
+        d = C.get("/api/estoque").json; self.assertEqual(sum(d["counts"]["situacao"].values()), d["total"]); self.assertGreater(d["total"], 0)
+        for k, n in d["counts"]["situacao"].items(): self.assertEqual(C.get(f"/api/estoque?situacao={k}").json["total"], n, k)
+        for k, n in d["counts"]["classe"].items(): self.assertEqual(C.get(f"/api/estoque?classe={k}").json["total"], n, k)
+        self.assertEqual(C.get("/api/estoque?q=ZZT29").json["rows"][0]["situacao"], "sem_giro")
+        self.assertEqual(load_workbook(io.BytesIO(C.get("/api/export/estoque.xlsx?q=ZZT29").data)).worksheets[0].max_row - 1, 1)
+        r = C.get("/api/vendas/resumo").json["resumo"]; self.assertIn("fechado", r); self.assertIn("parcial", r)
 
 
 if __name__ == "__main__":

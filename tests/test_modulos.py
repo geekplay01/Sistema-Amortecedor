@@ -184,6 +184,53 @@ class SaldosParados(_TmpDB):
         bio, fn = exporter.build("parados", {"today": "2026-10-15"}); ws = load_workbook(io.BytesIO(bio.read())).worksheets[0]
         self.assertEqual(ws.max_row - 1, 1); self.assertEqual(ws.cell(2, 1).value, "P1"); self.assertIn("parados", fn.lower().replace(" ", "_"))
 
+class VendasUniverso(_TmpDB):
+    def test_linha_exata_seletor_e_resumo(self):
+        """Etapa 16 · C1 (Q10): padrão = BI (LINHA = 'AMORTECEDOR' exata); linha pesada e kit só pelo seletor; resumo: último mês fechado · mês atual parcial · acumulado do ano."""
+        import curva_abc, analytics, datetime, data_pipeline as dp
+        self.db.init_db(); dp.Store(self.f.name)                                     # catálogo + colunas novas das tabelas ds_* (total_net, line…), como no app
+        ins = "INSERT INTO ds_vendas(pedido,code,qty,total,sale_date,line) VALUES(?,?,?,?,?,?)"
+        self.sql(ins, [("1", "AMD1", 10, 1000, "2026-10-01", "AMORTECEDOR"), ("2", "AMD2", 1, 500, "2026-10-01", "AMORTECEDOR LINHA PESADA"), ("3", "KIT1", 2, 80, "2026-10-01", "KIT DE AMORTECEDOR"),
+                       ("4", "TRM", 9, 9999, "2026-10-01", "TERMINAL"), ("5", "AMD1", 3, 300, "2026-11-01", "AMORTECEDOR"), ("6", "AMD1", 4, 400, "2025-10-01", "AMORTECEDOR"), ("7", "AMD3", 1, 50, "2026-01-01", " amortecedor ")])
+        self.assertEqual([r["PRODUTO"] for r in curva_abc.payload(2026, 10)["rows"]], ["AMD1"])
+        self.assertEqual([r["PRODUTO"] for r in curva_abc.payload(2026, 10, linhas="amortecedor,pesada,kit")["rows"]], ["AMD1", "AMD2", "KIT1"])
+        self.assertEqual(curva_abc.payload(2026, 10, linhas="pesada")["total_valor"], 500)
+        o = curva_abc.overview(today=datetime.date(2026, 11, 17)); r = o["resumo"]
+        self.assertEqual((r["fechado"]["mes"], r["fechado"]["valor"], r["fechado"]["qtd"]), ("2026-10", 1000, 10))
+        self.assertEqual((r["parcial"]["mes"], r["parcial"]["valor"]), ("2026-11", 300))
+        self.assertEqual((r["ytd"]["valor"], r["ytd"]["valor_ant"]), (1350, 400)); self.assertEqual(o["linhas_sel"], ["amortecedor"])
+        self.assertEqual(curva_abc.overview(today=datetime.date(2026, 11, 17), linhas="amortecedor,pesada")["resumo"]["fechado"]["valor"], 1500)
+        self.assertEqual(analytics.sales_summary(months=24, today=datetime.date(2026, 11, 17))["total_value"], 1750)          # Dashboard: mesmo universo do BI (só AMORTECEDOR)
+        self.sql("INSERT INTO ds_vendas(code,qty,total,sale_date,line,description) VALUES(?,?,?,?,?,?)", [("V1", 1, 7, "2026-10-01", None, "AMORTECEDOR DIANT"), ("V2", 1, 3, "2026-10-01", "", "KIT AMORTECEDOR")])
+        self.assertEqual(curva_abc.payload(2026, 10)["total_valor"], 1007); self.assertEqual(curva_abc.payload(2026, 10, linhas="kit")["total_valor"], 83)      # sem LINHA: a descrição decide
+
+class EstoqueCobertura(_TmpDB):
+    def test_faixas_e_atalhos(self):
+        """Etapa 16 · C2–C4: venda média = 12 meses fechados; estoque = armazém 04 − reservado; a caminho = pedidos em aberto sem os parados;
+        cobertura = (estoque + a caminho) ÷ média. Ruptura (vende, sem estoque) · Risco < 6 meses · OK 6–18 · Excesso > 18 · Sem giro (estoque sem venda)."""
+        import estoque, datetime, data_pipeline as dp, exporter, io
+        from unittest import mock
+        from openpyxl import load_workbook
+        self.db.init_db(); dp.Store(self.f.name)
+        mes = lambda i: f"{2025 + (10 + i) // 12}-{(10 + i) % 12 + 1:02d}-01"           # 12 meses fechados: 2025-11 … 2026-10
+        v = []
+        for code, qtd in (("A", 10), ("B", 1), ("C", 2), ("E", 5), ("F", 1)): v += [(code, qtd, qtd * 10.0, mes(i), "AMORTECEDOR") for i in range(12)]
+        v += [("A", 999, 9.0, "2026-11-01", "AMORTECEDOR"), ("A", 500, 5.0, "2025-10-01", "AMORTECEDOR")]          # mês atual (parcial) e mês fora da janela: não entram
+        self.sql("INSERT INTO ds_vendas(code,qty,total,sale_date,line) VALUES(?,?,?,?,?)", v)
+        self.sql("INSERT INTO ds_estoque(code,warehouse,qty,reserved) VALUES(?,?,?,?)", [("A", "04", 30, 5), ("B", "04", 30, 0), ("D", "04", 10, 0), ("E", "05", 100, 0), ("F", "04", 5, 0), ("A", "05", 50, 0)])
+        prev = {"available": True, "linhas": [{"codigo": "MP-C", "quantidade": 20, "etapa": "No mar"}, {"codigo": "MP-F", "quantidade": 5, "etapa": "Aguardando embarque"}, {"codigo": "MP-B", "quantidade": 1000, "etapa": "Parado — verificar saldo"}]}
+        with mock.patch("leadtime.forecast_cached", return_value=prev):
+            d = estoque.listing({}, today=datetime.date(2026, 11, 17)); r = {x["codigo"]: x for x in estoque.listing({"all": 1}, today=datetime.date(2026, 11, 17))["rows"]}
+            self.assertEqual({k: x["situacao"] for k, x in r.items()}, {"A": "risco", "B": "excesso", "C": "ruptura", "D": "sem_giro", "E": "ruptura", "F": "ok"})
+            self.assertEqual((r["A"]["media_mensal"], r["A"]["estoque"], r["A"]["a_caminho"], r["A"]["cobertura"]), (10.0, 25.0, 0, 2.5))
+            self.assertEqual((r["F"]["a_caminho"], r["F"]["cobertura"]), (5, 10.0)); self.assertEqual(r["B"]["a_caminho"], 0)
+            self.assertEqual(d["counts"]["situacao"], {"ruptura": 2, "risco": 1, "ok": 1, "excesso": 1, "sem_giro": 1}); self.assertEqual(d["limites"], {"risco": 6.0, "excesso": 18})
+            for k, n in d["counts"]["situacao"].items(): self.assertEqual(estoque.listing({"situacao": k}, today=datetime.date(2026, 11, 17))["total"], n, k)
+            for k, n in estoque.listing({"situacao": "ruptura"}, today=datetime.date(2026, 11, 17))["counts"]["classe"].items():
+                self.assertEqual(estoque.listing({"situacao": "ruptura", "classe": k}, today=datetime.date(2026, 11, 17))["total"], n, k)
+            self.assertEqual(estoque.listing({"q": "f"}, today=datetime.date(2026, 11, 17))["total"], 1)
+            bio, _ = exporter.build("estoque", {"situacao": "ruptura", "today": "2026-11-17"}); self.assertEqual(load_workbook(io.BytesIO(bio.read())).worksheets[0].max_row - 1, 2)
+
 class Conciliacao(_TmpDB):
     def test_bi_x_servidor_e_catalogo(self):
         import conciliacao as cc

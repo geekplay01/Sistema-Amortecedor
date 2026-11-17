@@ -22,12 +22,14 @@ def _month_axis(n=12, end=None):
     return out[::-1]
 
 # ───────────── vendas ─────────────
-def sales_summary(months=12, top=10):
+def sales_summary(months=12, top=10, linhas=None, today=None):
+    """Dashboard: vendas dos últimos meses no universo do BI (LINHA = AMORTECEDOR exata; `linhas` amplia — curva_abc.linha_sql)."""
+    import curva_abc
     if not _has("ds_vendas"): return {"available": False}
-    axis = _month_axis(months); lo = axis[0] + "-01"; names = _names()
-    tot = q1("SELECT COUNT(*) n, COALESCE(SUM(qty),0) q, COALESCE(SUM(total),0) v, MAX(sale_date) last FROM ds_vendas WHERE sale_date>=?", (lo,))
-    by_m = {r["m"]: r for r in q("SELECT substr(sale_date,1,7) m, SUM(qty) q, SUM(total) v FROM ds_vendas WHERE sale_date>=? GROUP BY m", (lo,))}
-    rows = q("SELECT code, SUM(qty) q, SUM(total) v, MAX(description) d FROM ds_vendas WHERE sale_date>=? AND code IS NOT NULL GROUP BY code ORDER BY COALESCE(SUM(total),0) DESC, SUM(qty) DESC LIMIT ?", (lo, int(top)))
+    axis = _month_axis(months, (today or datetime.date.today()).replace(day=1)); lo = axis[0] + "-01"; names = _names(); ls, lp = curva_abc.linha_sql(linhas)
+    tot = q1(f"SELECT COUNT(*) n, COALESCE(SUM(qty),0) q, COALESCE(SUM(total),0) v, MAX(sale_date) last FROM ds_vendas WHERE sale_date>=? AND {ls}", [lo, *lp])
+    by_m = {r["m"]: r for r in q(f"SELECT substr(sale_date,1,7) m, SUM(qty) q, SUM(total) v FROM ds_vendas WHERE sale_date>=? AND {ls} GROUP BY m", [lo, *lp])}
+    rows = q(f"SELECT code, SUM(qty) q, SUM(total) v, MAX(description) d FROM ds_vendas WHERE sale_date>=? AND code IS NOT NULL AND {ls} GROUP BY code ORDER BY COALESCE(SUM(total),0) DESC, SUM(qty) DESC LIMIT ?", [lo, *lp, int(top)])
     return {"available": True, "months": [{"month": m, "qty": (by_m.get(m) or {}).get("q") or 0, "value": (by_m.get(m) or {}).get("v") or 0} for m in axis],
             "total_qty": tot["q"], "total_value": tot["v"], "lines": tot["n"], "last_date": tot["last"],
             "top": [{"code": r["code"], "description": names.get(_k(r["code"])) or r["d"], "qty": r["q"], "value": r["v"]} for r in rows]}

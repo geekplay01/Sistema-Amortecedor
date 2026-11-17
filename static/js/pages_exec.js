@@ -129,27 +129,43 @@ window.PSD_EXEC = ctx => {
         ${C && C.rows.length ? TW.card("Vendidos fora do catálogo (CatalogoAMD)", TW.table([{ h: "Produto" }, { h: "Qtd", r: 1 }, { h: "Valor", r: 1 }, { h: "Equivalente no catálogo" }], C.rows.slice(0, 200).map(x => [pc(x.produto), nf(x.qtd), brl(x.valor), x.equivalente ? esc(x.equivalente) : '<span class="text-mute">–</span>']), { h: "max-h-[40vh]" })) : ""}</div>`; };
   }
 
-  async function vendasResumo(el) {
-    let o; try { o = await J("/api/vendas/resumo?months=24"); } catch (e) { el.innerHTML = ""; return; }
+  // universo de vendas (etapa 16 · C1/Q10): padrão = BI (LINHA = AMORTECEDOR exata); linha pesada e kit entram só pelo seletor
+  const LIN = [["amortecedor", "Amortecedor"], ["pesada", "Linha pesada"], ["kit", "Kit de amortecedor"]];
+  const mesAno = m => m ? `${MONTHS[+m.slice(5, 7)].slice(0, 3)}/${m.slice(0, 4)}` : "–";
+  let resumoSeq = 0;
+  async function vendasResumo(el, linhas) {
+    const meu = ++resumoSeq;                // trocar de linha rápido: a resposta antiga que chegar depois é descartada
+    let o; try { o = await J("/api/vendas/resumo?months=24&linhas=" + encodeURIComponent(linhas)); } catch (e) { el.innerHTML = ""; return; }
+    if (meu !== resumoSeq) return;
     if (!o.available) { el.innerHTML = ""; return; }
     if (o.sem_data) { el.innerHTML = TW.notice("As vendas do servidor chegaram <b>sem data de faturamento</b>. Clique em <b>Sincronizar</b> no topo: a nova carga lê <code>DATA_FATUR</code> e os valores (<code>VALOR_TOTAL_CIPI</code>) já somados por mês no servidor.", "amber"); return; }
-    const Y = o.ytd, pct = v => v == null ? "" : `<span class="${v >= 0 ? "text-emerald-600" : "text-red-600"} font-semibold">${v >= 0 ? "▲" : "▼"} ${nf(Math.abs(v), 1)}%</span>`;
+    const R = o.resumo, Y = R.ytd, pct = v => v == null ? "" : `<span class="${v >= 0 ? "text-emerald-600" : "text-red-600"} font-semibold">${v >= 0 ? "▲" : "▼"} ${nf(Math.abs(v), 1)}%</span>`;
     el.innerHTML = `<div class="flex flex-col gap-6">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi(`Faturado ${Y.ano} (até ${MONTHS[Y.ate_mes]})`, brl0(Y.valor), `${pct(Y.var_valor_pct)} vs. ${brl0(Y.valor_ant)} no mesmo período de ${Y.ano - 1}`, "blue")}
-        ${TW.kpi("Peças faturadas", nf(Y.qtd), `${pct(Y.var_qtd_pct)} vs. ${nf(Y.qtd_ant)} em ${Y.ano - 1}`, "green")}
-        ${TW.kpi("Faturamento de SKUs do catálogo", o.catalogo.pct_valor_catalogo == null ? "–" : nf(o.catalogo.pct_valor_catalogo, 1) + "%", `${nf(o.catalogo.skus_fora)} SKU(s) vendidos fora do CatalogoAMD em ${o.catalogo.ano}`, o.catalogo.pct_valor_catalogo >= 90 ? "green" : "amber")}
-        ${TW.kpi("Dados do servidor", `<span class="text-lg">${esc(MONTHS[+o.primeiro_mes.slice(5)].slice(0, 3))}/${o.primeiro_mes.slice(0, 4)} → ${esc(MONTHS[+o.ultimo_mes.slice(5)].slice(0, 3))}/${o.ultimo_mes.slice(0, 4)}</span>`, `atualizado ${dmy(o.atualizado_em)} · ${esc(o.carga || "carga completa")}`, "slate")}</div>
-      ${TW.card("Faturamento mensal de amortecedores (últimos 24 meses)", '<div id="vmes" class="chart"></div>', `<span class="text-sm text-mute">${o.por_linha.map(l => `${esc(l.linha)}: ${brl0(l.v)}`).join(" · ")}</span>`)}</div>`;
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi(`Último mês fechado · ${mesAno(R.fechado.mes)}`, brl0(R.fechado.valor), `${nf(R.fechado.qtd)} peças · ${nf(R.fechado.skus)} SKUs`, "blue")}
+        ${TW.kpi(`Mês atual (parcial) · ${mesAno(R.parcial.mes)}`, R.parcial.tem_dados ? brl0(R.parcial.valor) : "–", R.parcial.tem_dados ? `${nf(R.parcial.qtd)} peças até a última sincronização` : "ainda sem faturamento sincronizado", "slate")}
+        ${TW.kpi(`Acumulado ${Y.ano} (até ${MONTHS[Y.ate_mes]})`, brl0(Y.valor), `${pct(Y.var_valor_pct)} vs. ${brl0(Y.valor_ant)} no mesmo período de ${Y.ano - 1}`, "green")}
+        ${TW.kpi("Faturamento de SKUs do catálogo", o.catalogo.pct_valor_catalogo == null ? "–" : nf(o.catalogo.pct_valor_catalogo, 1) + "%", `${nf(o.catalogo.skus_fora)} SKU(s) vendidos fora do CatalogoAMD em ${o.catalogo.ano}`, o.catalogo.pct_valor_catalogo >= 90 ? "green" : "amber")}</div>
+      ${TW.card("Faturamento mensal (últimos 24 meses, com IPI)", '<div id="vmes" class="chart"></div>', `<span class="text-sm text-mute">servidor: ${mesAno(o.primeiro_mes)} → ${mesAno(o.ultimo_mes)} · atualizado ${dmy(o.atualizado_em)} · ano ${o.catalogo.ano} por linha: ${o.por_linha.map(l => `${esc(l.linha)} ${brl0(l.v)}`).join(" · ")}</span>`)}</div>`;
     PSDCharts.bars($("#vmes"), { x: o.meses.map(m => m.mes), series: [{ name: "Faturado (R$)", y: o.meses.map(m => Math.round(m.valor)) }], colors: ["#2f6bff"] });
   }
   async function vendas() {
     const P = new URLSearchParams(location.search);
     let year = P.get("year") || "", month = "", cls = "", q = (P.get("q") || "").trim().toUpperCase(), d;
-    root.innerHTML = `<div class="flex flex-col gap-6"><div id="vres"></div><div id="vtop" class="flex flex-wrap items-center gap-3"></div><div id="vbody">${waiting("Calculando a Curva A…")}</div><div id="vcon"></div></div>`;
-    vendasResumo($("#vres")); conciliar($("#vcon"));
+    let linhas = (P.get("linhas") || "").split(",").filter(x => LIN.some(l => l[0] === x)); if (!linhas.length) linhas = ["amortecedor"];
+    root.innerHTML = `<div class="flex flex-col gap-6"><div id="vlin" class="flex flex-wrap items-center gap-2"></div><div id="vres"></div><div id="vtop" class="flex flex-wrap items-center gap-3"></div><div id="vbody">${waiting("Calculando a Curva A…")}</div><div id="vcon"></div></div>`;
+    const seletor = () => { const padrao = linhas.length === 1 && linhas[0] === "amortecedor";
+      $("#vlin").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Linha</span>${LIN.map(([k, l]) => `<button type="button" data-lin="${k}" aria-pressed="${linhas.includes(k)}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${linhas.includes(k) ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${l}</button>`).join("")}
+        <span class="text-xs text-mute">${padrao ? "padrão do BI: LINHA = AMORTECEDOR (valor com IPI)" : "linha pesada / kit incluídos: o total não bate com o BI"}</span>`; };
+    $("#vlin").onclick = e => { const b = e.target.closest("[data-lin]"); if (!b) return; const k = b.dataset.lin;
+      linhas = linhas.includes(k) ? linhas.filter(x => x !== k) : [...linhas, k]; if (!linhas.length) linhas = ["amortecedor"];
+      const u = new URLSearchParams(location.search); linhas.length === 1 && linhas[0] === "amortecedor" ? u.delete("linhas") : u.set("linhas", linhas.join(",")); history.replaceState(null, "", location.pathname + (u.toString() ? "?" + u : ""));
+      seletor(); vendasResumo($("#vres"), linhas.join(",")); load(); };
+    seletor(); vendasResumo($("#vres"), linhas.join(",")); conciliar($("#vcon"));
+    let seq = 0;
     const load = async () => {
-      $("#vbody").innerHTML = waiting("Calculando a Curva A…");
-      try { d = await J("/api/vendas/curva-a?" + new URLSearchParams({ year, month }).toString()); } catch (e) { $("#vbody").innerHTML = ""; return fail(e); }
+      const meu = ++seq; $("#vbody").innerHTML = waiting("Calculando a Curva A…");
+      let r; try { r = await J("/api/vendas/curva-a?" + new URLSearchParams({ year, month, linhas: linhas.join(",") }).toString()); } catch (e) { $("#vbody").innerHTML = ""; return fail(e); }
+      if (meu !== seq) return; d = r;
       if (!d.available) { $("#vtop").innerHTML = ""; $("#vbody").innerHTML = nodata("VENDAS_FATURAMENTO_DETALHADO"); return; }
       $("#vtop").innerHTML = `<label class="flex items-center gap-2 text-sm text-mute">Ano ${TW.select("vy", [["", "Todos"], ...d.years.map(y => [y, y])], year)}</label>
         <label class="flex items-center gap-2 text-sm text-mute">Mês ${TW.select("vm", [["", "Todos"], ...MONTHS.slice(1).map((m, i) => [i + 1, m])], month)}</label>

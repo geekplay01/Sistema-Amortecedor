@@ -115,7 +115,7 @@ BUILD = {"desenvolvimento": _rd("DESENVOLVIMENTO"), "redesenvolvimento": _rd("RE
 
 LABELS = {"desenvolvimento": "Em desenvolvimento", "redesenvolvimento": "Em redesenvolvimento", "produtos": "Produtos e códigos", "pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares",
           "comparacao": "Comparação técnica", "pendencias": "Pendências de dados", "fontes": "Fontes e histórico", "amostras": "Compra de amostras", "damping": "Damping force",
-          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
+          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Vendas x estoque", "brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
           "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito"}
@@ -209,6 +209,14 @@ def _garantia(a):
             ("Clientes", ["Cliente", "Grupo", "Ocorrências", "Peças", "Valor c/ IPI"], [[r["cliente"], r["grupo"], r["ocorrencias"], r["pecas"], r["valor"]] for r in s["clientes"]], [40, 24, 12, 10, 14]),
             ("Lotes", ["Lote", "Código", "Códigos", "Fabricação", "Peças", "Linhas com erro de lote"], [[r["lote"], r["codigo"], r["codigos"], r["fabricacao"], r["pecas"], r["erro_lote"]] for r in s["lotes"]], [16, 16, 10, 12, 10, 18])], len(rows)
 BUILD["garantia"] = _garantia
+def _estoque(a):
+    """Vendas × estoque com os filtros da tela (situação, classe, busca). `today` só para teste."""
+    import estoque, datetime
+    t = datetime.date.fromisoformat(a["today"]) if a.get("today") else None; d = estoque.listing({**a, "all": 1}, today=t); S = {"ruptura": "Ruptura", "risco": "Risco", "ok": "OK", "excesso": "Excesso", "sem_giro": "Sem giro"}
+    return [("Vendas × estoque", ["Código", "Descrição", "Situação", "Classe", "Venda 12 meses (peças)", "Valor 12 meses", "Venda média/mês", f"Estoque disponível (arm. {d['armazem']})", "Reservado", "A caminho", "Cobertura (meses)"],
+             [[r["codigo"], r["descricao"], S[r["situacao"]], r["classe"], r["venda_12m"], r["valor_12m"], r["media_mensal"], r["estoque"], r["reservado"], r["a_caminho"], r["cobertura"]] for r in d["rows"]],
+             [16, 38, 11, 8, 14, 14, 12, 16, 10, 11, 12])], d["total"]
+BUILD["estoque"] = _estoque
 
 def build(name, args):
     if name not in BUILD: raise ValueError("Módulo sem exportação.")

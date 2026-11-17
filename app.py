@@ -33,6 +33,7 @@ PAGES = [
  ("metas", "Metas & Validação", "M12 3a9 9 0 109 9M12 7v5l3 2M16 3h5v5", 1),
  ("pedidos-aberto", "Pedidos em Aberto", "M9 4h6v3H9zM7 5H5v16h14V5h-2M9 12h6M9 16h4", 1),
  ("vendas", "Vendas (Curva A)", "M4 20V10M10 20V4M16 20v-8M22 20H2", 1),
+ ("estoque", "Estoque", "M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10M7 13l2 1M7 16l2 1", 1),          # vendas × estoque (etapa 16 · C)
  ("fob", "FOB (preços de compra)", "M12 3v18M16 7.5C16 6 14.5 5 12 5S8 6 8 8s1.5 2.5 4 3 4 1 4 3-1.5 3-4 3-4-1-4-2.5", 2),
  ("garantia", "Garantia", "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4", 1),
  ("brands", "Brands", "M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10", 1),
@@ -62,7 +63,7 @@ CARDS = [  # chave, rótulo, destino, dica
  ("equivalences_pending", "Equivalências a validar", "anomalias?tab=sugestoes", "Sugestões aguardando decisão"),
 ]
 
-PRIMARY = ["metas", "pedidos-aberto", "vendas", "garantia"]     # menu fixo da sidebar (Metas & Validação · Pedidos em Aberto · Vendas (Curva A) · Garantia)
+PRIMARY = ["metas", "pedidos-aberto", "vendas", "estoque", "garantia"]     # menu fixo da sidebar (Metas & Validação · Pedidos em Aberto · Vendas (Curva A) · Estoque · Garantia)
 # Menu na ordem do FLUXO do produto: desenvolve → compra amostra → entra no catálogo → compra/importa → vende (o menu lateral desenha o conector entre as etapas)
 MENU = [("Visão geral", ["dashboard", "brands"]),
         ("1 · Desenvolvimento", ["desenvolvimento", "redesenvolvimento", "desenhos", "damping"]),
@@ -78,7 +79,7 @@ RELATED = {
  "produtos": (["atualizacao"], ["lados", "aplicacoes", "vendas"]), "pesquisa": (["produtos"], ["lados", "pedidos-aberto", "vendas"]),
  "lados": (["produtos", "desenvolvimento"], ["pedidos-aberto", "vendas"]), "aplicacoes": (["produtos"], ["lados"]),
  "pedidos-aberto": (["fob", "amostras"], ["vendas", "lados"]), "vendas": (["pedidos-aberto", "produtos"], ["garantia", "lados"]),
- "garantia": (["vendas"], ["redesenvolvimento"]), "metas": (["desenvolvimento", "redesenvolvimento"], []), "fob": (["produtos"], ["pedidos-aberto"]),
+ "garantia": (["vendas"], ["redesenvolvimento"]), "estoque": (["vendas", "pedidos-aberto"], ["pedidos-aberto"]), "metas": (["desenvolvimento", "redesenvolvimento"], []), "fob": (["produtos"], ["pedidos-aberto"]),
  "atualizacao": ([], ["produtos", "lados"]), "anomalias": (["produtos", "pendencias"], ["pesquisa"]), "desenhos": (["desenvolvimento"], ["envio"]),
 }
 _NAMES = {"pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares", "comparacao": "Comparação técnica", "desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvolvimento"}
@@ -573,11 +574,11 @@ def api_previsao():
 
 @app.get("/api/vendas/resumo")
 def api_vendas_resumo():
-    return jsonify(curva_abc.overview(request.args.get("months") or 24))
+    return jsonify(curva_abc.overview(request.args.get("months") or 24, request.args.get("linhas")))
 
 @app.get("/api/vendas/curva-a")
 def api_curva_a():
-    try: return jsonify(curva_abc.payload(request.args.get("year"), request.args.get("month"), request.args.get("limit")))
+    try: return jsonify(curva_abc.payload(request.args.get("year"), request.args.get("month"), request.args.get("limit"), request.args.get("linhas")))
     except ValueError as e: return jsonify(error=str(e)), 400
 
 @app.post("/api/warranty/parse")
@@ -589,6 +590,10 @@ def api_warranty_parse():
     if request.values.get("save", "1") != "0": warranty.save(r["rows"], f.filename)
     if request.values.get("rows", "1") == "0": r = {k: v for k, v in r.items() if k != "rows"}
     return jsonify(r)
+@app.get("/api/estoque")
+def api_estoque():              # vendas × estoque (etapa 16 · C2–C4)
+    import estoque
+    return jsonify(estoque.listing({k: request.args.get(k, "") for k in ("situacao", "classe", "q", "page")}))
 @app.get("/api/garantias")
 def api_garantias():            # planilha «Analítico de Garantias» (etapa 16 · D8); sem planilha → available=False e a tela usa /api/warranty (servidor)
     import garantias

@@ -68,6 +68,16 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 | D8c | Garantia · indicadores | Além de defeito, código, fornecedor, mês, status e procedente × improcedente: **clientes** (só no PC), **lote e fabricação** (inclui «Erro lote») e **unidade** (Mogi × Arujá). |
 | D8d | Garantia · fonte | A planilha `Analítico de Garantias` prevalece: entra por Atualização de dados e substitui a carga anterior; a view do servidor só vale sem planilha. |
 
+## Rodada 4 — etapa C (17/11/2026)
+
+| # | Tema | Decisão |
+|---|---|---|
+| C1 | Universo de vendas | Aplicar o Q10: padrão `LINHA = 'AMORTECEDOR'` exata (= BI), `VALOR_TOTAL_CIPI`; linha pesada e kit só por seletor; resumo último mês fechado · mês atual parcial · acumulado do ano. |
+| C2 | Venda média | Últimos 12 meses fechados (o mês atual, parcial, fica de fora). |
+| C3 | Estoque disponível | Só o armazém **04**, menos o reservado. |
+| C4 | Cobertura | (estoque disponível + pedidos em aberto, sem os parados) ÷ venda média mensal. Faixas: **Ruptura** = vende e está sem estoque · **Risco** < 6 meses (meta de lead time) · **OK** 6 a 18 · **Excesso** > 18 · **Sem giro** = estoque sem venda em 12 meses. |
+| C5 | Onde | Tela nova **«Estoque»** no menu, ao lado de Vendas. |
+
 ## Checkpoints
 
 ### Passo 0a — rede de segurança dos testes (11/11/2026) ✅
@@ -222,6 +232,14 @@ Arquivo vivo: cada rodada acrescenta o que foi decidido. Serve de ponto de retom
 - Testes: `test_modulos.GarantiaAnalitico` (cabeçalho na 2ª linha, verificação não grava, padrão, defeito agrupado, cada atalho = lista, substituição, sem CNPJ), `test_28`.
 - Na cópia: 35.718 linhas (07/2017 a 11/11/2026), carga em 20 s, tela em 0,9 s. Padrão 2026: 8.758 peças, 965 ocorrências, R$ 1.153.674, 82,3% procedentes; maior defeito «não informado» (2.213 peças, itens ainda sem análise), depois AM-014 sem pressão (1.407). Mogi 350 × Arujá 6.090 itens.
 - **No banco real:** carregar a planilha em Atualização de dados (Verificar → Aplicar).
+### Etapa C · vendas × estoque (17/11/2026) ✅
+- C1 (Q10): `curva_abc.linha_sql` — universo padrão = BI (`LINHA = 'AMORTECEDOR'` exata); seletor de linhas em Vendas (Amortecedor · Linha pesada · Kit, na URL `linhas`; aviso quando o total deixa de bater com o BI). Resumo com último mês fechado, mês atual parcial e acumulado do ano (`overview(linhas, today)` → `resumo`). Dashboard «Vendas 12 meses» no mesmo universo (`analytics.sales_summary(linhas)`).
+- Corrigido: o % de faturamento de SKUs do catálogo usava um JOIN com `upper()` sem índice (resumo de Vendas 2,4 s → 0,1 s). Em Vendas, trocar de linha rápido podia deixar na tela a resposta antiga (agora as respostas fora de ordem são descartadas).
+- C2–C5: tela nova **Estoque** (`telas/estoque.js`, `estoque.py`, `/api/estoque`, Excel `/api/export/estoque.xlsx`), no menu fixo entre Vendas e Garantia: 4 KPIs (itens, estoque disponível arm. 04, a caminho, cobertura), atalhos de situação e classe ABC com contagem = lista, busca, barra de cobertura com as faixas, filtros na URL + última visita.
+- Testes: `test_modulos.VendasUniverso`, `test_modulos.EstoqueCobertura`, `test_29`; `test_17` atualizado (padrão sem linha pesada).
+- Na cópia: outubro/2026 = R$ 25.467.648 (BI R$ 25.467.272); com linha pesada R$ 25.522.040. Acumulado 2026 R$ 187,8 mi (+42,4%). Estoque: 1.059 itens, 268.478 peças disponíveis no 04, 1,39 mi a caminho, cobertura 10,1 meses; ruptura 197 · risco 236 · OK 390 · excesso 166 · sem giro 70. Ex.: AMD0637 vende 2.810/mês e tem 85 no 04 com 249 reservadas → ruptura. Estoque abre em 5,9 s na primeira vez (calcula a previsão de chegadas), depois 0,1 s.
+- Próximo: etapa **A** (previsão de chegadas).
+
 - **Etapa D concluída** (D1–D9 da rodada 3). Pendências para o usuário no banco real: reabrir o app (fecha os 31 conflitos de caixa e os 43 de família), aplicar os 5 de caixa em Pendências, reimportar o CatalogoAMD e carregar o Analítico de Garantias. Próximo: etapa **C** (vendas × estoque).
 
 ### Etapa D · D4/D9 Excel de saldos parados e da Pesquisa (17/11/2026) ✅
