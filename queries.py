@@ -35,7 +35,8 @@ def _where(f):
         k = f"t{i}"; p[k] = f"%{t}%"; p[k + "k"] = f"%{code_key(t)}%"
         c = (f"p.perfect_code LIKE :{k} OR p.description LIKE :{k} OR p.ean LIKE :{k} OR p.catalog_group LIKE :{k} "
              f"OR EXISTS(SELECT 1 FROM codes k WHERE k.product_id=p.id AND (k.code LIKE :{k} OR k.normalized_code LIKE :{k}" + (f" OR {KEY.format(c='k.code')} LIKE :{k}k" if len(code_key(t)) >= 3 else "") + ")) "
-             f"OR EXISTS(SELECT 1 FROM applications a WHERE a.product_id=p.id AND ({APP_TXT}) LIKE :{k})")
+             + (f"OR p.perfect_code IN (SELECT code FROM concorrentes WHERE ref_key LIKE :{k}k) " if len(code_key(t)) >= 3 else "")      # referência do servidor (etapa 17)
+             + f"OR EXISTS(SELECT 1 FROM applications a WHERE a.product_id=p.id AND ({APP_TXT}) LIKE :{k})")
         if re.fullmatch(r"(19|20)\d\d", t):
             p[k + "y"] = int(t); c += f" OR EXISTS(SELECT 1 FROM applications a WHERE a.product_id=p.id AND a.year_from<=:{k}y AND coalesce(a.year_to,9999)>=:{k}y)"
         w.append("(" + c + ")")
@@ -75,6 +76,7 @@ def perfect_codes(term, limit=200):
     if len(k) < 3: return []
     out = {r["c"] for r in q(f"SELECT DISTINCT p.perfect_code c FROM codes k JOIN products p ON p.id=k.product_id WHERE {KEY.format(c='k.code')}=? LIMIT ?", (k, limit))}
     out |= {r["c"] for r in q(f"SELECT DISTINCT perfect_code c FROM brand_items WHERE perfect_code IS NOT NULL AND {KEY.format(c='code')}=? LIMIT ?", (k, limit))}
+    import concorrentes; out |= set(concorrentes.busca(term, limit))          # referências do servidor (itens em desenvolvimento e os que vieram dele)
     return sorted(c for c in out if c and code_key(c) != k)
 
 def fob_quotes(d):
@@ -105,6 +107,12 @@ def _via(rows, f):
     for k in q(f"SELECT product_id, code, brand, code_type FROM codes WHERE product_id IN ({ph}) AND ({cond}) ORDER BY code_type='concorrente' DESC, brand", [*ids, *[f"%{t}%" for t in toks]]):
         v = ids[k["product_id"]]["via"]
         if len(v) < 4: v.append({"code": k["code"], "brand": k["brand"], "type": k["code_type"]})
+    by_code = {r["perfect_code"]: r for r in rows if not r["via"]}           # o que casou só pelas referências do servidor (DESENVOLVIMENTO_CONCORRENTES)
+    if by_code:
+        ph2 = ",".join("?" * len(by_code)); cond2 = " OR ".join("ref_key LIKE ?" for _ in toks)
+        for k in q(f"SELECT DISTINCT code, competitor, reference, is_oem FROM concorrentes WHERE code IN ({ph2}) AND ({cond2})", [*by_code, *[f"%{t}%" for t in toks]]):
+            v = by_code[k["code"]]["via"]
+            if len(v) < 4: v.append({"code": k["reference"], "brand": k["competitor"], "type": "oem" if k["is_oem"] else "concorrente"})
 
 def ficha(pid):
     p = q1("SELECT * FROM products WHERE id=?", (pid,))

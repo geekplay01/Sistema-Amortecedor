@@ -13,7 +13,10 @@ def _excl(kind, a="r"):
 def _where(kind, f):
     w, p = ["r.suggestion=:kind", rules.desc_sql("r.description"), _excl(kind)], {"kind": kind}
     for i, t in enumerate((f.get("q") or "").split()):
-        w.append(f"(r.code LIKE :t{i} OR r.description LIKE :t{i} OR r.make LIKE :t{i} OR r.vehicle LIKE :t{i} OR r.application_text LIKE :t{i} OR r.supplier LIKE :t{i})"); p[f"t{i}"] = f"%{t}%"
+        k = re.sub(r"[^A-Z0-9]", "", t.upper())        # referência de concorrente/OEM do servidor (DESENVOLVIMENTO_CONCORRENTES), com ou sem pontuação
+        ref = f" OR upper(r.code) IN (SELECT code FROM concorrentes WHERE ref_key LIKE :t{i}k)" if len(k) >= 3 else ""
+        w.append(f"(r.code LIKE :t{i} OR r.description LIKE :t{i} OR r.make LIKE :t{i} OR r.vehicle LIKE :t{i} OR r.application_text LIKE :t{i} OR r.supplier LIKE :t{i}{ref})"); p[f"t{i}"] = f"%{t}%"
+        if ref: p[f"t{i}k"] = f"%{k}%"
     if f.get("make"): w.append("upper(trim(r.make))=upper(trim(:make))"); p["make"] = f["make"]
     if f.get("model"): w.append("upper(trim(r.vehicle))=upper(trim(:model))"); p["model"] = f["model"]
     if (f.get("year") or "").isdigit(): w.append("r.year_from<=:year AND coalesce(r.year_to,9999)>=:year"); p["year"] = int(f["year"])

@@ -11,7 +11,7 @@
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
   const primario = "rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white no-underline hover:bg-blue-700";
   const mini = "rounded-lg border border-line bg-card px-2.5 py-1 text-xs font-semibold text-ink hover:bg-slate-500/10";
-  const ABAS = [["familia", "Família: catálogo × Inmetro"], ["ean", "EAN divergente"], ["pesoean", "Peso e EAN × BI03"], ["protheus", "Pendente cadastro Protheus"], ["sugestoes", "Sugestões de equivalência"]];
+  const ABAS = [["familia", "Família: catálogo × Inmetro"], ["ean", "EAN divergente"], ["pesoean", "Peso e EAN × BI03"], ["protheus", "Pendente cadastro Protheus"], ["cross", "Cross × servidor"], ["repetidos", "Concorrentes repetidos"], ["sugestoes", "Sugestões de equivalência"]];
   const aba = (t, label, on, n) => `<a href="/anomalias?tab=${t}" data-aba="${t}" class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline ${on ? "border-blue-500 text-blue-600" : "border-transparent text-mute hover:text-ink"}">${label}${n != null ? ` · ${nf(n)}` : ""}</a>`;
   const ficha = (id, code) => `<a href="#" class="font-semibold text-blue-600" data-ficha="${id}">${esc(code)}</a>`;
   function anomalias() {
@@ -32,7 +32,10 @@
       ean: notice("EAN do catálogo diferente do que veio na planilha. Nada foi sobrescrito: escolha <b>Usar o da planilha</b> (grava o EAN importado no produto) ou <b>Manter o do catálogo</b>. Os mesmos casos aparecem em <a class=\"text-blue-600\" href=\"/pendencias?field=ean\">Pendências</a>.", "amber"),
       pesoean: notice("O <b>BI03 (cadastro do Protheus) prevalece</b> no peso líquido e no código de barras. Aqui aparecem os itens em que a planilha CatalogoAMD diz outra coisa: corrija a planilha."),
       protheus: notice("Itens de DESENVOLVIMENTO e REDESENVOLVIMENTO em andamento (sem ITEM RECEBIDO, sem cancelado) que <b>ainda não estão no BI03</b> como amortecedor acabado (PA): pendentes de cadastro no Protheus.", "amber") };
-    const META = { familia: "produto(s) com família divergente", ean: "EAN divergente(s)", pesoean: "diferença(s) entre o CatalogoAMD e o BI03", protheus: "item(ns) pendente(s) de cadastro no Protheus" };
+    AVISO.cross = notice("No catálogo vale o <b>CrossCatalogo.xlsx</b>; em desenvolvimento, o servidor (DESENVOLVIMENTO_CONCORRENTES). Aqui aparecem os itens do catálogo em que o <b>mesmo concorrente</b> tem referência diferente nas duas fontes: confira e corrija a planilha ou o cadastro do desenvolvimento.");
+    AVISO.repetidos = notice("Referências do servidor que parecem erro de cadastro: a <b>mesma referência</b> de um concorrente ligada a vários códigos PERFECT, ou o <b>mesmo código</b> com várias referências do mesmo concorrente. A mesma referência repetida em várias aplicações do mesmo código não entra aqui.", "amber");
+    const META = { familia: "produto(s) com família divergente", ean: "EAN divergente(s)", pesoean: "diferença(s) entre o CatalogoAMD e o BI03", protheus: "item(ns) pendente(s) de cadastro no Protheus",
+      cross: "divergência(s) entre o CrossCatalogo e o servidor", repetidos: "caso(s) de referência repetida" };
     const chip = (k, v, label, n) => { const on = F.get()[k] === v; return `<button type="button" data-tg="${k}" data-v="${esc(v)}" aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${esc(label)} · ${nf(n)}</button>`; };
     $("#ab").innerHTML = AVISO[tab] + (tab === "protheus" ? '<div id="aq" class="flex flex-wrap items-center gap-2"></div>' : "")
       + `<form id="af" class="flex flex-wrap items-center gap-2" autocomplete="off"><input name="q" type="search" placeholder="Buscar código, descrição ou valor…" class="${campo} min-w-[16rem] flex-1">
@@ -52,8 +55,14 @@
       if (!d.rows.length) { $("#at").innerHTML = empty(q ? "Nada encontrado com esta busca." : tab === "protheus" || tab === "pesoean" ? "Nada aqui. Se o BI03 ainda não foi carregado, carregue a planilha «003(dd-mm).xls» em Atualização de dados." : "Nenhuma anomalia: tudo confere."); return; }
       if (tab === "pesoean") { $("#at").innerHTML = TW.table([{ h: "Código PERFECT" }, { h: "Descrição" }, { h: "Campo" }, { h: "No CatalogoAMD", r: true }, { h: "No BI03 (vale este)", r: true }],
         d.rows.map(r => [ficha(r.product_id, r.perfect_code), desc(r), esc(r.campo), `<span class="tabular-nums">${valor(r.catalogo)}</span>`, `<b class="tabular-nums text-blue-600">${valor(r.bi03)}</b>`]), { h: "max-h-[65vh]" }); return; }
+      const codigo = c => `<b>${esc(c)}</b>${window.psdCode ? " " + psdCode(c, "↗") : ""}`;
+      if (tab === "cross") { $("#at").innerHTML = TW.table([{ h: "Código PERFECT" }, { h: "Descrição" }, { h: "Concorrente" }, { h: "No CrossCatalogo (vale este)" }, { h: "No servidor" }],
+        d.rows.map(r => [ficha(r.product_id, r.perfect_code), desc(r), badge(r.concorrente, "slate"), `<b class="tabular-nums text-blue-600">${esc(r.cross.join(" / "))}</b>`, `<span class="tabular-nums text-amber-700">${esc(r.servidor.join(" / "))}</span>`]), { h: "max-h-[65vh]" }); return; }
+      if (tab === "repetidos") { $("#at").innerHTML = TW.table([{ h: "Caso" }, { h: "Concorrente" }, { h: "Referência(s)" }, { h: "Código(s) PERFECT", nw: false }],
+        d.rows.map(r => [r.grupo === "ref_em_varios" ? badge("mesma referência em vários códigos", "amber") : badge("várias referências no mesmo código", "violet"), esc(r.concorrente),
+          `<span class="tabular-nums">${esc(r.referencias.join(" / "))}</span>`, `<span class="flex flex-wrap gap-x-3 gap-y-1">${r.codigos.map(codigo).join("")}</span>`]), { h: "max-h-[65vh]" }); return; }
       if (tab === "protheus") { $("#at").innerHTML = TW.table([{ h: "Código" }, { h: "Tipo" }, { h: "Status" }, { h: "Fornecedor" }, { h: "Aplicação", nw: false }, { h: "Situação" }],
-        d.rows.map(r => [`<b>${esc(r.code)}</b>${window.psdCode ? " " + psdCode(r.code, "↗") : ""}`, badge(r.tipo === "REDESENVOLVIMENTO" ? "R-D" : "DES", r.tipo === "REDESENVOLVIMENTO" ? "green" : "blue"), esc(r.status || "–"), esc(r.supplier || "–"),
+        d.rows.map(r => [codigo(r.code), badge(r.tipo === "REDESENVOLVIMENTO" ? "R-D" : "DES", r.tipo === "REDESENVOLVIMENTO" ? "green" : "blue"), esc(r.status || "–"), esc(r.supplier || "–"),
           `<span class="block min-w-[14rem] max-w-[28rem] text-xs">${esc(r.application || "–")}</span>`, badge("Pendente cadastro Protheus", "amber")]), { h: "max-h-[65vh]" }); return; }
       $("#at").innerHTML = tab === "familia"
         ? TW.table([{ h: "Código PERFECT" }, { h: "Descrição" }, { h: "Família no catálogo" }, { h: "Família no Inmetro" }, { h: "Certificados (nº · fornecedor)", nw: false }],

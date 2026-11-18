@@ -421,6 +421,11 @@ DATASETS = {
         "code": ["CODIGO", "COD_PRODUTO", "CODIGO_PRODUTO", "PRODUTO"], "active": ["ATIVO", "SITUACAO"], "blocked": ["BLOQ", "BLOQUEADO", "MSBLQL"], "line": ["LINHA"]},
         "num": [], "dates": [], "no_extra": True,
         "where": [({"LINHA"}, "LINHA LIKE '%AMORTECEDOR%'")]},
+    # referências de concorrentes por ID de DESENVOLVIMENTO_PRODUTOS (etapa 17 · Q10/Q18): ~37 mil linhas, 4 colunas; o universo (amortecedor, não bloqueado) é aplicado
+    # localmente ao ligar o ID com rd_projects (concorrentes.build). Só itens em desenvolvimento usam o servidor; no catálogo vale o CrossCatalogo.
+    "concorrentes": {"object": "DESENVOLVIMENTO_CONCORRENTES", "table": "ds_concorrentes", "aliases": {
+        "dev_id": ["ID", "ID_DESENVOLVIMENTO"], "comp_code": ["COD_CONCORRENTE"], "competitor": ["CONCORRENTE", "NOME_CONCORRENTE"], "reference": ["REFERENCIA", "CODIGO_CONCORRENTE"]},
+        "num": [], "dates": [], "no_extra": True},
 }
 # DESENVOLVIMENTO_PRODUTOS: só as linhas de amortecedor (as demais linhas do servidor não são usadas por nenhuma tela nem meta)
 DEV_WHERE = [({"LINHA"}, "LINHA LIKE '%AMORTECEDOR%'")]
@@ -511,6 +516,8 @@ CREATE TABLE IF NOT EXISTS ds_garantia(code TEXT, description TEXT, defect TEXT,
 CREATE INDEX IF NOT EXISTS ix_dsg_code ON ds_garantia(code);
 CREATE TABLE IF NOT EXISTS ds_situacao(code TEXT, active TEXT, blocked TEXT, line TEXT, extra TEXT);
 CREATE INDEX IF NOT EXISTS ix_dssit_code ON ds_situacao(code);
+CREATE TABLE IF NOT EXISTS ds_concorrentes(dev_id TEXT, comp_code TEXT, competitor TEXT, reference TEXT, extra TEXT);
+CREATE INDEX IF NOT EXISTS ix_dscc_id ON ds_concorrentes(dev_id);
 CREATE TABLE IF NOT EXISTS ds_runs(id INTEGER PRIMARY KEY, run_id INTEGER, dataset TEXT, object TEXT, rows INTEGER, status TEXT, note TEXT, at TEXT);
 """
 TRACKED = ("status", "substatus", "curtiu", "nao_curtiu")
@@ -779,6 +786,9 @@ def _sync(cfg, store, conn_factory):
                 df, warn, mp = normalize_dataset(key, extract_raw(conn, obj, where=where, limit=None if where else int(os.environ.get("DEV_DS_MAX_ROWS", "300000"))), ov)
                 dss[key] = {**store.replace_dataset(key, df, out["run_id"], obj["sql"], cfg, scope=where or "tudo"), "mapped": sorted(mp), "avisos": warn, "filtro": where or None}
             except Exception as e: dss[key] = {"status": "erro", "note": cfg.masked(f"{e.__class__.__name__}: {e}")}
+        if (dss.get("concorrentes") or {}).get("status") == "ok":  # liga as referências ao código PERFECT pelo ID (concorrentes.build)
+            try: import concorrentes; dss["concorrentes"]["ligadas"] = concorrentes.build()
+            except Exception as e: log.warning("concorrentes: %s", e)
         if (dss.get("compras") or {}).get("status") == "ok":      # guarda a data prevista de cada pedido: mostra quantas vezes o fornecedor empurrou a previsão
             try: import leadtime; dss["compras"]["previsoes_gravadas"] = leadtime.snapshot_due()
             except Exception as e: log.warning("histórico de previsões falhou: %s", e)

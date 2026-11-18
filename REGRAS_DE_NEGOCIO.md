@@ -116,6 +116,9 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - **IPI:** o do servidor (DESENVOLVIMENTO_PRODUTOS); o do BI03 só para quem não tem linha no servidor.
 - **Pendente cadastro Protheus:** DES/R-D em andamento (universo amortecedor, não bloqueado, sem ITEM RECEBIDO e sem cancelado) que não estão no BI03 como PA. Sem BI03 carregado, a lista fica vazia.
 - Linha e Híbrido/elétrico vêm só do CatalogoAMD. Híbrido vazio = «não informado» (nunca «não»).
+- **Concorrentes** (`concorrentes.py`): servidor = DESENVOLVIMENTO_CONCORRENTES, ligado pelo ID de DESENVOLVIMENTO_PRODUTOS (universo amortecedor, não bloqueado, qualquer status). Item em **desenvolvimento → servidor**; item do **catálogo → CrossCatalogo.xlsx** quando ele tem o item, senão o servidor (item que acabou de virar ITEM RECEBIDO não precisa esperar a planilha). A busca procura nas duas fontes.
+- OEM é «código original (montadora)», não concorrente. Grafias do mesmo concorrente são unificadas («N° INDISA» = INDISA). Mesma referência em vários IDs do mesmo código = várias aplicações (conta uma vez).
+- Anomalias: «Cross × servidor» (mesmo concorrente sem referência em comum) e «Concorrentes repetidos» (mesma referência em 2+ códigos; mesmo código e concorrente com 2+ referências).
 
 ## 11. Interface (etapa 17)
 - Filtros **[mudou em 18/11/2026]**: ficam só na URL (`PSDTW.filtros` em `static/js/tw.js`). Tela aberta pelo menu vem limpa; links entre telas e o Voltar do navegador abrem filtrados. Nada é lembrado da visita anterior.

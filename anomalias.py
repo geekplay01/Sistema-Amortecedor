@@ -3,7 +3,8 @@
     com algum certificado de família diferente. Calculado dos dados (products × certificates), não das pendências.
   • EAN: conflitos abertos de EAN (o certificado não guarda o EAN; o conflito guarda os dois valores). Continuam em Pendências («Usar o da planilha»).
   • Peso e EAN × BI03 (etapa 17): o Protheus prevalece; lista onde a planilha do catálogo diverge.
-  • Pendente cadastro Protheus (etapa 17): DES/R-D em andamento que não estão no BI03 como PA."""
+  • Pendente cadastro Protheus (etapa 17): DES/R-D em andamento que não estão no BI03 como PA.
+  • Cross × servidor e Concorrentes repetidos (etapa 17): ver concorrentes.py."""
 import io
 import queries as Q
 
@@ -77,10 +78,15 @@ def protheus_counts(q="", f=None):
     from collections import Counter
     return {k: dict(Counter(r[k] for r in protheus(q, f, skip=k))) for k in PROT_FILTROS}
 
-TABS = {"familia": familia, "ean": ean, "pesoean": pesoean}
+def cross(q=""):
+    import concorrentes; return concorrentes.cross_x_servidor(q)
+def repetidos(q=""):
+    import concorrentes; return concorrentes.repetidos(q)
+
+TABS = {"familia": familia, "ean": ean, "pesoean": pesoean, "cross": cross, "repetidos": repetidos}
 
 def counts(q=""):
-    return {"familia": len(familia(q)), "ean": len(ean(q)), "pesoean": len(pesoean(q)), "protheus": len(protheus(q)),
+    return {"familia": len(familia(q)), "ean": len(ean(q)), "pesoean": len(pesoean(q)), "protheus": len(protheus(q)), "cross": len(cross(q)), "repetidos": len(repetidos(q)),
             "sugestoes": Q.q1("SELECT COUNT(*) n FROM equivalence_suggestions WHERE status='pendente'")["n"]}
 
 def export_xlsx(q=""):
@@ -92,4 +98,8 @@ def export_xlsx(q=""):
     exporter._sheet(wb, "EAN", ["Código PERFECT", "Descrição", "EAN no catálogo", "EAN importado", "Fonte"], [[r["perfect_code"], r["description"], r["current"], r["imported"], r["source"]] for r in e])
     exporter._sheet(wb, "Peso e EAN × BI03", ["Código PERFECT", "Descrição", "Campo", "No CatalogoAMD", "No BI03 (Protheus, vale este)"], [[r["perfect_code"], r["description"], r["campo"], r["catalogo"], r["bi03"]] for r in pe])
     exporter._sheet(wb, "Pendente cadastro Protheus", ["Código", "Tipo", "Status", "Fornecedor", "Aplicação", "Situação"], [[r["code"], r["tipo"], r["status"], r["supplier"], r["application"], "Pendente cadastro Protheus"] for r in pr])
-    bio = io.BytesIO(); wb.save(bio); bio.seek(0); return bio, len(f) + len(e) + len(pe) + len(pr)
+    cx, rp = cross(q), repetidos(q)
+    exporter._sheet(wb, "Cross × servidor", ["Código PERFECT", "Descrição", "Concorrente", "No CrossCatalogo", "No servidor"], [[r["perfect_code"], r["description"], r["concorrente"], " / ".join(r["cross"]), " / ".join(r["servidor"])] for r in cx])
+    exporter._sheet(wb, "Concorrentes repetidos", ["Caso", "Concorrente", "Referência(s)", "Código(s) PERFECT"],
+                    [["Mesma referência em vários códigos" if r["grupo"] == "ref_em_varios" else "Várias referências no mesmo código", r["concorrente"], " / ".join(r["referencias"]), " / ".join(r["codigos"])] for r in rp])
+    bio = io.BytesIO(); wb.save(bio); bio.seek(0); return bio, len(f) + len(e) + len(pe) + len(pr) + len(cx) + len(rp)

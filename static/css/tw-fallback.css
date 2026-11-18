@@ -127,6 +127,7 @@
 .max-w-\[22rem\]{max-width:22rem}
 .max-w-\[24rem\]{max-width:24rem}
 .max-w-\[26rem\]{max-width:26rem}
+.max-w-\[28rem\]{max-width:28rem}
 .max-w-\[30rem\]{max-width:30rem}
 .max-w-\[34rem\]{max-width:34rem}
 .max-w-\[8rem\]{max-width:8rem}
@@ -295,7 +296,6 @@
 @media(min-width:768px){.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:768px){.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:768px){.md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(min-width:768px){.md\:grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media(min-width:768px){.md\:hidden{display:none}}
 @media(min-width:768px){.md\:static{position:static}}
 @media(min-width:1024px){.lg\:col-span-2{grid-column:span 2/span 2}}

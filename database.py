@@ -159,6 +159,7 @@ def migrate():
             n = _re.sub(r"\s+", " ", t.lstrip("'")).strip(); c.execute("UPDATE rd_projects SET application_text=? WHERE id=?", (None if n in ("-", "") else n, rid))
         c.execute("CREATE INDEX IF NOT EXISTS ix_codes_norm ON codes(normalized_code)")
         c.execute("CREATE INDEX IF NOT EXISTS ix_rd_code ON rd_projects(code)")
+        import bi03, concorrentes; bi03.ensure(c); concorrentes.ensure(c)          # etapa 17: cadastro Protheus e referências de concorrentes do servidor
         # caixa «PP025M» × «PP025»: só o sufixo da marca (M Motorcraft, B BPROAUTO) difere → não é conflito (etapa 16 · D); fecha os abertos antes da regra
         for pid_, d in c.execute("SELECT id,description FROM pendencies WHERE kind='conflito' AND field='package_code' AND status='aberta'").fetchall():
             m = _re.match(r"Valor atual «(.*?)» × importado «(.*?)»", d or "")

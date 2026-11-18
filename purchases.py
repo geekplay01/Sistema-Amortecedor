@@ -24,9 +24,15 @@ def state_of(orders):
 
 RD_BRANDS = ("COFAP", "MONROE", "NAKATA", "CORVEN", "KAYABA", "OEM")
 def rd_cross_index():
-    """Referência cruzada dos itens de Desenvolvimento (colunas COFAP, MONROE, NAKATA, CORVEN, KAYABA e OEM da planilha). {código: [{brand, code}]}"""
-    import json
+    """Referência cruzada dos itens de Desenvolvimento. {código: [{brand, code}]}
+    Etapa 17 · Q10: vem do servidor (DESENVOLVIMENTO_CONCORRENTES, ligado pelo ID — concorrentes.py), com OEM como marca «OEM». Sem essa tabela
+    sincronizada, vale o jeito antigo: colunas COFAP, MONROE, NAKATA, CORVEN, KAYABA e OEM da planilha antiga (rd_projects.extra)."""
+    import json, concorrentes
     out = {}
+    if concorrentes.available():
+        for r in q("SELECT code, competitor, MIN(reference) reference FROM concorrentes GROUP BY code, competitor, ref_key ORDER BY code, is_oem, competitor"):
+            out.setdefault(r["code"], []).append({"brand": r["competitor"], "code": r["reference"]})
+        return out
     for r in q("SELECT code,extra FROM rd_projects WHERE extra IS NOT NULL"):
         try: d = json.loads(r["extra"])
         except ValueError: continue

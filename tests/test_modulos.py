@@ -163,6 +163,40 @@ class Bi03Protheus(_TmpDB):
         c = self.db.conn(); P = {r[0]: (r[1], r[2], r[3]) for r in c.execute("SELECT perfect_code, weight_kg, ean, cat_weight_kg FROM products")}; c.close()
         self.assertEqual(P["AMD1"], (2.0, "999", 1.5)); self.assertEqual(len(anomalias.pesoean()), 2); self.assertEqual(anomalias.pesoean("AMD3"), [])
 
+class ConcorrentesServidor(_TmpDB):
+    def test_ligacao_por_id_regra_cross_busca_e_anomalias(self):
+        """Etapa 17 · Q10/Q11/Q18/Q19/Q20: DESENVOLVIMENTO_CONCORRENTES liga ao código pelo ID (universo amortecedor, não bloqueado); nomes unificados; OEM separado;
+        catálogo com o item no CrossCatalogo usa o CrossCatalogo, senão o servidor; busca nas duas fontes; anomalias Cross × servidor e repetidos."""
+        import concorrentes as cc, queries, rd, purchases, json
+        self.db.init_db()
+        ext = lambda i: json.dumps({"ID": str(i)})
+        self.sql("INSERT INTO rd_projects(code,suggestion,status,description,line,extra) VALUES(?,?,?,?,?,?)",
+                 [("AMD1", "REDESENVOLVIMENTO", "ITEM RECEBIDO", "AMORTECEDOR", "AMORTECEDOR", ext(1)), ("AMD2", "DESENVOLVIMENTO", "ITEM RECEBIDO", "AMORTECEDOR", "AMORTECEDOR", ext(2)),
+                  ("X9", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR", ext(9)), ("X9", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR", ext(10)),
+                  ("BAN1", "DESENVOLVIMENTO", "EM COTAÇÃO", "BANDEJA", "BANDEJA", ext(20)), ("BLQ1", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR", ext(30))])
+        self.sql("INSERT INTO ds_situacao(code,active,blocked) VALUES('BLQ1','ATIVO','SIM')")
+        self.sql("INSERT INTO ds_concorrentes(dev_id,competitor,reference) VALUES(?,?,?)",
+                 [("1", "NAKATA", "HG33066"), ("1", "COFAP", "GP32530"), ("1", "OEM", "52025115"), ("2", "MONROE", "27016"), ("9", "N° INDISA", "IN-100"), ("9", "HIPPERFREIOS", "HF1"),
+                  ("10", "N° INDISA", "IN-100"), ("9", "MONROE", "27016"), ("9", "COFAP", "GP1"), ("10", "COFAP", "GP2"), ("20", "COFAP", "BAN-1"), ("30", "COFAP", "BLQ-1")])
+        self.sql("INSERT INTO products(perfect_code,description,catalog_position) VALUES(?,?,?)", [("AMD1", "AMORTECEDOR DIANT", 1), ("AMD2", "AMORTECEDOR TRAS", 2)])
+        self.sql("INSERT INTO sources(name,category) VALUES('CrossCatalogo.xlsx','Referência cruzada')")
+        self.sql("INSERT INTO codes(product_id,code,normalized_code,code_type,brand,source_id) SELECT p.id,?,?,?,?,(SELECT id FROM sources WHERE name='CrossCatalogo.xlsx') FROM products p WHERE p.perfect_code='AMD1'",
+                 [("HG33064", "HG33064", "concorrente", "NAKATA"), ("GP32530", "GP32530", "concorrente", "COFAP")])
+        self.assertEqual((cc.nome("N° INDISA"), cc.nome("Nº URBA"), cc.nome("HIPPERFREIOS"), cc.nome("NAKATA")), ("INDISA", "URBA", "HIPPER FREIOS", "NAKATA"))
+        self.assertEqual(cc.build(), 10)                                                   # BANDEJA e o bloqueado no ERP ficam fora
+        a1 = cc.para_item("AMD1"); self.assertEqual((a1["fonte"], sorted(x["codigo"] for x in a1["concorrentes"])), ("CrossCatalogo", ["GP32530", "HG33064"]))   # catálogo com CrossCatalogo
+        a2 = cc.para_item("AMD2"); self.assertEqual((a2["fonte"], a2["concorrentes"]), ("servidor", [{"marca": "MONROE", "codigo": "27016", "aplicacoes": 1}]))    # catálogo sem CrossCatalogo
+        x9 = cc.para_item("X9"); self.assertEqual(x9["fonte"], "servidor"); self.assertIn({"marca": "INDISA", "codigo": "IN-100", "aplicacoes": 2}, x9["concorrentes"])     # 2 IDs = 2 aplicações, 1 referência
+        self.assertEqual(cc._server("AMD1")[-1]["is_oem"], 1); self.assertNotIn("OEM", [x["marca"] for x in cc.para_item("AMD2")["concorrentes"]])
+        self.assertEqual(queries.perfect_codes("IN100"), ["X9"]); self.assertEqual(queries.perfect_codes("27.016"), ["AMD2", "X9"])
+        self.assertEqual([r["code"] for r in rd.items("DESENVOLVIMENTO", {"q": "in-100"})["rows"]], ["X9"])
+        self.assertEqual([r["perfect_code"] for r in queries.products({"q": "27016"})["rows"]], ["AMD2"])
+        self.assertEqual(queries.products({"q": "27016"})["rows"][0]["via"], [{"code": "27016", "brand": "MONROE", "type": "concorrente"}])
+        cx = cc.cross_x_servidor(); self.assertEqual([(r["perfect_code"], r["concorrente"], r["cross"], r["servidor"]) for r in cx], [("AMD1", "NAKATA", ["HG33064"], ["HG33066"])])
+        rp = cc.repetidos(); self.assertIn({"grupo": "ref_em_varios", "concorrente": "MONROE", "referencias": ["27016"], "codigos": ["AMD2", "X9"]}, rp)
+        self.assertIn({"grupo": "varias_refs", "concorrente": "COFAP", "referencias": ["GP1", "GP2"], "codigos": ["X9"]}, rp); self.assertEqual(len(rp), 2)        # IN-100 em 2 IDs do X9 não é repetido
+        self.assertIn({"brand": "INDISA", "code": "IN-100"}, purchases.rd_cross_index()["X9"])
+
 class GarantiaAnalitico(_TmpDB):
     def test_planilha_substitui_filtros_e_atalhos(self):
         """Etapa 16 · D8: «Analítico de Garantias» (cabeçalho na 2ª linha) entra pela Atualização de dados e substitui a carga anterior; verificação não grava.
