@@ -197,6 +197,32 @@ class ConcorrentesServidor(_TmpDB):
         self.assertIn({"grupo": "varias_refs", "concorrente": "COFAP", "referencias": ["GP1", "GP2"], "codigos": ["X9"]}, rp); self.assertEqual(len(rp), 2)        # IN-100 em 2 IDs do X9 não é repetido
         self.assertIn({"brand": "INDISA", "code": "IN-100"}, purchases.rd_cross_index()["X9"])
 
+class FragaPlanilhas(_TmpDB):
+    def test_lancamentos_e_cofap_x_frota(self):
+        """Etapa 17 · Q22/Q28/Q29: «LANÇAMENTOS aaaa» guarda só as colunas usadas e a frota do ano atual; «…x_FROTA» guarda veículo × amortecedor COFAP;
+        as duas entram pela Atualização de dados, a verificação não grava e cada carga substitui a anterior."""
+        import fraga, updater, datetime
+        from unittest import mock
+        self.db.init_db(); fraga._CACHE.clear(); y = datetime.date.today().year
+        self.assertEqual((fraga.kind("LANÇAMENTOS 2026.xlsx"), fraga.kind("Lancamentos 2027 (1).xlsx"), fraga.kind("COFAP_AMORTECEDORES_x_FROTA.xlsx"), fraga.kind("CatalogoAMD.xlsx")),
+                         ("lancamentos", "lancamentos", "pecas", None))
+        la = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); la.close(); pc = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); pc.close()
+        pd.DataFrame({"codigo_fraga": ["A.VW.1", "A.VW.1", "A.FIA.2"], "sigla_marca": ["VW", "VW", "FIA"], "status_producao": ["Inativo", "Inativo", "Ativo"], "classificacao": ["Automóveis"] * 3,
+                      "marca_veiculo": ["VOLKSWAGEN", "VOLKSWAGEN", "FIAT"], "nome_veiculo": ["GOL", "GOL", "PALIO"], "modelo_veiculo": ["1.0", "1.0", "-"], "ano_venda": [2010, 2011, 2024],
+                      "inicio_producao": ["2008-01-01", "2008-01-01", "2024-03-01"], "final_producao": [None, None, None], f"Frota{y - 1}": [9, 9, 9], f"Frota{y}": [1000, 500, 70], "FrotaSP": [1, 1, 1]}).to_excel(la.name, index=False)
+        pd.DataFrame({"CodigoFraga": ["A.VW.1", "A.FIA.2"], "Ano Venda": [2010, 2024], "Marca": ["VOLKSWAGEN", "FIAT"], "Nome Veículo": ["GOL", "PALIO"], "Frota2024": [800, 60],
+                      "Amortecedor PERFECT": ["-", "AMD9"], "Amortecedor COFAP": ["GP1", "GP2"]}).to_excel(pc.name, index=False)
+        conta = lambda t: (lambda c: (c.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0], c.close())[0])(self.db.conn())
+        try:
+            files = [("LANÇAMENTOS 2026.xlsx", la.name), ("COFAP_AMORTECEDORES_x_FROTA.xlsx", pc.name)]
+            r = updater.run(files, confirm=False); self.assertEqual([x["status"] for x in r["results"]], ["ok", "ok"], r["results"]); self.assertEqual((conta("fraga_veiculos"), conta("fraga_pecas")), (0, 0))
+            with mock.patch("queries.backup_create", return_value="x.db"): updater.run(files, confirm=True); updater.run(files, confirm=True)       # 2ª carga substitui (não duplica)
+        finally: os.remove(la.name); os.remove(pc.name)
+        self.assertEqual((conta("fraga_veiculos"), conta("fraga_pecas")), (3, 2))
+        c = self.db.conn(); v = c.execute("SELECT marca, veiculo, ano_venda, frota, frota_ano, inicio FROM fraga_veiculos ORDER BY ano_venda").fetchall(); p = c.execute("SELECT perfect, cofap, frota FROM fraga_pecas ORDER BY cofap").fetchall(); c.close()
+        self.assertEqual(tuple(v[0]), ("VOLKSWAGEN", "GOL", 2010, 1000.0, y, "2008-01-01")); self.assertEqual(tuple(v[2])[3], 70.0)
+        self.assertEqual([tuple(x) for x in p], [(None, "GP1", 800.0), ("AMD9", "GP2", 60.0)])
+
 class GarantiaAnalitico(_TmpDB):
     def test_planilha_substitui_filtros_e_atalhos(self):
         """Etapa 16 · D8: «Analítico de Garantias» (cabeçalho na 2ª linha) entra pela Atualização de dados e substitui a carga anterior; verificação não grava.

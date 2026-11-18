@@ -10,7 +10,7 @@ KNOWN = [("CatalogoAMD.xlsx", None), ("CrossCatalogo.xlsx", None), ("CaixasAMD.x
          ("InmetroZS - Todos - Certificado.xlsx", None), ("InmetroE-win - Todos - Certificado.xlsx", None), ("ZS.csv", "(csv)"), ("e-win.csv", "(csv)"),
          ("Compra_de_amostra.xlsx", None), ("DAMPING FORCE - REGRA.xlsx", "damping"), ("Analítico de Garantias.xlsx", "garantias")]      # garantias: substitui a carga anterior (garantias.py)
 # planilhas com leitor próprio (módulo.load(path, name, confirm, conn) substitui a carga anterior), reconhecidas por módulo.is_file(nome) — o nome muda a cada exportação
-ESPECIAIS = [("bi03", 1)]           # (módulo, ordem: logo depois do CatalogoAMD, para o peso/EAN do BI03 prevalecer)
+ESPECIAIS = [("bi03", 1), ("fraga", 20)]           # (módulo, ordem) — BI03 logo depois do CatalogoAMD, para o peso/EAN do BI03 prevalecer; Fraga: LANÇAMENTOS e COFAP × frota
 FOLDER = os.path.join(db.BASE, "bases_exemplo")
 TMP = os.path.join(db.BASE, "data", "uploads")
 

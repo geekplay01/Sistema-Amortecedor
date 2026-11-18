@@ -74,3 +74,9 @@ Pedido do usuário: design moderno em todos os módulos (cores do logo, ícones 
 - Anomalias: **«Cross × servidor»** (mesmo concorrente, nenhuma referência em comum) e **«Concorrentes repetidos»** (mesma referência em 2+ códigos; mesmo código e concorrente com 2+ referências). Excel com as abas.
 - Teste `test_modulos.ConcorrentesServidor`.
 - Na cópia (trazido do servidor só com SELECT): 37.355 linhas; 5.497 ligadas (3.643 de concorrentes em 1.010 códigos; 1.854 OEM em 1.268). Cross × servidor 241 (ex.: AMD0100 NAKATA HG33064 × HG33066); repetidos 156 + 61. Só 7 itens do catálogo não estão no CrossCatalogo e usam o servidor. Pesquisa «HG33066» → AMD0100 («NAKATA HG33066»).
+
+### Passo 2d · planilhas da Fraga (18/11/2026) ✅
+- `fraga.py`: «LANÇAMENTOS aaaa.xlsx» → `fraga_veiculos` (código Fraga, marca, veículo, modelo, ano de venda, início/fim de produção, status, classificação e a frota do **ano atual**, coluna «Frota<ano>»); «…x_FROTA.xlsx» → `fraga_pecas` (veículo × amortecedor COFAP/PERFECT, Frota2024). Reconhecidas pelo nome (`updater.ESPECIAIS`), leitura só das colunas usadas, cada carga substitui a anterior; a verificação não grava.
+- Teste `test_modulos.FragaPlanilhas`.
+- Na cópia: LANÇAMENTOS 2026 = 75.850 linhas, frota 2026 = 72,0 mi; COFAP × frota = 70.072 linhas (41.990 com COFAP, 27.385 com PERFECT). As duas juntas levam ~90 s (Verificar e Aplicar leem uma vez: a leitura fica em memória).
+- **No banco real:** copiar `COFAP_AMORTECEDORES_x_FROTA.xlsx` de Downloads para bases_exemplo e aplicar as duas em Atualização de dados. A curva (Q27) usa essas tabelas no passo 5.

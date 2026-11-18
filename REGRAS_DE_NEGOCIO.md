@@ -118,6 +118,7 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Linha e Híbrido/elétrico vêm só do CatalogoAMD. Híbrido vazio = «não informado» (nunca «não»).
 - **Concorrentes** (`concorrentes.py`): servidor = DESENVOLVIMENTO_CONCORRENTES, ligado pelo ID de DESENVOLVIMENTO_PRODUTOS (universo amortecedor, não bloqueado, qualquer status). Item em **desenvolvimento → servidor**; item do **catálogo → CrossCatalogo.xlsx** quando ele tem o item, senão o servidor (item que acabou de virar ITEM RECEBIDO não precisa esperar a planilha). A busca procura nas duas fontes.
 - OEM é «código original (montadora)», não concorrente. Grafias do mesmo concorrente são unificadas («N° INDISA» = INDISA). Mesma referência em vários IDs do mesmo código = várias aplicações (conta uma vez).
+- Fraga (`fraga.py`): «LANÇAMENTOS aaaa» (frota por veículo × ano de venda; usa a coluna do ano atual) e «COFAP × frota» (veículo × amortecedor COFAP). Pela Atualização de dados; cada carga substitui a anterior.
 - Anomalias: «Cross × servidor» (mesmo concorrente sem referência em comum) e «Concorrentes repetidos» (mesma referência em 2+ códigos; mesmo código e concorrente com 2+ referências).
 
 ## 11. Interface (etapa 17)
