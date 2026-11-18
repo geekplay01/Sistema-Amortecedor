@@ -54,7 +54,7 @@
       const s = F.get(), n = ["q", "kind", "field"].filter(k => s[k]).length + (st() !== "aberta" ? 1 : 0);
       $("#pdl").href = "/api/export/pendencias.xlsx?" + qs(api());
       const ok = $("#pm").dataset.ok; delete $("#pm").dataset.ok;          // aviso do último «Usar o da planilha» (some na próxima atualização)
-      $("#pm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> pendência(s)${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}${ok ? ` · <span class="font-semibold text-emerald-600">${esc(ok)}</span>` : ""}`;
+      $("#pm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> pendência(s)${n ? ` · ${n} filtro(s) ativo(s)` : ""}${ok ? ` · <span class="font-semibold text-emerald-600">${esc(ok)}</span>` : ""}`;
       $("#pt").innerHTML = TW.table([{ h: "Produto" }, { h: "Tipo" }, { h: "Campo" }, { h: "Descrição", nw: false }, { h: "Desde" }, { h: "Status" }, { h: "" }],
         d.rows.map(x => [
           x.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${x.product_id}">${esc(x.perfect_code)}</a>` : '<span class="text-mute">–</span>',

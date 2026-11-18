@@ -13,7 +13,7 @@
   const put = (u, b) => J(u, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) });
 
   function metas() {
-    const F = TW.filtros("metas", ["year", "tipo", "conta", "rdv"]); let d = null, ev = null, pv = null, rv = null, mexeu = false;
+    const F = TW.filtros("metas", ["year", "tipo", "conta", "rdv"]); let d = null, ev = null, pv = null, rv = null;
     root.innerHTML = `<div class="flex flex-col gap-5">
       <div id="mbar" class="flex flex-wrap items-center gap-2"></div>
       <p id="mtr" class="m-0 text-sm text-mute"></p>
@@ -28,7 +28,7 @@
       $("#mbar").innerHTML = `<label class="flex items-center gap-2 text-sm text-mute">Ano <select name="year" class="${campo}">${d.years.map(y => `<option ${y === d.year ? "selected" : ""}>${y}</option>`).join("")}</select></label>
         <span class="ml-2 mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Tipo</span>
         ${chip("data-tipo-todos", "Todos", !s.tipo)}${chip('data-tg="tipo" data-v="des"', DES, s.tipo === "des")}${chip('data-tg="tipo" data-v="rd"', RD, s.tipo === "rd")}
-        ${F.restaurado && !mexeu ? '<span class="ml-2 text-sm text-amber-700">filtros da última visita</span>' : ""}
+        
         ${Object.keys(s).length ? `<button type="button" id="mclr" class="ml-auto rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10">Limpar filtros</button>` : ""}`;
       $("#mtr").textContent = d.tracking.since ? `Transições rastreadas desde ${dmy(d.tracking.since)} (${d.tracking.runs} sincronização(ões)). O que aconteceu antes entra em «já realizado antes do rastreio».` : "O rastreio começa na 1ª sincronização com o servidor.";
     };
@@ -113,16 +113,16 @@
       if (d.basis !== "validacao") rv = null;
       desenharBarra(); desenharValidacoes(); desenharMetas(); desenharRd(); desenharEventos(); desenharPendentes();
     };
-    const aplicar = patch => { mexeu = true; if (patch) F.set(patch); return carregar(); };
+    const aplicar = patch => { if (patch) F.set(patch); return carregar(); };
 
     root.addEventListener("change", e => {
       if (e.target.name === "year") aplicar({ year: e.target.value });
-      if (e.target.name === "conta") { mexeu = true; F.set({ conta: e.target.value }); desenharBarra(); desenharEventos(); }
+      if (e.target.name === "conta") { F.set({ conta: e.target.value }); desenharBarra(); desenharEventos(); }
     });
     root.addEventListener("click", async e => {
       const tg = e.target.closest("[data-tg]"), todos = e.target.closest("[data-tipo-todos]"), ed = e.target.closest("[data-edit]"), vs = e.target.closest("[data-vs]"), rdv = e.target.closest("[data-rdv]");
-      if (rdv) { mexeu = true; F.set({ rdv: rdv.dataset.rdv === "todas" ? "" : rdv.dataset.rdv }); desenharBarra(); return desenharRd(); }
-      if (tg) { mexeu = true; F.toggle(tg.dataset.tg, tg.dataset.v); return carregar(); }
+      if (rdv) { F.set({ rdv: rdv.dataset.rdv === "todas" ? "" : rdv.dataset.rdv }); desenharBarra(); return desenharRd(); }
+      if (tg) { F.toggle(tg.dataset.tg, tg.dataset.v); return carregar(); }
       if (todos) return aplicar({ tipo: "" });
       if (e.target.id === "mclr") { F.clear(); return aplicar(null); }
       if (vs) { vs.disabled = true; try { await post("/api/validations", { code: vs.dataset.vs, kind: RD }); await carregar(); } catch (er) { alert(er.message); vs.disabled = false; } }

@@ -73,7 +73,7 @@ window.PSD_EXEC = ctx => {
         <div class="flex flex-wrap items-center gap-2">${rot("Etapa")}${Object.entries(c.etapa).map(([k, n]) => chip(`data-pk="etapa" data-pv="${esc(k)}"`, esc(k), s.etapa === k, n)).join("")}</div>
         <div class="flex flex-wrap items-center gap-2">${rot("Fornecedor")}${Object.entries(c.fornecedor).map(([k, n]) => chip(`data-pk="pvforn" data-pv="${esc(k)}"`, esc(k), s.pvforn === k, n)).join("")}</div>`;
       const n = ["etapa", "pvforn", "alerta", "pvq"].filter(k => s[k]).length;
-      $("#pvn").innerHTML = `${nf(d.total)} linha(s)${n ? ` · ${n} filtro(s)` : ""}${PF.restaurado ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}`;
+      $("#pvn").innerHTML = `${nf(d.total)} linha(s)${n ? ` · ${n} filtro(s)` : ""}`;
       $("#pvx").href = "/api/export/previsao.xlsx?" + new URLSearchParams(Object.fromEntries(Object.entries({ etapa: s.etapa, fornecedor: s.pvforn, alerta: s.alerta, q: s.pvq }).filter(x => x[1])));
       const venc = s.alerta === "vencida";
       $("#pvt").innerHTML = TW.table([{ h: "Código" }, { h: "Pedido" }, { h: "Fornecedor" }, { h: "Qtd", r: 1 }, { h: "Etapa" }, { h: "Emissão" }, { h: "Promessa" }, { h: "Embarque" }, { h: "ETA servidor" }, { h: "Chegada prevista" }, { h: venc ? "Vencida há" : "Faixa" }, { h: "vs. promessa", r: 1 }, { h: "Confiança" }],
@@ -144,7 +144,7 @@ window.PSD_EXEC = ctx => {
     previsaoBlock($("#pprev"), PF); $("#pq").value = st0.q;
     $("#pq").oninput = debounce(e => { st0.q = e.target.value.trim(); reload(); }, 300); $("#pst").onchange = e => { st0.st = e.target.value; reload(); }; $("#pab").onchange = e => { st0.rec = e.target.value; reload(); }; $("#ptp").onchange = e => { st0.tipo = e.target.value; reload(); };
     $("#pf").onclick = e => { const b = e.target.closest("[data-f]"); if (b) { st0.forn = b.dataset.f; reload(); } };
-    $("#pcsv").onclick = () => TW.csv("pedidos_em_aberto.csv", [...d.columns, "TIPO_PEDIDO"], d.rows.map(r => [...d.columns, "TIPO_PEDIDO"].map(c => r[c]))); draw();
+    $("#pcsv").onclick = () => TW.csv(TW.nome("Pedidos em Aberto"), [...d.columns, "TIPO_PEDIDO"], d.rows.map(r => [...d.columns, "TIPO_PEDIDO"].map(c => r[c]))); draw();
   }
 
   // ───────────────────────── Vendas · Curva A ─────────────────────────
@@ -210,7 +210,7 @@ window.PSD_EXEC = ctx => {
       $("#vy").onchange = e => { year = e.target.value; load(); }; $("#vm").onchange = e => { month = e.target.value; load(); };
       $("#vq").oninput = debounce(e => { q = e.target.value.trim().toUpperCase(); table(); }); $("#vq").value = q;
       $("#vc").onclick = e => { const b = e.target.closest("[data-c]"); if (b) { cls = b.dataset.c; table(); } };
-      $("#vcsv").onclick = () => TW.csv("vendas_curva_a.csv", ["PRODUTO", "QTD", "VALOR", "pct", "acum_pct", "classe"], d.rows.map(r => [r.PRODUTO, r.QTD, r.VALOR, r.pct, r.acum_pct, r.classe]));
+      $("#vcsv").onclick = () => TW.csv(TW.nome("Vendas (Curva A)"), ["PRODUTO", "QTD", "VALOR", "pct", "acum_pct", "classe"], d.rows.map(r => [r.PRODUTO, r.QTD, r.VALOR, r.pct, r.acum_pct, r.classe]));
       const C = d.classes; const sk = ["A", "B", "C"].map(c => [c, C.n[c], C.valor_pct[c]]);
       $("#vbody").innerHTML = `<div class="flex flex-col gap-6"><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi("Faturado", brl0(d.total_valor), month || year ? `${month ? MONTHS[+month] + " de " : ""}${year || "todos os anos"}` : "todo o período", "blue")}
         ${TW.kpi("Quantidade", nf(d.total_qtd), "peças faturadas", "green")}${TW.kpi("SKUs", nf(d.skus), "códigos com faturamento", "slate")}${TW.kpi("Curva A", `${nf(C.n.A)} SKUs`, `${nf(C.valor_pct.A, 1)}% do faturamento`, "amber")}</div>
@@ -258,7 +258,7 @@ window.PSD_EXEC = ctx => {
       const fq = $("#fq"); fq.value = st.q; fq.oninput = debounce(e => { st.q = e.target.value.trim(); st.page = 1; load().then(() => { const x = $("#fq"); x.focus(); x.setSelectionRange(x.value.length, x.value.length); }); }, 350);
       $("#ff").onchange = e => { st.filtro = e.target.value; st.page = 1; load(); };
       if (pages > 1) { $("#fpv").disabled = d.page <= 1; $("#fnx").disabled = d.page >= pages; $("#fpv").onclick = () => { st.page--; load(); }; $("#fnx").onclick = () => { st.page++; load(); }; }
-      $("#fcsv").onclick = () => TW.csv("fob.csv", ["codigo", "descricao", "fob", "fob_ewin", "fob_zs", "fob_xgm", "melhor_fornecedor", "origem", "data", "cod_fornecedor"], d.rows.map(r => [r.perfect_code, r.description, r.fob, r.fob_ewin, r.fob_zs, r.fob_xgm, r.fob_fornecedor, r.fob_origem, r.fob_data, r.fob_cod_fornecedor]));
+      $("#fcsv").onclick = () => TW.csv(TW.nome("FOB (preços de compra)"), ["codigo", "descricao", "fob", "fob_ewin", "fob_zs", "fob_xgm", "melhor_fornecedor", "origem", "data", "cod_fornecedor"], d.rows.map(r => [r.perfect_code, r.description, r.fob, r.fob_ewin, r.fob_zs, r.fob_xgm, r.fob_fornecedor, r.fob_origem, r.fob_data, r.fob_cod_fornecedor]));
     };
     upload(); load();
   }

@@ -113,9 +113,9 @@ def _rd(kind):
 
 BUILD = {"desenvolvimento": _rd("DESENVOLVIMENTO"), "redesenvolvimento": _rd("REDESENVOLVIMENTO"), "produtos": _products, "pesquisa": _products, "aplicacoes": _apps, "comparacao": _compare, "pendencias": _pend, "fontes": _fontes, "amostras": _samples, "damping": _damping, "configuracoes": _backups}
 
-LABELS = {"desenvolvimento": "Em desenvolvimento", "redesenvolvimento": "Em redesenvolvimento", "produtos": "Produtos e códigos", "pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares",
+LABELS = {"desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvolvimento", "produtos": "Produtos e códigos", "pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares",
           "comparacao": "Comparação técnica", "pendencias": "Pendências de dados", "fontes": "Fontes e histórico", "amostras": "Compra de amostras", "damping": "Damping force",
-          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Vendas x estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados e traseiros", "envio": "Envio de amostra"}
+          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra"}      # nome da tela como no menu (nome do arquivo baixado)
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
           "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito"}
@@ -128,12 +128,10 @@ FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "kind": {"desenho"
           "flag": {"pend_validacao": "Pend. validação", "val_reprovada": "Validação reprovada", "pend_desenho_forn": "Pend. desenho forn.", "pend_compras": "Pend. compras"}}          # valor legível no nome do arquivo e na aba «Filtros aplicados»
 def _fv(k, v): return FVALUE.get(k, {}).get(v, v)
 
-def friendly_name(module, filtros=None):
-    """'Perfect Shock Data - Em desenvolvimento (Busca strada) - 28-10-2026 19h34.xlsx' — legível e ordenável por data dentro do nome."""
-    import re
-    parts = [f"{v}" if k in ("q", "code") else f"{FLABEL.get(k, k)} {_fv(k, v)}" for k, v in (filtros or {}).items() if v and k not in ("all", "page", "size", "sort", "dir", "ordem")]
-    flt = re.sub(r"[\\/:*?\"<>|\r\n]+", " ", ", ".join(parts)).strip()[:48].strip()
-    return f"Perfect Shock Data - {LABELS.get(module, module.title())}{f' ({flt})' if flt else ''} - {datetime.datetime.now():%d-%m-%Y %Hh%M}.xlsx"
+def friendly_name(module, filtros=None, ext="xlsx"):
+    """'PerfectAmortecedores - Produtos e códigos - 18-11.xlsx' (decisão Q16/Q26 da etapa 17): nome da tela como no menu e o dia.
+    Os filtros não entram no nome — ficam na aba «Filtros aplicados». Dois downloads no mesmo dia: o navegador acrescenta «(1)»."""
+    return f"PerfectAmortecedores - {LABELS.get(module, module.title())} - {datetime.datetime.now():%d-%m}.{ext}"
 
 def _desenhos(a):
     """Sem filtro: todos os arquivos dos dois tipos. Com filtro (tela Desenhos): os mesmos códigos da galeria; where=falta lista os itens sem arquivo."""

@@ -71,7 +71,7 @@
     $("#dm-ed").addEventListener("input", e => { sujo = true; if (e.target.closest("tr[data-t]")) recalc(); });
     $("#dm-nw").onclick = () => { if (descartar()) preencher({}); };
     $("#dm-sv").onclick = async () => { const points = linhas().map(tr => ({ table: tr.dataset.t, velocity: +tr.dataset.v, drawing: $(".dd", tr).value, found: $(".df", tr).value }));
-      try { const r = await post("/api/damping/tests", { id: cur, ...Object.fromEntries(new FormData(F)), points }); marcar(r.id); aviso("dm-msg", `✔ Ensaio #${r.id} salvo.`); lista(); } catch (er) { aviso("dm-msg", esc(er.message), true); } };
+      try { const r = await post("/api/damping/tests", { id: cur, ...Object.fromEntries(new FormData(F)), points }); marcar(r.id); aviso("dm-msg", "✔ Ensaio salvo."); lista(); } catch (er) { aviso("dm-msg", esc(er.message), true); } };
     const pc = F.perfect_code; let tb;
     pc.addEventListener("input", () => { clearTimeout(tb); tb = setTimeout(async () => { const v = pc.value.trim(); if (v.length < 3) return;
       try { const d = await J("/api/products?size=8&q=" + encodeURIComponent(v)); $("#dm-dl").innerHTML = d.rows.map(r => `<option value="${esc(r.perfect_code)}">${esc(r.description || "")}</option>`).join("");
@@ -87,14 +87,14 @@
         + kpi("Reprovados", nf(c.DISAPPROVED), "ao menos um ponto fora da faixa", c.DISAPPROVED ? "red" : "slate") + kpi("Incompletos", nf(c.INCOMPLETO), "falta FOUND ou DRAWING em algum ponto", c.INCOMPLETO ? "amber" : "slate");
       $("#dm-q").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` + [["Aprovados", "APPROVED"], ["Reprovados", "DISAPPROVED"], ["Incompletos", "INCOMPLETO"]].map(([l, v]) => chip(`data-r="${v}"`, l, r === v, c[v])).join(""); };
     const codigo = t => t.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${t.product_id}">${esc(t.perfect_code)}</a>` : esc(t.perfect_code || "–");
-    const acoes = t => `<span class="inline-flex gap-1"><button type="button" class="${botao} py-1" data-op="${t.id}">Abrir</button><a class="${botao} py-1" href="/api/damping/tests/${t.id}/export.xlsx">Excel</a><button type="button" class="${botao} py-1" data-rm="${t.id}">Excluir</button></span>`;
+    const acoes = t => `<span class="inline-flex gap-1"><button type="button" class="${botao} py-1" data-op="${t.id}">Abrir</button><a class="${botao} py-1" href="/api/damping/tests/${t.id}/export.xlsx">Excel</a><button type="button" class="${botao} py-1" data-rm="${t.id}" data-n="${esc([t.perfect_code, t.label, dmy(t.test_date)].filter(x => x && x !== "–").join(" · "))}">Excluir</button></span>`;
     const lista = async () => { try {
       const f = FL.get(), d = await J("/api/damping/tests?" + qs(f)); cnt = d.counts; topo();
       $("#dm-xl").href = "/api/export/damping.xlsx?" + new URLSearchParams(f);
-      $("#dm-meta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> ensaio(s)${Object.keys(f).length ? ` · ${Object.keys(f).length} filtro(s) ativo(s)` : ""}${FL.restaurado ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}`;
+      $("#dm-meta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> ensaio(s)${Object.keys(f).length ? ` · ${Object.keys(f).length} filtro(s) ativo(s)` : ""}`;
       $("#dm-l").innerHTML = d.rows.length || Object.keys(f).length
-        ? TW.table([{ h: "#", r: true }, { h: "Código" }, { h: "Identificação", nw: false }, { h: "Data" }, { h: "Pontos medidos", r: true }, { h: "Resultado" }, { h: "" }],
-            d.rows.map(t => [t.id, codigo(t), esc(t.label || ""), dmy(t.test_date), `${nf(t.points_filled)} / ${nf(t.points_total)}`, selo(t.overall), acoes(t)]), { h: "max-h-[55vh]" })
+        ? TW.table([{ h: "Código" }, { h: "Identificação", nw: false }, { h: "Data" }, { h: "Pontos medidos", r: true }, { h: "Resultado" }, { h: "" }],
+            d.rows.map(t => [codigo(t), esc(t.label || ""), dmy(t.test_date), `${nf(t.points_filled)} / ${nf(t.points_total)}`, selo(t.overall), acoes(t)]), { h: "max-h-[55vh]" })
         : TW.empty("Nenhum ensaio salvo ainda. Preencha o formulário acima e clique em <b>Salvar ensaio</b>.");
     } catch (e) { $("#dm-l").innerHTML = notice(esc(e.message), "red"); } };
     $("#dm-busca").value = FL.get().q || "";
@@ -103,7 +103,7 @@
     $("#dm-q").onclick = e => { const b = e.target.closest("[data-r]"); if (b) { FL.toggle("res", b.dataset.r); lista(); } };
     $("#dm-l").onclick = async e => { const o = e.target.closest("[data-op]"), d = e.target.closest("[data-rm]");
       if (o && descartar()) { try { preencher(await J("/api/damping/tests/" + o.dataset.op)); $("#dm-ed").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (er) { fail(er); } }
-      if (d && confirm(`Excluir o ensaio #${d.dataset.rm}?`)) { try { await J("/api/damping/tests/" + d.dataset.rm, { method: "DELETE" }); if (String(cur) === d.dataset.rm) preencher({}); lista(); } catch (er) { fail(er); } } };
+      if (d && confirm(`Excluir o ensaio ${d.dataset.n || ""}?`)) { try { await J("/api/damping/tests/" + d.dataset.rm, { method: "DELETE" }); if (String(cur) === d.dataset.rm) preencher({}); lista(); } catch (er) { fail(er); } } };
     preencher({}); lista();
 
     function tabela(n) {

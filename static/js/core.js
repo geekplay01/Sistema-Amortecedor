@@ -29,13 +29,13 @@
       : `<div class="flex items-center justify-between rounded-lg border px-3 py-2"><span>${esc(x.fornecedor)}</span><span class="tabular-nums">${usd(x.preco)}</span></div>`).join("");
     return `<details class="sec" open><summary>Cotações FOB <span class="badge">${q.length}</span></summary><div class="flex flex-col gap-2 py-2">${rows}</div></details>`;
   };
-  // ficha: campos-chave do catálogo em destaque (Sistema, Família, Ø haste, Lançamento, posição) + grade de dados em Tailwind (etapa 16)
+  // ficha: campos-chave do catálogo em destaque (Sistema, Família, Ø haste, Lançamento; posição e ID só no Excel) + grade de dados em Tailwind (etapa 16)
   const kvT = (k, v) => `<div class="rounded-xl border border-line bg-card px-3 py-2"><div class="text-xs text-mute">${k}</div><div class="mt-0.5 break-words text-sm font-semibold text-ink">${v == null || v === "" ? '<span class="text-mute">—</span>' : esc(v)}</div></div>`;
   const fichaTopo = (p, d) => {
     const cx = (k, v, cor = "border-line bg-card") => `<div class="rounded-xl border ${cor} px-4 py-2.5"><div class="text-xs font-semibold uppercase tracking-wide text-mute">${k}</div><div class="mt-1 text-base font-bold text-ink">${v == null || v === "" ? '<span class="font-normal text-mute">—</span>' : esc(v)}</div></div>`;
     const sis = p.system_type === "gas" ? "border-blue-500/40 bg-blue-500/10" : p.system_type === "oleo" ? "border-amber-500/40 bg-amber-500/10" : undefined;
-    return `<div class="mb-3 grid grid-cols-2 gap-2 md:grid-cols-5">${cx("Sistema", SYS[p.system_type], sis)}${cx("Família", p.family ? p.family.charAt(0) + p.family.slice(1).toLowerCase() : null)}${cx("Ø haste (mm)", d.rod_diameter_mm)}
-      ${cx("Lançamento", p.is_launch === "S" ? "Sim" : p.is_launch === "N" ? "Não" : null, p.is_launch === "S" ? "border-emerald-500/40 bg-emerald-500/10" : undefined)}${cx("Posição no catálogo", p.catalog_position)}</div>`;
+    return `<div class="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">${cx("Sistema", SYS[p.system_type], sis)}${cx("Família", p.family ? p.family.charAt(0) + p.family.slice(1).toLowerCase() : null)}${cx("Ø haste (mm)", d.rod_diameter_mm)}
+      ${cx("Lançamento", p.is_launch === "S" ? "Sim" : p.is_launch === "N" ? "Não" : null, p.is_launch === "S" ? "border-emerald-500/40 bg-emerald-500/10" : undefined)}</div>`;
   };
   const sec = (t, n, h) => `<details class="sec" ${n ? "open" : ""}><summary>${t} <span class="badge">${n}</span></summary>${n ? h : '<p class="muted">Nenhum dado nas bases importadas.</p>'}</details>`;
   async function openFicha(id) {
@@ -96,8 +96,8 @@
   }
   const inp = (n, ph, w = "") => `<input name="${n}" placeholder="${ph}" ${w}>`;
   const sel = (n, lab, opts) => `<select name="${n}"><option value="">${lab}</option>${opts.map(o => `<option value="${o[0]}">${o[1]}</option>`).join("")}</select>`;
-  const prodRow = p => `<tr><td>${p.catalog_position ?? "–"}</td><td>${lnk(p.id, p.perfect_code)}</td><td>${esc(p.description || "")}${(p.via || []).length ? `<div class="via">${p.via.map(v => `<span class="xchip ${v.type === "concorrente" ? "" : "more"}" title="Código ${esc(v.type)} que casou com a busca">${esc(v.brand || v.type)} ${esc(v.code)}</span>`).join(" ")}</div>` : ""}</td><td>${SYS[p.system_type] || "–"}</td><td>${num(p.lmin_mm)}</td><td>${num(p.lmax_mm)}</td><td>${p.fob != null ? `${p.fob}${p.fob_supplier ? ` <small class="muted">${esc(p.fob_supplier)}</small>` : ""}` : "–"}</td><td>${p.apps}</td><td>${p.ncodes}</td><td>${p.pend ? `<span class="badge warn">${p.pend}</span>` : ""}</td>${dwCol(p.perfect_code)}</tr>`;
-  const prodHead = ["Pos. catálogo", "Código PERFECT", "Descrição", "Sistema", "Lmin", "Lmax", "FOB (US$)", "Aplic.", "Códigos", "Pend.", "Desenho"];
+  const prodRow = p => `<tr><td>${lnk(p.id, p.perfect_code)}</td><td>${esc(p.description || "")}${(p.via || []).length ? `<div class="via">${p.via.map(v => `<span class="xchip ${v.type === "concorrente" ? "" : "more"}" title="Código ${esc(v.type)} que casou com a busca">${esc(v.brand || v.type)} ${esc(v.code)}</span>`).join(" ")}</div>` : ""}</td><td>${SYS[p.system_type] || "–"}</td><td>${num(p.lmin_mm)}</td><td>${num(p.lmax_mm)}</td><td>${p.fob != null ? `${p.fob}${p.fob_supplier ? ` <small class="muted">${esc(p.fob_supplier)}</small>` : ""}` : "–"}</td><td>${p.apps}</td><td>${p.ncodes}</td><td>${p.pend ? `<span class="badge warn">${p.pend}</span>` : ""}</td>${dwCol(p.perfect_code)}</tr>`;
+  const prodHead = ["Código PERFECT", "Descrição", "Sistema", "Lmin", "Lmax", "FOB (US$)", "Aplic.", "Códigos", "Pend.", "Desenho"];
   const fillSel = (el, items) => { if (!el) return; const keep = el.options[0]; el.innerHTML = ""; el.appendChild(keep); items.forEach(([v, l]) => el.add(new Option(l ?? v, v))); };
   const initLists = async f => { const L = await J("/api/filters"); fillSel(f.elements.make, L.makes.map(x => [x])); fillSel(f.elements.model, L.models.map(x => [x])); fillSel(f.elements.year, L.years.map(y => [String(y)]));
     f.elements.make.addEventListener("change", async () => { const m = f.elements.make.value, cur = f.elements.model.value; const L2 = await J("/api/filters" + (m ? "?make=" + encodeURIComponent(m) : "")); fillSel(f.elements.model, L2.models.map(x => [x])); if (L2.models.includes(cur)) f.elements.model.value = cur; }); };

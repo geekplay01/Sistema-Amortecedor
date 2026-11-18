@@ -207,7 +207,7 @@ def api_src_xlsx(sid):
     wb = exporter.Workbook(); wb.remove(wb.active)
     exporter._sheet(wb, "Dados", cols, [[json.loads(r["payload"]).get(c, "") for c in cols] for r in queries.q("SELECT payload FROM generic_rows WHERE source_id=? ORDER BY row_no,id", (sid,))])
     base = re.sub(r"\.(xlsx?|csv)", "", s["name"], flags=re.I)
-    return send_file(exporter._finish(wb, {"Fonte": s["name"]}), as_attachment=True, download_name=exporter.friendly_name("fontes", {"q": base}).replace("Fontes e histórico", "Dados avulsos"), mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return send_file(exporter._finish(wb, {"Fonte": s["name"]}), as_attachment=True, download_name=exporter.friendly_name("fontes").replace("Fontes e histórico", "Dados avulsos"), mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # ---- Lados e Envio de amostra ----
 @app.get("/api/sides")
@@ -432,7 +432,7 @@ def api_dt_xlsx(i):
     from flask import send_file
     if not damping.get_test(i): abort(404)
     t = damping.get_test(i); tt = t.get("test", t) if isinstance(t, dict) else {}
-    nm = exporter.friendly_name("damping", {"code": tt.get("perfect_code") or tt.get("label")}).replace(".xlsx", f" - ensaio {i}.xlsx")
+    nm = exporter.friendly_name("damping").replace(".xlsx", f" - {tt.get('perfect_code') or tt.get('label') or f'ensaio {i}'}.xlsx")
     return send_file(damping.test_workbook(i), as_attachment=True, download_name=nm, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 @app.get("/api/export/<name>.xlsx")
 def api_export(name):

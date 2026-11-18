@@ -46,7 +46,7 @@
     };
     const tabela = () => {
       const s = F.get(), cur = marca(), n = ["q", "scope", "flag"].filter(k => s[k]).length, x = { ...s }; delete x.b;
-      $("#bm").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns) ${esc(nome(cur))}${d.fora_base ? ` · inclui <b class="text-amber-700">${nf(d.fora_base)}</b> PN Ford fora da base (não contam no cartão)` : ""}${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
+      $("#bm").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns) ${esc(nome(cur))}${d.fora_base ? ` · inclui <b class="text-amber-700">${nf(d.fora_base)}</b> PN Ford fora da base (não contam no cartão)` : ""}${n ? ` · ${n} filtro(s) ativo(s)` : ""}</span>
         <a class="${primario}" href="/api/export/brands.xlsx?${qs({ ...x, brand: cur })}">⬇ Baixar Excel</a>`;
       $("#bt").innerHTML = TW.table([{ h: "Código" }, { h: "Código PERFECT" }, { h: "Descrição" }, { h: "Veículo / aplicação" }, { h: "Onde está" }, { h: "Controle de status", nw: false }, { h: "Desenho" }, { h: "Amostras", r: true }],
         d.rows.map(i => [

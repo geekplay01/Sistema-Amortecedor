@@ -2,7 +2,7 @@
    · familia  — catálogo × certificados Inmetro: o CatalogoAMD prevalece; lista os produtos com algum certificado de família diferente (anomalias.familia).
    · ean      — conflitos abertos de EAN (catálogo × planilha): «Usar o da planilha» grava o importado; «Manter o do catálogo» resolve sem mudar.
    · sugestoes — sugestões de equivalência (PSD.equivalencias, em telas/catalogo.js).
-   Busca na URL e lembrada (PSDTW.filtros); trocar de aba volta aos filtros guardados daquela aba. O Excel traz Família e EAN. */
+   Busca na URL (PSDTW.filtros); trocar de aba abre a aba nova sem filtros. O Excel traz Família e EAN. */
 (function () {
   const { $, esc, J, post, qs, root, fail } = PSD;
   const TW = window.PSDTW, { nf, badge, notice, empty } = TW;
@@ -12,18 +12,15 @@
   const ABAS = [["familia", "Família: catálogo × Inmetro"], ["ean", "EAN divergente"], ["sugestoes", "Sugestões de equivalência"]];
   const aba = (t, label, on, n) => `<a href="/anomalias?tab=${t}" data-aba="${t}" class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline ${on ? "border-blue-500 text-blue-600" : "border-transparent text-mute hover:text-ink"}">${label}${n != null ? ` · ${nf(n)}` : ""}</a>`;
   const ficha = (id, code) => `<a href="#" class="font-semibold text-blue-600" data-ficha="${id}">${esc(code)}</a>`;
-  const guardado = k => { try { return JSON.parse(localStorage.getItem("psd-filtros-" + k) || "{}"); } catch (e) { return {}; } };
-
   function anomalias() {
-    let ultima = ""; try { ultima = localStorage.getItem("psd-anomalias-aba") || ""; } catch (e) { }
-    const usp = new URLSearchParams(location.search), pedida = usp.get("tab") || ultima, tab = ["familia", "ean", "sugestoes"].includes(pedida) ? pedida : "familia";
-    try { localStorage.setItem("psd-anomalias-aba", tab); } catch (e) { }
+    const pedida = new URLSearchParams(location.search).get("tab"), tab = ["familia", "ean", "sugestoes"].includes(pedida) ? pedida : "familia";
+    try { localStorage.removeItem("psd-anomalias-aba"); } catch (e) { }          // a versão anterior lembrava a aba
     root.innerHTML = `<div class="flex flex-col gap-5">
       <nav id="an" class="flex flex-wrap gap-1 border-b border-line">${ABAS.map(([t, l]) => aba(t, l, t === tab)).join("")}</nav><div id="ab" class="flex flex-col gap-5"></div></div>`;
     const abas = c => { $("#an").innerHTML = ABAS.map(([t, l]) => aba(t, l, t === tab, c[t])).join(""); };
-    // trocar de aba: volta aos filtros guardados daquela aba (sugestões têm os seus; família/EAN dividem a busca)
-    $("#an").addEventListener("click", e => { const a = e.target.closest("[data-aba]"); if (!a) return; e.preventDefault(); const t = a.dataset.aba;
-      history.replaceState(null, "", "/anomalias?" + qs({ ...guardado(t === "sugestoes" ? "equivalencias" : "anomalias"), tab: t })); anomalias(); });
+    // trocar de aba: a aba nova abre sem filtros (etapa 17 · Q8)
+    $("#an").addEventListener("click", e => { const a = e.target.closest("[data-aba]"); if (!a) return; e.preventDefault();
+      history.replaceState(null, "", "/anomalias?" + qs({ tab: a.dataset.aba })); anomalias(); });
     J("/api/anomalies").then(r => abas(r.counts)).catch(fail);
     if (tab === "sugestoes") return PSD.equivalencias($("#ab"));
 

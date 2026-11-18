@@ -50,7 +50,7 @@
       }
     };
     const metaLinha = (total, rotulo, xlsx) => { const n = Object.keys(filtrosDa()).length;
-      $("#ameta").innerHTML = `<span><b class="text-ink">${nf(total)}</b> ${rotulo}${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
+      $("#ameta").innerHTML = `<span><b class="text-ink">${nf(total)}</b> ${rotulo}${n ? ` · ${n} filtro(s) ativo(s)` : ""}</span>
         <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/${xlsx}.xlsx?${new URLSearchParams(filtrosDa())}">⬇ Baixar Excel</a>`; };
 
     // ---------- Sugestões de compra ----------

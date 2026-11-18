@@ -61,7 +61,7 @@
       $("#rt").innerHTML = `<div class="rounded-2xl border border-line bg-card px-5 py-8 text-sm text-mute">Carregando…</div>`;
       try {
         const d = await J(`/api/rd/${k}?` + qs), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(s).filter(x => x !== "ordem").length;
-        $("#rmeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
+        $("#rmeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}</span>
           <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/${slug}.xlsx?${new URLSearchParams(s)}">⬇ Baixar Excel</a>`;
         const cols = [{ h: '<input type="checkbox" class="rdall" title="Selecionar a página">' }, { h: "Código" }, { h: "Curtidas" }, { h: "Status" }, { h: "Controle de status", nw: false }, { h: "Descrição" },
           { h: "Montadora(s)" }, { h: "Veículo(s)" }, { h: "Fornecedor" }, { h: "Amostra" }, { h: "Catálogo" }, { h: "Desenho" }];

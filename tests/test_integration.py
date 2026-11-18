@@ -570,6 +570,23 @@ class Fluxo(unittest.TestCase):
         if o.get("available") and not o.get("sem_data"): self.assertIn("fechado", o["resumo"]); self.assertIn("parcial", o["resumo"])
         self.assertEqual(len(d["meses"]), 6); self.assertEqual(C.get("/api/estoque?falta=1").json["total"], d["counts"]["falta"])      # projeção (A1)
 
+    def test_30_nome_do_arquivo_e_filtros_limpos(self):
+        """Etapa 17 · Q8/Q16/Q26: arquivo «PerfectAmortecedores - <tela do menu> - dd-mm.xlsx», sem filtros no nome (eles ficam na aba «Filtros aplicados»);
+        nenhuma tela guarda filtros da última visita; posição no catálogo fora da interface."""
+        import io, re, glob, datetime
+        from openpyxl import load_workbook
+        dia = datetime.date.today().strftime("%d-%m")
+        for rota, tela in (("/api/export/produtos.xlsx?system=gas", "Produtos e códigos"), ("/api/export/desenvolvimento.xlsx?q=AMD", "Desenvolvimento"), ("/api/export/estoque.xlsx", "Estoque")):
+            r = C.get(rota); self.assertEqual(r.status_code, 200, rota)
+            cd = r.headers["Content-Disposition"]; m = re.search(r"filename\*=UTF-8''([^;]+)", cd) or re.search(r"filename=\"?([^\";]+)", cd); nome = m.group(1)
+            from urllib.parse import unquote
+            self.assertEqual(unquote(nome), f"PerfectAmortecedores - {tela} - {dia}.xlsx", rota)
+        wb = load_workbook(io.BytesIO(C.get("/api/export/produtos.xlsx?system=gas").data)); self.assertIn("FORCE GAS", str([c.value for c in wb["Filtros aplicados"]["B"]]))
+        js = {p: open(p, encoding="utf-8").read() for p in glob.glob(os.path.join(ROOT, "static", "js", "**", "*.js"), recursive=True)}
+        for p, s in js.items():
+            for x in ("filtros da última visita", "catalog_position", "?limpo=1"): self.assertTrue(x not in s, f"{x} em {p}")
+        self.assertNotIn("localStorage.setItem", js[os.path.join(ROOT, "static", "js", "tw.js")])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

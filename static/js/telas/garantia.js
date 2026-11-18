@@ -58,7 +58,7 @@
         + linha("Procedência", Object.entries(c.procedencia).map(([t, n]) => chip(`data-k="procedencia" data-v="${esc(t)}" data-tg`, (PROC[t] || [t])[0], s.procedencia === t, n)).join(""))
         + linha("Unidade", Object.entries(c.unidade).map(([t, n]) => chip(`data-k="unidade" data-v="${esc(t)}" data-tg`, esc(nomeUni(t)), s.unidade === t, n)).join(""));
       const n = Object.keys(s).filter(x => s[x]).length;
-      $("#gm").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns) de ocorrência${s.defeito ? ` · defeito <b class="text-ink">${esc(s.defeito)}</b>` : ""}${n ? ` · ${n} filtro(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}
+      $("#gm").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns) de ocorrência${s.defeito ? ` · defeito <b class="text-ink">${esc(s.defeito)}</b>` : ""}${n ? ` · ${n} filtro(s)` : ""}
         · planilha de ${TW.dmy(d.meta.de)} a ${TW.dmy(d.meta.ate)}</span><a class="${primario}" href="/api/export/garantia.xlsx?${qs(s)}">⬇ Baixar Excel</a>`;
       const pm = d.por_mes;
       $("#gc").innerHTML = card("Peças por mês", pm.length ? '<div id="gcm" class="chart"></div>' : empty("Sem dados no período."));

@@ -1,6 +1,6 @@
 /* Tela · Dashboard — visual Tailwind (etapa 16 · B).
    Números do topo, barras do funil (status) e pendências por controle são links: abrem Produtos / DES / R-D já filtrados, com o mesmo número
-   (app.api_dashboard · totals, funnel, flags; test_24). «?limpo=1» abre a lista sem os filtros da última visita.
+   (app.api_dashboard · totals, funnel, flags; test_24).
    Fonte: /api/dashboard (metas, funil, controles, vendas e estoque do servidor, sistema FORCE GAS × FORCE OIL). */
 (function () {
   const { $, esc, J, root, fail } = PSD;
@@ -37,9 +37,9 @@
 
     const topo = () => {
       const s = d.sales;
-      $("#dk").innerHTML = link("/produtos?limpo=1", kpi("Produtos no catálogo", nf(d.stats.products), "abrir Produtos", "blue"), "Abrir a lista de Produtos sem filtros")
-        + link("/desenvolvimento?limpo=1", kpi(DES, nf(d.totals[DES]), "itens distintos no servidor", "blue"), "Abrir Desenvolvimento sem filtros")
-        + link("/redesenvolvimento?limpo=1", kpi(RD, nf(d.totals[RD]), "itens distintos no servidor", "green"), "Abrir Redesenvolvimento sem filtros")
+      $("#dk").innerHTML = link("/produtos", kpi("Produtos no catálogo", nf(d.stats.products), "abrir Produtos", "blue"), "Abrir a lista de Produtos sem filtros")
+        + link("/desenvolvimento", kpi(DES, nf(d.totals[DES]), "itens distintos no servidor", "blue"), "Abrir Desenvolvimento sem filtros")
+        + link("/redesenvolvimento", kpi(RD, nf(d.totals[RD]), "itens distintos no servidor", "green"), "Abrir Redesenvolvimento sem filtros")
         + kpi("Vendas · 12 meses", s.available ? brl0(s.total_value) : "–", s.available ? `${nf(s.total_qty)} peças${s.last_date ? " · até " + dmy(s.last_date) : ""}` : "aguardando o servidor", "slate");
     };
 
@@ -55,7 +55,7 @@
       const g = d.goals.goals, tr = d.tracking, vb = d.goals.basis === "validacao", u = esc(d.goals.validacoes?.filtro?.USER_VALID || "ITALOC"), y = d.goals.year;
       const funil = k => card(`Funil · ${k}`, d.funnel[k].length
         ? `<p class="m-0 mb-3 text-sm text-mute">Itens distintos por status, do início ao recebimento. Clique num status para abrir a lista.</p>` + barras(d.funnel[k].map(r => ({ l: r.status, n: r.n, href: `/${SLUG[k]}?status=${encodeURIComponent(r.status)}` })), COR[k])
-        : vazio("Sem itens ainda. Sincronize com o servidor."), `<a class="${botao}" href="/${SLUG[k]}?limpo=1">Abrir lista</a>`);
+        : vazio("Sem itens ainda. Sincronize com o servidor."), `<a class="${botao}" href="/${SLUG[k]}">Abrir lista</a>`);
       const est = d.stock, st = (n, l) => `<div class="rounded-xl bg-slate-500/10 px-3 py-3 text-center"><div class="text-2xl font-bold tabular-nums text-ink">${n}</div><div class="text-xs text-mute">${l}</div></div>`;
       const ORD = ["gas", "oleo", "nd"], sys = [...d.system].sort((a, b) => ORD.indexOf(a.s) - ORD.indexOf(b.s)), LAB ={ gas: "FORCE GAS", oleo: "FORCE OIL", nd: "Sem dado" };
       $("#dg").innerHTML = [

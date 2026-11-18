@@ -18,7 +18,7 @@
   const pager = (pg, pages) => { const b = (p, dis, l) => `<button type="button" data-p="${p}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${dis ? "disabled" : ""}>${l}</button>`;
     return pages > 1 ? `${b(pg - 1, pg < 2, "‹")} Página ${pg} de ${pages} ${b(pg + 1, pg >= pages, "›")}` : ""; };
   const metaLinha = (total, nome, F, pg, xlsx) => { const n = Object.keys(F.get()).filter(k => k !== "tab").length;
-    return `<span><b class="text-ink">${nf(total)}</b> ${nome}${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>${xlsx ? `<a class="${primario}" href="${xlsx}">⬇ Baixar Excel</a>` : ""}`; };
+    return `<span><b class="text-ink">${nf(total)}</b> ${nome}${n ? ` · ${n} filtro(s) ativo(s)` : ""}</span>${xlsx ? `<a class="${primario}" href="${xlsx}">⬇ Baixar Excel</a>` : ""}`; };
 
   // ================= Aplicações =================
   const EIXO = { dianteiro: "Dianteiro", traseiro: "Traseiro" }, LADO = { direito: "Direito", esquerdo: "Esquerdo", ambos: "Ambos" };
@@ -47,10 +47,10 @@
     const carregar = async () => { try {
       const s = F.get(); d = await J("/api/applications?" + qs({ ...s, page: pg })); topo();
       $("#am").innerHTML = metaLinha(d.total, "aplicação(ões)", F, pg, "/api/export/aplicacoes.xlsx?" + new URLSearchParams(s));
-      $("#at").innerHTML = TW.table([{ h: "Montadora" }, { h: "Modelo" }, { h: "Aplicação", nw: false }, { h: "Anos" }, { h: "Eixo" }, { h: "Lado" }, { h: "Código PERFECT" }, { h: "Pos.", r: true }],
+      $("#at").innerHTML = TW.table([{ h: "Montadora" }, { h: "Modelo" }, { h: "Aplicação", nw: false }, { h: "Anos" }, { h: "Eixo" }, { h: "Lado" }, { h: "Código PERFECT" }],
         d.rows.map(a => [esc(a.make || "") || meio, `${esc(a.model || "") || meio}${a.version ? ` <span class="text-xs text-mute">${esc(a.version)}</span>` : ""}`, `<span class="block min-w-[14rem] max-w-[30rem]">${esc(a.application_text || "")}</span>`,
           yr(a), a.axle ? esc(EIXO[a.axle] || a.axle) : badge("não informado", "amber"), a.side ? esc(LADO[a.side] || a.side) : badge("não informado", "amber"),
-          `${ficha(a.product_id, a.perfect_code)}<span class="block max-w-[16rem] truncate text-xs text-mute" title="${esc(a.description || "")}">${esc(a.description || "")}</span>`, a.catalog_position ?? meio]), { h: "max-h-[65vh]" });
+          `${ficha(a.product_id, a.perfect_code)}<span class="block max-w-[16rem] truncate text-xs text-mute" title="${esc(a.description || "")}">${esc(a.description || "")}</span>`]), { h: "max-h-[65vh]" });
       $("#ap").innerHTML = pager(pg, Math.max(1, Math.ceil(d.total / d.size)));
     } catch (e) { $("#at").innerHTML = notice(esc(e.message), "red"); } };
     const aplicar = (patch, logo) => { if (patch) F.set(patch); pg = 1; clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 300); };
@@ -66,7 +66,7 @@
   }
 
   // ================= Comparação =================
-  const LINHAS = [["Posição no catálogo", p => p.catalog_position], ["Descrição", p => p.description], ["Grupo", p => p.catalog_group], ["Família", p => p.family], ["Sistema", p => SYS[p.system_type]],
+  const LINHAS = [["Descrição", p => p.description], ["Grupo", p => p.catalog_group], ["Família", p => p.family], ["Sistema", p => SYS[p.system_type]],
     ["Lmin (mm)", p => p.dimensions?.lmin_mm], ["Lmax (mm)", p => p.dimensions?.lmax_mm], ["Curso (mm)", p => p.dimensions?.stroke_mm], ["Ø haste (mm)", p => p.dimensions?.rod_diameter_mm], ["Corpo (mm)", p => p.dimensions?.body_length_mm], ["Ø tubo (mm)", p => p.dimensions?.tube_diameter_mm],
     ["Fixação superior", p => p.dimensions?.upper_mount], ["Fixação inferior", p => p.dimensions?.lower_mount], ["Peso (kg)", p => p.weight_kg], ["EAN", p => p.ean], ["Caixa", p => [p.package_code, p.box?.raw_dims].filter(Boolean).join(" · ")],
     ["Códigos OEM", p => p.codes.filter(c => c.code_type === "oem").map(c => c.code).join(", ")], ["Códigos de fornecedor", p => [...new Set(p.codes.filter(c => c.code_type === "fornecedor").map(c => c.code))].join(", ")],

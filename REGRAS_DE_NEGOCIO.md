@@ -109,3 +109,8 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - «Sem desenho» = produto do catálogo sem nenhum desenho técnico; «Sem projeto» = código **DESENVOLVIMENTO em andamento** fora do catálogo (`rd_projects.product_id` vazio, no universo amortecedor/não bloqueado, nenhuma aplicação em ITEM RECEBIDO, sem cancelado) sem Projeto PERFECT (desde 17/11/2026; antes contava DES e R-D em qualquer status). O número do topo e a lista `where=falta` usam o mesmo conjunto (`drawings._missing`).
 - Damping force (`damping.py · calc/overall`): faixa = DRAWING×(1±tol); se DRAWING < limite (1.000 N na regra atual), mín +ajuste e máx −ajuste (30 N). Ponto aprovado se mín ≤ FOUND ≤ máx. Ensaio: **Reprovado** se algum ponto reprovou; **Aprovado** só se todo ponto com DRAWING foi aprovado; senão **Incompleto**. Os atalhos da tela e o Excel filtram por esse resultado geral (`damping.listing`).
 - Equivalências: só sugestões por similaridade; nada é aprovado automaticamente. Diferença crítica (ex.: lados opostos) deixa a confiança **Baixa** mesmo com pontuação alta. Atalhos de status, confiança e «sem diferenças» contam ignorando o próprio filtro (`equivalence.listing`).
+
+## 10. Interface (etapa 17)
+- Filtros **[mudou em 18/11/2026]**: ficam só na URL (`PSDTW.filtros` em `static/js/tw.js`). Tela aberta pelo menu vem limpa; links entre telas e o Voltar do navegador abrem filtrados. Nada é lembrado da visita anterior.
+- Posição no catálogo e IDs não aparecem na interface; seguem no Excel. A ordem padrão de Produtos continua a do catálogo.
+- Arquivos baixados: «PerfectAmortecedores - <nome da tela como no menu> - dd-mm.xlsx» (`exporter.friendly_name`; CSV: `PSDTW.nome`). Os filtros não entram no nome: estão na aba «Filtros aplicados».

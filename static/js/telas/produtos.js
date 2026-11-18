@@ -18,7 +18,7 @@
   function lista(slug, pesquisa) {
     const F = TW.filtros(slug, pesquisa ? PESQ : BASE); let pg = 1, fc = null, L = { makes: [], models: [], years: [] }, timer;
     root.innerHTML = `<div class="flex flex-col gap-5">
-      <p class="m-0 text-sm text-mute">${pesquisa ? "<b>Digite o código PERFECT, OEM ou de um CONCORRENTE</b> (com ou sem ponto/hífen: 16.470 = 16470) ou uma aplicação (ex.: strada 2012 dianteiro). Procura no catálogo e nos itens em DESENVOLVIMENTO e REDESENVOLVIMENTO." : "Ordenado pela posição no catálogo (ordem da planilha CatalogoAMD, que prevalece). A busca aceita código PERFECT, OEM ou de concorrente — a linha mostra qual referência casou."}</p>
+      <p class="m-0 text-sm text-mute">${pesquisa ? "<b>Digite o código PERFECT, OEM ou de um CONCORRENTE</b> (com ou sem ponto/hífen: 16.470 = 16470) ou uma aplicação (ex.: strada 2012 dianteiro). Procura no catálogo e nos itens em DESENVOLVIMENTO e REDESENVOLVIMENTO." : "Na ordem do catálogo (planilha CatalogoAMD, que prevalece). A busca aceita código PERFECT, OEM ou de concorrente — a linha mostra qual referência casou."}</p>
       ${pesquisa ? "" : '<div id="pk" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>'}
       <div id="pq" class="flex flex-wrap items-center gap-2"></div>
       <form id="pf" class="flex flex-wrap items-center gap-2" autocomplete="off"></form>
@@ -59,11 +59,10 @@
       try {
         if (!soRd) {
           const d = await J("/api/products?" + qs({ ...s, page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(s).length;
-          $("#pmeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> produto(s)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
+          $("#pmeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> produto(s)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}</span>
             <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/${slug}.xlsx?${new URLSearchParams(s)}">⬇ Baixar Excel</a>`;
-          $("#pt").innerHTML = TW.table([{ h: "Pos.", r: true }, { h: "Código PERFECT" }, { h: "Descrição", nw: false }, { h: "Família" }, { h: "Sistema" }, { h: "Ø haste", r: true }, { h: "Lmin", r: true }, { h: "Lmax", r: true },
-            { h: "FOB (US$)", r: true }, { h: "Aplic.", r: true }, { h: "Códigos", r: true }, { h: "Pend.", r: true }, { h: "Desenho" }], d.rows.map(r => [r.catalog_position ?? '<span class="text-mute">–</span>',
-            `<a href="#" class="font-semibold text-blue-600" data-ficha="${r.id}">${esc(r.perfect_code)}</a>${r.is_launch === "S" ? " " + badge("lançamento", "green") : ""}`,
+          $("#pt").innerHTML = TW.table([{ h: "Código PERFECT" }, { h: "Descrição", nw: false }, { h: "Família" }, { h: "Sistema" }, { h: "Ø haste", r: true }, { h: "Lmin", r: true }, { h: "Lmax", r: true },
+            { h: "FOB (US$)", r: true }, { h: "Aplic.", r: true }, { h: "Códigos", r: true }, { h: "Pend.", r: true }, { h: "Desenho" }], d.rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-ficha="${r.id}">${esc(r.perfect_code)}</a>${r.is_launch === "S" ? " " + badge("lançamento", "green") : ""}`,
             `<div class="min-w-[16rem] max-w-[26rem]">${esc(r.description || "")}${via(r)}</div>`, esc(familia(r.family)) || '<span class="text-mute">–</span>', sistema(r.system_type), mm(r.rod_diameter_mm), mm(r.lmin_mm), mm(r.lmax_mm),
             r.fob != null ? `${nf(r.fob, 2)}${r.fob_supplier ? ` <span class="text-xs text-mute">${esc(r.fob_supplier)}</span>` : ""}` : '<span class="text-mute">–</span>', nf(r.apps), nf(r.ncodes), r.pend ? badge(r.pend, "amber") : "",
             `<span data-dw="${esc(r.perfect_code)}"></span>`]), { h: "max-h-[65vh]" });

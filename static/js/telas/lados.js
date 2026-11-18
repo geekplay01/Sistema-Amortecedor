@@ -78,7 +78,7 @@
         const d = await J("/api/sides?" + qs({ ...f, page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(f).filter(k => k !== "escopo").length;
         const novo = !st || JSON.stringify(st) !== JSON.stringify(d.stats); LV = d.levels || {}; st = d.stats;
         desenharTopo(); if (novo) desenharFiltros();
-        $("#lmeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
+        $("#lmeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}</span>
           <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/lados.xlsx?${new URLSearchParams(f)}">⬇ Baixar Excel</a>`;
         $("#lt").innerHTML = TW.table([{ h: "Código" }, { h: "Descrição", nw: false }, { h: "Eixo" }, { h: "Lado" }, { h: "Par (outro lado)" }, { h: "Traseiro (mesma aplicação)", nw: false }, { h: "Dianteiro (mesma aplicação)", nw: false },
           { h: "Possuímos?" }, { h: "Conjunto do veículo", nw: false }, { h: "Veículos", nw: false }], d.rows.map(i => [

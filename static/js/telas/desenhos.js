@@ -81,7 +81,7 @@
       const f = F.get(), falta = f.where === "falta";
       const d = await J("/api/drawings?" + qs({ ...f, kind: kind(), page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(f).filter(k => k !== "kind" && k !== "sort").length;
       dwNav.list = falta ? [] : d.rows.filter(c => c.code).map(c => c.code);
-      $("#dw-meta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> ${falta ? "item(ns) sem arquivo" : "desenho(s)"}${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
+      $("#dw-meta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> ${falta ? "item(ns) sem arquivo" : "desenho(s)"}${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}</span>
         <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/desenhos.xlsx?${new URLSearchParams({ ...f, kind: kind() })}">⬇ Baixar Excel</a>`;
       $("#dw-grid").innerHTML = falta
         ? notice(`Para anexar, arraste o arquivo com o código no nome para a área acima (ex.: <code>DES_${esc(d.rows[0]?.code || "AMD0000")}_REV00.pdf</code>).`, "blue") + `<div class="mt-3">${TW.table([{ h: "Código" }, { h: "Descrição", nw: false }, { h: "Cadastros" }], d.rows.map(faltando), { h: "max-h-[65vh]" })}</div>`

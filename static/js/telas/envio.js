@@ -47,7 +47,7 @@
         const d = await J("/api/shipments?" + qs({ ...f, status: status(), page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), novo = !sums; sums = d.summary; rows = d.rows;
         desenharTopo(); if (novo) desenharFiltros();
         const n = Object.keys(f).filter(k => !(k === "status" && f[k] === "abertos")).length;
-        $("#emeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> envio(s)${n ? ` · ${n} filtro(s) ativo(s)` : ""}${F.restaurado && pg === 1 ? ' · <span class="text-amber-700">filtros da última visita</span>' : ""}</span>
+        $("#emeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> envio(s)${n ? ` · ${n} filtro(s) ativo(s)` : ""}</span>
           <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/envio.xlsx?${new URLSearchParams({ ...f, status: status() })}">⬇ Baixar Excel</a>`;
         $("#et").innerHTML = TW.table([{ h: '<input type="checkbox" class="eall" title="Selecionar a página">' }, { h: "Código" }, { h: "Aplicação", nw: false }, { h: "Lado" }, { h: "Fornecedor" }, { h: "EX" }, { h: "SC" }, { h: "Recebida" }, { h: "Status" }, { h: "Enviada em" }, { h: "Rastreio" }, { h: "Projeto PERFECT" }, { h: "" }], d.rows.map(r => {
           const code = r.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${r.product_id}">${esc(r.perfect_code)}</a>` : r.rd ? `<a href="#" class="font-semibold text-blue-600" data-rd="${r.rd}" data-code="${esc(r.perfect_code)}">${esc(r.perfect_code)}</a>` : `<b>${esc(r.perfect_code)}</b>`;
