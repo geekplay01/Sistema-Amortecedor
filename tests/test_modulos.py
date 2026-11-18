@@ -123,6 +123,46 @@ class AtualizacaoVerificacao(_TmpDB):
             self.assertGreater(conta(), 0)
         finally: os.remove(f.name)
 
+class Bi03Protheus(_TmpDB):
+    def test_bi03_prevalece_anomalias_e_pendente_protheus(self):
+        """Etapa 17 · Q15/Q25/Q30: planilha «003(dd-mm)» (cadastro do Protheus) entra pela Atualização de dados; só PA de amortecedor; peso e EAN do BI03
+        prevalecem sobre o CatalogoAMD (e continuam depois de reimportar o catálogo); diferenças em Anomalias; DES/R-D em andamento fora do BI03 = pendente de cadastro."""
+        import bi03, updater, anomalias, loaders, importer
+        from unittest import mock
+        self.db.init_db(); bi03._CACHE.clear()
+        self.sql("INSERT INTO products(perfect_code,description,ean,weight_kg,cat_ean,cat_weight_kg,catalog_position) VALUES(?,?,?,?,?,?,?)",
+                 [("AMD1", "AMORTECEDOR", "111", 1.5, "111", 1.5, 1), ("AMD3", "AMORTECEDOR", "333", None, "333", None, 2)])
+        self.sql("INSERT INTO pendencies(product_id,kind,field,description) SELECT id,'campo_ausente','peso','Campo ausente: peso' FROM products WHERE perfect_code='AMD3'")
+        self.sql("INSERT INTO rd_projects(code,suggestion,status,supplier,description,line,make,vehicle) VALUES(?,?,?,?,?,?,?,?)",
+                 [("X1", "DESENVOLVIMENTO", "EM COTAÇÃO", "ZS", "AMORTECEDOR", "AMORTECEDOR", "FIAT", "UNO"), ("X1", "DESENVOLVIMENTO", "PEDIDO CONFIRMADO", None, "AMORTECEDOR", "AMORTECEDOR", "FIAT", "PALIO"),
+                  ("X2", "REDESENVOLVIMENTO", "EM COTAÇÃO", "E-WIN", "AMORTECEDOR", "AMORTECEDOR", "VW", "GOL"), ("X3", "DESENVOLVIMENTO", "ITEM RECEBIDO", "ZS", "AMORTECEDOR", "AMORTECEDOR", "VW", "UP"),
+                  ("X4", "DESENVOLVIMENTO", "EM COTAÇÃO", "ZS", "BANDEJA", "BANDEJA", "VW", "UP")])
+        f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); f.close()
+        pd.DataFrame({"Filial\t": ["0101"] * 6, "Codigo\t": ["AMD1", "MP-AMD1", "AMD3", "X2", "BAN1", "X1"], "Tipo\t": ["PA", "MP", "PA", "PA", "PA", "MP"],
+                      "Desc. Linha": ["AMORTECEDOR", "AMORTECEDOR", "AMORTECEDOR", "AMORTECEDOR LINHA PESADA", "BANDEJA", "AMORTECEDOR"], "Aliq. IPI\t": ["10.4", "2.6", "10.4", "2.6", "3.25", "10.4"],
+                      "Peso Liquido\t": ["2", "2.45", "1.85", "0", "6", "1"], "Cod Barras\t": ["999", None, "333", None, "777", None], "Seg. Cod Barras": ["x"] * 6}).to_excel(f.name, index=False)
+        self.assertTrue(bi03.is_file("003(18-11).xls")); self.assertTrue(bi03.is_file("003 (5-1) (1).xlsx")); self.assertFalse(bi03.is_file("CatalogoAMD.xlsx"))
+        try:
+            r = updater.run([("003(18-11).xlsx", f.name)], confirm=False)                     # verificação: lê, mas não grava
+            self.assertEqual(r["results"][0]["label"], bi03.LABEL, r["results"]); self.assertEqual(r["results"][0]["rows"], 3)          # AMD1, AMD3, X2 (MP- e BANDEJA fora)
+            c = self.db.conn(); self.assertEqual(c.execute("SELECT weight_kg FROM products WHERE perfect_code='AMD1'").fetchone()[0], 1.5); c.close()
+            self.assertFalse(bi03.available())
+            with mock.patch("queries.backup_create", return_value="x.db"): updater.run([("003(18-11).xlsx", f.name)], confirm=True)
+        finally: os.remove(f.name)
+        c = self.db.conn(); P = {r[0]: (r[1], r[2]) for r in c.execute("SELECT perfect_code, weight_kg, ean FROM products")}
+        pend = c.execute("SELECT status FROM pendencies WHERE field='peso'").fetchone()[0]; c.close()
+        self.assertEqual(P["AMD1"], (2.0, "999")); self.assertEqual(P["AMD3"], (1.85, "333")); self.assertEqual(pend, "resolvida")
+        pe = anomalias.pesoean(); self.assertEqual(sorted((x["perfect_code"], x["campo"], x["catalogo"], x["bi03"]) for x in pe), [("AMD1", "Código de barras", "111", "999"), ("AMD1", "Peso líquido (kg)", 1.5, 2.0)])
+        pr = anomalias.protheus(); self.assertEqual([(x["code"], x["status"], x["supplier"]) for x in pr], [("X1", "PEDIDO CONFIRMADO", "ZS")])      # X2 está no BI03; X3 recebido; X4 não é amortecedor
+        self.assertEqual(anomalias.protheus_counts()["tipo"], {"DESENVOLVIMENTO": 1}); self.assertEqual(anomalias.protheus("", {"tipo": "REDESENVOLVIMENTO"}), [])
+        self.assertEqual(bi03.ipi("X2"), 2.6)
+        # reimportar o CatalogoAMD não desfaz o BI03 (e atualiza o valor da planilha em cat_*)
+        g = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); g.close()
+        pd.DataFrame({"Código Produto": ["AMD1", "AMD3"], "Descrição Produto": ["AMORTECEDOR"] * 2, "Cód. Barras": ["111", "333"], "Peso (Kg)": ["1,5", "1,85"]}).to_excel(g.name, index=False)
+        df, _ = importer.read_table(g.name, None); loaders.run(g.name, None, importer.suggest_mapping(df.columns), None, "CatalogoAMD.xlsx", True); os.remove(g.name)
+        c = self.db.conn(); P = {r[0]: (r[1], r[2], r[3]) for r in c.execute("SELECT perfect_code, weight_kg, ean, cat_weight_kg FROM products")}; c.close()
+        self.assertEqual(P["AMD1"], (2.0, "999", 1.5)); self.assertEqual(len(anomalias.pesoean()), 2); self.assertEqual(anomalias.pesoean("AMD3"), [])
+
 class GarantiaAnalitico(_TmpDB):
     def test_planilha_substitui_filtros_e_atalhos(self):
         """Etapa 16 · D8: «Analítico de Garantias» (cabeçalho na 2ª linha) entra pela Atualização de dados e substitui a carga anterior; verificação não grava.
@@ -358,6 +398,27 @@ class CatalogoPlanilha(_TmpDB):
         fc = queries.product_facets()
         self.assertEqual(fc["family"][0], {"v": "CABINE", "n": 1}); self.assertIn({"v": 12.5, "n": 1}, fc["rod"]); self.assertEqual((fc["launch"], fc["system"]["gas"], fc["system"]["oleo"]), (1, 2, 2))
         r = queries.products({"q": "AMD1"})["rows"][0]; self.assertEqual((r["is_launch"], r["rod_diameter_mm"]), ("S", 20.0))
+
+    def test_linha_e_hibrido(self):
+        """Etapa 17 · Q14: colunas Linha e «Hibrido ou elétrico» do CatalogoAMD. Vazio = não informado (nunca «não»); a planilha manda, inclusive quando esvazia."""
+        import loaders, importer, queries
+        self.db.init_db()
+        def carregar(linhas, hib):
+            f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); f.close()
+            pd.DataFrame({"Código Produto": ["AMD1", "AMD2", "AMD3"], "Descrição Produto": ["AMORTECEDOR"] * 3, "Linha": linhas, "Hibrido ou elétrico": hib,
+                          "Cód. Barras": ["789", None, "790"], "Peso (Kg)": ["1,5", None, "2"]}).to_excel(f.name, index=False)
+            df, _ = importer.read_table(f.name, None); loaders.run(f.name, None, importer.suggest_mapping(df.columns), None, "CatalogoAMD.xlsx", True); os.remove(f.name)
+            c = self.db.conn(); P = {r["perfect_code"]: dict(r) for r in c.execute("SELECT * FROM products")}; c.close(); return P
+        P = carregar(["LINHA LEVE", "Linha pick-up e utilitários", None], ["SIM", "NÃO", None])
+        self.assertEqual([P[k]["catalog_line"] for k in ("AMD1", "AMD2", "AMD3")], ["LINHA LEVE", "LINHA PICK-UP E UTILITÁRIOS", None])
+        self.assertEqual([P[k]["hybrid"] for k in ("AMD1", "AMD2", "AMD3")], ["S", "N", None])
+        self.assertEqual((P["AMD1"]["cat_ean"], P["AMD1"]["cat_weight_kg"], P["AMD2"]["cat_ean"]), ("789", 1.5, None))       # peso/EAN como estão na planilha (comparação com o BI03)
+        cod = lambda f: sorted(r["perfect_code"] for r in queries.products(f)["rows"])
+        self.assertEqual(cod({"linha": "LINHA LEVE"}), ["AMD1"]); self.assertEqual(cod({"linha": "sem"}), ["AMD3"])
+        self.assertEqual(cod({"hibrido": "S"}), ["AMD1"]); self.assertEqual(cod({"hibrido": "N"}), ["AMD2"]); self.assertEqual(cod({"hibrido": "nd"}), ["AMD3"])
+        fc = queries.product_facets(); self.assertEqual(fc["hibrido"], {"S": 1, "N": 1, "nd": 1}); self.assertEqual(sum(x["n"] for x in fc["linha"]), 2)
+        P = carregar([None, None, None], [None, "SIM", None])                     # a planilha esvaziou: o banco acompanha
+        self.assertEqual((P["AMD1"]["catalog_line"], P["AMD1"]["hybrid"], P["AMD2"]["hybrid"]), (None, None, "S"))
 
 class CaixaComSufixo(_TmpDB):
     def test_sufixo_m_b_nao_e_conflito_e_usar_valor_da_planilha(self):

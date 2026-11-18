@@ -358,7 +358,11 @@ def _eqf():
 def api_anomalies():
     import anomalias
     q = request.args.get("q", ""); tab = request.args.get("tab") or "familia"
-    return jsonify(rows=anomalias.ean(q) if tab == "ean" else anomalias.familia(q), counts=anomalias.counts(q), tab="ean" if tab == "ean" else "familia")
+    if tab == "protheus":
+        f = {k: request.args.get(k) for k in anomalias.PROT_FILTROS if request.args.get(k)}
+        return jsonify(rows=anomalias.protheus(q, f), counts=anomalias.counts(q), atalhos=anomalias.protheus_counts(q, f), tab=tab)
+    tab = tab if tab in anomalias.TABS else "familia"
+    return jsonify(rows=anomalias.TABS[tab](q), counts=anomalias.counts(q), tab=tab)
 @app.get("/api/anomalies/export.xlsx")
 def api_anomalies_xlsx():
     import anomalias

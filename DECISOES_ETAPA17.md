@@ -57,3 +57,11 @@ Pedido do usuário: design moderno em todos os módulos (cores do logo, ícones 
 - `PSDTW.filtros`: só a URL; apaga o `psd-filtros-*` antigo do navegador. Saiu o aviso «filtros da última visita» das 14 telas, o `?limpo=1` do Dashboard e a aba lembrada de Anomalias (trocar de aba abre limpa).
 - Posição no catálogo saiu de Produtos/Pesquisa, Aplicações, Comparação e ficha; «#» do ensaio saiu do Damping (lista, aviso e confirmação).
 - Teste `test_30`. Na cópia: Produtos com `?system=gas` 772 → ao voltar pelo menu, 914 sem filtro; nenhum erro no console (Produtos, Aplicações, Metas, Damping, Anomalias, Dashboard).
+
+### Passo 2a/2b · Linha, Híbrido e BI03 (18/11/2026) ✅
+- CatalogoAMD: colunas «Linha» → `products.catalog_line` (maiúsculas) e «Hibrido ou elétrico» → `products.hybrid` ('S'/'N'; vazio = NULL = não informado). Coluna presente = a planilha manda, inclusive quando esvazia (`loaders._catalog_extras`). O peso/EAN da planilha fica em `cat_weight_kg`/`cat_ean`.
+- Produtos/Pesquisa: filtros `linha` (`sem` = sem linha) e `hibrido` (S/N/nd), atalhos «Híbrido ou elétrico» e um por linha, coluna Linha e selo «híbrido/elétrico»; Excel com Linha e Híbrido.
+- BI03 (`bi03.py`): planilha «003(dd-mm).xls» reconhecida pelo nome (`updater.ESPECIAIS`, logo depois do CatalogoAMD); lê só 6 colunas (~20 s, guardada em memória entre Verificar e Aplicar); guarda só PA de amortecedor (tabela `bi03`, substitui a carga anterior). Peso e EAN do BI03 gravados em `products` e mantidos quando o CatalogoAMD é reimportado; pendências «Campo ausente» de peso/EAN que o BI03 resolveu são fechadas. IPI: `bi03.ipi(código)` = servidor (`extra.IPI`), senão BI03.
+- Anomalias: abas **«Peso e EAN × BI03»** e **«Pendente cadastro Protheus»** (atalhos de tipo e status, contagem = lista); Excel com as quatro abas.
+- Testes: `test_modulos.CatalogoPlanilha.test_linha_e_hibrido`, `test_modulos.Bi03Protheus`.
+- Na cópia (CatalogoAMD de 18/11 + 003(16-11)): linhas Leve 678 · Pick-up e utilitários 157 · Pesada 79; híbrido/elétrico 25 (889 não). BI03: 1.743 PA de amortecedor, os 914 do catálogo; peso gravado em 106 produtos e EAN em 1; Anomalias «Peso e EAN» 95 (94 pesos + 1 EAN); «Pendente cadastro Protheus» 95, todos DES (88 EM COTAÇÃO, 7 PENDENTE PARTNUMBER FORNECEDOR). Pendências «sem peso» 12 → 0.

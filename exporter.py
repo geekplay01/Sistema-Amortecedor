@@ -43,11 +43,12 @@ def _products(a):
     import re
     rows = Q.products({**a, "all": 1})["rows"]; cd = _codes(); inm, fob, est = _extras()
     def e(r): return est.get(re.sub(r"[^A-Z0-9]", "", (r["perfect_code"] or "").upper()), [None, None])
-    return [("Produtos", ["Pos. catálogo", "Código PERFECT", "Descrição", "Grupo", "Família", "Família Inmetro", "Sistema", "Ø haste (mm)", "Lançamento", "EAN", "Peso (kg)", "Lmin (mm)", "Lmax (mm)", "Aplicações",
+    return [("Produtos", ["Pos. catálogo", "Código PERFECT", "Descrição", "Grupo", "Linha", "Híbrido ou elétrico", "Família", "Família Inmetro", "Sistema", "Ø haste (mm)", "Lançamento", "EAN", "Peso (kg)", "Lmin (mm)", "Lmax (mm)", "Aplicações",
                           "Códigos OEM", "Códigos fornecedor", "Códigos concorrente", "FOB menor (US$)", "Fornecedor do FOB", "Estoque disponível", "Estoque reservado", "Pendências abertas"],
-             [[r["catalog_position"], r["perfect_code"], r["description"], r["catalog_group"], r["family"], inm.get(r["id"]), SYS.get(r["system_type"]), r["rod_diameter_mm"], "Sim" if r["is_launch"] == "S" else "", r["ean"], r["weight_kg"], r["lmin_mm"], r["lmax_mm"], r["apps"],
+             [[r["catalog_position"], r["perfect_code"], r["description"], r["catalog_group"], r["catalog_line"], HYB.get(r["hybrid"], "Não informado"), r["family"], inm.get(r["id"]), SYS.get(r["system_type"]), r["rod_diameter_mm"], "Sim" if r["is_launch"] == "S" else "", r["ean"], r["weight_kg"], r["lmin_mm"], r["lmax_mm"], r["apps"],
                cd.get((r["id"], "oem")), cd.get((r["id"], "fornecedor")), cd.get((r["id"], "concorrente")), *fob.get(r["id"], (None, None)), *e(r), r["pend"]] for r in rows],
-             [11, 16, 38, 18, 16, 22, 12, 11, 11, 16, 10, 10, 10, 11, 30, 30, 30, 12, 14, 12, 12, 11])], len(rows)
+             [11, 16, 38, 18, 24, 12, 16, 22, 12, 11, 11, 16, 10, 10, 10, 11, 30, 30, 30, 12, 14, 12, 12, 11])], len(rows)
+HYB = {"S": "Sim", "N": "Não"}
 
 def _apps(a):
     rows = Q.applications({**a, "all": 1})["rows"]
@@ -118,8 +119,8 @@ LABELS = {"desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvol
           "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra"}      # nome da tela como no menu (nome do arquivo baixado)
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
-          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito"}
-FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT", "conflito": "Conflito entre fontes", "campo_ausente": "Campo ausente", "campo_invalido": "Campo inválido"},
+          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "linha": "Linha", "hibrido": "Híbrido ou elétrico","origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito"}
+FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "hibrido": {"S": "Sim", "N": "Não", "nd": "Não informado"}, "linha": {"sem": "Sem linha"},"kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT", "conflito": "Conflito entre fontes", "campo_ausente": "Campo ausente", "campo_invalido": "Campo inválido"},
           "status": {"aberta": "Abertas", "resolvida": "Resolvidas", "ignorada": "Ignoradas", "todas": "Todas", "simulado": "Só verificação"},
           "field": {"family": "Família", "package_code": "Código da caixa", "ean": "EAN", "peso": "Peso", "sistema": "Sistema"},
           "where": {"cat": "No catálogo", "des": "Em DES", "rd": "Em R-D", "sem": "Sem vínculo", "falta": "Sem desenho"},

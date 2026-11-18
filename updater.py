@@ -9,6 +9,8 @@ KNOWN = [("CatalogoAMD.xlsx", None), ("CrossCatalogo.xlsx", None), ("CaixasAMD.x
          ("ItensMotorcraft.xlsx", "MOTORCRAFT"), ("EstruturaAMD.xls", None),
          ("InmetroZS - Todos - Certificado.xlsx", None), ("InmetroE-win - Todos - Certificado.xlsx", None), ("ZS.csv", "(csv)"), ("e-win.csv", "(csv)"),
          ("Compra_de_amostra.xlsx", None), ("DAMPING FORCE - REGRA.xlsx", "damping"), ("Analítico de Garantias.xlsx", "garantias")]      # garantias: substitui a carga anterior (garantias.py)
+# planilhas com leitor próprio (módulo.load(path, name, confirm, conn) substitui a carga anterior), reconhecidas por módulo.is_file(nome) — o nome muda a cada exportação
+ESPECIAIS = [("bi03", 1)]           # (módulo, ordem: logo depois do CatalogoAMD, para o peso/EAN do BI03 prevalecer)
 FOLDER = os.path.join(db.BASE, "bases_exemplo")
 TMP = os.path.join(db.BASE, "data", "uploads")
 
@@ -64,9 +66,11 @@ def run(files, confirm=False):
     for name, path in files:
         if re.sub(r"[^a-z0-9]", "", _norm(name)[0]) in LEGACY:
             results.append({"file": name, "status": "ignorado", "label": "Desenvolvimento (planilha antiga)", "rows": 0, "counts": {}, "messages": ["A fonte oficial de Desenvolvimento/Redesenvolvimento agora é o servidor SQL (DESENVOLVIMENTO_PRODUTOS). Esta planilha foi ignorada para não sobrescrever os dados do servidor."]}); continue
-        import garantias
+        import garantias, importlib
         k = identify(name) or (_IDX[_norm("Analítico de Garantias.xlsx")] if garantias.is_file(name) else None)      # aceita «Analitico de Garantias (2).xlsx» etc.
-        if k: items.append((k[0], k[1], k[2], name, path))
+        esp = None if k else next((m for m, _ in ESPECIAIS if importlib.import_module(m).is_file(name)), None)
+        if esp: items.append((dict(ESPECIAIS)[esp] + 0.5, name, "especial:" + esp, name, path))
+        elif k: items.append((k[0], k[1], k[2], name, path))
         else: items.append((100 + len(items), name, "(nova)", name, path))   # planilha nova: reconhece o tipo pelas colunas ou guarda como dados avulsos
     items.sort(key=lambda t: t[0])
     backup = queries.backup_create("pre_atualizacao") if confirm and os.path.exists(db.DB_PATH) else None
@@ -79,14 +83,15 @@ def run(files, confirm=False):
                 results += _nova(conn, name, path, confirm); continue
             conn.execute("SAVEPOINT f")
             try:
-                if sheet == "garantias":
-                    import garantias; r = garantias.load(path, name, confirm, conn); conn.execute("RELEASE f"); r.update(file=name, status="ok"); results.append(r); continue
+                if sheet == "garantias" or str(sheet).startswith("especial:"):
+                    import importlib; mod = importlib.import_module("garantias" if sheet == "garantias" else sheet.split(":", 1)[1])
+                    r = mod.load(path, name, confirm, conn); conn.execute("RELEASE f"); r.update(file=name, status="ok"); results.append(r); continue
                 df, _ = importer.read_table(path, None if sheet in (None, "(csv)") else sheet)
                 r = loaders.run(path, sheet, importer.suggest_mapping(df.columns), None, official, confirm, "keep", True, conn)
                 conn.execute("RELEASE f"); r.update(file=name, status="ok"); results.append(r)
             except Exception as e:
                 conn.execute("ROLLBACK TO f"); conn.execute("RELEASE f")
-                results.append({"file": name, "status": "erro", "label": official, "rows": 0, "counts": {}, "messages": [f"Não foi possível ler/gravar: {e}. Esta planilha foi pulada; o banco não foi alterado por ela."]})
+                results.append({"file": name, "status": "erro", "label": official if not str(sheet).startswith("especial:") else sheet.split(":", 1)[1].upper(), "rows": 0, "counts": {}, "messages": [f"Não foi possível ler/gravar: {e}. Esta planilha foi pulada; o banco não foi alterado por ela."]})
         conn.commit() if confirm else conn.rollback()
     except Exception:
         conn.rollback(); raise

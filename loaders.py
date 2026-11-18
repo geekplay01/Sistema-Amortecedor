@@ -1,7 +1,7 @@
 """Etapa 2 (parte 2): gravação da importação. Um único transação: simulação = rollback; confirmação = commit.
 Política padrão: campos vazios são preenchidos; valores divergentes NÃO sobrescrevem (viram pendência 'conflito').
 Tabelas sem chave natural: ao reimportar a mesma fonte, as linhas anteriores DESSA fonte são substituídas."""
-import os, json, hashlib, re
+import os, json, hashlib, re, unicodedata
 import database as db
 from importer import read_table, normalize_code
 
@@ -118,11 +118,25 @@ def _relink(x):
             if a and b: x.c.execute("INSERT OR IGNORE INTO side_pairs(right_product_id,left_product_id,source_id) VALUES(?,?,?)", (a, b, u["source_id"])); ok = True
         if ok: x.c.execute("DELETE FROM unlinked_rows WHERE id=?", (u["id"],)); x.n["relinked"] += 1
 
+def _hybrid(v):
+    """«Hibrido ou elétrico»: SIM → 'S', NÃO → 'N'; vazio ou outro texto → None («não informado», nunca «não»)."""
+    u = unicodedata.normalize("NFKD", str(v or "")).encode("ascii", "ignore").decode().strip().upper()
+    return "S" if u in ("SIM", "S") else "N" if u in ("NAO", "N") else None
+
+def _catalog_extras(x, pid, r):
+    """Campos que só o CatalogoAMD informa e que podem ficar vazios de propósito: Linha e Híbrido/elétrico (coluna presente = a planilha manda, inclusive o vazio)
+    e o peso/EAN como estão na planilha (cat_*), para comparar com o BI03 em Anomalias."""
+    sets = {"cat_ean": _s(r.get("ean")), "cat_weight_kg": _f(r.get("weight_kg"))}
+    if "catalog_line" in r: sets["catalog_line"] = (_s(r.get("catalog_line")) or "").upper() or None
+    if "hybrid_flag" in r: sets["hybrid"] = _hybrid(r.get("hybrid_flag"))
+    x.c.execute(f"UPDATE products SET {','.join(k + '=?' for k in sets)} WHERE id=?", [*sets.values(), pid])
+
 def L_catalogo(x, rows):
     """A planilha «CatalogoAMD» é a FONTE DE VERDADE do catálogo: o que está nela PREVALECE sobre o banco (política «overwrite»), a posição segue a ordem das linhas e
     produto que NÃO está mais na planilha sai do catálogo (catalog_position = NULL) — nada é apagado. O servidor SQL nunca grava nos dados de catálogo."""
     x.policy = "overwrite"; seen = set(); invalid = []
     has_launch = bool(rows) and "launch_flag" in rows[0]                 # coluna presente e vazia = não é lançamento
+    import bi03; bi = bi03.values(x.c)                                   # peso líquido e código de barras do BI03 (Protheus) prevalecem (etapa 17 · Q15)
     for pos, r in enumerate(rows, 1):  # posição no catálogo = ordem das linhas da planilha
         code, _ = normalize_code(r.get("perfect_code"))
         if not code: x.err("linha sem código PERFECT"); continue
@@ -141,6 +155,9 @@ def L_catalogo(x, rows):
             else: invalid.append((code, raw, v.get("system_type")))
         m = re.search(r"Medida emb\.?:\s*(.+)", obs, re.I)
         if m: v["package_note"] = m.group(1).strip()
+        if code in bi:
+            if bi[code][0] is not None: v["weight_kg"] = bi[code][0]
+            if bi[code][1]: v["ean"] = bi[code][1]
         pid = x.pid.get(code)
         if pid is None:
             cols = [k for k, val in v.items() if val is not None]
@@ -148,6 +165,7 @@ def L_catalogo(x, rows):
             x.pid[code] = pid; x.n["new"] += 1
         else: _merge(x, pid, v); x.n["present"] += 1
         x.c.execute("UPDATE products SET catalog_position=? WHERE id=?", (pos, pid)); seen.add(pid)
+        _catalog_extras(x, pid, r)
         mm = re.search(r"MIN:\s*(\d+).*?M[ÁA]X:\s*(\d+)", _s(r.get("measure_min_max")) or "", re.I)
         if mm: x.c.execute("INSERT INTO dimensions(product_id,lmin_mm,lmax_mm,source_id) VALUES(?,?,?,?) ON CONFLICT(product_id) DO UPDATE SET lmin_mm=excluded.lmin_mm,lmax_mm=excluded.lmax_mm,source_id=excluded.source_id",
                            (pid, float(mm.group(1)), float(mm.group(2)), x.src))

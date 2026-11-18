@@ -1,11 +1,11 @@
 /* Telas · Produtos e Pesquisa — visual Tailwind (etapa 16).
-   Filtros do catálogo (planilha CatalogoAMD prevalece): Família, Ø da haste, Sistema (FORCE GAS / FORCE OIL) e Lançamento, com atalhos que ligam/desligam.
-   Busca por código PERFECT, OEM ou de concorrente (com ou sem pontuação); a linha mostra qual referência casou. Filtros na URL e lembrados por tela (PSDTW.filtros).
+   Filtros do catálogo (planilha CatalogoAMD prevalece): Família, Ø da haste, Sistema (FORCE GAS / FORCE OIL), Lançamento, Linha e Híbrido/elétrico (etapa 17), com atalhos que ligam/desligam.
+   Busca por código PERFECT, OEM ou de concorrente (com ou sem pontuação); a linha mostra qual referência casou. Filtros na URL (PSDTW.filtros).
    Pesquisa = Produtos + aplicação (montadora/modelo/ano/eixo/lado), código por tipo e itens em DES / R-D. Ficha: clique no código (data-ficha → PSD.openFicha). */
 (function () {
   const { $, esc, J, qs, root, fail, SYS, dwFill } = PSD;
   const TW = window.PSDTW, { nf, badge, kpi, notice, empty } = TW;
-  const BASE = ["q", "family", "rod", "system", "launch"], PESQ = [...BASE, "origem", "code", "code_type", "make", "model", "year", "axle", "side"];
+  const BASE = ["q", "family", "rod", "system", "launch", "linha", "hibrido"], PESQ = [...BASE, "origem", "code", "code_type", "make", "model", "year", "axle", "side"];
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
   const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
   const selectF = (name, rotulo, opts, cur) => `<select name="${name}" class="${campo} max-w-[13rem]" title="${esc(rotulo)}"><option value="">${esc(rotulo)}</option>${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur ?? "") ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
@@ -13,6 +13,7 @@
   const mm = v => v == null ? '<span class="text-mute">–</span>' : nf(v, v % 1 ? 1 : 0);
   const sistema = s => s ? badge(SYS[s], s === "gas" ? "blue" : "amber") : '<span class="text-mute">–</span>';
   const familia = f => f ? f.charAt(0) + f.slice(1).toLowerCase() : "";
+  const linha = l => familia(String(l || "").replace(/^LINHA\s+/, ""));          // «LINHA PICK-UP E UTILITÁRIOS» → «Pick-up e utilitários»
   const RD_LAB = { des: "DESENVOLVIMENTO", rd: "REDESENVOLVIMENTO" };
 
   function lista(slug, pesquisa) {
@@ -36,7 +37,9 @@
       const s = F.get();
       $("#pq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` +
         chip('data-tg="launch" data-v="S"', "Lançamentos", s.launch === "S", fc.launch, true) + chip('data-tg="system" data-v="gas"', "FORCE GAS", s.system === "gas", fc.system.gas || 0) +
-        chip('data-tg="system" data-v="oleo"', "FORCE OIL", s.system === "oleo", fc.system.oleo || 0) + fc.family.map(x => chip(`data-tg="family" data-v="${esc(x.v)}"`, esc(familia(x.v)), s.family === x.v, x.n)).join("");
+        chip('data-tg="system" data-v="oleo"', "FORCE OIL", s.system === "oleo", fc.system.oleo || 0) +
+        chip('data-tg="hibrido" data-v="S"', "Híbrido ou elétrico", s.hibrido === "S", fc.hibrido.S || 0, true) +
+        fc.linha.map(x => chip(`data-tg="linha" data-v="${esc(x.v)}"`, esc(linha(x.v)), s.linha === x.v, x.n)).join("") + fc.family.map(x => chip(`data-tg="family" data-v="${esc(x.v)}"`, esc(familia(x.v)), s.family === x.v, x.n)).join("");
     };
     const desenharFiltros = () => {
       const s = F.get();
@@ -45,6 +48,8 @@
         selectF("rod", "Ø haste", fc.rod.map(x => [x.v, `${mm(x.v)} mm (${nf(x.n)})`]), s.rod) +
         selectF("system", "Sistema", [["gas", `FORCE GAS (${nf(fc.system.gas || 0)})`], ["oleo", `FORCE OIL (${nf(fc.system.oleo || 0)})`]], s.system) +
         selectF("launch", "Lançamento", [["S", `Só lançamentos (${nf(fc.launch)})`], ["N", "Fora de lançamento"]], s.launch) +
+        selectF("linha", "Linha", [...fc.linha.map(x => [x.v, `${linha(x.v)} (${nf(x.n)})`]), ["sem", "Sem linha informada"]], s.linha) +
+        selectF("hibrido", "Híbrido ou elétrico", [["S", `Sim (${nf(fc.hibrido.S || 0)})`], ["N", `Não (${nf(fc.hibrido.N || 0)})`], ["nd", `Não informado (${nf(fc.hibrido.nd || 0)})`]], s.hibrido) +
         (pesquisa ? selectF("origem", "Origem: todas", [["catalogo", "Somente catálogo"], ["des", "Somente DESENVOLVIMENTO"], ["rd", "Somente REDESENVOLVIMENTO"]], s.origem) +
           textoF("code", "Código", s.code, "w-36") + selectF("code_type", "Tipo de código", [["oem", "OEM"], ["fornecedor", "Fornecedor"], ["concorrente", "Concorrente"]], s.code_type) +
           selectF("make", "Montadora", L.makes.map(x => [x, x]), s.make) + selectF("model", "Modelo", L.models.map(x => [x, x]), s.model) + selectF("year", "Ano", L.years.map(y => [y, y]), s.year) +
@@ -61,9 +66,9 @@
           const d = await J("/api/products?" + qs({ ...s, page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(s).length;
           $("#pmeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> produto(s)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}</span>
             <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/${slug}.xlsx?${new URLSearchParams(s)}">⬇ Baixar Excel</a>`;
-          $("#pt").innerHTML = TW.table([{ h: "Código PERFECT" }, { h: "Descrição", nw: false }, { h: "Família" }, { h: "Sistema" }, { h: "Ø haste", r: true }, { h: "Lmin", r: true }, { h: "Lmax", r: true },
-            { h: "FOB (US$)", r: true }, { h: "Aplic.", r: true }, { h: "Códigos", r: true }, { h: "Pend.", r: true }, { h: "Desenho" }], d.rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-ficha="${r.id}">${esc(r.perfect_code)}</a>${r.is_launch === "S" ? " " + badge("lançamento", "green") : ""}`,
-            `<div class="min-w-[16rem] max-w-[26rem]">${esc(r.description || "")}${via(r)}</div>`, esc(familia(r.family)) || '<span class="text-mute">–</span>', sistema(r.system_type), mm(r.rod_diameter_mm), mm(r.lmin_mm), mm(r.lmax_mm),
+          $("#pt").innerHTML = TW.table([{ h: "Código PERFECT" }, { h: "Descrição", nw: false }, { h: "Linha" }, { h: "Família" }, { h: "Sistema" }, { h: "Ø haste", r: true }, { h: "Lmin", r: true }, { h: "Lmax", r: true },
+            { h: "FOB (US$)", r: true }, { h: "Aplic.", r: true }, { h: "Códigos", r: true }, { h: "Pend.", r: true }, { h: "Desenho" }], d.rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-ficha="${r.id}">${esc(r.perfect_code)}</a>${r.is_launch === "S" ? " " + badge("lançamento", "green") : ""}${r.hybrid === "S" ? " " + badge("híbrido/elétrico", "violet") : ""}`,
+            `<div class="min-w-[16rem] max-w-[26rem]">${esc(r.description || "")}${via(r)}</div>`, esc(linha(r.catalog_line)) || '<span class="text-mute">–</span>', esc(familia(r.family)) || '<span class="text-mute">–</span>', sistema(r.system_type), mm(r.rod_diameter_mm), mm(r.lmin_mm), mm(r.lmax_mm),
             r.fob != null ? `${nf(r.fob, 2)}${r.fob_supplier ? ` <span class="text-xs text-mute">${esc(r.fob_supplier)}</span>` : ""}` : '<span class="text-mute">–</span>', nf(r.apps), nf(r.ncodes), r.pend ? badge(r.pend, "amber") : "",
             `<span data-dw="${esc(r.perfect_code)}"></span>`]), { h: "max-h-[65vh]" });
           dwFill($("#pt"));

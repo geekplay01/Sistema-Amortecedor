@@ -127,6 +127,8 @@ CREATE INDEX IF NOT EXISTS ix_dssit_code ON ds_situacao(code);
 """
 NEW_COLUMNS["import_batches"] = [("rows_read","INTEGER")]
 NEW_COLUMNS["products"] += [("catalog_position","INTEGER"),("catalog_group","TEXT"),("fob","REAL"),("fob_supplier","TEXT"),("catalog_subgroup","TEXT"),("catalog_highlight","TEXT"),("catalog_photo","TEXT")]   # FOB em USD (menor preço) e fornecedor do melhor preço
+# etapa 17: Linha e Híbrido/elétrico (CatalogoAMD; híbrido 'S'/'N', NULL = não informado) e o peso/EAN como estão na planilha (cat_*) — o efetivo (weight_kg/ean) vem do BI03 quando ele tem o item
+NEW_COLUMNS["products"] += [("catalog_line","TEXT"),("hybrid","TEXT"),("cat_ean","TEXT"),("cat_weight_kg","REAL")]
 NEW_COLUMNS["sample_orders"] = [("side","TEXT"), ("best_price","REAL"), ("price_usd","REAL")]
 NEW_COLUMNS["rd_projects"] = [("make","TEXT"),("vehicle","TEXT"),("application_text","TEXT"),("year_from","INTEGER"),("year_to","INTEGER"),("description","TEXT")]
 

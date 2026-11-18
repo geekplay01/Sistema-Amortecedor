@@ -110,7 +110,14 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Damping force (`damping.py · calc/overall`): faixa = DRAWING×(1±tol); se DRAWING < limite (1.000 N na regra atual), mín +ajuste e máx −ajuste (30 N). Ponto aprovado se mín ≤ FOUND ≤ máx. Ensaio: **Reprovado** se algum ponto reprovou; **Aprovado** só se todo ponto com DRAWING foi aprovado; senão **Incompleto**. Os atalhos da tela e o Excel filtram por esse resultado geral (`damping.listing`).
 - Equivalências: só sugestões por similaridade; nada é aprovado automaticamente. Diferença crítica (ex.: lados opostos) deixa a confiança **Baixa** mesmo com pontuação alta. Atalhos de status, confiança e «sem diferenças» contam ignorando o próprio filtro (`equivalence.listing`).
 
-## 10. Interface (etapa 17)
+## 10. Cadastro Protheus (BI03), Linha e Híbrido (etapa 17)
+- BI03 = planilha «003(dd-mm).xls» (`bi03.py`), pela Atualização de dados; substitui a carga anterior. Só Tipo **PA** com «Desc. Linha» AMORTECEDOR ou AMORTECEDOR LINHA PESADA.
+- **Peso líquido e código de barras: o BI03 prevalece** sobre o CatalogoAMD (também depois de reimportar o catálogo). As diferenças ficam em Anomalias → «Peso e EAN × BI03» para corrigir a planilha.
+- **IPI:** o do servidor (DESENVOLVIMENTO_PRODUTOS); o do BI03 só para quem não tem linha no servidor.
+- **Pendente cadastro Protheus:** DES/R-D em andamento (universo amortecedor, não bloqueado, sem ITEM RECEBIDO e sem cancelado) que não estão no BI03 como PA. Sem BI03 carregado, a lista fica vazia.
+- Linha e Híbrido/elétrico vêm só do CatalogoAMD. Híbrido vazio = «não informado» (nunca «não»).
+
+## 11. Interface (etapa 17)
 - Filtros **[mudou em 18/11/2026]**: ficam só na URL (`PSDTW.filtros` em `static/js/tw.js`). Tela aberta pelo menu vem limpa; links entre telas e o Voltar do navegador abrem filtrados. Nada é lembrado da visita anterior.
 - Posição no catálogo e IDs não aparecem na interface; seguem no Excel. A ordem padrão de Produtos continua a do catálogo.
 - Arquivos baixados: «PerfectAmortecedores - <nome da tela como no menu> - dd-mm.xlsx» (`exporter.friendly_name`; CSV: `PSDTW.nome`). Os filtros não entram no nome: estão na aba «Filtros aplicados».
