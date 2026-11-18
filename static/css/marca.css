@@ -1,0 +1,145 @@
+/* PERFECT Shock Data — base visual da etapa 17 (cores do logo PERFECT Automotive). Carregado DEPOIS de style.css e tw-fallback.css: vale sobre os dois.
+   Paleta do logo: azul-marinho #202D56 · vermelho #E72B3B · laranja #F6A019 · azul-claro #64C4E9 (as quatro faixas inclinadas).
+   Uso: azul-marinho = menu, títulos e botões principais · vermelho = ruptura/erro · laranja = risco/aviso · azul-claro = destaque/gráficos · verde só «OK».
+   Tipografia: Barlow (títulos, KPIs, números grandes; static/fonts, licença OFL) + Segoe UI (texto e tabelas).
+   Densidade «compacta confortável»: tabela 14 px / linha 36 px; formulário 16 px / campo 40 px; espaçamento em múltiplos de 4 px. */
+
+@font-face{font-family:"Barlow";font-style:normal;font-weight:500;font-display:swap;src:url("../fonts/barlow-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:600;font-display:swap;src:url("../fonts/barlow-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:700;font-display:swap;src:url("../fonts/barlow-latin-700-normal.woff2") format("woff2")}
+
+/* ---------- tokens: tema claro (padrão) ---------- */
+:root,[data-theme="light"]{
+  --fontd:"Barlow","Segoe UI Semibold","Segoe UI",system-ui,sans-serif;
+  --navy:#202D56;--navy-2:#2A3A6B;--navy-3:#33467F;--navy-tx:#C9D2E8;
+  --pf-red:#E72B3B;--pf-orange:#F6A019;--pf-sky:#64C4E9;
+  --bg:#F4F6FA;--bar:#FFFFFF;--side:var(--navy);--card:#FFFFFF;--line:#DCE2EC;--tx:#1B2238;--mut:#5A6378;--thead:#EEF2F8;--zebra:#F8FAFD;--hover:#EEF3FB;
+  --blue:#2F4A8C;--red:#E72B3B;--yellow:#F6A019;--accent:#64C4E9;--focus:#2F8FCB;--shadow:0 1px 2px rgb(27 34 56/.06),0 1px 3px rgb(27 34 56/.08);
+  --b400:#5B74B8;--b500:#2F4A8C;--b600:#202D56;--b700:#162042;
+  --t-blue-400:#3E5A9E;--t-blue-500:#2F4A8C;--t-blue-600:#2F4A8C;--t-blue-700:#202D56;
+  --t-red-500:#C81E2E;--t-red-600:#C81E2E;--t-amber-500:#9A5B00;--t-amber-700:#8A5200;
+  --t-emerald-500:#047857;--t-emerald-600:#047857;--t-emerald-700:#065F46;--t-violet-500:#6D28D9;--t-violet-600:#6D28D9;
+  --ok:#0E9F6E;--chart-grid:#E6EAF1;--chart-1:#2F4A8C;
+}
+/* ---------- tokens: tema escuro ---------- */
+[data-theme="dark"]{
+  --navy:#111A33;--navy-2:#1B2747;--navy-3:#24335C;--navy-tx:#C3CCE2;
+  --bg:#0E1424;--bar:#131B30;--side:var(--navy);--card:#161F35;--line:#26324F;--tx:#E6EAF3;--mut:#9BA6BE;--thead:#1C2742;--zebra:#19223A;--hover:#1F2A47;
+  --blue:#8EA4E0;--accent:#64C4E9;--focus:#64C4E9;--shadow:0 1px 2px rgb(0 0 0/.3);
+  --b400:#8EA4E0;--b500:#4D69B8;--b600:#3B57A6;--b700:#2E4688;
+  --t-blue-400:#B7C6F0;--t-blue-500:#9DB4F2;--t-blue-600:#9DB4F2;--t-blue-700:#C3D0F5;
+  --t-red-500:#FF8F99;--t-red-600:#FF8F99;--t-amber-500:#FFC266;--t-amber-700:#FFC266;
+  --t-emerald-500:#4ADE9A;--t-emerald-600:#4ADE9A;--t-emerald-700:#6EE7B7;--t-violet-500:#C4B5FD;--t-violet-600:#C4B5FD;
+  --ok:#34D399;--chart-grid:#26324F;--chart-1:#7F9BEA;
+}
+html,body{background:var(--bg);color:var(--tx)}
+h1,h2,h3,.ptitle,.dh h2,.font-display{font-family:var(--fontd)}
+:where(main,.top) a{color:var(--t-blue-600)}
+[data-theme] :where(main,.top,dialog) a.text-white{color:#fff}          /* botão que é link (ex.: «Baixar Excel»): o texto branco vence a cor de link */
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* ---------- as quatro faixas do logo (detalhe da marca) ---------- */
+.psd-stripes{display:inline-flex;gap:3px;align-items:flex-end}
+.psd-stripes i{display:block;width:5px;height:14px;border-radius:1.5px;transform:skewX(-22deg)}
+.psd-stripes i:nth-child(1){background:var(--pf-sky)}.psd-stripes i:nth-child(2){background:var(--pf-red)}.psd-stripes i:nth-child(3){background:var(--pf-orange)}.psd-stripes i:nth-child(4){background:#fff;opacity:.85}
+
+/* ---------- ícones (static/img/icones.svg) ---------- */
+.psd-ico{width:1.125rem;height:1.125rem;flex-shrink:0;display:inline-block;vertical-align:-.2em}
+.psd-ico.sm{width:1rem;height:1rem}.psd-ico.lg{width:1.5rem;height:1.5rem}.psd-ico.xl{width:2rem;height:2rem}
+
+/* ---------- menu lateral (azul-marinho nos dois temas) ---------- */
+.nav-side{background:var(--navy);color:var(--navy-tx);border-right:1px solid rgb(255 255 255/.06)}
+.nav-brand{display:flex;flex-direction:column;gap:6px;padding:20px 20px 8px;text-decoration:none}
+.nav-brand img{display:block;width:100%;height:auto}
+.nav-brand .nav-sub{display:flex;align-items:center;gap:10px;font:600 11px/1 var(--fontd);letter-spacing:.32em;color:#AEB9D6}
+.nav-search{width:100%;border-radius:10px;border:1px solid rgb(255 255 255/.12);background:rgb(255 255 255/.06);padding:8px 12px;font-size:14px;color:#fff;outline:none}
+.nav-search::placeholder{color:#8F9BBD}.nav-search:focus{border-color:var(--pf-sky)}
+.nav-title{padding:12px 8px 4px;font:600 11px/1.2 var(--fontd);letter-spacing:.14em;text-transform:uppercase;color:#8F9BBD}
+button.nav-title{display:flex;width:100%;align-items:center;justify-content:space-between;background:none;border:0;cursor:pointer}
+button.nav-title:hover{color:#DCE3F5}
+.nav-item{position:relative;display:flex;align-items:center;gap:12px;border-radius:10px;padding:8px 12px;font-size:13.5px;color:var(--navy-tx);text-decoration:none;transition:background-color .15s,color .15s}
+.nav-item:hover{background:var(--navy-2);color:#fff}
+.nav-item.is-cur{background:var(--navy-3);color:#fff;font-weight:600}
+.nav-item.is-cur::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:var(--pf-sky)}
+.nav-item.big{padding:9px 12px;font-size:14px;font-weight:500}
+.nav-ibox{display:flex;width:32px;height:32px;flex-shrink:0;align-items:center;justify-content:center;border-radius:9px;background:rgb(255 255 255/.07)}
+.nav-item.is-cur .nav-ibox{background:var(--pf-sky);color:var(--navy)}
+.nav-badge{margin-left:auto;border-radius:999px;background:var(--pf-orange);padding:0 8px;font-size:11px;font-weight:700;line-height:18px;color:#1B2238}
+.nav-sep{margin:12px 8px;border-top:1px solid rgb(255 255 255/.08)}
+.nav-foot{border-top:1px solid rgb(255 255 255/.08)}
+.flowg .gx-b::before{background:rgb(255 255 255/.12)!important}
+
+/* ---------- barra do topo e título da tela ---------- */
+.top{background:var(--bar)!important;border-bottom:1px solid var(--line)!important;min-height:56px;box-shadow:none}
+.top h1{font:600 17px/1.2 var(--fontd);letter-spacing:.01em;color:var(--tx)}
+main .ptitle{font:700 28px/1.15 var(--fontd);letter-spacing:-.01em;color:var(--tx);margin:0 0 6px}
+
+/* ---------- cartões, KPIs e tabelas ---------- */
+main .bg-card.border{box-shadow:var(--shadow)}
+.psd-kpi{position:relative;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:var(--card);padding:18px 20px 16px;box-shadow:var(--shadow)}
+.psd-kpi .kpi-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.psd-kpi .kpi-label{font:600 12px/1.3 var(--fontd);letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.psd-kpi .kpi-val{margin-top:10px;font:700 30px/1 var(--fontd);color:var(--tx);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.psd-kpi .kpi-sub{margin-top:8px;font-size:13.5px;color:var(--mut)}
+.psd-kpi::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--kpi-acc,var(--b500))}
+.psd-kpi.acc-green{--kpi-acc:var(--ok)}.psd-kpi.acc-red{--kpi-acc:var(--pf-red)}.psd-kpi.acc-amber{--kpi-acc:var(--pf-orange)}.psd-kpi.acc-slate{--kpi-acc:var(--line)}.psd-kpi.acc-sky{--kpi-acc:var(--pf-sky)}
+.psd-tbl thead th{background:var(--thead)!important;color:var(--mut);font-family:var(--fontd);font-size:12px;letter-spacing:.06em}
+.psd-tbl tbody tr:nth-child(even){background:var(--zebra)}
+.psd-tbl tbody tr:hover{background:var(--hover)}
+.psd-tbl td{height:36px}
+
+/* ---------- formulários: campos de 40 px e texto de 16 px ---------- */
+main :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea){min-height:2.5rem;font-size:1rem}
+main :is(input,select,textarea):focus{border-color:var(--focus)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 22%,transparent)}
+main label{font-size:14px}
+
+/* ---------- avisos (toasts) ---------- */
+.psd-toasts{position:fixed;right:20px;bottom:20px;z-index:80;display:flex;flex-direction:column;gap:10px;max-width:min(420px,calc(100vw - 32px))}
+.psd-toast{display:flex;align-items:flex-start;gap:12px;border-radius:14px;border:1px solid var(--line);border-left:4px solid var(--toast,var(--b500));background:var(--card);color:var(--tx);padding:12px 14px;box-shadow:0 10px 30px rgb(15 22 41/.18);font-size:14px;line-height:1.4;animation:psd-toast-in .2s ease-out}
+.psd-toast.ok{--toast:var(--ok)}.psd-toast.erro{--toast:var(--pf-red)}.psd-toast.aviso{--toast:var(--pf-orange)}.psd-toast.info{--toast:var(--pf-sky)}
+.psd-toast .t-ico{color:var(--toast,var(--b500));margin-top:1px}
+.psd-toast b{display:block;font-family:var(--fontd);font-size:15px}
+.psd-toast button{margin-left:auto;border:0;background:none;color:var(--mut);cursor:pointer;padding:2px;border-radius:6px}
+.psd-toast button:hover{color:var(--tx);background:var(--hover)}
+.psd-toast.saindo{animation:psd-toast-out .16s ease-in forwards}
+@keyframes psd-toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes psd-toast-out{to{opacity:0;transform:translateY(8px)}}
+
+/* ---------- caixa de confirmação (exclusões) ---------- */
+dialog.psd-confirm{border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--tx);padding:0;width:min(460px,calc(100vw - 32px));box-shadow:0 24px 60px rgb(10 16 32/.35)}
+dialog.psd-confirm::backdrop{background:rgb(14 20 36/.55);backdrop-filter:blur(2px)}
+dialog.psd-confirm .c-body{display:flex;gap:14px;padding:22px 22px 8px}
+dialog.psd-confirm .c-ico{display:flex;width:42px;height:42px;flex-shrink:0;align-items:center;justify-content:center;border-radius:12px;background:color-mix(in srgb,var(--c-tone,var(--b500)) 14%,transparent);color:var(--c-tone,var(--b500))}
+dialog.psd-confirm.perigo{--c-tone:var(--pf-red)}
+dialog.psd-confirm h3{margin:0 0 6px;font:700 19px/1.25 var(--fontd)}
+dialog.psd-confirm p{margin:0;color:var(--mut);font-size:14.5px;line-height:1.5}
+dialog.psd-confirm .c-note{margin-top:10px;font-size:13px;color:var(--mut)}
+dialog.psd-confirm .c-acts{display:flex;justify-content:flex-end;gap:8px;padding:16px 22px 20px}
+.psd-btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--tx);min-height:40px}
+.psd-btn:hover{background:var(--hover)}
+.psd-btn.prim{background:var(--b600);border-color:var(--b600);color:#fff}.psd-btn.prim:hover{background:var(--b700)}
+.psd-btn.perigo{background:var(--pf-red);border-color:var(--pf-red);color:#fff}.psd-btn.perigo:hover{background:#C81E2E}
+
+/* ---------- carregamento: esqueleto ---------- */
+.skel{position:relative;overflow:hidden;border-radius:10px;background:color-mix(in srgb,var(--line) 70%,transparent)}
+.skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--card) 60%,transparent),transparent);animation:psd-shimmer 1.2s infinite}
+@keyframes psd-shimmer{to{transform:translateX(100%)}}
+.psd-load{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:14px}
+.psd-load .psd-stripes i{animation:psd-bar 1s ease-in-out infinite}
+.psd-load .psd-stripes i:nth-child(2){animation-delay:.12s}.psd-load .psd-stripes i:nth-child(3){animation-delay:.24s}.psd-load .psd-stripes i:nth-child(4){animation-delay:.36s;background:var(--navy);opacity:1}
+@keyframes psd-bar{0%,100%{transform:skewX(-22deg) scaleY(.55)}50%{transform:skewX(-22deg) scaleY(1)}}
+
+/* ---------- transição entre módulos (navegação do próprio navegador; o menu fica parado) ---------- */
+@view-transition{navigation:auto}
+#psd-side{view-transition-name:psd-side}
+header.top{view-transition-name:psd-top}
+::view-transition-old(root){animation:psd-fade-out .14s ease-in both}
+::view-transition-new(root){animation:psd-fade-in .18s ease-out both}
+@keyframes psd-fade-out{to{opacity:0}}
+@keyframes psd-fade-in{from{opacity:0;transform:translateY(4px)}}
+main#psd-main{animation:psd-fade-in .18s ease-out both}
+
+@media (prefers-reduced-motion:reduce){
+  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}

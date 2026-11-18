@@ -16,7 +16,7 @@
     let st = {}; try { st = JSON.parse(localStorage.getItem("psd-menu") || "{}"); } catch (e) { }
     navEl.querySelectorAll(".gx").forEach(g => {
       const h = g.querySelector(".gx-h"); if (!h) return;                      // o grupo «Painel executivo» é fixo
-      const on = g.querySelector("a[aria-current],a.bg-slate-700"), open = on ? true : st[g.dataset.g] !== false;
+      const on = g.querySelector("a[aria-current],a.is-cur"), open = on ? true : st[g.dataset.g] !== false;
       g.classList.toggle("closed", !open); h.setAttribute("aria-expanded", open);
     });
     navEl.addEventListener("click", e => {

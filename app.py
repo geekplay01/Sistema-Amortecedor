@@ -12,41 +12,42 @@ ASSET_V = datetime.datetime.now().strftime("%Y%m%d%H%M%S")   # muda a cada vez q
 
 @app.url_defaults
 def _asset_version(endpoint, values):
-    if endpoint == "static" and "v" not in values and str(values.get("filename", "")).endswith((".js", ".css")): values["v"] = ASSET_V
+    if endpoint == "static" and "v" not in values and str(values.get("filename", "")).endswith((".js", ".css", ".svg")): values["v"] = ASSET_V      # .svg: arquivo único de ícones
 UPLOADS = os.path.join(db.BASE, 'data', 'uploads')
 CATEGORIES = ['Produtos / códigos', 'Aplicações', 'Dimensões técnicas', 'Fornecedores / concorrentes', 'Dados comerciais / logísticos', 'Personalizada']
 db.init_db()
 shipments.sync()   # envios coerentes com Compra de amostra e os itens em desenvolvimento
 goals.ensure()
 
-# slug, rótulo, ícone (path SVG 24x24), etapa em que será implementada
+# slug, rótulo, ícone (nome em static/img/icones.svg — tools/icones.py), etapa em que foi implementada
 PAGES = [
- ("dashboard", "Dashboard", "M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z", 1),
- ("pesquisa", "Pesquisa de amortecedores", "M11 4a7 7 0 105 12l4 4 1.5-1.5-4-4A7 7 0 0011 4z", 3),
- ("produtos", "Produtos e códigos", "M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10", 3),
- ("aplicacoes", "Aplicações veiculares", "M5 16l1.5-5h11L19 16M4 16h16v3H4zM7 19v1.5M17 19v1.5", 3),
- ("comparacao", "Comparação técnica", "M8 4v16M16 4v16M3 8h5M16 14h5", 4),
- ("anomalias", "Anomalias", "M12 3l10 18H2zM12 10v5M12 18v.5M7 7h4", 4),          # antiga «Equivalências» (agora uma das abas); /equivalencias redireciona
- ("atualizacao", "Atualização de dados", "M4 12a8 8 0 0114-5l2 2M20 4v5h-5M20 12a8 8 0 01-14 5l-2-2M4 20v-5h5", 2),
- ("lados", "Lados", "M12 3v18M7 7l-4 5 4 5M17 7l4 5-4 5", 3),
- ("envio", "Envio de amostra", "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10M16 9.5l-8-3.5", 3),
- ("metas", "Metas & Validação", "M12 3a9 9 0 109 9M12 7v5l3 2M16 3h5v5", 1),
- ("pedidos-aberto", "Pedidos em Aberto", "M9 4h6v3H9zM7 5H5v16h14V5h-2M9 12h6M9 16h4", 1),
- ("vendas", "Vendas (Curva A)", "M4 20V10M10 20V4M16 20v-8M22 20H2", 1),
- ("estoque", "Estoque", "M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10M7 13l2 1M7 16l2 1", 1),          # vendas × estoque (etapa 16 · C)
- ("fob", "FOB (preços de compra)", "M12 3v18M16 7.5C16 6 14.5 5 12 5S8 6 8 8s1.5 2.5 4 3 4 1 4 3-1.5 3-4 3-4-1-4-2.5", 2),
- ("garantia", "Garantia", "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4", 1),
- ("brands", "Brands", "M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10", 1),
- ("desenhos", "Desenhos", "M4 5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2zM8 8h8M8 12h8M8 16h5", 1),
- ("importacao", "Importação de Excel", "M12 3v12M7 10l5 5 5-5M4 20h16", 2),
- ("desenvolvimento", "Desenvolvimento", "M4 20l4-1 11-11-3-3L5 16zM14 6l3 3", 3),
- ("redesenvolvimento", "Redesenvolvimento", "M4 4v6h6M20 20v-6h-6M20 10a8 8 0 00-14-3M4 14a8 8 0 0014 3", 3),
- ("amostras", "Compra de amostras", "M4 5h2l2 10h9l2-7H7M10 20a1 1 0 100-2 1 1 0 000 2zM17 20a1 1 0 100-2 1 1 0 000 2z", 3),
- ("damping", "Damping force", "M3 12h3l2-6 4 12 3-9 2 3h4", 3),
- ("pendencias", "Pendências de dados", "M12 3l10 18H2zM12 10v5M12 18v.5", 4),
- ("fontes", "Fontes e histórico", "M12 7v5l3 2M3 12a9 9 0 109-9", 2),
- ("configuracoes", "Configurações e backup", "M12 9a3 3 0 100 6 3 3 0 000-6zM19 12l2-1-2-4-2 1-2-1-1-2h-4l-1 2-2 1-2-1-2 4 2 1v2l-2 1 2 4 2-1 2 1 1 2h4l1-2 2-1 2 1 2-4-2-1z", 5),
+ ("dashboard", "Dashboard", "layout-dashboard", 1),
+ ("pesquisa", "Pesquisa de amortecedores", "search", 3),
+ ("produtos", "Produtos e códigos", "package", 3),
+ ("aplicacoes", "Aplicações veiculares", "car", 3),
+ ("comparacao", "Comparação técnica", "git-compare-arrows", 4),
+ ("anomalias", "Anomalias", "triangle-alert", 4),          # antiga «Equivalências» (agora uma das abas); /equivalencias redireciona
+ ("atualizacao", "Atualização de dados", "refresh-cw", 2),
+ ("lados", "Lados", "arrow-left-right", 3),
+ ("envio", "Envio de amostra", "send", 3),
+ ("metas", "Metas & Validação", "target", 1),
+ ("pedidos-aberto", "Pedidos em Aberto", "clipboard-list", 1),
+ ("vendas", "Vendas (Curva A)", "chart-column", 1),
+ ("estoque", "Estoque", "warehouse", 1),          # vendas × estoque (etapa 16 · C)
+ ("fob", "FOB (preços de compra)", "circle-dollar-sign", 2),
+ ("garantia", "Garantia", "shield-check", 1),
+ ("brands", "Brands", "tags", 1),
+ ("desenhos", "Desenhos", "drafting-compass", 1),
+ ("importacao", "Importação de Excel", "upload", 2),
+ ("desenvolvimento", "Desenvolvimento", "amortecedor", 3),
+ ("redesenvolvimento", "Redesenvolvimento", "rotate-ccw", 3),
+ ("amostras", "Compra de amostras", "shopping-cart", 3),
+ ("damping", "Damping force", "activity", 3),
+ ("pendencias", "Pendências de dados", "circle-alert", 4),
+ ("fontes", "Fontes e histórico", "history", 2),
+ ("configuracoes", "Configurações e backup", "settings", 5),
 ]
+HIDDEN = [("guia-visual", "Guia visual", "sparkles", 17)]          # telas fora do menu (abertas pelo endereço): guia do design da etapa 17
 CARDS = [  # chave, rótulo, destino, dica
  ("products", "Total de amortecedores", "produtos", "Produtos PERFECT cadastrados"),
  ("oem_codes", "Códigos OEM relacionados", "pesquisa?code_type=oem", "Códigos OEM distintos"),
@@ -114,7 +115,7 @@ def page(slug):
         from flask import redirect
         from urllib.parse import urlencode
         return redirect("/anomalias?" + urlencode({**request.args.to_dict(), "tab": "sugestoes"}))
-    p = next((x for x in PAGES if x[0] == slug), None)
+    p = next((x for x in PAGES + HIDDEN if x[0] == slug), None)
     if not p: abort(404)
     return render_template("page.html", cur=p, cards=CARDS, user=auth.current_user(), tw_page=True)
 

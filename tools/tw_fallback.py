@@ -8,7 +8,13 @@ SP = {"0": "0", "px": "1px", "0.5": ".125rem", "1": ".25rem", "1.5": ".375rem", 
 PAL = {"slate": {"50": "#f8fafc", "100": "#f1f5f9", "200": "#e2e8f0", "300": "#cbd5e1", "400": "#94a3b8", "500": "#64748b", "600": "#475569", "700": "#334155", "800": "#1e293b", "900": "#0f172a"},
        "blue": {"400": "#60a5fa", "500": "#3b82f6", "600": "#2563eb", "700": "#1d4ed8"}, "emerald": {"50": "#ecfdf5", "100": "#d1fae5", "200": "#a7f3d0", "300": "#6ee7b7", "500": "#10b981", "600": "#059669", "700": "#047857"}, "amber": {"500": "#f59e0b", "700": "#b45309"},
        "red": {"500": "#ef4444", "600": "#dc2626"}, "violet": {"500": "#8b5cf6", "600": "#7c3aed"}}
-NAMED = {"white": "#ffffff", "transparent": "transparent", "card": "var(--card)", "line": "var(--line)", "ink": "var(--tx)", "mute": "var(--mut)", "cobalt": "var(--cobalt)", "surface": "var(--bg)"}
+NAMED = {"white": "#ffffff", "transparent": "transparent", "card": "var(--card)", "line": "var(--line)", "ink": "var(--tx)", "mute": "var(--mut)", "cobalt": "var(--cobalt)", "surface": "var(--bg)",
+         "navy": "var(--navy)", "accent": "var(--accent)", "thead": "var(--thead)"}
+# Etapa 17 (cores do logo PERFECT): «blue» das telas é a escala da marca e muda com o tema; textos coloridos usam variáveis por tema (contraste ≥ 4,5:1 no claro e no escuro).
+# As variáveis ficam em static/css/marca.css; o valor depois da vírgula é o reserva (tema claro).
+BRAND = {"400": "var(--b400,#5B74B8)", "500": "var(--b500,#2F4A8C)", "600": "var(--b600,#202D56)", "700": "var(--b700,#162042)"}
+PAL["blue"] = BRAND
+PAL["red"] = {"500": "#E72B3B", "600": "#C81E2E"}; PAL["amber"] = {"500": "#F6A019", "700": "#9A5B00"}       # vermelho e laranja do logo
 TS = {"xs": (".75rem", "1rem"), "sm": (".875rem", "1.25rem"), "base": ("1rem", "1.5rem"), "lg": ("1.125rem", "1.75rem"), "xl": ("1.25rem", "1.75rem"), "2xl": ("1.5rem", "2rem"), "3xl": ("1.875rem", "2.25rem")}
 RAD = {"": ".25rem", "lg": ".5rem", "xl": ".75rem", "2xl": "1rem", "full": "9999px"}
 BP = {"sm": 640, "md": 768, "lg": 1024, "xl": 1280}
@@ -26,14 +32,17 @@ STATIC = {"flex": "display:flex", "grid": "display:grid", "block": "display:bloc
           "ring-2": "box-shadow:0 0 0 2px var(--tw-ring-color,rgba(59,130,246,.5))", "no-underline": "text-decoration-line:none", "w-14": "width:3.5rem", "w-48": "width:12rem",
           "-mb-px": "margin-bottom:-1px", "border-b-2": "border-bottom-width:2px", "w-60": "width:15rem", "list-disc": "list-style-type:disc", "object-cover": "object-fit:cover",
           "place-items-center": "place-items:center", "rounded-md": "border-radius:.375rem", "opacity-50": "opacity:.5", "w-28": "width:7rem", "bg-rose-500": "background-color:#f43f5e",
-          "mx-auto": "margin-left:auto;margin-right:auto", "ml-auto": "margin-left:auto", "w-36": "width:9rem", "items-start": "align-items:flex-start", "list-none": "list-style:none","grow": "flex-grow:1", "break-words": "overflow-wrap:break-word", "hidden ": ""}
+          "mx-auto": "margin-left:auto;margin-right:auto", "ml-auto": "margin-left:auto", "w-36": "width:9rem", "items-start": "align-items:flex-start", "list-none": "list-style:none","grow": "flex-grow:1", "break-words": "overflow-wrap:break-word", "hidden ": "", "font-display": "font-family:var(--fontd)"}
 SIDES = {"": ["{}"], "x": ["{}-left", "{}-right"], "y": ["{}-top", "{}-bottom"], "t": ["{}-top"], "b": ["{}-bottom"], "l": ["{}-left"], "r": ["{}-right"]}
 
-def color(name):
+def color(name, prop=None):
     m = re.fullmatch(r"([a-z]+)(?:-(\d+))?(?:/(\d+))?", name)
     if not m: return None
     base, shade, alpha = m.groups(); hexv = PAL.get(base, {}).get(shade) if shade else NAMED.get(base)
     if not hexv: return None
+    if prop == "text" and shade and not alpha and base in ("blue", "red", "amber", "emerald", "violet"):      # texto colorido: variável do tema (marca.css)
+        fb = hexv.split(",", 1)[1][:-1] if hexv.startswith("var(") else hexv
+        return f"var(--t-{base}-{shade},{fb})"
     if alpha:
         if hexv.startswith("var("): return f"color-mix(in srgb,{hexv} {alpha}%,transparent)"
         h = hexv.lstrip("#"); r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16); return f"rgba({r},{g},{b},{int(alpha) / 100:g})"
@@ -70,7 +79,7 @@ def decl(u):
     if m: return f"border-radius:{RAD[m.group(1) or '']}"
     m = re.fullmatch(r"(bg|text|border|ring|placeholder|divide)-(.+)", u)
     if m:
-        c = color(m.group(2))
+        c = color(m.group(2), m.group(1))
         if c: return {"bg": f"background-color:{c}", "text": f"color:{c}", "border": f"border-color:{c}", "ring": f"--tw-ring-color:{c}", "placeholder": f"color:{c}", "divide": f"border-color:{c}"}[m.group(1)]
     m = re.fullmatch(r"border-t-(.+)", u)
     if m and color(m.group(1)): return f"border-top-color:{color(m.group(1))}"

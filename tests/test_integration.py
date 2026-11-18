@@ -241,10 +241,16 @@ class Fluxo(unittest.TestCase):
         import re
         for slug in ("dashboard", "metas", "pedidos-aberto", "vendas", "garantia", "desenvolvimento", "redesenvolvimento", "amostras", "configuracoes", "brands", "lados", "envio", "desenhos", "pendencias", "fontes", "atualizacao", "anomalias", "garantia", "estoque"):
             r = C.get("/" + slug); self.assertEqual(r.status_code, 200, slug); html = r.get_data(as_text=True)
-            self.assertIn("syncchip", html); self.assertIn("PSD_STATUS", html); self.assertIn("bg-slate-800", html); self.assertIn("psd-nav", html)         # sidebar fixa slate-800 em Tailwind
+            self.assertIn("syncchip", html); self.assertIn("PSD_STATUS", html); self.assertIn("nav-side", html); self.assertIn("psd-nav", html)         # menu azul-marinho (marca.css, etapa 17)
+            self.assertIn("marca.css", html); self.assertIn("vendor/chart.umd.js", html); self.assertIn("icones.svg", html)
         telas = re.findall(r'/static/js/telas/([\w-]+)\.js', html); self.assertIn("pendencias", telas); self.assertNotIn("dados", telas)
         for t in telas:
             with C.get(f"/static/js/telas/{t}.js") as r: self.assertEqual(r.status_code, 200, t)                                                       # todo script de tela citado existe
+        for f in ("vendor/chart.umd.js", "img/icones.svg", "fonts/barlow-latin-700-normal.woff2", "img/favicon.svg"):
+            with C.get("/static/" + f) as r: self.assertEqual(r.status_code, 200, f)
+        icones = C.get("/static/img/icones.svg").get_data(as_text=True); import app as AP
+        for p in AP.PAGES + AP.HIDDEN: self.assertIn(f'id="i-{p[2]}"', icones, p[0])                                                                   # todo ícone do menu existe no arquivo único
+        self.assertEqual(C.get("/guia-visual").status_code, 200)
         self.assertIn("Desenvolvimento", C.get("/desenvolvimento").get_data(as_text=True)); self.assertNotIn("Em desenvolvimento", C.get("/desenvolvimento").get_data(as_text=True))
 
     def test_12_favicon_e_menu_sem_pedidos(self):
