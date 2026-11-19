@@ -89,3 +89,11 @@ Pedido do usuário: design moderno em todos os módulos (cores do logo, ícones 
 - Menu e topo (`page.html`) com os ícones do arquivo único; `app.PAGES` guarda o nome do ícone. `.svg` também recebe `?v=` (ícone novo aparece ao reabrir o app).
 - Prévia: `/guia-visual` (fora do menu; `app.HIDDEN`) com paleta, tipografia, ícones, KPIs, atalhos, filtros, formulário, tabela, gráficos, avisos, confirmação e carregamento (números de exemplo). Testes: `test_11` (menu, marca.css, Chart.js, ícones do menu no arquivo único, guia visual).
 - Corrigido: botão que é link (ex.: «Baixar Excel») ficava com o texto na cor de link sobre o fundo azul.
+- **Aprovado pelo usuário em 19/11/2026** («Aprovado, siga»).
+
+### Passo 4 · página do item (19/11/2026) ✅
+- `item.py` + `/api/item/<código>` + página `/item/<código>` (`telas/item.js`). Reúne: topo (desenho/miniatura, origem catálogo/DES/R-D, sistema, família, linha, híbrido, lançamento, curva ABC, situação do estoque, 4 KPIs), dados (EAN/peso do BI03, IPI, NCM, caixa, medidas), aplicações (catálogo + DES/R-D) e par de lados, concorrentes e OEM (regra Q18, com a fonte), vendas 12 meses (gráfico, curva ABC dos 12 meses fechados no universo do BI — `curva_abc.classes`), estoque/cobertura/projeção (gráfico saldo × chegadas), pedidos em aberto com chegada prevista e alertas, desenvolvimento (aplicações com início/pedido confirmado/amostras e mudanças de status), amostras, garantia (peças, ocorrências, % procedente, por ano, defeitos), desenhos/projeto, Inmetro, FOB com melhor preço, Brands, pendências e em quais abas de Anomalias o código aparece. Seção vazia = recolhida com «sem registro».
+- A ficha antiga (janela) saiu: todo `data-ficha` abre `/item-id/<id>` → `/item/<código>` (Ctrl/botão do meio = nova aba). O menu do código clicável ganhou «Página do item»; o detalhe de DES/R-D tem o botão «Página do item».
+- Desempenho: ~0,7 s por item (garantia por consulta direta ao código; estoque e curva em memória até a próxima sincronização). A 1ª abertura depois de sincronizar calcula a previsão (~13 s), como a tela Estoque.
+- `tw.js`: gráfico misto (barra + linha) respeita o tipo de cada série.
+- Teste `test_31`. Na cópia: AMD0637 (curva A, ruptura, 36 linhas de pedido, falta em nov/26 antes de chegar), AMD0100 (anomalia Cross × servidor), AMD0340 (só DES, pendente cadastro Protheus).

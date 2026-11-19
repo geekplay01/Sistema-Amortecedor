@@ -90,6 +90,27 @@ def overview(months=24, linhas=None, today=None):
             "ytd": {"ano": y, "ate_mes": m, "qtd": a["q"], "valor": a["v"], "qtd_ant": b["q"], "valor_ant": b["v"], "var_valor_pct": round(100 * (a["v"] / b["v"] - 1), 1) if b["v"] else None, "var_qtd_pct": round(100 * (a["q"] / b["q"] - 1), 1) if b["q"] else None},
             "por_linha": lines, "catalogo": {"ano": y, "pct_valor_catalogo": round(100 * cat["dentro"] / cat["tot"], 1) if cat["tot"] else None, "skus_fora": cat["skus_fora"]}}
 
+_CLS = {}
+def classes(today=None):
+    """{código sem pontuação: 'A'|'B'|'C'} — curva ABC de vendas dos últimos 12 meses FECHADOS no universo do BI (padrão da tela Vendas). Usada na página do item
+    e na Cobertura de concorrentes (etapa 17). Fica em memória até a próxima sincronização de vendas ou a virada do dia."""
+    from analytics import _has
+    from queries import q, q1
+    if not _has("ds_vendas"): return {}
+    hoje = today or datetime.date.today(); run = (q1("SELECT MAX(id) i FROM ds_runs WHERE dataset='vendas'") or {}).get("i"); key = (hoje.isoformat(), run)
+    if _CLS.get("k") != key:
+        a = hoje.replace(day=1); de = f"{a.year - 1}-{a.month:02d}-01"; ls, lp = linha_sql(None)
+        rows = q(f"SELECT code, SUM(total) v FROM ds_vendas WHERE sale_date>=? AND sale_date<? AND {ls} GROUP BY code", [de, a.isoformat(), *lp])
+        by = {}
+        for r in rows:
+            k = re.sub(r"[^A-Z0-9]", "", str(r["code"] or "").upper())
+            if k: by[k] = by.get(k, 0) + (r["v"] or 0)
+        tot = sum(v for v in by.values() if v > 0) or 1; acc = 0; out = {}
+        for k, v in sorted(((k, v) for k, v in by.items() if v > 0), key=lambda x: -x[1]):
+            out[k] = "A" if acc / tot < CUT_A / 100 else "B" if acc / tot < CUT_B / 100 else "C"; acc += v
+        _CLS.update(k=key, v=out)
+    return _CLS["v"]
+
 def payload(year=None, month=None, limit=None, linhas=None):
     from analytics import _has
     from queries import q

@@ -58,7 +58,7 @@
 // ---- conector de código: clicar num código (<span class="pcx" data-code="AMD0108">) abre as telas onde ele aparece ----
 (function () {
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const DEST = [["Ficha / pesquisa", "/pesquisa?q="], ["Lados (par e traseiro)", "/lados?q="], ["Pedidos em aberto / lead time", "/pedidos-aberto?q="], ["Vendas (Curva A)", "/vendas?q="], ["Compra de amostras", "/amostras?q="]];
+  const DEST = [["Página do item (tudo sobre o código)", "/item/"], ["Pesquisa", "/pesquisa?q="], ["Lados (par e traseiro)", "/lados?q="], ["Pedidos em aberto / lead time", "/pedidos-aberto?q="], ["Vendas (Curva A)", "/vendas?q="], ["Compra de amostras", "/amostras?q="]];
   let menu = null;
   const close = () => { if (menu) { menu.remove(); menu = null; } };
   window.psdCode = (code, label) => `<span class="pcx" data-code="${esc(code)}" title="Ver ${esc(code)} nas outras telas">${esc(label || code)}</span>`;

@@ -248,7 +248,8 @@ class Fluxo(unittest.TestCase):
             with C.get(f"/static/js/telas/{t}.js") as r: self.assertEqual(r.status_code, 200, t)                                                       # todo script de tela citado existe
         for f in ("vendor/chart.umd.js", "img/icones.svg", "fonts/barlow-latin-700-normal.woff2", "img/favicon.svg"):
             with C.get("/static/" + f) as r: self.assertEqual(r.status_code, 200, f)
-        icones = C.get("/static/img/icones.svg").get_data(as_text=True); import app as AP
+        with C.get("/static/img/icones.svg") as r: icones = r.get_data(as_text=True)
+        import app as AP
         for p in AP.PAGES + AP.HIDDEN: self.assertIn(f'id="i-{p[2]}"', icones, p[0])                                                                   # todo ícone do menu existe no arquivo único
         self.assertEqual(C.get("/guia-visual").status_code, 200)
         self.assertIn("Desenvolvimento", C.get("/desenvolvimento").get_data(as_text=True)); self.assertNotIn("Em desenvolvimento", C.get("/desenvolvimento").get_data(as_text=True))
@@ -575,6 +576,21 @@ class Fluxo(unittest.TestCase):
         o = C.get("/api/vendas/resumo").json
         if o.get("available") and not o.get("sem_data"): self.assertIn("fechado", o["resumo"]); self.assertIn("parcial", o["resumo"])
         self.assertEqual(len(d["meses"]), 6); self.assertEqual(C.get("/api/estoque?falta=1").json["total"], d["counts"]["falta"])      # projeção (A1)
+
+    def test_31_pagina_do_item(self):
+        """Etapa 17 · Q9: /item/<código> reúne tudo do código (catálogo ou DES/R-D); a ficha antiga (data-ficha = id) redireciona para ela; código inexistente = 404."""
+        p = C.get("/api/products?size=1").json["rows"][0]
+        d = C.get("/api/item/" + p["perfect_code"].lower()).json
+        for k in ("topo", "aplicacoes", "lados", "concorrentes", "vendas", "estoque", "pedidos", "desenvolvimento", "amostras", "garantia", "desenhos", "inmetro", "fob", "brands", "pendencias", "anomalias"): self.assertIn(k, d, k)
+        self.assertEqual((d["topo"]["code"], d["topo"]["no_catalogo"]), (p["perfect_code"], True)); self.assertNotIn("catalog_position", d["topo"])
+        r = C.get(f"/item-id/{p['id']}"); self.assertEqual(r.status_code, 302); self.assertTrue(r.headers["Location"].endswith("/item/" + p["perfect_code"]))
+        html = C.get("/item/" + p["perfect_code"]).get_data(as_text=True); self.assertIn("telas/item.js", html); self.assertIn(f"Item {p['perfect_code']}", html)
+        con = sqlite3.connect(DB)
+        try: rd = con.execute("SELECT code FROM rd_projects WHERE product_id IS NULL LIMIT 1").fetchone()
+        finally: con.close()
+        if rd:                                                                                      # item só em desenvolvimento: página abre sem dados de catálogo
+            x = C.get("/api/item/" + rd[0]); self.assertEqual(x.status_code, 200); self.assertTrue(x.json["desenvolvimento"]["rows"]); self.assertFalse(x.json["topo"]["no_catalogo"])
+        self.assertEqual(C.get("/api/item/NAOEXISTE999").status_code, 404)
 
     def test_30_nome_do_arquivo_e_filtros_limpos(self):
         """Etapa 17 · Q8/Q16/Q26: arquivo «PerfectAmortecedores - <tela do menu> - dd-mm.xlsx», sem filtros no nome (eles ficam na aba «Filtros aplicados»);

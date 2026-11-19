@@ -19,59 +19,11 @@
   // ---------- ficha técnica (janela) ----------
   const dlg = document.createElement("dialog"); dlg.className = "dlg"; document.body.appendChild(dlg);
   dlg.addEventListener("click", e => { if (e.target === dlg || e.target.closest("[data-close]")) dlg.close(); });
-  document.addEventListener("click", e => { const a = e.target.closest("[data-ficha]"); if (a) { e.preventDefault(); openFicha(a.dataset.ficha); } });
+  document.addEventListener("click", e => { const a = e.target.closest("[data-ficha]"); if (a) { e.preventDefault(); openFicha(a.dataset.ficha, e.ctrlKey || e.metaKey || e.button === 1); } });
   const kv = (k, v) => `<div><small>${k}</small><b>${v == null || v === "" ? "—" : esc(v)}</b></div>`;
   const usd = v => "US$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fobBlock = p => {   // cotações FOB do item; a mais barata em destaque executivo (verde)
-    const q = p.fob_quotes || []; if (!q.length) return "";
-    const rows = q.map(x => x.melhor
-      ? `<div class="flex items-center justify-between rounded-lg border-2 border-emerald-500 bg-emerald-50 px-3 py-2 font-bold text-emerald-700"><span>${esc(x.fornecedor)} <span class="rounded-full bg-emerald-600 px-2 text-xs font-semibold text-white">Melhor Preço</span></span><span class="tabular-nums">${usd(x.preco)}</span></div>`
-      : `<div class="flex items-center justify-between rounded-lg border px-3 py-2"><span>${esc(x.fornecedor)}</span><span class="tabular-nums">${usd(x.preco)}</span></div>`).join("");
-    return `<details class="sec" open><summary>Cotações FOB <span class="badge">${q.length}</span></summary><div class="flex flex-col gap-2 py-2">${rows}</div></details>`;
-  };
-  // ficha: campos-chave do catálogo em destaque (Sistema, Família, Ø haste, Lançamento; posição e ID só no Excel) + grade de dados em Tailwind (etapa 16)
-  const kvT = (k, v) => `<div class="rounded-xl border border-line bg-card px-3 py-2"><div class="text-xs text-mute">${k}</div><div class="mt-0.5 break-words text-sm font-semibold text-ink">${v == null || v === "" ? '<span class="text-mute">—</span>' : esc(v)}</div></div>`;
-  const fichaTopo = (p, d) => {
-    const cx = (k, v, cor = "border-line bg-card") => `<div class="rounded-xl border ${cor} px-4 py-2.5"><div class="text-xs font-semibold uppercase tracking-wide text-mute">${k}</div><div class="mt-1 text-base font-bold text-ink">${v == null || v === "" ? '<span class="font-normal text-mute">—</span>' : esc(v)}</div></div>`;
-    const sis = p.system_type === "gas" ? "border-blue-500/40 bg-blue-500/10" : p.system_type === "oleo" ? "border-amber-500/40 bg-amber-500/10" : undefined;
-    return `<div class="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">${cx("Sistema", SYS[p.system_type], sis)}${cx("Família", p.family ? p.family.charAt(0) + p.family.slice(1).toLowerCase() : null)}${cx("Ø haste (mm)", d.rod_diameter_mm)}
-      ${cx("Lançamento", p.is_launch === "S" ? "Sim" : p.is_launch === "N" ? "Não" : null, p.is_launch === "S" ? "border-emerald-500/40 bg-emerald-500/10" : undefined)}</div>`;
-  };
-  const sec = (t, n, h) => `<details class="sec" ${n ? "open" : ""}><summary>${t} <span class="badge">${n}</span></summary>${n ? h : '<p class="muted">Nenhum dado nas bases importadas.</p>'}</details>`;
-  async function openFicha(id) {
-    try {
-      const p = await J("/api/products/" + id), d = p.dimensions || {}, b = p.box;
-      dlg.innerHTML = `<div class="dh"><div><h2>${esc(p.perfect_code)}</h2><p>${esc(p.description || "")}</p></div><div><a class="btn ghost" href="/comparacao?ids=${p.id}">Comparar</a> <button class="btn ghost" data-close>Fechar</button></div></div>
-      ${fichaTopo(p, d)}
-      <div class="grid grid-cols-2 gap-2 md:grid-cols-4">${kvT("Grupo", p.catalog_group)}${kvT("EAN", p.ean)}${kvT("NCM", p.ncm)}${kvT("Peso (kg)", p.weight_kg)}
-      ${kvT("Lmin (mm)", d.lmin_mm)}${kvT("Lmax (mm)", d.lmax_mm)}${kvT("Curso (mm)", d.stroke_mm)}${kvT("Corpo (mm)", d.body_length_mm)}${kvT("Ø tubo (mm)", d.tube_diameter_mm)}${kvT("Fixação sup.", d.upper_mount)}${kvT("Fixação inf.", d.lower_mount)}${kvT("Descrição (ES)", p.description_es)}
-      ${kvT("FOB mín. (US$)", p.fob_detail && p.fob_detail.fob != null ? `${p.fob_detail.fob} · ${p.fob_detail.fob_fornecedor || ""} ${p.fob_detail.fob_data || ""}` : null)}${kvT("FOB E-WIN / ZS / XGM (US$)", p.fob_detail ? [p.fob_detail.fob_ewin, p.fob_detail.fob_zs, p.fob_detail.fob_xgm].map(x => x ?? "–").join(" / ") : null)}${kvT("Caixa", p.package_code)}${kvT("Dim. caixa (mm)", b && b.raw_dims)}${kvT("Embalagem (catálogo)", p.package_note)}${kvT("Características", p.features)}</div><p class="muted">“—” = não consta nas bases importadas (nada foi inventado).</p>
-      ${fobBlock(p)}
-      <div data-dwblock="${esc(p.perfect_code)}"></div>
-      <div id="fch-srv"></div>
-      ${sec("Par direito/esquerdo", p.pair.length, p.pair.map(x => `${lnk(x.id, x.perfect_code)} (${x.lado})`).join(" · "))}
-      ${sec("Referência cruzada (concorrentes e OEM)", (p.cross || []).length, `<div class="xref">${xchips(p.cross || [])}</div>`)}
-      ${sec("Códigos (OEM, fornecedor, concorrente)", p.codes.filter(c => !c.is_cross).length, T(["Tipo", "Código", "Marca/fornecedor", "Fonte"], p.codes.filter(c => !c.is_cross).map(c => `<tr><td>${esc(c.code_type)}</td><td>${esc(c.code)}</td><td>${esc(c.brand || "")}</td><td>${esc(c.source || "")}</td></tr>`)))}
-      ${sec("Aplicações veiculares", p.applications.length, T(["Montadora", "Modelo", "Aplicação", "Anos", "Eixo", "Lado", "Fonte"], p.applications.map(a => `<tr><td>${esc(a.make || "")}</td><td>${esc(a.model || "")}</td><td>${esc(a.application_text || "")}</td><td>${yr(a)}</td><td>${esc(a.axle || "")}</td><td>${esc(a.side || "")}</td><td>${esc(a.source || "")}</td></tr>`)))}
-      ${sec("Estrutura (componentes)", p.components.length, T(["Seq.", "Componente", "Descrição", "Qtd"], p.components.map(c => `<tr><td>${c.seq ?? ""}</td><td>${esc(c.component_code)}</td><td>${esc(c.component_desc || "")}</td><td>${c.qty ?? ""}</td></tr>`)))}
-      ${sec("Certificados Inmetro", p.certificates.length, T(["Nº Inmetro", "Família", "Descrição", "Fonte"], p.certificates.map(c => `<tr><td>${esc(c.inmetro_number || "")}</td><td>${esc(c.family || "")}</td><td>${esc(c.cert_description || "")}</td><td>${esc(c.source || "")}</td></tr>`)))}
-      ${sec("Fornecedores (ERP)", p.supplier_items.length, T(["Fornecedor", "Item ERP", "Tipo", "Cód. fornecedor 2"], p.supplier_items.map(c => `<tr><td>${esc(c.supplier_name || "")}</td><td>${esc(c.erp_code || "")}</td><td>${esc(c.item_type || "")}</td><td>${esc(c.supplier_code2 || "")}</td></tr>`)))}
-      ${sec("Desenvolvimento (R&D)", p.rd.length, T(["Tipo", "Status", "Fornecedor", "Veículo", "Aplicação", "Anos"], p.rd.map(r => `<tr><td>${esc(r.suggestion || "")}</td><td>${esc(r.status || "")}</td><td>${esc(r.supplier || "")}</td><td>${esc(r.vehicle || "")}</td><td>${esc(r.application_text || "")}</td><td>${yr({ year_from: r.year_from, year_to: r.year_to })}</td></tr>`)))}
-      ${sec("Compra de amostras", p.samples.length, p.samples.map(s => `SC ${esc(s.sc_number || "–")} · ${esc(s.sample_code || "")} · ${esc(s.supplier || "")} · ${esc(s.stage)}`).join("<br>"))}
-      ${sec("Pendências", p.pendencies.length, T(["Tipo", "Campo", "Descrição", "Status"], p.pendencies.map(x => `<tr><td>${esc(x.kind)}</td><td>${esc(x.field || "")}</td><td>${esc(x.description || "")}</td><td>${esc(x.status)}</td></tr>`)))}
-      ${sec("Sugestões de equivalência", p.equivalences.length, p.equivalences.map(e => `${esc(e.a_code)} × ${esc(e.b_code)} — ${e.score}% (${e.confidence}) · ${e.status}`).join("<br>"))}`;
-      dlg.showModal(); dwBlocks(dlg); fichaServer(p);
-    } catch (e) { alert(e.message); }
-  }
-  function fichaServer(p) {   // vendas, estoque e pedidos de compra que vêm do servidor (se já sincronizados)
-    const box = $("#fch-srv"); if (!box) return; const s = p.sales || {}, st = p.stock || {}, pu = p.purchases || {};
-    if (!s.available && !st.available && !pu.available) return;
-    box.innerHTML = `<div class="dwb srvx"><div class="dwb-h"><b>Vendas, estoque e compras</b><small class="muted">dados do servidor</small></div><div class="srvx-grid">
-      ${s.available ? `<div><div id="fch-sales" class="chart mini"></div><small class="muted">${num(s.total_qty)} un. · ${brl(s.total_value)} em 12 meses</small></div>` : ""}
-      ${st.available ? `<div class="kpis"><div><span class="num">${num(st.total)}</span><small>em estoque</small></div><div><span class="num">${num(st.reserved)}</span><small>reservado</small></div></div>` : ""}
-      ${pu.available ? `<div class="kpis"><div><span class="num">${num(pu.pending)}</span><small>em pedidos de compra pendentes</small></div></div>` : ""}</div></div>`;
-    if (s.available) PSDCharts.bars($("#fch-sales"), { x: s.months.map(m => m.month), series: [{ name: "Vendas", y: s.months.map(m => m.qty), color: "#5aa9ff" }], height: 150 });
-  }
+  // ficha = página do item (etapa 17 · Q9): /item-id/<id> redireciona para /item/<código>; Ctrl/botão do meio abre em outra aba
+  function openFicha(id, novaAba) { const u = "/item-id/" + encodeURIComponent(id); if (novaAba) window.open(u, "_blank"); else location.href = u; }
 
   // ---------- lista genérica com filtros e paginação ----------
   function listView({ form, endpoint, head, row, note = "", xlsx = "", init = null, after = null }) {
@@ -113,7 +65,7 @@
     return `<div class="fgroup"><h5>${esc(g.label)}</h5><div class="fgrid2">${ks.map(key => { const s = fl[key], cls = FLG[key][1];
       return `<label class="swl ${cls}"><span class="sw"><input type="checkbox" data-fl="${key}" ${s.value ? "checked" : ""}><i></i></span><span><b>${FLG[key][0]}</b><small>${s.manual ? "marcação manual" + (s.by ? " · " + esc(s.by) : "") + ` · <a href="#" data-flauto="${key}">voltar ao automático</a>` : s.auto ? "indicado pelo servidor" : "automático (sem indicação no servidor)"}</small></span></label>`; }).join("")}</div></div>`; }).join("")}</div>`;
   const rdOpen = async (k, code) => { try { const d = await J(`/api/rd/${k}/item/` + encodeURIComponent(code)); const lab = k === "des" ? "DESENVOLVIMENTO" : "REDESENVOLVIMENTO", other = d.other.map(o => o.suggestion);
-    dlg.innerHTML = `<div class="dh"><div><h2>${esc(d.code)} ${tag(lab)} ${other.map(tag).join(" ")}</h2><p>${esc(d.description || "")}</p></div><div>${d.product ? `<a class="btn ghost" href="#" data-ficha="${d.product.id}">Ficha do catálogo (${esc(d.product.perfect_code)})</a> ` : ""}<button class="btn ghost" data-close>Fechar</button></div></div>
+    dlg.innerHTML = `<div class="dh"><div><h2>${esc(d.code)} ${tag(lab)} ${other.map(tag).join(" ")}</h2><p>${esc(d.description || "")}</p></div><div><a class="btn ghost" href="/item/${encodeURIComponent(d.code)}">Página do item</a> <button class="btn ghost" data-close>Fechar</button></div></div>
       ${other.length ? `<div class="notice">Este código também consta em <b>${other.join(", ")}</b>.</div>` : ""}
       <div class="curline"><span class="cur up">▲ Curtiu ${d.curtiu || 0}</span><span class="cur down">▼ Não curtiu ${d.nao_curtiu || 0}</span></div>
       ${k === "rd" ? `<div class="vpanel" data-vc="${esc(d.code)}"><b>Validação</b> ${(d.validations || []).length ? d.validations.map(v => `<span class="vchip">enviada em ${dmy(v.sent_at)}${v.by_user ? " · " + esc(v.by_user) : ""} <a href="#" data-vundo="${v.id}">desfazer</a></span>`).join("") : '<span class="muted">nenhuma validação enviada registrada.</span>'}<button class="btn sm" data-vsend="${esc(d.code)}">Marcar validação enviada</button><small class="muted">A meta de Redesenvolvimento conta quando o status passar de PENDENTE CONFIRMAÇÃO para ITEM RECEBIDO.</small></div>` : ""}
@@ -186,5 +138,5 @@
     Object.entries(window.PSD_EXEC({ J, post, $, $$, esc, num, root, fail, empty }).pages).forEach(([s, f]) => pages[s] = pages[s] || f);   // Pedidos em Aberto · Vendas (Curva A) · Garantia (Tailwind)
     (pages[page] || (() => root.innerHTML = empty("Página sem conteúdo.")))();
   };
-  window.PSD = { $, $$, esc, J, post, qs, num, brl, SYS, yr, T, lnk, empty, root, page, url, fail, dlg, kv, usd, fobBlock, sec, openFicha, fichaServer, listView, inp, sel, prodRow, prodHead, fillSel, initLists, tag, clip, AX, SD, FLG, FGROUPS, flagSel, flagChips, xchips, flagPanel, rdOpen, flagRefresh, FMT, fext, dwTile, kb, dmy, KL, dwBlocks, dwFill, dwCol, dwCollect, dwPrevOk, dwNav, NEW, pages, tela, iniciar };
+  window.PSD = { $, $$, esc, J, post, qs, num, brl, SYS, yr, T, lnk, empty, root, page, url, fail, dlg, kv, usd, openFicha, listView, inp, sel, prodRow, prodHead, fillSel, initLists, tag, clip, AX, SD, FLG, FGROUPS, flagSel, flagChips, xchips, flagPanel, rdOpen, flagRefresh, FMT, fext, dwTile, kb, dmy, KL, dwBlocks, dwFill, dwCol, dwCollect, dwPrevOk, dwNav, NEW, pages, tela, iniciar };
 })();

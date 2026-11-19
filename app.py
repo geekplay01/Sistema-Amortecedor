@@ -330,6 +330,22 @@ def api_ficha(pid):
     d = queries.ficha(pid) or abort(404); code = (d.get("product") or d).get("perfect_code") if isinstance(d, dict) else None
     if code: d["sales"] = analytics.sales_of(code); d["stock"] = analytics.stock_of(code); d["purchases"] = analytics.purchases_of(code)
     return jsonify(d)
+@app.get("/api/item/<path:code>")
+def api_item(code):
+    import item
+    return jsonify(item.ficha(code) or abort(404))
+@app.get("/item-id/<int:pid>")
+def item_by_id(pid):
+    """Links antigos de ficha (data-ficha = id do produto) → página do item pelo código."""
+    from flask import redirect
+    from urllib.parse import quote
+    p = queries.q1("SELECT perfect_code FROM products WHERE id=?", (pid,)) or abort(404)
+    return redirect("/item/" + quote(p["perfect_code"]))
+@app.get("/item/<path:code>")
+def item_page(code):
+    """Página do item (etapa 17 · Q9): aberta pela Pesquisa e por qualquer código clicável."""
+    code = re.sub(r"\s+", "", code).upper()
+    return render_template("page.html", cur=("item", f"Item {code}", "amortecedor", 17), cards=CARDS, user=auth.current_user(), tw_page=True)
 @app.get("/api/compare")
 def api_compare(): return jsonify(queries.compare([int(i) for i in re.findall(r"\d+", request.args.get("ids", ""))]))
 @app.get("/api/applications")

@@ -81,9 +81,9 @@ window.PSDTW = (() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) C.defaults.animation = false; };
   const vivos = new Set();
   const corDe = i => i % CORES.length === 0 ? (cssv("--chart-1") || CORES[0]) : CORES[i % CORES.length];      // a 1ª série clareia no tema escuro
-  const pinta = (type, datasets) => (datasets || []).forEach((ds, i) => {          // só pinta o que o chamador não definiu (marcado em _auto)
-    ds._auto ??= { bg: ds.backgroundColor == null, bd: ds.borderColor == null }; const c = ds.cor || corDe(i), roda = type === "doughnut" || type === "pie";
-    if (ds._auto.bg) ds.backgroundColor = type === "line" ? c + "22" : roda ? CORES : c;
+  const pinta = (type, datasets) => (datasets || []).forEach((ds, i) => {          // só pinta o que o chamador não definiu (marcado em _auto); série pode ter o próprio tipo (gráfico misto)
+    ds._auto ??= { bg: ds.backgroundColor == null, bd: ds.borderColor == null }; const tp = ds.type || type, c = ds.cor || corDe(i), roda = tp === "doughnut" || tp === "pie";
+    if (ds._auto.bg) ds.backgroundColor = tp === "line" ? c + "22" : roda ? CORES : c;
     if (ds._auto.bd) ds.borderColor = roda ? cssv("--card") : c; });
   const grafico = (el, cfg) => {
     if (!window.Chart) { (el.tagName === "CANVAS" ? el.parentElement : el).innerHTML = notice("Gráfico indisponível: static/vendor/chart.umd.js não foi carregado.", "amber"); return null; }
@@ -91,9 +91,9 @@ window.PSDTW = (() => {
     if (el.tagName !== "CANVAS") { el.innerHTML = '<canvas role="img"></canvas>'; cv = el.firstChild; if (!el.style.height) el.style.height = (cfg.altura || 280) + "px"; el.style.position = "relative"; }
     if (cfg.titulo) cv.setAttribute("aria-label", cfg.titulo);
     pinta(cfg.type, cfg.data.datasets);
-    (cfg.data.datasets || []).forEach(ds => {
-      if (cfg.type === "bar") { ds.borderRadius ??= 6; ds.maxBarThickness ??= 34; ds.borderWidth ??= 0; }
-      if (cfg.type === "line") { ds.tension ??= 0.35; ds.pointRadius ??= 3; ds.borderWidth ??= 2.5; ds.fill ??= true; } });
+    (cfg.data.datasets || []).forEach(ds => { const tp = ds.type || cfg.type;
+      if (tp === "bar") { ds.borderRadius ??= 6; ds.maxBarThickness ??= 34; ds.borderWidth ??= 0; }
+      if (tp === "line") { ds.tension ??= 0.35; ds.pointRadius ??= 3; ds.borderWidth ??= 2.5; ds.fill ??= true; } });
     const old = window.Chart.getChart(cv); if (old) old.destroy();
     const g = new window.Chart(cv, { type: cfg.type, data: cfg.data, options: cfg.options || {} }); vivos.add(g); return g;
   };

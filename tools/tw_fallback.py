@@ -32,7 +32,7 @@ STATIC = {"flex": "display:flex", "grid": "display:grid", "block": "display:bloc
           "ring-2": "box-shadow:0 0 0 2px var(--tw-ring-color,rgba(59,130,246,.5))", "no-underline": "text-decoration-line:none", "w-14": "width:3.5rem", "w-48": "width:12rem",
           "-mb-px": "margin-bottom:-1px", "border-b-2": "border-bottom-width:2px", "w-60": "width:15rem", "list-disc": "list-style-type:disc", "object-cover": "object-fit:cover",
           "place-items-center": "place-items:center", "rounded-md": "border-radius:.375rem", "opacity-50": "opacity:.5", "w-28": "width:7rem", "bg-rose-500": "background-color:#f43f5e",
-          "mx-auto": "margin-left:auto;margin-right:auto", "ml-auto": "margin-left:auto", "w-36": "width:9rem", "items-start": "align-items:flex-start", "list-none": "list-style:none","grow": "flex-grow:1", "break-words": "overflow-wrap:break-word", "hidden ": "", "font-display": "font-family:var(--fontd)"}
+          "mx-auto": "margin-left:auto;margin-right:auto", "ml-auto": "margin-left:auto", "w-36": "width:9rem", "items-start": "align-items:flex-start", "list-none": "list-style:none","grow": "flex-grow:1", "break-words": "overflow-wrap:break-word", "hidden ": "", "font-display": "font-family:var(--fontd)", "scroll-mt-24": "scroll-margin-top:6rem"}
 SIDES = {"": ["{}"], "x": ["{}-left", "{}-right"], "y": ["{}-top", "{}-bottom"], "t": ["{}-top"], "b": ["{}-bottom"], "l": ["{}-left"], "r": ["{}-right"]}
 
 def color(name, prop=None):
