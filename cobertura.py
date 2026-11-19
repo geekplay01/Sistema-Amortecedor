@@ -143,6 +143,79 @@ def _has(t):
     try: q(f"SELECT 1 FROM {t} LIMIT 1"); return True
     except Exception: return False
 
+# ---------------- COFAP (etapa 18 · Q5–Q9) ----------------
+_CCACHE = {}
+SIT_COFAP = {"catalogo": "Temos · catálogo", "des": "Em desenvolvimento", "nao": "Não temos"}
+def _montadora(code): return not str(code or "").upper().startswith("AMD")       # BPROAUTO (1BP…), MOTRIO (só números), MOTORCRAFT (PN Ford): nunca conta como «temos»
+
+def _cofap_rows():
+    """Um registro por código COFAP da planilha «COFAP × frota» (sem Motos): situação pelo NOSSO cross (Q7), frota da planilha (veículo × ano uma vez),
+    principais veículos e — para «Não temos» — curva A/B/C pela frota (80/95%)."""
+    if not _has("fraga_pecas"): return [], False
+    key = (datetime.date.today().isoformat(), (q1("SELECT COUNT(*) n, MAX(rowid) m FROM fraga_pecas") or {}).get("m"), (q1("SELECT MAX(id) i FROM ds_runs") or {}).get("i"),
+           (q1("SELECT COUNT(*) n FROM products WHERE catalog_position IS NOT NULL") or {}).get("n"), (q1("SELECT MAX(id) i FROM import_batches") or {}).get("i"))
+    if _CCACHE.get("k") == key: return _CCACHE["v"]
+    cols = {r["name"] for r in q("PRAGMA table_info(fraga_pecas)")}
+    tem_classe = "classificacao" in cols and bool(q("SELECT 1 FROM fraga_pecas WHERE classificacao IS NOT NULL LIMIT 1"))
+    sel = "classificacao, modelo" if "classificacao" in cols else "NULL classificacao, NULL modelo"
+    por, partes = {}, {}
+    for r in q(f"SELECT codigo_fraga, ano_venda, marca, veiculo, frota, cofap, {sel} FROM fraga_pecas WHERE cofap IS NOT NULL AND coalesce(classificacao,'') <> 'Motos'" if "classificacao" in cols
+               else f"SELECT codigo_fraga, ano_venda, marca, veiculo, frota, cofap, {sel} FROM fraga_pecas WHERE cofap IS NOT NULL"):
+        ps = partes.get(r["cofap"])
+        if ps is None: ps = partes[r["cofap"]] = [(_k(x), x.strip().upper()) for x in re.split(r"[;,/]+", r["cofap"]) if _k(x)]     # poucas combinações distintas: separa uma vez
+        for k, raw in ps:
+            g = por.setdefault(k, {"cofap": raw, "_vy": set(), "frota": 0.0, "_veic": {}, "classes": set()})
+            vy = (r["codigo_fraga"], r["ano_venda"])
+            if vy in g["_vy"]: continue
+            g["_vy"].add(vy); g["frota"] += r["frota"] or 0
+            if r["classificacao"]: g["classes"].add(r["classificacao"])
+            nome = " ".join(x for x in (r["marca"], r["veiculo"]) if x) or "—"
+            v = g["_veic"].setdefault(nome, {"nome": nome, "frota": 0.0, "de": None, "ate": None})
+            v["frota"] += r["frota"] or 0; a = r["ano_venda"]
+            if a: v["de"] = min(v["de"] or a, a); v["ate"] = max(v["ate"] or a, a)
+    # nosso cross: catálogo (CrossCatalogo; servidor quando a planilha não tem o item) e DES/R-D AMD fora do catálogo e não cancelados (servidor)
+    cat = {}
+    for r in _catalogo_rows():
+        if r["concorrente"] == "COFAP" and not _montadora(r["codigo"]): cat.setdefault(_k(r["referencia"]), set()).add(r["codigo"])
+    des = {}
+    if _has("concorrentes"):
+        no_catalogo = {x["c"] for x in q("SELECT upper(perfect_code) c FROM products WHERE catalog_position IS NOT NULL")}
+        cancel = {x["c"] for x in q("SELECT upper(code) c FROM rd_projects GROUP BY upper(code) HAVING MAX(upper(coalesce(status,'')) LIKE 'CANCEL%')=1")}
+        for r in q("SELECT upper(code) code, reference FROM concorrentes WHERE competitor='COFAP' AND is_oem=0"):
+            c = r["code"]
+            if not _montadora(c) and c not in no_catalogo and c not in cancel: des.setdefault(_k(r["reference"]), set()).add(c)
+    out = []
+    for k, g in por.items():
+        vs = sorted(g.pop("_veic").values(), key=lambda v: -v["frota"]); g.pop("_vy")
+        sit = "catalogo" if k in cat else "des" if k in des else "nao"
+        out.append({**g, "situacao": sit, "nossos": sorted(cat.get(k) or des.get(k) or []), "classes": sorted(g["classes"]), "n_veiculos": len(vs),
+                    "veiculos": [{"nome": v["nome"], "anos": (f"{v['de']}–{v['ate']}" if v["de"] != v["ate"] else str(v["de"])) if v["de"] else "", "frota": v["frota"]} for v in vs[:5]]})
+    nao = sorted((r for r in out if r["situacao"] == "nao" and r["frota"] > 0), key=lambda r: -r["frota"]); tot = sum(r["frota"] for r in nao) or 1; acc = 0
+    for r in nao: r["curva"] = "A" if acc / tot < .80 else "B" if acc / tot < .95 else "C"; acc += r["frota"]
+    for r in out: r.setdefault("curva", "sem" if r["situacao"] == "nao" else "")
+    out.sort(key=lambda r: (-r["frota"], r["cofap"]))
+    _CCACHE.update(k=key, v=(out, tem_classe))
+    return out, tem_classe
+
+COF_F = ("situacao", "classif", "curva")
+def cofap(f=None, page=1, size=200):
+    """Aba COFAP: códigos da planilha COFAP × frota (sem Motos) — temos (catálogo), em desenvolvimento ou não temos. Atalhos de situação, classificação e curva
+    (só «Não temos»): cada contagem = lista ao clicar."""
+    f = f or {}; rows, tem_classe = _cofap_rows(); term = (f.get("q") or "").upper().split()
+    def ok(r, skip=""):
+        if skip != "situacao" and f.get("situacao") and r["situacao"] != f["situacao"]: return False
+        if skip != "classif" and f.get("classif") and f["classif"] not in r["classes"]: return False
+        if skip != "curva" and f.get("curva") and r["curva"] != f["curva"]: return False
+        return all(t in f"{r['cofap']} {' '.join(r['nossos'])} {' '.join(v['nome'] for v in r['veiculos'])}".upper() for t in term)
+    sel = [r for r in rows if ok(r)]
+    cnt = lambda key, fn: dict(Counter(x for r in rows if ok(r, key) for x in fn(r)).most_common())
+    counts = {"situacao": cnt("situacao", lambda r: [r["situacao"]]), "classif": cnt("classif", lambda r: r["classes"]), "curva": cnt("curva", lambda r: [r["curva"]] if r["situacao"] == "nao" else [])}
+    by = lambda s, rr: [r for r in rr if r["situacao"] == s]
+    page = max(int(page or 1), 1); n = 10**9 if f.get("all") else size
+    return {"total": len(sel), "rows": sel[(page - 1) * n: page * n], "page": page, "size": n, "counts": counts, "disponivel": bool(rows), "sem_classificacao": bool(rows) and not tem_classe,
+            "kpis": {"codigos": len(sel), "catalogo": len(by("catalogo", sel)), "des": len(by("des", sel)), "nao": len(by("nao", sel)),
+                     "frota": sum(r["frota"] for r in sel), "frota_nao": sum(r["frota"] for r in by("nao", sel)), "frota_temos": sum(r["frota"] for r in sel if r["situacao"] != "nao")}}
+
 DES_F = ("curva", "origem", "lancamento")
 def desenvolvimento(f=None, page=1, size=200):
     f = f or {}; rows = _des_rows(); term = (f.get("q") or "").upper().split()

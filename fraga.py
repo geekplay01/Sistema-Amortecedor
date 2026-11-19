@@ -9,8 +9,9 @@ from queries import q
 
 TABLES = ["""CREATE TABLE IF NOT EXISTS fraga_veiculos(codigo_fraga TEXT, marca TEXT, veiculo TEXT, modelo TEXT, ano_venda INTEGER, inicio TEXT, fim TEXT, status TEXT, classificacao TEXT,
              frota REAL, frota_ano INTEGER, source_file TEXT)""", "CREATE INDEX IF NOT EXISTS ix_fv_marca ON fraga_veiculos(marca, veiculo)",
-          "CREATE TABLE IF NOT EXISTS fraga_pecas(codigo_fraga TEXT, ano_venda INTEGER, marca TEXT, veiculo TEXT, frota REAL, perfect TEXT, cofap TEXT, source_file TEXT)",
+          "CREATE TABLE IF NOT EXISTS fraga_pecas(codigo_fraga TEXT, ano_venda INTEGER, marca TEXT, veiculo TEXT, frota REAL, perfect TEXT, cofap TEXT, source_file TEXT, classificacao TEXT, modelo TEXT)",
           "CREATE INDEX IF NOT EXISTS ix_fp_cofap ON fraga_pecas(cofap)"]
+NOVAS = {"fraga_pecas": (("classificacao", "TEXT"), ("modelo", "TEXT"))}      # etapa 18 (página COFAP: tirar Motos, mostrar o modelo) — bancos criados antes
 LABEL = {"lancamentos": "Fraga · veículos e frota (LANÇAMENTOS)", "pecas": "Fraga · amortecedores COFAP × frota"}
 
 def _canon(s): return re.sub(r"[^a-z0-9]", "", unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower())
@@ -21,6 +22,10 @@ def is_file(name): return kind(name) is not None
 
 def ensure(conn):
     for s in TABLES: conn.execute(s)
+    for t, cols in NOVAS.items():
+        have = {r[1] for r in conn.execute(f"PRAGMA table_info({t})")}
+        for c, tp in cols:
+            if c not in have: conn.execute(f"ALTER TABLE {t} ADD COLUMN {c} {tp}")
 
 def _txt(v):
     if v is None: return None
@@ -61,12 +66,13 @@ def read_lancamentos(path, ano=None):
     return out
 
 def read_pecas(path):
-    want = {"codigofraga": "codigo_fraga", "anovenda": "ano_venda", "marca": "marca", "nomeveiculo": "veiculo", "frota2024": "frota", "amortecedorperfect": "perfect", "amortecedorcofap": "cofap"}
+    want = {"codigofraga": "codigo_fraga", "anovenda": "ano_venda", "marca": "marca", "nomeveiculo": "veiculo", "frota2024": "frota", "amortecedorperfect": "perfect", "amortecedorcofap": "cofap",
+            "classificacao": "classificacao", "modeloveiculo": "modelo"}
     out = []
     for r in _rows(path, want):
         if "cofap" not in r: raise ValueError("A planilha não tem a coluna «Amortecedor COFAP».")
         out.append((_txt(r.get("codigo_fraga")), _int(r.get("ano_venda")), (_txt(r.get("marca")) or "").upper() or None, (_txt(r.get("veiculo")) or "").upper() or None,
-                    _num(r.get("frota")) or 0, (_txt(r.get("perfect")) or "").upper() or None, (_txt(r.get("cofap")) or "").upper() or None))
+                    _num(r.get("frota")) or 0, (_txt(r.get("perfect")) or "").upper() or None, (_txt(r.get("cofap")) or "").upper() or None, _txt(r.get("classificacao")), _txt(r.get("modelo"))))
     return out
 
 _CACHE = {}
@@ -85,8 +91,8 @@ def load(path, name, confirm, conn):
         conn.executemany("INSERT INTO fraga_veiculos(codigo_fraga,marca,veiculo,modelo,ano_venda,inicio,fim,status,classificacao,frota,frota_ano,source_file) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", [(*r, name) for r in rows])
         msgs = [f"{len(rows)} linha(s) de veículo × ano de venda; frota de {rows[0][-1] if rows else '—'} ({sum(r[9] for r in rows):,.0f} veículos)".replace(",", ".")]
     else:
-        conn.executemany("INSERT INTO fraga_pecas(codigo_fraga,ano_venda,marca,veiculo,frota,perfect,cofap,source_file) VALUES(?,?,?,?,?,?,?,?)", [(*r, name) for r in rows])
-        msgs = [f"{len(rows)} linha(s); {sum(1 for r in rows if r[6])} com amortecedor COFAP e {sum(1 for r in rows if r[5])} com PERFECT."]
+        conn.executemany("INSERT INTO fraga_pecas(codigo_fraga,ano_venda,marca,veiculo,frota,perfect,cofap,classificacao,modelo,source_file) VALUES(?,?,?,?,?,?,?,?,?,?)", [(*r, name) for r in rows])
+        msgs = [f"{len(rows)} linha(s); {sum(1 for r in rows if r[6])} com amortecedor COFAP e {sum(1 for r in rows if r[5])} com PERFECT; {sum(1 for r in rows if r[7] == 'Motos')} de motos (fora da página COFAP)."]
     if old: msgs.append(f"Substitui a carga anterior ({old} linha(s)).")
     return {"label": LABEL[k], "rows": len(rows), "counts": {"new": len(rows) if not old else 0, "updated": len(rows) if old else 0, "present": 0}, "messages": msgs}
 

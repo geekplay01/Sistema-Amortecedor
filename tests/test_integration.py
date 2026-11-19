@@ -630,6 +630,41 @@ class Fluxo(unittest.TestCase):
         wb = load_workbook(io.BytesIO(C.get("/api/export/cobertura.xlsx?q=T32").data)); self.assertEqual(wb.sheetnames[:2], ["Catálogo", "Desenvolvimento"]); self.assertEqual(wb["Catálogo"].max_row - 1, 2)
         self.assertIn("/cobertura", C.get("/dashboard").get_data(as_text=True))                     # está no menu
 
+    def test_34_cobertura_cofap(self):
+        """Etapa 18 · Q5–Q9: aba COFAP — códigos da planilha COFAP × frota sem Motos; «temos» pelo nosso cross (catálogo; DES/R-D AMD fora do catálogo e não
+        cancelado); montadora nunca conta; frota com veículo × ano uma vez; curva só em «Não temos»; atalhos = lista; Excel próprio."""
+        import io, fraga
+        from openpyxl import load_workbook
+        con = sqlite3.connect(DB)
+        try:
+            fraga.ensure(con)
+            pid, pc = con.execute("SELECT id, perfect_code FROM products WHERE catalog_position IS NOT NULL ORDER BY id LIMIT 1").fetchone()
+            con.execute("INSERT INTO sources(name,category) SELECT 'CrossCatalogo.xlsx','Referência cruzada' WHERE NOT EXISTS(SELECT 1 FROM sources WHERE name='CrossCatalogo.xlsx')")
+            src = con.execute("SELECT id FROM sources WHERE name='CrossCatalogo.xlsx'").fetchone()[0]
+            con.execute("INSERT INTO codes(product_id,code,normalized_code,code_type,brand,source_id) VALUES(?,?,?,?,?,?)", (pid, "T34-CAT", "T34CAT", "concorrente", "COFAP", src))
+            con.executemany("INSERT INTO rd_projects(code,suggestion,status,description,line) VALUES(?,?,?,?,?)", [("AMDT34D", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR"),
+                            ("AMDT34X", "DESENVOLVIMENTO", "CANCELADO", "AMORTECEDOR", "AMORTECEDOR"), ("1BPT34", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR")])
+            con.executemany("INSERT INTO concorrentes(code,competitor,reference,ref_key,is_oem) VALUES(?,?,?,?,?)", [("AMDT34D", "COFAP", "T34DES", "T34DES", 0), ("AMDT34X", "COFAP", "T34CAN", "T34CAN", 0),
+                            ("1BPT34", "COFAP", "T34MON", "T34MON", 0)])
+            ins = "INSERT INTO fraga_pecas(codigo_fraga,ano_venda,marca,veiculo,frota,perfect,cofap,classificacao) VALUES(?,?,?,?,?,?,?,?)"
+            con.executemany(ins, [("V1", 2010, "FIAT", "UNO", 1000, None, "T34-CAT;T34NAO1", "Automóveis e Utilitários Leves"), ("V1", 2010, "FIAT", "UNO", 1000, None, "T34NAO1", "Automóveis e Utilitários Leves"),   # mesmo veículo × ano: conta uma vez
+                                  ("V2", 2012, "VW", "GOL", 500, None, "T34NAO1", "Automóveis e Utilitários Leves"), ("V3", 2015, "MB", "ACCELO", 50, None, "T34NAO2", "Caminhões"),
+                                  ("V4", 2018, "HONDA", "CG", 99999, None, "T34MOTO", "Motos"), ("V5", 2019, "FIAT", "TORO", 10, None, "T34DES", "Automóveis e Utilitários Leves"),
+                                  ("V6", 2019, "FIAT", "TORO", 10, None, "T34CAN", "Automóveis e Utilitários Leves"), ("V7", 2019, "FIAT", "TORO", 10, None, "T34MON", "Automóveis e Utilitários Leves")])
+            con.commit()
+        finally: con.close()
+        d = C.get("/api/cobertura?tab=cofap&q=T34").json
+        r = {x["cofap"]: x for x in d["rows"]}
+        self.assertNotIn("T34MOTO", r)                                                                       # motos fora
+        self.assertEqual((r["T34-CAT"]["situacao"], r["T34-CAT"]["nossos"]), ("catalogo", [pc]))
+        self.assertEqual((r["T34DES"]["situacao"], r["T34DES"]["nossos"]), ("des", ["AMDT34D"]))
+        self.assertEqual((r["T34CAN"]["situacao"], r["T34MON"]["situacao"]), ("nao", "nao"))               # cancelado e montadora não contam
+        self.assertEqual((r["T34NAO1"]["frota"], r["T34NAO1"]["n_veiculos"], r["T34NAO1"]["curva"]), (1500, 2, "A"))
+        self.assertEqual(r["T34NAO2"]["classes"], ["Caminhões"]); self.assertEqual(r["T34-CAT"]["curva"], "")
+        for k in ("situacao", "classif", "curva"):
+            for v, n in d["counts"][k].items(): self.assertEqual(C.get(f"/api/cobertura?tab=cofap&q=T34&{k}={v}").json["total"], n, (k, v))
+        wb = load_workbook(io.BytesIO(C.get("/api/export/cobertura.xlsx?tab=cofap&q=T34&situacao=nao").data)); self.assertEqual(wb.sheetnames[0], "COFAP"); self.assertEqual(wb["COFAP"].max_row - 1, 4)
+
     def test_30_nome_do_arquivo_e_filtros_limpos(self):
         """Etapa 17 · Q8/Q16/Q26: arquivo «PerfectAmortecedores - <tela do menu> - dd-mm.xlsx», sem filtros no nome (eles ficam na aba «Filtros aplicados»);
         nenhuma tela guarda filtros da última visita; posição no catálogo fora da interface."""

@@ -51,3 +51,6 @@ listar itens de montadora: virar regra de negócio.
   mensal Peças/Valor com a linha do ano anterior; Pareto (barras + % acumulado; clicar filtra o defeito); top códigos com link para `/item/<código>`; lotes e
   fornecedores lado a lado; atalho «Lote» (válido/vencido). Card de clientes saiu (Q4: «somente os descritos»). Consultas por faixa de data (índice): 2,4 s → 0,7 s.
   Corrigido erro de sintaxe do passo 1 em `amostras.js` (comentário `//` engolia o resto da linha).
+- **Passo 4 — aba COFAP** (`cobertura.cofap`, `fraga.py` guarda classificação e modelo — **reaplicar a planilha COFAP** no banco real; `telas/cobertura.js`, `exporter.py`):
+  na cópia 1.481 códigos (sem motos): 796 catálogo · 113 em desenvolvimento · 572 não temos (frota 29,6 mi; curva A 121 · B 143 · C 308); cobertura pela frota 78,6%.
+  Maior «não temos»: SGB27608 (Onix, 1,37 mi). Primeira abertura ≈ 6 s (curva ABC/estoque do catálogo, compartilhado com a aba Catálogo), depois cache. Teste `test_34`.

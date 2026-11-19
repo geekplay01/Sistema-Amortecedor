@@ -2,6 +2,7 @@
    · catalogo (padrão) — concorrente × referência × nosso código do catálogo, com curva ABC de vendas e situação do estoque. Cartões por concorrente (clique filtra),
      atalhos de curva e linha (contagem = lista), busca, Excel. Referências pela regra Q18 (CrossCatalogo; servidor quando a planilha não tem o item).
    · desenvolvimento — DES em andamento com a curva PRÓPRIA pela frota da Fraga (LANÇAMENTOS; reserva COFAP × Fraga e FROTA do servidor). Atalhos de curva, origem e lançamento.
+   · cofap (etapa 18) — códigos da planilha COFAP × frota (sem motos): temos no catálogo, em desenvolvimento (AMD) ou não temos, pela frota; «Não temos» com curva A/B/C.
    Fonte: /api/cobertura (cobertura.py). Filtros só na URL (PSDTW.filtros). */
 (function () {
   const { $, esc, J, qs, root } = PSD;
@@ -14,17 +15,20 @@
   const CUR = { A: "blue", B: "slate", C: "slate", sem: "slate" }, curva = c => c && c !== "sem" ? badge("Curva " + c, CUR[c]) : '<span class="text-xs text-mute">sem venda</span>';
   const SIT = { ruptura: ["Ruptura", "red"], risco: ["Risco", "amber"], ok: ["OK", "green"], excesso: ["Excesso", "violet"], sem_giro: ["Sem giro", "slate"] };
   const codigo = c => `<a href="/item/${encodeURIComponent(c)}" class="font-semibold">${esc(c)}</a>`;
-  const ABAS = [["catalogo", "Catálogo · concorrentes × nossos itens", "package"], ["desenvolvimento", "Em desenvolvimento · curva pela frota", "amortecedor"]];
+  const ABAS = [["catalogo", "Catálogo · concorrentes × nossos itens", "package"], ["desenvolvimento", "Em desenvolvimento · curva pela frota", "amortecedor"], ["cofap", "COFAP · temos × não temos", "swords"]];
+  const SITC = { catalogo: ["Temos · catálogo", "green"], des: ["Em desenvolvimento", "blue"], nao: ["Não temos", "red"] };
+  const CLS = { "Automóveis e Utilitários Leves": "Leves e utilitários", "Caminhões": "Caminhões", "Ônibus": "Ônibus" };
+  const mi = v => nf(v / 1e6, 1) + " mi";
 
   function cobertura() {
-    const pedida = new URLSearchParams(location.search).get("tab"), tab = pedida === "desenvolvimento" ? "desenvolvimento" : "catalogo";
-    const F = TW.filtros("cobertura", ["tab", "q", "concorrente", "curva", "linha", "origem", "lancamento"]); F.set({ tab }); let pg = 1, timer;
+    const pedida = new URLSearchParams(location.search).get("tab"), tab = ["desenvolvimento", "cofap"].includes(pedida) ? pedida : "catalogo";
+    const F = TW.filtros("cobertura", ["tab", "q", "concorrente", "curva", "linha", "origem", "lancamento", "situacao", "classif"]); F.set({ tab }); let pg = 1, timer;
     root.innerHTML = `<div class="flex flex-col gap-5">
       <nav id="cba" class="flex flex-wrap gap-1 border-b border-line">${ABAS.map(([t, l, i]) => `<a href="/cobertura?tab=${t}" data-aba="${t}" class="-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-semibold no-underline ${t === tab ? "border-blue-500 text-blue-600" : "border-transparent text-mute hover:text-ink"}">${ico(i, "sm")}${l}</a>`).join("")}</nav>
       <div id="cbk" class="grid grid-cols-2 gap-4 lg:grid-cols-4">${'<div class="skel h-24"></div>'.repeat(4)}</div>
       <div id="cbx"></div>
       <div id="cbq" class="flex flex-wrap items-center gap-2"></div>
-      <form id="cbf" class="flex flex-wrap items-center gap-2" autocomplete="off"><input name="q" type="search" class="${campo} min-w-[16rem] flex-1" placeholder="${tab === "catalogo" ? "Buscar concorrente, referência, nosso código, aplicação…" : "Buscar código, veículo, concorrente, fornecedor…"}">
+      <form id="cbf" class="flex flex-wrap items-center gap-2" autocomplete="off"><input name="q" type="search" class="${campo} min-w-[16rem] flex-1" placeholder="${{ catalogo: "Buscar concorrente, referência, nosso código, aplicação…", desenvolvimento: "Buscar código, veículo, concorrente, fornecedor…", cofap: "Buscar código COFAP, nosso código ou veículo…" }[tab]}">
         <button type="button" id="cbl" class="rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10">Limpar filtros</button><a id="cbe" class="${prim}" href="#">${ico("download", "sm")}Baixar Excel</a></form>
       <div id="cbm" class="text-sm text-mute"></div><div id="cbt">${TW.esqueleto(8)}</div><div id="cbp" class="flex items-center justify-center gap-3 text-sm text-mute"></div></div>`;
     $("#cbf").q.value = F.get().q || "";
@@ -70,9 +74,36 @@
         options: { indexAxis: "y", plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: c => top[c.dataIndex].aplicacoes.slice(0, 2).join(" · ") } } }, scales: { x: { ticks: { callback: v => nf(v / 1e3) + " mil" } } } } });
     };
 
+    const cofap = d => {
+      const s = F.get(), k = d.kpis;
+      if (!d.disponivel) { $("#cbk").innerHTML = ""; $("#cbx").innerHTML = notice("A planilha <b>COFAP_AMORTECEDORES_x_FROTA.xlsx</b> ainda não foi carregada. Copie-a para a pasta bases_exemplo e aplique em <a href=\"/atualizacao\">Atualização de dados</a>.", "amber"); $("#cbq").innerHTML = $("#cbm").innerHTML = ""; $("#cbt").innerHTML = ""; return; }
+      const temos = k.catalogo + k.des;
+      $("#cbk").innerHTML = kpi("Códigos COFAP", nf(k.codigos), `sem motos · frota ${mi(k.frota)}`, "blue", "swords")
+        + kpi("Temos", nf(temos), `${nf(k.codigos ? 100 * temos / k.codigos : 0, 1)}% dos códigos · ${nf(k.catalogo)} no catálogo + ${nf(k.des)} em desenvolvimento`, "green", "package")
+        + kpi("Não temos", nf(k.nao), `frota ${mi(k.frota_nao)}`, "red", "triangle-alert")
+        + kpi("Cobertura pela frota", nf(k.frota ? 100 * k.frota_temos / k.frota : 0, 1) + "%", "frota dos códigos que temos ÷ frota total", "slate", "gauge");
+      const tot = k.codigos || 1;
+      $("#cbx").innerHTML = (d.sem_classificacao ? notice("Esta carga da planilha COFAP não tem a classificação: as <b>motos ainda estão na conta</b>. Reaplique a planilha em Atualização de dados.", "amber") : "")
+        + TW.card("Temos × não temos", `<div class="flex h-4 overflow-hidden rounded-full bg-thead">${["catalogo", "des", "nao"].map(x => `<span title="${SITC[x][0]}: ${nf(k[x])}" style="width:${100 * k[x] / tot}%;background:${{ catalogo: "#2F4A8C", des: "#64C4E9", nao: "#E72B3B" }[x]}"></span>`).join("")}</div>
+          <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-mute">${["catalogo", "des", "nao"].map(x => `<span class="inline-flex items-center gap-1.5"><i class="psd-sw" style="background:${{ catalogo: "#2F4A8C", des: "#64C4E9", nao: "#E72B3B" }[x]}"></i>${SITC[x][0]} <b class="text-ink">${nf(k[x])}</b></span>`).join("")}</div>
+          ${s.situacao !== "catalogo" && s.situacao !== "des" ? '<div id="cbg" class="mt-4"></div>' : ""}`, '<span class="text-xs text-mute">pelo nosso cross: CrossCatalogo e servidor; montadora não conta</span>');
+      $("#cbq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` + ["catalogo", "des", "nao"].filter(x => d.counts.situacao[x]).map(x => chip("situacao", x, SITC[x][0], d.counts.situacao[x], s.situacao === x, x === "nao")).join("")
+        + ["A", "B", "C"].filter(c => d.counts.curva[c]).map(c => chip("curva", c, "Não temos · curva " + c, d.counts.curva[c], s.curva === c)).join("")
+        + Object.entries(d.counts.classif).map(([c, n]) => chip("classif", c, CLS[c] || c, n, s.classif === c)).join("");
+      $("#cbm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> código(s) COFAP${Object.keys(s).filter(x => x !== "tab").length ? " · com filtros" : ""} · ordem: maior frota primeiro (planilha COFAP × frota, Frota 2024)`;
+      $("#cbt").innerHTML = TW.table([{ h: "Código COFAP" }, { h: "Situação" }, { h: "Nosso código" }, { h: "Frota 2024", r: true }, { h: "Curva" }, { h: "Principais veículos", nw: false }, { h: "Classificação" }],
+        d.rows.map(r => [`<b class="tabular-nums text-ink">${esc(r.cofap)}</b>`, badge(SITC[r.situacao][0], SITC[r.situacao][1]), r.nossos.length ? r.nossos.map(codigo).join(", ") : '<span class="text-xs text-mute">–</span>',
+          `<span class="font-semibold tabular-nums">${nf(r.frota)}</span>`, r.situacao === "nao" ? (r.curva !== "sem" ? badge("Curva " + r.curva, r.curva === "A" ? "red" : "slate") : '<span class="text-xs text-mute">sem frota</span>') : "",
+          `<span class="block min-w-[14rem] max-w-[26rem] text-xs" title="${esc(r.veiculos.map(v => `${v.nome} ${v.anos}: ${nf(v.frota)}`).join("\n"))}">${esc(r.veiculos.slice(0, 3).map(v => `${v.nome} ${v.anos}`).join(" · "))}${r.n_veiculos > 3 ? ` <span class="text-mute">+${r.n_veiculos - 3}</span>` : ""}</span>`,
+          `<span class="text-xs">${esc(r.classes.map(c => CLS[c] || c).join(", "))}</span>`]), { h: "max-h-[65vh]" });
+      const top = d.rows.filter(r => r.situacao === "nao" && r.frota > 0).slice(0, 15);
+      if (top.length && $("#cbg")) grafico($("#cbg"), { type: "bar", altura: 300, titulo: "Não temos: maiores frotas", data: { labels: top.map(r => r.cofap), datasets: [{ label: "Frota 2024", data: top.map(r => r.frota), backgroundColor: top.map(r => ({ A: "#E72B3B", B: "#F6A019" })[r.curva] || "#94A3B8") }] },
+        options: { indexAxis: "y", plugins: { legend: { display: false }, title: { display: true, text: "Não temos · maiores frotas", align: "start" }, tooltip: { callbacks: { afterLabel: c => top[c.dataIndex].veiculos.slice(0, 2).map(v => v.nome + " " + v.anos).join(" · ") } } }, scales: { x: { ticks: { callback: v => nf(v / 1e3) + " mil" } } } } });
+    };
+
     const carregar = async () => {
       const s = F.get(); $("#cbe").href = "/api/export/cobertura.xlsx?" + qs({ ...s, tab });
-      try { const d = await J("/api/cobertura?" + qs({ ...s, tab, page: pg })); (tab === "catalogo" ? catalogo : desenvolvimento)(d); pager(d); }
+      try { const d = await J("/api/cobertura?" + qs({ ...s, tab, page: pg })); ({ catalogo, desenvolvimento, cofap })[tab](d); pager(d); }
       catch (e) { $("#cbt").innerHTML = notice(esc(e.message), "red"); }
     };
     const aplicar = patch => { if (patch) F.set(patch); pg = 1; carregar(); };

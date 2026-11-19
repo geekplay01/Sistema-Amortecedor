@@ -238,6 +238,12 @@ def _cobertura(a):
     """Cobertura de concorrentes (etapa 17): aba Catálogo (concorrente × referência × nosso código, curva e estoque) e aba Desenvolvimento (DES em andamento com frota e curva),
     cada uma com os filtros da sua aba na tela (`tab` diz qual aba estava aberta; a outra sai sem filtro)."""
     import cobertura
+    if a.get("tab") == "cofap":       # etapa 18 · Q5: a aba COFAP tem Excel próprio (só ela, com os filtros da aba)
+        d = cobertura.cofap({**a, "all": 1})
+        return [("COFAP", ["Código COFAP", "Situação", "Nosso código", "Frota 2024 (planilha)", "Curva (não temos)", "Classificação", "Veículos", "Principais veículos"],
+                 [[r["cofap"], cobertura.SIT_COFAP[r["situacao"]], ", ".join(r["nossos"]), r["frota"], r["curva"] if r["curva"] not in ("", "sem") else "", ", ".join(r["classes"]), r["n_veiculos"],
+                   "; ".join(f"{v['nome']} {v['anos']} ({v['frota']:,.0f})".replace(",", ".") for v in r["veiculos"])] for r in d["rows"]],
+                 [16, 20, 24, 16, 12, 28, 10, 70])], d["total"]
     des = a.get("tab") == "desenvolvimento"
     c = cobertura.catalogo({**({} if des else a), "all": 1}); d = cobertura.desenvolvimento({**(a if des else {}), "all": 1})
     SITL = {"ruptura": "Ruptura", "risco": "Risco", "ok": "OK", "excesso": "Excesso", "sem_giro": "Sem giro", "sem": ""}

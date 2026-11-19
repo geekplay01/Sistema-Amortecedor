@@ -337,10 +337,10 @@ def api_item(code):
     return jsonify(item.ficha(code) or abort(404))
 @app.get("/api/cobertura")
 def api_cobertura():
-    """Cobertura de concorrentes (etapa 17): tab=catalogo (padrão) ou desenvolvimento; filtros e atalhos com contagem = lista."""
+    """Cobertura de concorrentes (etapa 17/18): tab=catalogo (padrão), desenvolvimento ou cofap; filtros e atalhos com contagem = lista."""
     import cobertura
-    a = request.args.to_dict()
-    return jsonify(cobertura.desenvolvimento(a, a.get("page")) if a.get("tab") == "desenvolvimento" else cobertura.catalogo(a, a.get("page")))
+    a = request.args.to_dict(); fn = {"desenvolvimento": cobertura.desenvolvimento, "cofap": cobertura.cofap}.get(a.get("tab"), cobertura.catalogo)
+    return jsonify(fn(a, a.get("page")))
 @app.get("/item-id/<int:pid>")
 def item_by_id(pid):
     """Links antigos de ficha (data-ficha = id do produto) → página do item pelo código."""
