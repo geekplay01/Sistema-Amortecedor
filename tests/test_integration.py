@@ -607,8 +607,9 @@ class Fluxo(unittest.TestCase):
             src = con.execute("SELECT id FROM sources WHERE name='CrossCatalogo.xlsx'").fetchone()[0]
             con.executemany("INSERT INTO codes(product_id,code,normalized_code,code_type,brand,source_id) VALUES(?,?,?,?,?,?)", [(pid, "T32-A1", "T32A1", "concorrente", "MONROE", src), (pid, "T32-B1", "T32B1", "concorrente", "NAKATA", src)])
             con.executemany("INSERT INTO rd_projects(code,suggestion,status,description,line,make,vehicle,year_from,year_to,extra) VALUES(?,?,?,?,?,?,?,?,?,?)",
-                            [("T32DES1", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR", "FIAT", "UNO MILLE", 2010, 2012, "{}"), ("T32DES2", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR", "VOLKSWAGEN", "GOL", 2024, 2026, "{}"),
-                             ("T32DES3", "DESENVOLVIMENTO", "ITEM RECEBIDO", "AMORTECEDOR", "AMORTECEDOR", "FIAT", "UNO", 2010, 2012, "{}")])
+                            [("AMDT32DES1", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR", "FIAT", "UNO MILLE", 2010, 2012, "{}"), ("AMDT32DES2", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR", "VOLKSWAGEN", "GOL", 2024, 2026, "{}"),
+                             ("AMDT32DES3", "DESENVOLVIMENTO", "ITEM RECEBIDO", "AMORTECEDOR", "AMORTECEDOR", "FIAT", "UNO", 2010, 2012, "{}"),
+                             ("1BPT32DES4", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR", "FIAT", "UNO MILLE", 2010, 2012, "{}")])          # montadora: fora (etapa 18 · Q10)
             con.executemany("INSERT INTO fraga_veiculos(codigo_fraga,marca,veiculo,ano_venda,frota,frota_ano,inicio) VALUES(?,?,?,?,?,?,?)",
                             [("F1", "FIAT", "UNO MILLE FIRE", 2010, 9000, y, "2004-01-01"), ("F1", "FIAT", "UNO MILLE FIRE", 2011, 8000, y, "2004-01-01"), ("F1", "FIAT", "UNO MILLE FIRE", 2015, 7000, y, "2004-01-01"),
                              ("F2", "VOLKSWAGEN", "GOL", 2025, 100, y, "2024-02-01")])
@@ -620,9 +621,9 @@ class Fluxo(unittest.TestCase):
             for v, n in list(base["counts"][k].items())[:3]: self.assertEqual(C.get(f"/api/cobertura?{k}={v}").json["total"], n, (k, v))
         self.assertEqual(C.get("/api/cobertura?concorrente=MONROE&q=T32").json["total"], 1)
         des = {r["codigo"]: r for r in C.get("/api/cobertura?tab=desenvolvimento&q=T32").json["rows"]}
-        self.assertEqual(set(des), {"T32DES1", "T32DES2"})                                         # recebido fica fora
-        self.assertEqual((des["T32DES1"]["frota"], des["T32DES1"]["origem"], des["T32DES1"]["lancamento"]), (17000, "Fraga · veículos", False))      # 2015 fora dos anos da aplicação
-        self.assertEqual((des["T32DES2"]["frota"], des["T32DES2"]["lancamento"]), (100, True))
+        self.assertEqual(set(des), {"AMDT32DES1", "AMDT32DES2"})                                   # recebido e montadora ficam fora
+        self.assertEqual((des["AMDT32DES1"]["frota"], des["AMDT32DES1"]["origem"], des["AMDT32DES1"]["lancamento"]), (17000, "Fraga · veículos", False))      # 2015 fora dos anos da aplicação
+        self.assertEqual((des["AMDT32DES2"]["frota"], des["AMDT32DES2"]["lancamento"]), (100, True))
         t = C.get("/api/cobertura?tab=desenvolvimento").json
         for k in ("curva", "origem"):
             for v, n in t["counts"][k].items(): self.assertEqual(C.get(f"/api/cobertura?tab=desenvolvimento&{k}={v}").json["total"], n, (k, v))

@@ -3,7 +3,8 @@
     do nosso item (12 meses fechados, universo do BI — curva_abc.classes) e situação do estoque (estoque.mapa). Referências pela regra Q18
     (CrossCatalogo quando a planilha tem o item; senão o servidor). OEM não é concorrente e fica fora.
     Cartões por concorrente (códigos nossos cobertos e quantos em A/B/C); atalhos concorrente, curva e linha — cada contagem = lista ao clicar.
-  • Desenvolvimento: DES em andamento (universo amortecedor, não bloqueado, sem ITEM RECEBIDO e sem cancelado; R-D fora) com curva PRÓPRIA pela frota:
+  • Desenvolvimento: DES em andamento (universo amortecedor, não bloqueado, sem ITEM RECEBIDO e sem cancelado; R-D fora; só PERFECT AMD… — itens de montadora
+    BPROAUTO/MOTRIO/MOTORCRAFT fora desde a etapa 18 · Q10) com curva PRÓPRIA pela frota:
       frota do item = soma da frota do ano atual dos veículos da Fraga (LANÇAMENTOS) que batem com a aplicação — mesma marca, nome do veículo e ano de venda dentro
       dos anos da aplicação (várias aplicações somam; o mesmo veículo × ano não conta duas vezes);
       sem casamento → frota do arquivo COFAP × Fraga pela referência COFAP do servidor; por último a FROTA do servidor (DESENVOLVIMENTO_PRODUTOS).
@@ -97,6 +98,7 @@ def _des_rows():
     if _CACHE.get("k") == key: return _CACHE["v"]
     apps = q(f"""SELECT r.code, r.description, r.make, r.vehicle, r.application_text, r.year_from, r.year_to, r.status, r.supplier, r.extra FROM rd_projects r
                  WHERE r.suggestion=? AND {rules.desc_sql('r.description')}
+                   AND upper(r.code) LIKE 'AMD%'
                    AND upper(r.code) NOT IN (SELECT upper(code) FROM rd_projects GROUP BY upper(code) HAVING MAX(upper(coalesce(status,''))='ITEM RECEBIDO')=1 OR MAX(upper(coalesce(status,'')) LIKE 'CANCEL%')=1)
                    AND r.code NOT IN (SELECT code FROM rd_projects WHERE suggestion=?)
                  ORDER BY r.code""", (kinds.DES, kinds.RD))
