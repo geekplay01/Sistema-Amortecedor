@@ -148,3 +148,17 @@ ETAPA 17 — 19/11/2026 (decisões em DECISOES_ETAPA17.md, regras em REGRAS_DE_N
  2. Atualização de dados > Verificar a pasta > Aplicar: carrega CatalogoAMD (Linha e Híbrido), 003(dd-mm).xls (BI03) e as duas planilhas da Fraga
     (leva alguns minutos: o BI03 e a Fraga são grandes).
  3. Sincronize uma vez: traz os concorrentes do servidor.
+
+ETAPA 18 — 19/11/2026 (decisões em DECISOES_ETAPA18.md, regras em REGRAS_DE_NEGOCIO.md)
+ - Garantia vem só do servidor (view ANALITICO_GARANTIA_DEVOLUCAO, amortecedor e linha pesada, todos os anos), atualizada a cada sincronização.
+   A planilha «Analítico de Garantias» não é mais lida (a Atualização de dados avisa e ignora). Entraram UF, lote válido/vencido e status do item.
+ - Tela Garantia nova: KPIs contra o mesmo período do ano anterior, mapa do Brasil por estado (índice de garantia = peças em garantia ÷ peças vendidas
+   no estado, e o amortecedor com mais garantia em cada um; clicar no estado filtra), mês a mês com a linha do ano anterior, Pareto de defeitos,
+   amortecedores com mais garantia (link para a página do item), lotes e fornecedores. O mapa usa a malha do IBGE salva no app (funciona sem internet).
+ - Cobertura de concorrentes ganhou a aba COFAP: cada código da planilha COFAP × frota (sem motos) como «Temos · catálogo», «Em desenvolvimento» ou
+   «Não temos», pela frota, com curva A/B/C no que não temos e Excel próprio. Itens de montadora não contam — nem aqui nem na aba Desenvolvimento.
+ - Compra de amostras: só códigos PERFECT (AMD…) em desenvolvimento. BPROAUTO, MOTRIO e MOTORCRAFT saem das sugestões e o pedido não aceita esses códigos.
+
+ DEPOIS DE ATUALIZAR PARA A ETAPA 18 (uma vez, no banco real; se os passos da etapa 17 ainda não foram feitos, faça-os antes)
+ 1. Atualização de dados > Verificar a pasta > Aplicar: recarrega a COFAP_AMORTECEDORES_x_FROTA.xlsx com a classificação (sem ela, as motos entram na conta).
+ 2. Sincronize uma vez: traz a garantia do servidor e as vendas por estado (a primeira vez busca 10 anos de vendas por UF; leva cerca de 1 minuto).

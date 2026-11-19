@@ -54,3 +54,8 @@ listar itens de montadora: virar regra de negócio.
 - **Passo 4 — aba COFAP** (`cobertura.cofap`, `fraga.py` guarda classificação e modelo — **reaplicar a planilha COFAP** no banco real; `telas/cobertura.js`, `exporter.py`):
   na cópia 1.481 códigos (sem motos): 796 catálogo · 113 em desenvolvimento · 572 não temos (frota 29,6 mi; curva A 121 · B 143 · C 308); cobertura pela frota 78,6%.
   Maior «não temos»: SGB27608 (Onix, 1,37 mi). Primeira abertura ≈ 6 s (curva ABC/estoque do catálogo, compartilhado com a aba Catálogo), depois cache. Teste `test_34`.
+- **Passo 5 — montadora fora da aba Desenvolvimento** (`cobertura._des_rows`: `upper(code) LIKE 'AMD%'`): na cópia 410 → 342 DES (A 50 · B 78 · C 181 · sem dado 33).
+- **Passo 6 — regras, LEIA-ME e testes**: REGRAS §9 (amostras, garantia) e §11 (COFAP, desenvolvimento); LEIA-ME com a etapa 18 e os passos no banco real
+  (reaplicar a COFAP; sincronizar uma vez). Suíte verde, banco real intacto.
+
+**Etapa 18 concluída** (passos 1 a 6). Pendente no banco real: reaplicar a planilha COFAP e sincronizar uma vez.
