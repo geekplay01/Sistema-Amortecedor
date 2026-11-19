@@ -56,15 +56,35 @@ window.PSDTW = (() => {
   };
   /* ---------- confirmação no próprio app (nunca a caixa do navegador) ----------
      if (await confirmar({ titulo: "Excluir o ensaio?", texto: "AMD0100 · 12/11/2026", botao: "Excluir", perigo: true, nota: "Não dá para desfazer." })) … */
+  /* com `campo: { tipo: "password", rotulo: "Nova senha", min: 8 }` a caixa pede um valor e devolve o texto digitado (ou false se cancelar) */
   const confirmar = (o = {}) => new Promise(res => {
-    const d = Object.assign(document.createElement("dialog"), { className: "psd-confirm" + (o.perigo ? " perigo" : "") });
-    d.innerHTML = `<div class="c-body"><span class="c-ico">${ico(o.icone || (o.perigo ? "trash-2" : "info"), "lg")}</span><div><h3>${esc(o.titulo || "Confirmar?")}</h3>${o.texto ? `<p>${o.html ? o.texto : esc(o.texto)}</p>` : ""}${o.nota ? `<p class="c-note">${esc(o.nota)}</p>` : ""}</div></div>
-      <div class="c-acts"><button type="button" class="psd-btn" data-r="0">${esc(o.cancelar || "Cancelar")}</button><button type="button" class="psd-btn ${o.perigo ? "perigo" : "prim"}" data-r="1">${esc(o.botao || "Confirmar")}</button></div>`;
+    const d = Object.assign(document.createElement("dialog"), { className: "psd-confirm" + (o.perigo ? " perigo" : "") }), c = o.campo;
+    d.innerHTML = `<form method="dialog"><div class="c-body"><span class="c-ico">${ico(o.icone || (o.perigo ? "trash-2" : c ? "pencil" : "info"), "lg")}</span><div class="min-w-0 flex-1"><h3>${esc(o.titulo || "Confirmar?")}</h3>${o.texto ? `<p>${o.html ? o.texto : esc(o.texto)}</p>` : ""}
+      ${c ? `<label class="mt-3 flex flex-col gap-1"><span class="text-sm font-semibold text-ink">${esc(c.rotulo || "Valor")}</span><input name="v" type="${c.tipo || "text"}" ${c.min ? `minlength="${c.min}"` : ""} required autocomplete="new-password" class="rounded-lg border border-line bg-card px-3 py-2 text-ink"></label>` : ""}
+      ${o.nota ? `<p class="c-note">${esc(o.nota)}</p>` : ""}</div></div>
+      <div class="c-acts"><button type="button" class="psd-btn" data-r="0">${esc(o.cancelar || "Cancelar")}</button><button type="submit" class="psd-btn ${o.perigo ? "perigo" : "prim"}" data-r="1">${esc(o.botao || "Confirmar")}</button></div></form>`;
     const fim = v => { d.close(); d.remove(); res(v); };
-    d.addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (b) fim(b.dataset.r === "1"); else if (e.target === d) fim(false); });
+    d.addEventListener("click", e => { const b = e.target.closest('[data-r="0"]'); if (b) fim(false); else if (e.target === d) fim(false); });
+    d.querySelector("form").addEventListener("submit", e => { e.preventDefault(); fim(c ? d.querySelector("[name=v]").value : true); });
     d.addEventListener("cancel", e => { e.preventDefault(); fim(false); });
-    document.body.appendChild(d); d.showModal(); d.querySelector(o.perigo ? '[data-r="0"]' : '[data-r="1"]').focus();
+    document.body.appendChild(d); d.showModal(); (c ? d.querySelector("[name=v]") : d.querySelector(o.perigo ? '[data-r="0"]' : '[data-r="1"]')).focus();
   });
+  /* ---------- envio de arquivos com progresso por arquivo (etapa 17 · Q7): aviso fixo no canto com uma barra por arquivo enquanto sobe; some ao terminar ----------
+     const r = await enviar("/api/drawings/check", fd, arquivos)   (fd = FormData já montado; arquivos = File[] na mesma ordem) */
+  const enviar = (url, fd, arquivos = []) => new Promise((res, rej) => {
+    const kb = n => n > 1048576 ? nf(n / 1048576, 1) + " MB" : nf(Math.max(1, n / 1024)) + " KB", tot = arquivos.reduce((a, f) => a + (f.size || 0), 0) || 1, mostra = arquivos.slice(0, 8);
+    const t = arquivos.length ? toast(`<div class="mt-2 flex flex-col gap-2">${mostra.map((f, i) => `<div><div class="flex justify-between gap-3 text-xs"><span class="truncate">${esc(f.name)}</span><span class="text-mute" data-pp="${i}">${kb(f.size || 0)}</span></div><div class="mt-1 h-1.5 rounded-full bg-thead"><div class="h-1.5 rounded-full bg-blue-500" data-pb="${i}" style="width:0%"></div></div></div>`).join("")}${arquivos.length > 8 ? `<div class="text-xs text-mute">+ ${arquivos.length - 8} arquivo(s)</div>` : ""}</div>`,
+      { tom: "info", titulo: `Enviando ${arquivos.length} arquivo(s) · ${kb(tot)}`, fixo: true, html: true }) : null;
+    const xhr = new XMLHttpRequest(); xhr.open("POST", url);
+    xhr.upload.onprogress = e => { if (!t || !e.lengthComputable) return; let acc = 0; const sent = e.loaded / e.total * tot;
+      mostra.forEach((f, i) => { const p = Math.max(0, Math.min(1, (sent - acc) / (f.size || 1))); acc += f.size || 0; const b = t.querySelector(`[data-pb="${i}"]`); if (b) b.style.width = Math.round(100 * p) + "%"; if (p >= 1) { const s = t.querySelector(`[data-pp="${i}"]`); if (s) s.textContent = "✔ enviado"; } }); };
+    const fim = () => { if (t) { t.classList.add("saindo"); setTimeout(() => t.remove(), 170); } };
+    xhr.onload = () => { fim(); let j = null; try { j = JSON.parse(xhr.responseText); } catch (e) { }
+      if (xhr.status >= 400 || !j) rej(new Error((j && j.error) || `Erro ${xhr.status} ao enviar.`)); else res(j); };
+    xhr.onerror = () => { fim(); rej(new Error("Falha de conexão ao enviar os arquivos.")); };
+    xhr.send(fd);
+  });
+  const erro = e => toast(e && e.message ? e.message : String(e), { tom: "erro", titulo: "Não deu certo" });          // erro no canto (substitui a caixa «alert» do navegador)
   /* ---------- carregamento: faixas da marca + texto, ou esqueleto no lugar de KPIs/tabela ---------- */
   const carregando = (t = "Carregando…") => `<div class="psd-load rounded-2xl border border-line bg-card px-5 py-8">${stripes()}<span>${esc(t)}</span></div>`;
   const esqueleto = (linhas = 6, kpis = 0) => (kpis ? `<div class="grid grid-cols-2 gap-4 lg:grid-cols-4">${'<div class="skel h-24"></div>'.repeat(kpis)}</div>` : "")
@@ -98,5 +118,5 @@ window.PSDTW = (() => {
     const g = new window.Chart(cv, { type: cfg.type, data: cfg.data, options: cfg.options || {} }); vivos.add(g); return g;
   };
   document.addEventListener("psd-theme", () => { tema(); vivos.forEach(g => { if (!g.canvas.isConnected) { vivos.delete(g); return; } pinta(g.config.type, g.data.datasets); g.update(); }); });
-  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, carregando, esqueleto, grafico, CORES };
+  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, enviar, carregando, esqueleto, grafico, CORES };
 })();

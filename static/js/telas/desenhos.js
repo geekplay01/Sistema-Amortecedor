@@ -106,7 +106,7 @@
     const send = async files => {
       if (!files.length) return msg(""); const fd = new FormData(); fd.append("kind", kind()); files.forEach(x => fd.append("files", x, x.name));
       msg(`Enviando ${files.length} arquivo(s) para análise…`);
-      try { const r = await J("/api/drawings/check", { method: "POST", body: fd }); msg(""); dwReview(r, refresh); } catch (e) { msg(e.message, true); }
+      try { const r = await PSDTW.enviar("/api/drawings/check", fd, files); msg(""); dwReview(r, refresh); } catch (e) { msg(e.message, true); PSDTW.erro(e); }
     };
     $("#dw-f").onchange = e => { send([...e.target.files]); e.target.value = ""; };
     $("#dw-d").onchange = e => { send([...e.target.files]); e.target.value = ""; };
@@ -138,7 +138,8 @@
       const b = $("#dw-go"); b.disabled = true; $("#dw-rmsg").textContent = "Gravando…";
       try { const r = await post("/api/drawings/apply", { token: res.token, overrides: ov }), s = r.summary; dlg.close();
         const aviso = `✔ ${s.novos} novo(s), ${s.revisoes} revisão(ões), ${s.ignorados} ignorado(s) · ${s.redesenvolvimento} REDESENVOLVIMENTO, ${s.desenvolvimento} DESENVOLVIMENTO${s.sem_origem ? `, ${s.sem_origem} sem prefixo RED/DES` : ""}${s.sem_vinculo ? `, ${s.sem_vinculo} sem código (vincule clicando no cartão)` : ""}. Os cadastros já mostram a revisão vigente.`;
-        const slot = $("#dw-done"); if (slot) slot.innerHTML = PSDTW.notice(aviso, "blue"); else root.insertAdjacentHTML("afterbegin", `<div class="notice">${aviso}</div>`); done && done(); }
+        const slot = $("#dw-done"); if (slot) slot.innerHTML = PSDTW.notice(aviso, "blue"); else root.insertAdjacentHTML("afterbegin", `<div class="notice">${aviso}</div>`);
+        PSDTW.toast(`${s.novos + s.revisoes} desenho(s) gravado(s): ${s.novos} novo(s), ${s.revisoes} revisão(ões)${s.ignorados ? `, ${s.ignorados} ignorado(s)` : ""}.`, { titulo: "Envio concluído" }); done && done(); }
       catch (e) { b.disabled = false; $("#dw-rmsg").textContent = e.message; $("#dw-rmsg").className = "imp-msg err"; }
     };
     dlg.showModal();
@@ -185,10 +186,12 @@
         const z = e.target.closest("[data-z]");
         if (z) { const k = z.dataset.z; if (k === "+") zoom = Math.min(5, zoom + .25); else if (k === "-") zoom = Math.max(.25, zoom - .25); else if (k === "0") zoom = 1; else if (k === "full") { (document.fullscreenElement ? document.exitFullscreen() : $("#dwp").requestFullscreen()); return; } else if (k === "cmp") { return showCmp(); } applyZoom(); return; }
         const pv = e.target.closest("[data-pv]"); if (pv && !e.target.closest(".dw-dlb")) { cur = d.current.find(x => x.id == pv.dataset.pv); zoom = 1; $("#dwp").innerHTML = prev(cur); $("#dwopen").href = "/api/drawings/file/" + cur.id; $$(".dw-f", dlg).forEach(b => b.classList.toggle("on", b === pv)); applyZoom(); bindImg(); }
-        const del = e.target.closest("[data-del]"); if (del) { e.preventDefault(); if (!confirm("Excluir definitivamente " + del.dataset.n + "?\nSe for a revisão vigente, a anterior volta a ser a vigente.")) return; await J("/api/drawings/file/" + del.dataset.del, { method: "DELETE" }); dlg.close(); done && done(); }
+        const del = e.target.closest("[data-del]"); if (del) { e.preventDefault();
+          if (!await PSDTW.confirmar({ titulo: "Excluir este arquivo?", texto: del.dataset.n, nota: "Não dá para desfazer: o arquivo sai de data\\drawings. Se for a revisão vigente, a anterior volta a ser a vigente.", botao: "Excluir", perigo: true })) return;
+          try { await J("/api/drawings/file/" + del.dataset.del, { method: "DELETE" }); PSDTW.toast(`${del.dataset.n} excluído.`); dlg.close(); done && done(); } catch (er) { PSDTW.erro(er); } }
       };
       dlg.showModal();
-    } catch (e) { alert(e.message); }
+    } catch (e) { PSDTW.erro(e); }
   }
 
   function dwOrphan(id, name, done) {
@@ -197,7 +200,8 @@
       <div class="fgrid"><label>Código(s)<input id="o-code" placeholder="ex.: AMD0170"></label><label>Revisão (opcional)<input id="o-rev" placeholder="ex.: 02 ou B"></label></div>
       <p id="o-msg" class="imp-msg"></p><div class="acts"><button class="btn" id="o-go">Vincular</button> <a class="btn ghost" href="/api/drawings/file/${id}" target="_blank" rel="noopener">Abrir arquivo</a> <button class="btn ghost" id="o-del">Excluir</button></div>`;
     $("#o-go").onclick = async () => { try { await post(`/api/drawings/file/${id}/assign`, { codes: $("#o-code").value, rev: $("#o-rev").value }); dlg.close(); done && done(); } catch (e) { $("#o-msg").textContent = e.message; $("#o-msg").className = "imp-msg err"; } };
-    $("#o-del").onclick = async () => { if (!confirm("Excluir este arquivo?")) return; await J("/api/drawings/file/" + id, { method: "DELETE" }); dlg.close(); done && done(); };
+    $("#o-del").onclick = async () => { if (!await PSDTW.confirmar({ titulo: "Excluir este arquivo?", texto: name, nota: "Não dá para desfazer: o arquivo sai de data\\drawings.", botao: "Excluir", perigo: true })) return;
+      try { await J("/api/drawings/file/" + id, { method: "DELETE" }); PSDTW.toast(`${name} excluído.`); dlg.close(); done && done(); } catch (er) { PSDTW.erro(er); } };
     dlg.showModal();
   }
   PSD.tela("desenhos", () => desenhos());

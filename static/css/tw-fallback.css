@@ -3,6 +3,7 @@
 .absolute{position:absolute}
 .align-top{vertical-align:top}
 .animate-spin{animation:psd-spin 1s linear infinite}
+.bg-accent{background-color:var(--accent)}
 .bg-amber-500{background-color:#F6A019}
 .bg-amber-500\/10{background-color:rgba(246,160,25,0.1)}
 .bg-amber-500\/20{background-color:rgba(246,160,25,0.2)}
@@ -171,6 +172,7 @@
 .pl-4{padding-left:1rem}
 .pl-5{padding-left:1.25rem}
 .place-items-center{place-items:center}
+.pointer-events-none{pointer-events:none}
 .pt-2{padding-top:.5rem}
 .pt-3{padding-top:.75rem}
 .px-1{padding-left:.25rem;padding-right:.25rem}

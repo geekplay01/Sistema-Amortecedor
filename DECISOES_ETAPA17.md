@@ -104,3 +104,13 @@ Pedido do usuário: design moderno em todos os módulos (cores do logo, ícones 
 - **Desenvolvimento:** DES em andamento (sem ITEM RECEBIDO/cancelado, universo amortecedor, não bloqueado; R-D fora) com frota da Fraga pelo veículo e anos da aplicação (mesmo veículo × ano conta uma vez), reserva COFAP × Fraga e FROTA do servidor; curva A/B/C pela frota acumulada (80/95); selo Lançamento (início de produção ≥ 2024); gráfico das 15 maiores frotas; dica com os veículos que somaram.
 - `estoque.mapa()`: linha do Estoque por código em memória (usada aqui e na página do item).
 - Teste `test_32`. Na cópia: 3.956 referências de 17 concorrentes cobrindo 874 dos 914 itens (95,6%); COFAP 795 códigos (149 curva A). Desenvolvimento: 410 itens, 377 com frota (344 Fraga·veículos, 16 Fraga·COFAP, 17 servidor), frota somada 25,7 mi, curva A 65 · B 75 · C 237 · sem frota 33; 105 com lançamento. Maior: AMD0835 (Gol 2001–2016, 1,9 mi).
+
+### Passo 6 · revisão tela a tela (19/11/2026) ✅
+- Gráficos: `charts.js` mantém a interface (PSDCharts.gauge/funnel/bars/hbars/donut/line) e desenha pelo Chart.js com as cores da marca (cores antigas trocadas; verde só para «OK»). Dashboard, Metas, Pedidos, Vendas e Garantia mudaram sem mexer nas telas.
+- Caixas do navegador: os 23 `alert`/`confirm`/`prompt` viraram `PSDTW.toast`/`PSDTW.erro` e `PSDTW.confirmar` (com campo para a nova senha). Exclusões (ensaio, desenho, envio, amostra, usuário, restaurar backup) dizem o que sai e se dá para desfazer; inclusões e exclusões mostram aviso no canto.
+- Envio com progresso por arquivo (`PSDTW.enviar`): Desenhos e Atualização de dados.
+- Diálogos antigos, botões, selos, avisos, tabelas `.tbl`, cartões do Dashboard e tela inicial reestilizados no `marca.css`. Damping: o nº do ensaio saiu também do cabeçalho do formulário.
+- Curva ABC sem verde (A azul-marinho, B azul-claro, C cinza) na Cobertura e na página do item.
+- `test_30` barra `alert`/`confirm`/`prompt` nas telas. Na cópia: as 27 telas abrem sem erro de script; gráficos via Chart.js no Dashboard (5), Metas (3), Vendas (3), Pedidos (2) e Garantia (1).
+- LEIA-ME: seção da etapa 17 e passos no banco real.
+- **Etapa 17 concluída** (passos 1 a 6).

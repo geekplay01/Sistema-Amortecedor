@@ -125,7 +125,7 @@
       if (tg) { F.toggle(tg.dataset.tg, tg.dataset.v); return carregar(); }
       if (todos) return aplicar({ tipo: "" });
       if (e.target.id === "mclr") { F.clear(); return aplicar(null); }
-      if (vs) { vs.disabled = true; try { await post("/api/validations", { code: vs.dataset.vs, kind: RD }); await carregar(); } catch (er) { alert(er.message); vs.disabled = false; } }
+      if (vs) { vs.disabled = true; try { await post("/api/validations", { code: vs.dataset.vs, kind: RD }); await carregar(); } catch (er) { PSDTW.erro(er); vs.disabled = false; } }
       if (ed) editar(ed.dataset.edit);
     });
 

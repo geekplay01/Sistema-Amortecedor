@@ -126,3 +126,25 @@ ETAPA 16 — concluída em 17/11/2026 (decisões em DECISOES_ETAPA16.md, regras 
  2. Pendências > Campo «Código da caixa» > «Usar o da planilha» nos 5 itens: AMD0245, AMD0272, AMD0277, AMD17472, AMD4701.
  3. Atualização de dados: reimporte o CatalogoAMD.xlsx e carregue o Analítico de Garantias.xlsx.
  4. Sincronize normalmente: as fotos da previsão começam na próxima sincronização.
+
+ETAPA 17 — 19/11/2026 (decisões em DECISOES_ETAPA17.md, regras em REGRAS_DE_NEGOCIO.md)
+ - Visual novo nas cores do logo PERFECT: menu azul-marinho, tema claro mais legível, fonte Barlow nos títulos e números, ícones de peças e amortecedores,
+   gráficos (Chart.js), avisos no canto para inclusão/exclusão/erro, confirmação própria do app antes de excluir, envio de arquivos com progresso
+   e transição suave entre telas. Funciona sem internet (fonte, ícones e Chart.js ficam em static\). Guia do visual: endereço /guia-visual.
+ - Filtros: a tela aberta pelo menu vem limpa (nada é lembrado da visita anterior). Links entre telas e o Voltar do navegador continuam filtrados.
+ - Arquivos baixados: «PerfectAmortecedores - <nome da tela> - dd-mm.xlsx». Posição no catálogo e IDs só aparecem no Excel.
+ - Página do item (/item/<código>): clicar em qualquer código abre tudo o que o app tem dele — dados, aplicações, concorrentes, vendas e curva ABC,
+   estoque e projeção, pedidos e chegadas, desenvolvimento, garantia, desenhos, Inmetro, FOB, Brands, pendências e anomalias. A ficha antiga saiu.
+ - Catálogo: colunas Linha e «Hibrido ou elétrico» do CatalogoAMD (filtro, atalho e selo em Produtos e Pesquisa).
+ - Cadastro do Protheus (BI03 = planilha «003(dd-mm).xls» em Atualização de dados): peso líquido e código de barras do BI03 valem sobre o CatalogoAMD;
+   IPI do servidor. Anomalias ganhou «Peso e EAN × BI03» e «Pendente cadastro Protheus».
+ - Concorrentes: itens em desenvolvimento usam o servidor (DESENVOLVIMENTO_CONCORRENTES, pelo ID); itens do catálogo usam o CrossCatalogo.xlsx (o servidor só
+   quando a planilha ainda não tem o item). A busca acha pelas duas fontes. Anomalias ganhou «Cross × servidor» e «Concorrentes repetidos».
+ - Cobertura de concorrentes (menu 3 · Catálogo): concorrente × referência × nosso código com curva ABC e estoque; e os DES em andamento com curva pela
+   frota da Fraga (planilhas «LANÇAMENTOS aaaa.xlsx» e «COFAP_AMORTECEDORES_x_FROTA.xlsx» em Atualização de dados).
+
+ DEPOIS DE ATUALIZAR PARA A ETAPA 17 (uma vez, no banco real)
+ 1. Copie COFAP_AMORTECEDORES_x_FROTA.xlsx (Downloads) para a pasta bases_exemplo.
+ 2. Atualização de dados > Verificar a pasta > Aplicar: carrega CatalogoAMD (Linha e Híbrido), 003(dd-mm).xls (BI03) e as duas planilhas da Fraga
+    (leva alguns minutos: o BI03 e a Fraga são grandes).
+ 3. Sincronize uma vez: traz os concorrentes do servidor.

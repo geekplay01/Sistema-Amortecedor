@@ -96,8 +96,9 @@
     bar.addEventListener("click", async e => { const b = e.target.closest("[data-bv]"); if (!b) return;
       if (b.dataset.bv === "x") { $$(".rdsel,.rdall", root).forEach(c => c.checked = false); return marcar(); }
       const codes = selecionados(); if (!codes.length) return; const val = b.dataset.bv === "auto" ? null : b.dataset.bv === "1", fl = $("#bf", bar).value;
-      if (!confirm(`${val === null ? "Voltar ao automático" : val ? "Marcar" : "Desmarcar"} “${FLG[fl][0]}” em ${codes.length} item(ns)?`)) return;
-      try { await post(`/api/rd/${k}/flags/bulk`, { codes, flag: fl, value: val }); await recarregarTudo(); } catch (er) { alert(er.message); } });
+      const acao = val === null ? "Voltar ao automático" : val ? "Marcar" : "Desmarcar";
+      if (!await PSDTW.confirmar({ titulo: `${acao} «${FLG[fl][0]}»?`, texto: `${codes.length} item(ns) selecionado(s).`, nota: "Dá para desfazer: marque de novo ou volte ao automático.", botao: acao, icone: "list-filter" })) return;
+      try { await post(`/api/rd/${k}/flags/bulk`, { codes, flag: fl, value: val }); PSDTW.toast(`«${FLG[fl][0]}»: ${acao.toLowerCase()} em ${codes.length} item(ns).`); await recarregarTudo(); } catch (er) { PSDTW.erro(er); } });
 
     const recarregarTudo = async () => { fc = await J(`/api/rd/${k}/facets`); desenharKpis(); desenharFiltros(); desenharAtalhos(); await carregar(); };
     PSD.aoMudarControle = () => recarregarTudo().catch(fail);       // controle de status alterado no detalhe do item

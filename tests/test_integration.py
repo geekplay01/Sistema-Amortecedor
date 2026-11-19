@@ -642,6 +642,8 @@ class Fluxo(unittest.TestCase):
         js = {p: open(p, encoding="utf-8").read() for p in glob.glob(os.path.join(ROOT, "static", "js", "**", "*.js"), recursive=True)}
         for p, s in js.items():
             for x in ("filtros da última visita", "catalog_position", "?limpo=1"): self.assertTrue(x not in s, f"{x} em {p}")
+            self.assertIsNone(re.search(r"\b(confirm|prompt)\(", s), f"caixa do navegador em {p} (use PSDTW.confirmar)")                  # Q7: confirmação própria do app
+            if not p.endswith("app.js"): self.assertIsNone(re.search(r"\balert\(", s), f"alert em {p} (use PSDTW.toast / PSDTW.erro)")
         self.assertNotIn("localStorage.setItem", js[os.path.join(ROOT, "static", "js", "tw.js")])
 
 

@@ -63,15 +63,15 @@
         $(".mn", tr).textContent = fx(lo); $(".mx", tr).textContent = fx(hi); $(".rs", tr).innerHTML = selo(r); if (d != null) res.push(r); });
       const o = !res.length ? "" : res.includes("DISAPPROVED") ? "DISAPPROVED" : res.some(r => r !== "APPROVED") || res.length < linhas().length ? "INCOMPLETO" : "APPROVED";
       $("#dm-ov").innerHTML = o ? `<span class="text-sm text-mute">Resultado geral</span> ${selo(o)}` : ""; };
-    const marcar = id => { cur = id || null; sujo = false; $("#dm-id").textContent = cur ? "#" + cur : "(novo)"; $("#dm-x").classList.toggle("hidden", !cur); if (cur) $("#dm-x").href = `/api/damping/tests/${cur}/export.xlsx`; };
+    const marcar = id => { cur = id || null; sujo = false; $("#dm-id").textContent = cur ? "(salvo — editando)" : "(novo)"; $("#dm-x").classList.toggle("hidden", !cur); if (cur) $("#dm-x").href = `/api/damping/tests/${cur}/export.xlsx`; };
     const preencher = t => { F.perfect_code.value = t.perfect_code || ""; F.label.value = t.label || ""; F.test_date.value = t.test_date || new Date().toISOString().slice(0, 10); F.notes.value = t.notes || "";
       linhas().forEach(tr => { const p = (t.points || []).find(x => x.table_name === tr.dataset.t && Math.abs(x.velocity - tr.dataset.v) < 1e-6); $(".dd", tr).value = p?.drawing ?? ""; $(".df", tr).value = p?.found ?? ""; });
       marcar(t.id); aviso("dm-msg", ""); recalc(); };
-    const descartar = () => !sujo || confirm("Descartar as alterações do ensaio em edição?");
+    const descartar = async () => !sujo || await TW.confirmar({ titulo: "Descartar as alterações?", texto: "O ensaio em edição tem alterações que não foram salvas.", botao: "Descartar", perigo: true, icone: "triangle-alert" });
     $("#dm-ed").addEventListener("input", e => { sujo = true; if (e.target.closest("tr[data-t]")) recalc(); });
-    $("#dm-nw").onclick = () => { if (descartar()) preencher({}); };
+    $("#dm-nw").onclick = async () => { if (await descartar()) preencher({}); };
     $("#dm-sv").onclick = async () => { const points = linhas().map(tr => ({ table: tr.dataset.t, velocity: +tr.dataset.v, drawing: $(".dd", tr).value, found: $(".df", tr).value }));
-      try { const r = await post("/api/damping/tests", { id: cur, ...Object.fromEntries(new FormData(F)), points }); marcar(r.id); aviso("dm-msg", "✔ Ensaio salvo."); lista(); } catch (er) { aviso("dm-msg", esc(er.message), true); } };
+      try { const r = await post("/api/damping/tests", { id: cur, ...Object.fromEntries(new FormData(F)), points }); marcar(r.id); aviso("dm-msg", ""); TW.toast(`Ensaio ${F.perfect_code.value || F.label.value || ""} salvo.`); lista(); } catch (er) { aviso("dm-msg", esc(er.message), true); } };
     const pc = F.perfect_code; let tb;
     pc.addEventListener("input", () => { clearTimeout(tb); tb = setTimeout(async () => { const v = pc.value.trim(); if (v.length < 3) return;
       try { const d = await J("/api/products?size=8&q=" + encodeURIComponent(v)); $("#dm-dl").innerHTML = d.rows.map(r => `<option value="${esc(r.perfect_code)}">${esc(r.description || "")}</option>`).join("");
@@ -102,8 +102,9 @@
     $("#dm-clr").onclick = () => { FL.clear(); $("#dm-busca").value = ""; lista(); };
     $("#dm-q").onclick = e => { const b = e.target.closest("[data-r]"); if (b) { FL.toggle("res", b.dataset.r); lista(); } };
     $("#dm-l").onclick = async e => { const o = e.target.closest("[data-op]"), d = e.target.closest("[data-rm]");
-      if (o && descartar()) { try { preencher(await J("/api/damping/tests/" + o.dataset.op)); $("#dm-ed").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (er) { fail(er); } }
-      if (d && confirm(`Excluir o ensaio ${d.dataset.n || ""}?`)) { try { await J("/api/damping/tests/" + d.dataset.rm, { method: "DELETE" }); if (String(cur) === d.dataset.rm) preencher({}); lista(); } catch (er) { fail(er); } } };
+      if (o && await descartar()) { try { preencher(await J("/api/damping/tests/" + o.dataset.op)); $("#dm-ed").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (er) { fail(er); } }
+      if (d && await TW.confirmar({ titulo: "Excluir o ensaio?", texto: d.dataset.n || "", nota: "Não dá para desfazer: o ensaio e os pontos medidos saem do banco.", botao: "Excluir", perigo: true })) {
+        try { await J("/api/damping/tests/" + d.dataset.rm, { method: "DELETE" }); if (String(cur) === d.dataset.rm) preencher({}); TW.toast(`Ensaio ${d.dataset.n || ""} excluído.`); lista(); } catch (er) { TW.erro(er); } } };
     preencher({}); lista();
 
     function tabela(n) {

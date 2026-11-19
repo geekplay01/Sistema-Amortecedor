@@ -38,7 +38,7 @@
               nf(r.source_rows), nf(r.items), nf(r.events), nf(r.new_items), nf(r.removed_items), avisos(r)]), { h: "max-h-[45vh]" }) : empty("Nenhuma sincronização ainda."))}</div>`
         + (rn.datasets.length ? `<div class="mt-5">${card("Compras, vendas e estoque", TW.table([{ h: "Conjunto" }, { h: "Objeto no servidor" }, { h: "Linhas", r: true }, { h: "Resultado" }, { h: "Quando" }, { h: "Observação", nw: false }],
             rn.datasets.map(r => [esc(r.dataset), esc(r.object || ""), nf(r.rows), badge(r.status, r.status === "ok" ? "green" : "amber"), quando(r.at), esc(r.note || "")])))}</div>` : "");
-      const b = $("#srvgo"); if (b) b.onclick = async () => { b.disabled = true; b.textContent = "Sincronizando…"; try { await post("/api/pipeline/sync"); window.psdSyncPoll && window.psdSyncPoll(draw); } catch (e) { alert(e.message); draw(); } };
+      const b = $("#srvgo"); if (b) b.onclick = async () => { b.disabled = true; b.textContent = "Sincronizando…"; try { await post("/api/pipeline/sync"); window.psdSyncPoll && window.psdSyncPoll(draw); } catch (e) { PSDTW.erro(e); draw(); } };
     };
     draw();
   }
@@ -106,16 +106,19 @@
         const pane = $("#spane");
         pane.onchange = async e => { const r = e.target.closest("[data-role]"); if (r) try { await put("/api/admin/users/" + r.dataset.role, { role: r.value }); msg("um", "Perfil atualizado."); } catch (er) { msg("um", er.message, true); show(); } };
         pane.onclick = async e => { const rp = e.target.closest("[data-rp]"), du = e.target.closest("[data-du]");
-          if (rp) { const pw = prompt(`Nova senha para ${rp.dataset.n} (mínimo 8 caracteres):`); if (pw) try { await put("/api/admin/users/" + rp.dataset.rp, { password: pw }); msg("um", "Senha redefinida."); } catch (er) { msg("um", er.message, true); } }
-          if (du && confirm(`Remover o usuário ${du.dataset.n}?`)) try { await J("/api/admin/users/" + du.dataset.du, { method: "DELETE" }); show(); } catch (er) { msg("um", er.message, true); } };
+          if (rp) { const pw = await PSDTW.confirmar({ titulo: `Redefinir a senha de ${rp.dataset.n}`, campo: { tipo: "password", rotulo: "Nova senha (mínimo 8 caracteres)", min: 8 }, botao: "Redefinir senha", icone: "settings" });
+            if (pw) try { await put("/api/admin/users/" + rp.dataset.rp, { password: pw }); PSDTW.toast(`Senha de ${rp.dataset.n} redefinida.`); } catch (er) { PSDTW.erro(er); } }
+          if (du && await PSDTW.confirmar({ titulo: `Remover o usuário ${du.dataset.n}?`, texto: "Ele deixa de entrar no sistema.", nota: "Não dá para desfazer: para voltar, cadastre o usuário de novo.", botao: "Remover", perigo: true }))
+            try { await J("/api/admin/users/" + du.dataset.du, { method: "DELETE" }); PSDTW.toast(`Usuário ${du.dataset.n} removido.`); show(); } catch (er) { PSDTW.erro(er); } };
         const fn = $("#fn"); fn.onsubmit = async e => { e.preventDefault(); try { await post("/api/admin/users", Object.fromEntries(new FormData(fn))); show(); } catch (er) { msg("fnm", er.message, true); } };
       },
       regras() { const fr = $("#fr"); fr.onsubmit = async e => { e.preventDefault(); try { await put("/api/settings", Object.fromEntries(new FormData(fr))); msg("frm", "Regras salvas. Listas, contadores e metas já usam o novo critério."); } catch (er) { msg("frm", er.message, true); } }; },
       servidor() { servidor($("#srvpanel")); },
       backups() {
         $("#bk").onclick = async () => { $("#bk").disabled = true; try { await post("/api/backups"); show(); } catch (e) { $("#bk").disabled = false; msg("bkm", e.message, true); } };
-        $$("[data-rs]").forEach(b => b.onclick = async () => { if (!confirm("Restaurar " + b.dataset.rs + "?\nO banco atual será substituído (um backup do estado atual é criado antes).")) return;
-          try { const r = await post("/api/backups/restore", { name: b.dataset.rs }); alert("Restaurado. Backup do estado anterior: " + r.safety); show(); } catch (e) { alert(e.message); } });
+        $$("[data-rs]").forEach(b => b.onclick = async () => {
+          if (!await PSDTW.confirmar({ titulo: "Restaurar este backup?", texto: b.dataset.rs, nota: "O banco atual é substituído. Antes, um backup do estado atual é criado (dá para voltar por ele).", botao: "Restaurar", perigo: true, icone: "history" })) return;
+          try { const r = await post("/api/backups/restore", { name: b.dataset.rs }); PSDTW.toast("Backup do estado anterior: " + r.safety, { titulo: "Banco restaurado", fixo: true }); show(); } catch (e) { PSDTW.erro(e); } });
       }
     };
     const show = async () => { const pane = $("#spane"); pane.onclick = pane.onchange = null; try { pane.innerHTML = await PANES[cur](); wire[cur](); } catch (e) { pane.innerHTML = notice(esc(e.message), "red"); } };

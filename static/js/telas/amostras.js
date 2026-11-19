@@ -131,7 +131,7 @@
       if (bp) menorPreco(+bp.dataset.bp, bp);
       if (np) { const r = rows[+np.dataset.np], q = r._best ? [{ price: r._best.price, link: r._best.url, chosen: 1 }] : [{ price: "", link: "", chosen: 1 }];
         form({ autoSearch: false, stage: "cotacao", perfect_code: r.code, quotes: q, notes: r.cross.length ? "Referência cruzada: " + r.cross.slice(0, 8).map(c => (c.brand || "") + " " + c.code).join(" · ") : "" }); }
-      if (mv) { const r = data.rows.find(x => x.id == mv.dataset.mv), ks = data.stages.map(s => s[0]); try { await post("/api/samples", { ...r, stage: ks[ks.indexOf(r.stage) + +mv.dataset.d] }); carregar(); } catch (er) { alert(er.message); } }
+      if (mv) { const r = data.rows.find(x => x.id == mv.dataset.mv), ks = data.stages.map(s => s[0]); try { await post("/api/samples", { ...r, stage: ks[ks.indexOf(r.stage) + +mv.dataset.d] }); carregar(); } catch (er) { PSDTW.erro(er); } }
       if (ed) form(data.rows.find(x => x.id == ed.dataset.ed));
     });
 
@@ -185,8 +185,10 @@
       pc.addEventListener("change", fill); if (o.perfect_code) fill();
       $("#sform").onsubmit = async e => { e.preventDefault(); const v = Object.fromEntries(new FormData(e.target));
         const body = { ...v, id: o.id, to_send: !!v.to_send, pending_supplier: !!v.pending_supplier, quotes: $$(".qrow", dlg).map(r => ({ price: $(".qp", r).value, link: $(".ql", r).value, chosen: $("input[type=radio]", r).checked })) };
-        try { await post("/api/samples", body); dlg.close(); data = null; nPend = null; if (aba() === "pedidos") desenharFiltros(); carregar(); } catch (er) { alert(er.message); } };
-      const del = $("#del"); if (del) del.onclick = async () => { if (confirm("Excluir esta amostra?")) { await J("/api/samples/" + o.id, { method: "DELETE" }); dlg.close(); data = null; carregar(); } };
+        try { await post("/api/samples", body); PSDTW.toast(`Pedido de amostra ${v.perfect_code || v.sample_code || ""} ${o.id ? "atualizado" : "incluído"}.`); dlg.close(); data = null; nPend = null; if (aba() === "pedidos") desenharFiltros(); carregar(); } catch (er) { PSDTW.erro(er); } };
+      const del = $("#del"); if (del) del.onclick = async () => { const nome = [o.perfect_code || o.sample_code, o.supplier, o.sc_number && "SC " + o.sc_number].filter(Boolean).join(" · ");
+        if (!await PSDTW.confirmar({ titulo: "Excluir este pedido de amostra?", texto: nome, nota: "Não dá para desfazer: o pedido e as cotações saem do banco.", botao: "Excluir", perigo: true })) return;
+        try { await J("/api/samples/" + o.id, { method: "DELETE" }); PSDTW.toast(`Pedido de amostra ${nome} excluído.`); dlg.close(); data = null; carregar(); } catch (er) { PSDTW.erro(er); } };
       dlg.showModal();
     }
 

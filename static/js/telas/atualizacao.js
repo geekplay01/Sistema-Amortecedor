@@ -29,11 +29,12 @@
           : todo ? `<div><button type="button" id="uf-apply" class="${primario}">Aplicar atualização (${nf(t.new)} novos, ${nf(t.updated)} atualizados)</button></div>`
           : notice("O banco já está em dia com estas planilhas: nada a inserir."));
       const ap = $("#uf-apply"); if (ap) ap.onclick = async () => { ap.disabled = true; msg("Aplicando… (backup + gravação)");
-        try { const r = await post("/api/update/apply", { token: res.token }); msg(""); show(r, true); } catch (e) { ap.disabled = false; msg(e.message, true); } };
+        try { const r = await post("/api/update/apply", { token: res.token }); msg(""); show(r, true);
+          PSDTW.toast(`${nf(r.totals.new)} novo(s) e ${nf(r.totals.updated)} atualizado(s) gravados. Backup antes: ${r.backup || "—"}.`, { titulo: "Atualização aplicada" }); } catch (e) { ap.disabled = false; msg(e.message, true); PSDTW.erro(e); } };
     };
-    const check = async fd => { msg("Lendo as planilhas e comparando com o banco… pode levar alguns segundos."); $("#uf-out").innerHTML = "";
-      try { const r = await J("/api/update/check", { method: "POST", body: fd }); msg(""); show(r, false); } catch (e) { msg(e.message, true); } };
-    $("#uf").onchange = e => { const fs = [...e.target.files]; if (!fs.length) return; $("#uf-names").textContent = fs.length + " arquivo(s): " + fs.map(f => f.name).join(", "); const fd = new FormData(); fs.forEach(f => fd.append("files", f)); check(fd); };
+    const check = async (fd, arquivos = []) => { msg("Lendo as planilhas e comparando com o banco… pode levar alguns segundos (o cadastro do Protheus e a Fraga levam mais)."); $("#uf-out").innerHTML = TW.carregando("Lendo as planilhas…");
+      try { const r = await PSDTW.enviar("/api/update/check", fd, arquivos); msg(""); show(r, false); } catch (e) { $("#uf-out").innerHTML = ""; msg(e.message, true); PSDTW.erro(e); } };
+    $("#uf").onchange = e => { const fs = [...e.target.files]; if (!fs.length) return; $("#uf-names").textContent = fs.length + " arquivo(s): " + fs.map(f => f.name).join(", "); const fd = new FormData(); fs.forEach(f => fd.append("files", f)); check(fd, fs); };
     $("#uf-folder").onclick = () => { $("#uf-names").textContent = ""; const fd = new FormData(); fd.append("folder", "1"); check(fd); };
   }
   PSD.tela("atualizacao", atualizacao);

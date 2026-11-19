@@ -129,6 +129,38 @@ dialog.psd-confirm .c-acts{display:flex;justify-content:flex-end;gap:8px;padding
 .psd-load .psd-stripes i:nth-child(2){animation-delay:.12s}.psd-load .psd-stripes i:nth-child(3){animation-delay:.24s}.psd-load .psd-stripes i:nth-child(4){animation-delay:.36s;background:var(--navy);opacity:1}
 @keyframes psd-bar{0%,100%{transform:skewX(-22deg) scaleY(.55)}50%{transform:skewX(-22deg) scaleY(1)}}
 
+/* ---------- componentes antigos (diálogos de amostra/envio/desenho, detalhe de DES/R-D, cartões do Dashboard, tela inicial) na mesma marca ---------- */
+:root,[data-theme]{--cobalt:var(--b500);--emerald:var(--ok);--lead:var(--navy);--r:16px;--sh:var(--shadow);--sh2:0 8px 24px rgb(27 34 56/.12)}
+.btn,[data-theme] .btn{display:inline-flex;align-items:center;gap:8px;background:var(--b600);border:1px solid var(--b600);color:#fff;border-radius:10px;box-shadow:none;font:600 14px/1.2 var(--font);padding:9px 16px;min-height:40px;text-decoration:none;filter:none;transform:none}
+.btn:hover,[data-theme] .btn:hover{background:var(--b700);border-color:var(--b700);filter:none;transform:none;box-shadow:none}
+.btn.ghost,[data-theme] .btn.ghost{background:var(--card);color:var(--tx);border:1px solid var(--line)}
+.btn.ghost:hover,[data-theme] .btn.ghost:hover{background:var(--hover);border-color:var(--line)}
+.btn.danger,[data-theme] .btn.danger{background:var(--pf-red);border-color:var(--pf-red)}
+.btn.sm,.tbl .btn,.kcard .btn,.acts .btn{min-height:32px;padding:6px 12px;font-size:13px}
+[data-theme] :where(main,.top,dialog) a.btn:not(.ghost){color:#fff}
+.dlg,[data-theme] .dlg{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 24px 60px rgb(10 16 32/.35)}
+.dlg::backdrop{background:rgb(14 20 36/.55);backdrop-filter:blur(2px)}
+.dlg .dh h2{font:700 22px/1.2 var(--fontd);color:var(--tx)}
+.dlg :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea){min-height:2.5rem;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--tx);padding:8px 12px;font-size:15px}
+.dlg :is(input,select,textarea):focus{outline:none;border-color:var(--focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 22%,transparent)}
+.fgrid label,.dlg label{font-size:13px;color:var(--mut)}
+.notice,[data-theme] .notice{border:1px solid var(--line);border-left:4px solid var(--b500);border-radius:12px;background:var(--card)}
+.notice.warn{border-left-color:var(--pf-orange)}.notice.err{border-left-color:var(--pf-red)}
+.tbl th,[data-theme] .tbl th{background:var(--thead);color:var(--mut);font-family:var(--fontd);letter-spacing:.06em}
+.tbl tbody tr:nth-child(even) td{background:var(--zebra)}
+.badge.ok{color:var(--t-emerald-600)}.badge.warn{color:var(--t-amber-700);background:color-mix(in srgb,var(--pf-orange) 14%,transparent)}.badge.bad{color:var(--t-red-600)}
+.badge.new{background:var(--b500);color:#fff}
+.cards.compactc .card::before{background:linear-gradient(90deg,var(--pf-sky),var(--b500))}
+.card .num,.cards .num{font-family:var(--fontd)}
+details.sec summary{font-family:var(--fontd);font-size:15px}
+.syncchip{border-radius:999px}
+/* tela inicial (home.html) */
+.homebody{background:radial-gradient(1000px 640px at 78% 42%,color-mix(in srgb,var(--pf-sky) 22%,var(--bg)),var(--bg) 70%)}
+[data-theme="dark"] .homebody{background:radial-gradient(1000px 640px at 78% 42%,#1B2747,var(--bg) 70%)}
+.hero h1{font-family:var(--fontd);font-weight:700;letter-spacing:-.01em;color:var(--tx)}
+.hero .mini .num{font-family:var(--fontd);color:var(--tx)}
+.quick input{min-height:2.75rem;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--tx);padding:10px 14px;font-size:16px}
+
 /* ---------- transição entre módulos (navegação do próprio navegador; o menu fica parado) ---------- */
 @view-transition{navigation:auto}
 #psd-side{view-transition-name:psd-side}

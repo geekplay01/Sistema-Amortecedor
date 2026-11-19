@@ -100,7 +100,7 @@ document.addEventListener("click", e => { if (e.target.closest("#themebtn")) psd
       + (!st.configured ? "<p class='syncerr'>Preencha <code>DEV_DB_USER</code> e <code>DEV_DB_PASSWORD</code> no arquivo <code>.env</code> e reinicie.</p>" : "")
       + (st.last_status === "erro" && st.last_error ? `<p class="syncerr">${esc(st.last_error)}</p>` : "")
       + `<button class="btn sm" id="syncnow" ${st.running || !st.configured ? "disabled" : ""}>${st.running ? "Sincronizando…" : "Sincronizar agora"}</button> <a class="btn ghost sm" href="/configuracoes">Detalhes</a>`;
-    const b = document.getElementById("syncnow"); if (b) b.onclick = async () => { b.disabled = true; b.textContent = "Iniciando…"; try { const r = await fetch("/api/pipeline/sync", { method: "POST" }); const d = await r.json(); if (!r.ok) throw new Error(d.error); poll(); } catch (e) { alert(e.message); refresh(); } };
+    const b = document.getElementById("syncnow"); if (b) b.onclick = async () => { b.disabled = true; b.textContent = "Iniciando…"; try { const r = await fetch("/api/pipeline/sync", { method: "POST" }); const d = await r.json(); if (!r.ok) throw new Error(d.error); poll(); } catch (e) { (window.PSDTW ? PSDTW.erro(e) : alert(e.message)); refresh(); } };
   }
   async function refresh() { try { const st = await (await fetch("/api/pipeline/status")).json(); render(st); return st; } catch (e) { return null; } }
   function poll(cb) { clearInterval(timer); timer = setInterval(async () => { const st = await refresh(); if (st && !st.running) { clearInterval(timer); cb && cb(); window.dispatchEvent(new Event("psd-synced")); } }, 2000); refresh(); }

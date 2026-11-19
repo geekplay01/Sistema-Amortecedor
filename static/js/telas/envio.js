@@ -76,7 +76,9 @@
         <label>Rastreio<input id="etr" value="${esc(r.tracking || "")}"></label><label>Observações<input id="eno" value="${esc(r.notes || "")}"></label></div>${r.ex_code ? `<p class="muted">EX atual: <code>${esc(r.ex_code)}</code></p>` : ""}<p id="dmsg" class="imp-msg"></p>
         <div class="acts"><button class="btn" id="dok">Salvar</button><button class="btn ghost" id="ddel">Excluir</button><button class="btn ghost" data-close>Cancelar</button></div>`;
       $("#dok").onclick = async () => { try { await put("/api/shipments/" + r.id, { status: val("es"), supplier: val("ef2"), sc_number: val("esc"), application: val("eap"), side: val("esd"), bought_at: val("ebo"), received_at: val("ere"), shipped_at: val("esh"), tracking: val("etr"), notes: val("eno") }); dlg.close(); carregar(); } catch (er) { $("#dmsg").textContent = er.message; } };
-      $("#ddel").onclick = async () => { if (!confirm("Excluir este envio?")) return; await J("/api/shipments/" + r.id, { method: "DELETE" }); dlg.close(); carregar(); }; dlg.showModal(); };
+      $("#ddel").onclick = async () => { const nome = [r.perfect_code, r.supplier, r.sc_number && "SC " + r.sc_number].filter(Boolean).join(" · ");
+        if (!await PSDTW.confirmar({ titulo: "Excluir este envio?", texto: nome, nota: "Não dá para desfazer: o envio sai do controle (a amostra e o desenvolvimento continuam).", botao: "Excluir", perigo: true })) return;
+        try { await J("/api/shipments/" + r.id, { method: "DELETE" }); PSDTW.toast(`Envio ${nome} excluído.`); dlg.close(); carregar(); } catch (er) { PSDTW.erro(er); } }; dlg.showModal(); };
 
     // ---------- eventos ----------
     $("#ef").addEventListener("input", e => { const n = e.target.name; if (!n) return; F.set({ [n]: e.target.value }); aplicar(e.target.tagName === "SELECT"); });
@@ -102,7 +104,9 @@
       if (a === "send") { const first = rows.find(r => r.id === ids[0]);
         return dialog(`Marcar ${ids.length} amostra(s) como enviada(s)`, `<label>Fornecedor (define o EX)${supSel("sf", first && first.supplier)}</label><label>Data do envio<input type="date" id="sd" value="${new Date().toISOString().slice(0, 10)}"></label><label>Rastreio / documento<input id="st" placeholder="opcional"></label><label>Observações<input id="sn" placeholder="opcional"></label>`,
           () => post("/api/shipments/send", { ids, supplier: val("sf"), date: val("sd"), tracking: val("st"), notes: val("sn") }), "Marcar como enviada"); }
-      if (!confirm(`${a === "finalizada" ? "Finalizar" : "Voltar para pendente projeto"}: ${ids.length} envio(s)?`)) return; try { await post("/api/shipments/status", { ids, status: a }); carregar(); } catch (er) { alert(er.message); } });
+      const acao = a === "finalizada" ? "Finalizar" : "Voltar para pendente projeto";
+      if (!await PSDTW.confirmar({ titulo: `${acao}?`, texto: `${ids.length} envio(s) selecionado(s).`, nota: "Dá para desfazer mudando o status de novo.", botao: acao, icone: "send" })) return;
+      try { await post("/api/shipments/status", { ids, status: a }); PSDTW.toast(`${ids.length} envio(s): ${a === "finalizada" ? "finalizado(s)" : "de volta para pendente projeto"}.`); carregar(); } catch (er) { PSDTW.erro(er); } });
 
     desenharFiltros(); await carregar();
   }
