@@ -59,29 +59,42 @@ window.PSD_EXEC = ctx => {
         [...fornList, "Geral"].map(f => { const m = M[f], c = m.confiabilidade || {}, rg = s => s && s.mediana != null ? `<b>${nf(s.mediana)}</b> <span class="rng">${nf(s.p25)}–${nf(s.p75)}</span>` : "–";
           return [f === "Geral" ? "<b>Geral</b>" : TW.badge(f, FORN[f]), rg(m.producao), rg(m.mar), rg(m.desembaraco), rg(m.total), m.total.p90 == null ? "–" : nf(m.total.p90), c.no_prazo_pct == null ? "–" : TW.badge(nf(c.no_prazo_pct, 0) + "%", c.no_prazo_pct >= 70 ? "green" : c.no_prazo_pct >= 40 ? "amber" : "red"), c.atraso_mediano == null ? "–" : (c.atraso_mediano > 0 ? "+" : "") + nf(c.atraso_mediano) + " d", nf(m.total.n)]; }), { h: "max-h-[40vh]" }))}
       <div id="pacc"></div>
-      ${TW.card("Linhas previstas", `<div id="pva" class="mb-3 flex flex-col gap-2"></div><div class="mb-3 flex flex-wrap items-center gap-3"><div class="min-w-[200px] flex-1">${TW.input("pvq", "Buscar código ou pedido…")}</div><a id="pvx" class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white no-underline hover:bg-blue-700" href="/api/export/previsao.xlsx">⬇ Baixar Excel</a></div><div id="pvt"></div><div id="pvp" class="mt-3 flex items-center justify-center gap-3 text-sm text-mute"></div>`, `<span id="pvn" class="text-sm text-mute"></span>`)}</div>`);
+      ${TW.card("Linhas previstas", `<div id="pva" class="mb-4"></div><div id="pvt"></div><div id="pvp" class="mt-3 flex items-center justify-center gap-3 text-sm text-mute"></div>`, `<span id="pvn" class="text-sm text-mute"></span>`)}</div>`);
     const cal = (id, C) => PSDCharts.bars($("#" + id), { x: C.meses.map(m => m === "depois" ? "depois" : m), stacked: true, series: C.series.map(s => ({ name: s.fornecedor, y: s.qtd, color: FCLR[s.fornecedor] })) });
     cal("pvc", F.calendario); cal("pve", F.calendario_embarques);
     // lista filtrada no servidor (leadtime.previsao_linhas): etapa · fornecedor · alerta (vai atrasar / vencida) · busca; filtros na URL (PF, compartilhado com a lista de pedidos)
     let pg = 1, seq = 0, d;
-    const chip = (attrs, label, on, n, cor = "") => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : `border-line bg-card text-ink hover:bg-slate-500/10 ${cor}`}">${label} · ${nf(n)}</button>`;
-    const rot = t => `<span class="mr-1 w-24 shrink-0 text-xs font-semibold uppercase tracking-wide text-mute">${t}</span>`;
+    /* lista no formato pedido (etapa 19 · Q8): bolinha · código (sem MP-) · fornecedor · pedido · pedido em · barra (dias ÷ média do fornecedor) · dias · média
+       do fornecedor (pedido → filial, mediana) · previsão de chegada. Etapa, promessa, embarque, ETA, faixa, atraso e confiança: ao passar o mouse e no Excel. */
+    const HOJE = new Date(new Date().toISOString().slice(0, 10));
+    const diasDesde = s => s ? Math.max(0, Math.round((HOJE - new Date(s.slice(0, 10))) / 864e5)) : null;
+    const mediaForn = f => ((M[f] || G).total || {}).mediana;
+    const situ = r => r.etapa === PARADO ? ["parado", "Parado — verificar saldo"] : r.dias_para_chegar < 0 ? ["vencida", "Previsão vencida: cobrar o fornecedor"] : r.atraso_previsto > 15 ? ["atrasar", `Vai atrasar: +${nf(r.atraso_previsto)} d da promessa`] : ["ok", "No prazo"];
+    const dica = r => [situ(r)[1], `Etapa: ${r.etapa}`, `Quantidade: ${nf(r.quantidade)}`, `Promessa: ${dmy(r.prometido)}`, `Embarque: ${r.embarque ? dmy(r.embarque) : r.embarque_previsto ? "~" + dmy(r.embarque_previsto) : "–"}`,
+      `ETA do servidor: ${dmy(r.eta_servidor)}`, r.etapa === PARADO ? "" : `Faixa: ${dmy(r.faixa_de)} – ${dmy(r.faixa_ate)}`, `Confiança: ${r.confianca}`].filter(Boolean).join("\n");
+    const linhaPv = r => { const dias = diasDesde(r.emissao), med = mediaForn(r.fornecedor), [st] = situ(r), pct = med && dias != null ? Math.min(100, 100 * dias / med) : 0;
+      return `<tr class="psd-pv" title="${esc(dica(r))}"><td><span class="psd-dot ${st}"></span></td><td class="font-semibold text-ink">${esc(String(r.codigo).replace(/^MP-/i, ""))}</td><td>${esc(r.fornecedor)}</td><td class="tabular-nums">${esc(r.pedido)}</td>
+        <td class="tabular-nums">${dmy(r.emissao)}</td><td><span class="psd-pvbar" title="${med ? `${nf(dias)} de ${nf(med)} dias típicos do fornecedor` : ""}"><i style="width:${pct}%"></i></span></td>
+        <td class="text-right tabular-nums">${dias == null ? "–" : nf(dias)}</td><td class="text-right tabular-nums text-mute">${med == null ? "–" : nf(med) + " d"}</td>
+        <td class="tabular-nums">${r.etapa === PARADO ? '<span class="text-mute">verificar saldo</span>' : dmy(r.chegada_prevista)}</td></tr>`; };
     const desenhar = () => {
-      const s = PF.get(), c = d.counts;
+      const s = PF.get(), c = d.counts, todos = [{ v: "", l: "Todos" }];
       el.querySelectorAll(".flowx .st").forEach(x => x.classList.toggle("on", !!s.etapa && x.dataset.et === s.etapa));
-      $("#pva").innerHTML = `<div class="flex flex-wrap items-center gap-2">${rot("Alerta")}${chip('data-pk="alerta" data-pv="atrasar"', "Vão atrasar (> 15 d)", s.alerta === "atrasar", c.alerta.atrasar, "border-amber-500")}${chip('data-pk="alerta" data-pv="vencida"', "Previsão vencida (cobrar)", s.alerta === "vencida", c.alerta.vencida, "border-red-500")}</div>
-        <div class="flex flex-wrap items-center gap-2">${rot("Etapa")}${Object.entries(c.etapa).map(([k, n]) => chip(`data-pk="etapa" data-pv="${esc(k)}"`, esc(k), s.etapa === k, n)).join("")}</div>
-        <div class="flex flex-wrap items-center gap-2">${rot("Fornecedor")}${Object.entries(c.fornecedor).map(([k, n]) => chip(`data-pk="pvforn" data-pv="${esc(k)}"`, esc(k), s.pvforn === k, n)).join("")}</div>`;
+      const ALR = { atrasar: "Vão atrasar (> 15 d)", vencida: "Previsão vencida (cobrar)" };
+      TW.pintarBarra($("#pva"), {
+        busca: { valor: s.pvq, ph: "Código ou pedido…" },
+        principais: [{ k: "pvforn", rotulo: "Fornecedor", tipo: "lista", atual: s.pvforn || "", opcoes: [...todos, ...Object.entries(c.fornecedor).map(([v, n]) => ({ v, l: v, n }))] },
+                     { k: "etapa", rotulo: "Etapa", tipo: "lista", atual: s.etapa || "", opcoes: [...todos, ...Object.entries(c.etapa).map(([v, n]) => ({ v, l: v, n }))] },
+                     { k: "alerta", rotulo: "Alerta", tipo: "lista", atual: s.alerta || "", opcoes: [...todos, { v: "atrasar", l: ALR.atrasar, n: c.alerta.atrasar }, { v: "vencida", l: ALR.vencida, n: c.alerta.vencida }] }],
+        atalhos: [{ k: "alerta", v: "vencida", l: ALR.vencida, n: c.alerta.vencida, on: s.alerta === "vencida", forte: true }, { k: "alerta", v: "atrasar", l: ALR.atrasar, n: c.alerta.atrasar, on: s.alerta === "atrasar" }],
+        etiquetas: TW.etiquetas(s, { pvforn: "Fornecedor", etapa: "Etapa", alerta: "Alerta", pvq: "Busca" }, (k, v) => k === "alerta" ? ALR[v] : v),
+        acoes: TW.botao("Baixar Excel", { href: "/api/export/previsao.xlsx?" + new URLSearchParams(Object.fromEntries(Object.entries({ etapa: s.etapa, fornecedor: s.pvforn, alerta: s.alerta, q: s.pvq }).filter(x => x[1]))), icone: "download" })
+      });
       const n = ["etapa", "pvforn", "alerta", "pvq"].filter(k => s[k]).length;
-      $("#pvn").innerHTML = `${nf(d.total)} linha(s)${n ? ` · ${n} filtro(s)` : ""}`;
-      $("#pvx").href = "/api/export/previsao.xlsx?" + new URLSearchParams(Object.fromEntries(Object.entries({ etapa: s.etapa, fornecedor: s.pvforn, alerta: s.alerta, q: s.pvq }).filter(x => x[1])));
-      const venc = s.alerta === "vencida";
-      $("#pvt").innerHTML = TW.table([{ h: "Código" }, { h: "Pedido" }, { h: "Fornecedor" }, { h: "Qtd", r: 1 }, { h: "Etapa" }, { h: "Emissão" }, { h: "Promessa" }, { h: "Embarque" }, { h: "ETA servidor" }, { h: "Chegada prevista" }, { h: venc ? "Vencida há" : "Faixa" }, { h: "vs. promessa", r: 1 }, { h: "Confiança" }],
-        d.rows.map(r => [pc(r.codigo), esc(r.pedido), TW.badge(r.fornecedor, FORN[r.fornecedor]), nf(r.quantidade), TW.badge(r.etapa, r.etapa === PARADO ? "amber" : r.etapa === "No mar" ? "blue" : r.etapa.startsWith("No porto") ? "violet" : "slate"),
-          dmy(r.emissao), dmy(r.prometido), r.embarque ? dmy(r.embarque) : r.embarque_previsto ? `<span class="text-mute">~${dmy(r.embarque_previsto)}</span>` : "–", dmy(r.eta_servidor),
-          r.etapa === PARADO ? '<span class="text-mute">–</span>' : `<b>${dmy(r.chegada_prevista)}</b>${r.dias_para_chegar < 0 ? ` ${TW.badge("vencida", "red")}` : ""}`,
-          venc ? TW.badge(`${nf(r.dias_vencida)} d`, "red") : r.etapa === PARADO ? "–" : `<span class="rng">${dmy(r.faixa_de)} – ${dmy(r.faixa_ate)}</span>`,
-          r.atraso_previsto == null || r.etapa === PARADO ? "–" : r.atraso_previsto > 15 ? TW.badge(`+${nf(r.atraso_previsto)} d`, "red") : r.atraso_previsto > 0 ? TW.badge(`+${nf(r.atraso_previsto)} d`, "amber") : TW.badge("no prazo", "green"), TW.badge(r.confianca, r.confianca === "alta" ? "green" : r.confianca === "média" ? "amber" : "slate")]), { h: "max-h-[60vh]" });
+      $("#pvn").innerHTML = `${nf(d.total)} linha(s)${n ? ` · ${n} filtro(s)` : ""} · <span class="psd-dot ok"></span> no prazo <span class="psd-dot atrasar"></span> vai atrasar <span class="psd-dot vencida"></span> vencida <span class="psd-dot parado"></span> parado`;
+      $("#pvt").innerHTML = `<div class="max-h-[60vh] overflow-y-auto overflow-x-auto rounded-xl border border-line bg-card"><table class="psd-tbl psd-pvt w-full border-collapse text-sm">
+        <thead class="sticky top-0 z-10 bg-thead"><tr class="border-b border-line"><th title="Situação">${TW.ico("clock", "sm")}</th><th>Código</th><th>Fornecedor</th><th>Pedido</th><th>Pedido em</th><th></th><th class="text-right">Dias</th><th class="text-right">Média forn.</th><th>Previsão</th></tr></thead>
+        <tbody class="divide-y divide-line">${d.rows.length ? d.rows.map(linhaPv).join("") : '<tr><td colspan="9" class="px-4 py-10 text-center text-mute">Nada encontrado com estes filtros.</td></tr>'}</tbody></table></div>`;
       const pages = Math.max(1, Math.ceil(d.total / d.size));
       $("#pvp").innerHTML = pages > 1 ? `<button type="button" data-pp="${pg - 1}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${pg < 2 ? "disabled" : ""}>‹</button> Página ${pg} de ${pages} <button type="button" data-pp="${pg + 1}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${pg >= pages ? "disabled" : ""}>›</button>` : "";
     };
@@ -89,9 +102,9 @@ window.PSD_EXEC = ctx => {
       let r; try { r = await J("/api/pedidos/previsao/linhas?" + new URLSearchParams({ etapa: s.etapa || "", fornecedor: s.pvforn || "", alerta: s.alerta || "", q: s.pvq || "", page: pg })); } catch (e) { $("#pvt").innerHTML = TW.notice(esc(e.message), "red"); return; }
       if (meu === seq) { d = r; desenhar(); } };
     el.querySelector(".flowx").onclick = e => { const s = e.target.closest(".st[data-et]"); if (!s || !s.dataset.et) return; PF.toggle("etapa", s.dataset.et); pg = 1; carregar(); };
-    $("#pva").onclick = e => { const b = e.target.closest("[data-pk]"); if (!b) return; PF.toggle(b.dataset.pk, b.dataset.pv); pg = 1; carregar(); };
+    TW.ligarBarra($("#pva"), { set: (k, v) => { PF.set({ [k]: v }); pg = 1; carregar(); }, busca: t => { PF.set({ pvq: t }); pg = 1; carregar(); },
+      limpar: () => { PF.set({ etapa: "", pvforn: "", alerta: "", pvq: "" }); pg = 1; carregar(); } });
     $("#pvp").onclick = e => { const b = e.target.closest("[data-pp]"); if (b && !b.disabled) { pg = +b.dataset.pp; carregar(); } };
-    $("#pvq").value = PF.get().pvq || ""; $("#pvq").oninput = debounce(e => { PF.set({ pvq: e.target.value.trim() }); pg = 1; carregar(); }, 300);
     carregar(); acerto($("#pacc"));
   }
 
@@ -126,13 +139,20 @@ window.PSD_EXEC = ctx => {
       <p class="text-sm text-mute">Pedidos de compra de <b>amortecedor</b> com código iniciado em <b>MP-</b> e saldo em aberto. O fornecedor vem do código EX do ERP (EX0002116 = ZS · EX0002110 = E-WIN · EX008042 = XGM; outro código aparece como <b>VERIFICAR</b>).</p>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi("Pedidos em aberto", nf(S.pedidos), `${nf(S.linhas)} linhas`, "blue")}${TW.kpi("Itens (códigos)", nf(S.itens), "", "green")}
         ${TW.kpi("Quantidade em aberto", nf(S.quantidade), "peças aguardando entrega", "slate")}${TW.kpi("Com previsão vencida", nf(S.vencidas), S.verificar ? `${nf(S.verificar)} linha(s) com fornecedor a VERIFICAR` : "entrega após a previsão", S.vencidas ? "red" : "green")}</div>
-      ${TW.card("Pedidos", `<div class="mb-4 flex flex-wrap items-center gap-3"><div class="min-w-[220px] flex-1">${TW.input("pq", "Buscar código ou nº do pedido…")}</div>
-        ${TW.select("pst", [["", "STATUS_PC: todos"], ...(d.status_pc || []).map(x => [x.status, `${x.status} (${nf(x.linhas)})`])], st0.st)}
-        ${TW.select("pab", [["0", "Somente em aberto"], ["1", "Incluir já recebidos"]], st0.rec)}
-        ${TW.select("ptp", [["compra", "Tipo: Compra (servidor)"], ["amostra", `Tipo: Amostra (${nf(d.n_amostras || 0)})`], ["todos", "Tipo: Compra + Amostra"]], st0.tipo)}
-        <div id="pf" class="flex flex-wrap gap-2"></div>${TW.btn("pcsv", "Exportar página (CSV)")}</div><div id="ptab"></div><div id="ppg" class="mt-3 flex items-center justify-between text-sm text-mute"></div>`, `<span id="pcount" class="text-sm text-mute"></span>`)}</div>`;
-    const chips = () => { $("#pf").innerHTML = [["", "Todos", S.linhas], ...S.por_fornecedor.map(f => [f.fornecedor, f.fornecedor, null])]
-      .map(([v, l, n]) => `<button type="button" data-f="${esc(v)}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${st0.forn === v ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${esc(l)}${n != null ? ` · ${nf(n)}` : ""}</button>`).join(""); };
+      ${TW.card("Pedidos", `<div id="pf" class="mb-4"></div><div id="ptab"></div><div id="ppg" class="mt-3 flex items-center justify-between text-sm text-mute"></div>`, `<span id="pcount" class="text-sm text-mute"></span>`)}</div>`;
+    /* barra (etapa 19 · Q6): Fornecedor, Status do pedido e Tipo à vista; «Incluir já recebidos» em «Mais filtros»; CSV da página à direita */
+    const TIPOL = { compra: "Compra (servidor)", amostra: "Amostra", todos: "Compra + amostra" };
+    const chips = () => { const todos = [{ v: "", l: "Todos" }];
+      TW.pintarBarra($("#pf"), {
+        busca: { valor: st0.q, ph: "Código ou nº do pedido…" },
+        principais: [{ k: "forn", rotulo: "Fornecedor", tipo: "lista", atual: st0.forn, opcoes: [{ v: "", l: "Todos", n: S.linhas }, ...S.por_fornecedor.map(f => ({ v: f.fornecedor, l: f.fornecedor }))] },
+                     { k: "st", rotulo: "Status do pedido", tipo: "lista", atual: st0.st, opcoes: [...todos, ...(d.status_pc || []).map(x => ({ v: x.status, l: x.status, n: x.linhas }))] },
+                     { k: "tipo", rotulo: "Tipo", tipo: "seg", atual: st0.tipo, opcoes: [{ v: "compra", l: "Compra" }, { v: "amostra", l: `Amostra · ${nf(d.n_amostras || 0)}` }, { v: "todos", l: "Ambos" }] }],
+        mais: [{ k: "rec", rotulo: "Recebimento", atual: st0.rec === "1" ? "1" : "", opcoes: [{ v: "1", l: "Incluir já recebidos" }] }],
+        etiquetas: [...(st0.q ? [{ k: "q", l: "Busca: " + st0.q }] : []), ...(st0.forn ? [{ k: "forn", l: "Fornecedor: " + st0.forn }] : []), ...(st0.st ? [{ k: "st", l: "Status: " + st0.st }] : []),
+                    ...(st0.tipo !== "compra" ? [{ k: "tipo", l: "Tipo: " + TIPOL[st0.tipo] }] : []), ...(st0.rec === "1" ? [{ k: "rec", l: "Inclui recebidos" }] : [])],
+        acoes: `<button type="button" id="pcsv" class="psd-btn">${TW.ico("download", "sm")}Exportar página (CSV)</button>`
+      }); };
     const draw = () => { const pages = Math.max(1, Math.ceil(d.total / d.size)); chips(); $("#pcount").textContent = `${nf(d.total)} linha(s)` + ((d.busca && d.busca.perfect.length) ? ` · «${d.busca.termo}» é código de concorrente → PERFECT: ${d.busca.perfect.slice(0, 5).join(", ")}` : "");
       $("#ptab").innerHTML = TW.table([{ h: "Código" }, { h: "Pedido" }, { h: "Abertura" }, { h: "Meses em aberto", r: 1 }, { h: "Quantidade", r: 1 }, { h: "Previsão" }, { h: "Fornecedor" }, { h: "Tipo" }, { h: "STATUS_PC" }, { h: "Prazo" }],
         d.rows.map(r => { const m = months(r.DATA_EMISSAO_PC), late = !!r.DATA_PREV_ENT && r.DATA_PREV_ENT < today;
@@ -141,10 +161,10 @@ window.PSD_EXEC = ctx => {
       $("#ppg").innerHTML = pages > 1 ? `<span>Página ${d.page} de ${pages}</span><span class="flex gap-2">${TW.btn("ppv", "‹ Anterior")}${TW.btn("pnx", "Próxima ›")}</span>` : "";
       if (pages > 1) { $("#ppv").disabled = d.page <= 1; $("#pnx").disabled = d.page >= pages; $("#ppv").onclick = () => reload(d.page - 1); $("#pnx").onclick = () => reload(d.page + 1); } };
     const reload = async (pg = 1) => { st0.page = pg; guarda(); $("#ptab").style.opacity = .5; try { d = await get(); } catch (e) { return fail(e); } $("#ptab").style.opacity = 1; draw(); };
-    previsaoBlock($("#pprev"), PF); $("#pq").value = st0.q;
-    $("#pq").oninput = debounce(e => { st0.q = e.target.value.trim(); reload(); }, 300); $("#pst").onchange = e => { st0.st = e.target.value; reload(); }; $("#pab").onchange = e => { st0.rec = e.target.value; reload(); }; $("#ptp").onchange = e => { st0.tipo = e.target.value; reload(); };
-    $("#pf").onclick = e => { const b = e.target.closest("[data-f]"); if (b) { st0.forn = b.dataset.f; reload(); } };
-    $("#pcsv").onclick = () => TW.csv(TW.nome("Pedidos em Aberto"), [...d.columns, "TIPO_PEDIDO"], d.rows.map(r => [...d.columns, "TIPO_PEDIDO"].map(c => r[c]))); draw();
+    previsaoBlock($("#pprev"), PF);
+    const PAD = { forn: "", st: "", tipo: "compra", rec: "0", q: "" };
+    TW.ligarBarra($("#pf"), { set: (k, v) => { st0[k] = v === "" ? PAD[k] : v; reload(); }, busca: t => { st0.q = t; reload(); }, limpar: () => { Object.assign(st0, PAD); reload(); } });
+    $("#pf").addEventListener("click", e => { if (e.target.closest("#pcsv")) TW.csv(TW.nome("Pedidos em Aberto"), [...d.columns, "TIPO_PEDIDO"], d.rows.map(r => [...d.columns, "TIPO_PEDIDO"].map(c => r[c]))); }); draw();
   }
 
   // ───────────────────────── Vendas · Curva A ─────────────────────────

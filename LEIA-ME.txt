@@ -162,3 +162,19 @@ ETAPA 18 — 19/11/2026 (decisões em DECISOES_ETAPA18.md, regras em REGRAS_DE_N
  DEPOIS DE ATUALIZAR PARA A ETAPA 18 (uma vez, no banco real; se os passos da etapa 17 ainda não foram feitos, faça-os antes)
  1. Atualização de dados > Verificar a pasta > Aplicar: recarrega a COFAP_AMORTECEDORES_x_FROTA.xlsx com a classificação (sem ela, as motos entram na conta).
  2. Sincronize uma vez: traz a garantia do servidor e as vendas por estado (a primeira vez busca 10 anos de vendas por UF; leva cerca de 1 minuto).
+
+ETAPA 19 — 19/11/2026 (decisões em DECISOES_ETAPA19.md, regras em REGRAS_DE_NEGOCIO.md)
+ - Desenvolvimento × Redesenvolvimento: cada linha vale pelo tipo que o servidor deu a ela. Antes, o item que tinha alguma linha de R-D ia inteiro para o
+   Redesenvolvimento (por isso itens em desenvolvimento apareciam lá). Um código com linhas DES e R-D aparece nas duas listas, cada uma com as suas linhas.
+ - Pendente compras do Redesenvolvimento conta por aplicação: a aplicação R-D ainda não recebida conta, mesmo que outra do mesmo código já tenha chegado.
+ - Meta de Desenvolvimento: tudo que passou de PEDIDO CONFIRMADO para ITEM RECEBIDO no ano (data de recebimento do servidor), sem exigir validação.
+   Redesenvolvimento continua: validado pelo usuário e recebido.
+ - Compra de amostras: sugestões só de Desenvolvimento. Amostra de item já desenvolvido (catálogo) é pedido manual em «+ Nova amostra».
+ - Filtros novos em todas as telas: busca, até 3 filtros à vista, «Mais filtros», etiquetas com × e «Limpar tudo»; botões sem o quadrado cinza.
+ - Cobertura de concorrentes: o «Nosso código» é corrigido ali mesmo na célula (lápis); a correção vale no app e aparece em Anomalias → «Cross corrigido
+   no app» para levar ao CrossCatalogo.xlsx.
+ - Pedidos em aberto: linhas previstas com bolinha de situação, barra dos dias × média do fornecedor e previsão de chegada.
+
+ DEPOIS DE ATUALIZAR PARA A ETAPA 19 (uma vez, no banco real)
+ 1. Sincronize uma vez: as linhas de Desenvolvimento que estavam como R-D voltam ao tipo certo (as listas e as metas mudam).
+ 2. Tela Metas: confira o «já realizado antes do rastreio» da meta de Desenvolvimento — com a data de recebimento do servidor o ano inteiro já é contado.

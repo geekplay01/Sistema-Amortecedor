@@ -59,3 +59,11 @@ Pedido: (1) rever Desenvolvimento e Redesenvolvimento (itens de DES aparecendo e
   `anomalias.corrigido`; `telas/cobertura.js`, `telas/anomalias.js`): correção = conjunto de códigos da referência (catálogo: troca de/para; COFAP: lista),
   aplicada em `_catalogo_rows` e `_cofap_rows` (o cache da COFAP inclui as correções). Toast com «Desfazer» (o fechar do toast passou a ser só o botão
   de fora). Conferido na cópia: SGB27608 ← AMD0356 tirou o código de «Não temos» (572 → 571) e o «Desfazer» voltou. Teste `test_35`.
+- **Passo 6 — Pedidos em aberto como a imagem** (`pages_exec.js`, `marca.css`): «Linhas previstas» com bolinha (verde no prazo · laranja vai atrasar ·
+  vermelha vencida · cinza parado), código sem MP-, fornecedor, pedido, pedido em, barra (dias desde o pedido ÷ mediana pedido → filial do fornecedor;
+  degradê vermelho → laranja da marca), dias, média do fornecedor e previsão; o resto (etapa, quantidade, promessa, embarque, ETA, faixa, confiança) na
+  dica ao passar o mouse e no Excel. As duas listas da tela (linhas previstas e pedidos) na barra de filtros nova.
+- **Passo 7 — regras, LEIA-ME e testes**: REGRAS §3/§4/§9/§11; LEIA-ME com a etapa 19. Suíte verde, banco real intacto.
+
+**Etapa 19 concluída.** Pendente: no banco real, sincronizar uma vez (as linhas DES voltam ao tipo certo) e zerar o «já realizado antes do rastreio»
+da meta DES na tela Metas, se fizer sentido (a data do servidor cobre o ano todo).
