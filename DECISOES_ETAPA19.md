@@ -65,5 +65,11 @@ Pedido: (1) rever Desenvolvimento e Redesenvolvimento (itens de DES aparecendo e
   dica ao passar o mouse e no Excel. As duas listas da tela (linhas previstas e pedidos) na barra de filtros nova.
 - **Passo 7 — regras, LEIA-ME e testes**: REGRAS §3/§4/§9/§11; LEIA-ME com a etapa 19. Suíte verde, banco real intacto.
 
+- **Ajuste final (pedido do usuário após a entrega)**: meta DES sem itens de montadora e sem os 58 de «já realizado antes do rastreio» — tudo do servidor
+  (`goals.des_recebidos` só AMD…; `progress` ignora `prior_done` no DES; a tela Metas tira o campo do DES). Na cópia: 212 → **52** de 125.
+  Os 55 do R-D («gostei» + pendente compras, contando pendente desenho do fornecedor): não fecham — na cópia e no servidor, R-D curtido com pendente
+  compras numa aplicação não recebida = **129** (65 sem amostra comprada/enviada; 69 sem amostra comprada). Na tela: Redesenvolvimento → Controle
+  «Pendente compras» + Curtidas «Curtidos» = 129.
+
 **Etapa 19 concluída.** Pendente: no banco real, sincronizar uma vez (as linhas DES voltam ao tipo certo) e zerar o «já realizado antes do rastreio»
 da meta DES na tela Metas, se fizer sentido (a data do servidor cobre o ano todo).

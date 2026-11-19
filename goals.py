@@ -85,7 +85,7 @@ def _events(year):
 
 DES_DE = ("PEDIDO CONFIRMADO", "FINALIZANDO CIT")      # transição vista que prova que o item passou por PEDIDO CONFIRMADO
 def des_recebidos(year):
-    """Meta DESENVOLVIMENTO (etapa 19): tudo que passou de PEDIDO CONFIRMADO para ITEM RECEBIDO no ano — sem exigir validação do usuário.
+    """Meta DESENVOLVIMENTO (etapa 19): tudo que passou de PEDIDO CONFIRMADO para ITEM RECEBIDO no ano — sem exigir validação do usuário, só código PERFECT (AMD…).
     Recebido = alguma aplicação DES em ITEM RECEBIDO; data = DATA_RECEBIDO do servidor («DATA STATUS»), senão a transição vista na sincronização.
     Passou por pedido confirmado = coluna PEDIDO_CONFIRMADO preenchida ou transição vista a partir de PEDIDO CONFIRMADO/FINALIZANDO CIT.
     → ({código: 'AAAA-MM-DD'} que contam, {código: motivo} recebidos no ano que não contam)"""
@@ -96,7 +96,7 @@ def des_recebidos(year):
         t = tr.setdefault(r["code"], {"d": r["d"], "pc": False}); t["d"] = min(t["d"], r["d"]); t["pc"] = t["pc"] or r["from_value"] in DES_DE
     conta, fora = {}, {}
     for code, m in meta.items():
-        if code not in rec: continue
+        if code not in rec or not code.upper().startswith("AMD"): continue          # só PERFECT: itens de montadora (1BP…, MOTRIO, PN Ford) não entram na meta
         d = m["status_date"] or (tr.get(code) or {}).get("d")
         if not d or not d.startswith(y): continue
         if m["pedido_conf"] or (tr.get(code) or {}).get("pc"): conta[code] = d
@@ -157,14 +157,16 @@ def progress(year=None):
             parts = {"validacoes": rv["counts"]["todas"], "recebidas": n_track, "aguardando": rv["counts"]["aguardando"], "pend_validacao_qual": rv["counts"]["pend_validacao_qual"],
                      "val_reprovada": rv["counts"]["val_reprovada"], "validacoes_sem_data": vc["sem_data"], **parts}
         else: n_track = len(counted); series = rec_series
-        goal = g[kind]; done = n_track + goal["prior_done"]; pct = round(100 * done / goal["target"], 1) if goal["target"] else None
-        out["goals"][kind] = {"kind": kind, "label": kinds.LABEL[kind], "target": goal["target"], "prior_done": goal["prior_done"], "tracked": n_track, "done": done, "pct": pct, "missing": max(goal["target"] - done, 0), "reached": bool(goal["target"]) and done >= goal["target"],
+        goal = g[kind]
+        prior = 0 if kind == kinds.DES else goal["prior_done"]          # etapa 19: DES vem inteiro do servidor (data de recebimento cobre o ano todo) — o «já realizado antes do rastreio» não soma
+        done = n_track + prior; pct = round(100 * done / goal["target"], 1) if goal["target"] else None
+        out["goals"][kind] = {"kind": kind, "label": kinds.LABEL[kind], "target": goal["target"], "prior_done": prior, "prior_aplica": kind != kinds.DES, "tracked": n_track, "done": done, "pct": pct, "missing": max(goal["target"] - done, 0), "reached": bool(goal["target"]) and done >= goal["target"],
                               "parts": parts, "series": {"main": series, "ITEM RECEBIDO": rec_series}, "note": goal["note"]}
     return out
 
 def rules_text():
     a = f"Somente LINHA/descrição «{rules.only_desc().title()}»."; u = rules.valid_user()
-    des = f"Conta o item DESENVOLVIMENTO que passou de PEDIDO CONFIRMADO para ITEM RECEBIDO dentro do ano (data de recebimento do servidor; sem ela, a mudança de status vista na sincronização). Não exige validação. {a}"
+    des = f"Conta o item DESENVOLVIMENTO PERFECT (AMD…) que passou de PEDIDO CONFIRMADO para ITEM RECEBIDO dentro do ano (data de recebimento do servidor; sem ela, a mudança de status vista na sincronização). Não exige validação; itens de montadora ficam fora; tudo vem do servidor (sem «já realizado antes do rastreio»). {a}"
     if rules.goal_basis() == "validacao":
         return {kinds.DES: des, kinds.RD: f"Conta o item de SUGESTÃO «R-D» validado pelo usuário {u} (USER_VALID) no ano da data de aprovação, quando ele chegar a ITEM RECEBIDO (mesmo que chegue depois do fim do ano). {a}"}
     return {kinds.DES: des, kinds.RD: f"Conta o item que passou de PENDENTE CONFIRMAÇÃO para ITEM RECEBIDO no ano e que tem a validação do usuário {u}. {a}"}

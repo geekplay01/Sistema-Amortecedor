@@ -58,7 +58,7 @@
           : `Pedido confirmado → item recebido no ano: <b class="text-ink">${nf(p.recebidos)}</b>${p.sem_pedido_confirmado ? ` · <b class="text-ink">${nf(p.sem_pedido_confirmado)}</b> recebido(s) sem passar por PEDIDO CONFIRMADO não contam` : ""} (data de recebimento do servidor).`;
         return card(`${k} ${g.reached ? badge("meta atingida", "green") : ""}`, `<div id="gg-${SLUG[k]}" class="chart"></div>
           <div class="mt-3 grid grid-cols-4 gap-2">${st(nf(g.target), "meta " + d.year)}${st(nf(g.done), "realizado")}${st(nf(g.missing), "faltam")}${st(pct(g.pct), "da meta")}</div>
-          <div class="mt-3 flex flex-col gap-1.5 text-sm text-mute"><p class="m-0">Rastreado pelo sistema: <b class="text-ink">${nf(g.tracked)}</b> + já realizado antes do rastreio: <b class="text-ink">${nf(g.prior_done)}</b>${g.note ? ` · <i>${esc(g.note)}</i>` : ""}</p>
+          <div class="mt-3 flex flex-col gap-1.5 text-sm text-mute"><p class="m-0">${g.prior_aplica === false ? `Contado pelo servidor: <b class="text-ink">${nf(g.tracked)}</b> (sem itens de montadora)` : `Rastreado pelo sistema: <b class="text-ink">${nf(g.tracked)}</b> + já realizado antes do rastreio: <b class="text-ink">${nf(g.prior_done)}</b>`}${g.note ? ` · <i>${esc(g.note)}</i>` : ""}</p>
           <p class="m-0">${esc(d.rules[k])}</p><p class="m-0">${base}</p></div>`,
           `<button type="button" data-edit="${k}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10">Editar meta</button>`, g.reached ? "ring-1 ring-emerald-500/50" : "");
       }).join("");
@@ -132,10 +132,10 @@
     const editar = k => {
       const g = d.goals[k], yr = d.year;
       dlg.innerHTML = `<div class="dh"><div><h2>Meta ${yr} — ${esc(k)}</h2></div><div><button class="btn ghost" data-close>Fechar</button></div></div>
-        <div class="fgrid"><label>Meta do ano<input id="gt" type="number" min="0" value="${g.target}"></label><label>Já realizado antes do rastreio<input id="gp" type="number" min="0" value="${g.prior_done}"></label><label>Observação<input id="gn" value="${esc(g.note || "")}" placeholder="opcional"></label></div>
-        <p class="muted">«Já realizado antes do rastreio» soma ao que o sistema contar a partir da 1ª sincronização (o servidor não guarda histórico).</p><p id="gm" class="imp-msg"></p><div class="acts"><button class="btn" id="gs">Salvar</button><button class="btn ghost" data-close>Cancelar</button></div>`;
+        <div class="fgrid"><label>Meta do ano<input id="gt" type="number" min="0" value="${g.target}"></label>${g.prior_aplica === false ? "" : `<label>Já realizado antes do rastreio<input id="gp" type="number" min="0" value="${g.prior_done}"></label>`}<label>Observação<input id="gn" value="${esc(g.note || "")}" placeholder="opcional"></label></div>
+        <p class="muted">${g.prior_aplica === false ? "Desenvolvimento vem inteiro do servidor (pedido confirmado → item recebido no ano, pela data de recebimento): não há «já realizado antes do rastreio»." : "«Já realizado antes do rastreio» soma ao que o sistema contar a partir da 1ª sincronização (o servidor não guarda histórico)."}</p><p id="gm" class="imp-msg"></p><div class="acts"><button class="btn" id="gs">Salvar</button><button class="btn ghost" data-close>Cancelar</button></div>`;
       $("#gs", dlg).onclick = async () => {
-        try { await put("/api/goals", { year: yr, kind: k, target: $("#gt", dlg).value, prior_done: $("#gp", dlg).value, note: $("#gn", dlg).value }); dlg.close(); carregar(); }
+        try { await put("/api/goals", { year: yr, kind: k, target: $("#gt", dlg).value, prior_done: $("#gp", dlg) ? $("#gp", dlg).value : "", note: $("#gn", dlg).value }); dlg.close(); carregar(); }
         catch (er) { $("#gm", dlg).textContent = er.message; $("#gm", dlg).className = "imp-msg err"; }
       };
       dlg.showModal();
