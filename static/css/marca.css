@@ -171,6 +171,45 @@ header.top{view-transition-name:psd-top}
 @keyframes psd-fade-in{from{opacity:0;transform:translateY(4px)}}
 main#psd-main{animation:psd-fade-in .18s ease-out both}
 
+/* ---------- botões sem estilo próprio: sem o «quadrado cinza» do navegador (o Tailwind pré-compilado não traz o reset; especificidade 0: qualquer classe vence) ---------- */
+:where(main) :where(button){background-color:transparent;background-image:none;border:0 solid var(--line);color:inherit;font:inherit;padding:0;cursor:pointer}
+.psd-link{color:var(--b600);font-weight:600;font-size:13px;text-decoration:none}.psd-link:hover{text-decoration:underline}
+a.psd-btn{text-decoration:none}.psd-btn.prim .psd-ico{color:#fff}
+
+/* ---------- barra de filtros (etapa 19 · Q4): busca, filtros principais, «Mais filtros», etiquetas ---------- */
+.psd-fbar{display:flex;flex-direction:column;gap:10px}
+.psd-search{display:flex;align-items:center;gap:8px;flex:1 1 12rem;min-width:12rem;height:40px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--mut)}
+.psd-search:focus-within{border-color:var(--b500);box-shadow:0 0 0 3px color-mix(in srgb,var(--b500) 18%,transparent)}
+.psd-search input{flex:1;min-width:0;border:0!important;outline:0;background:transparent;color:var(--tx);font-size:14px;height:38px;padding:0!important;box-shadow:none!important}
+.psd-pill{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px!important;border:1px solid var(--line)!important;border-radius:999px;background:var(--card)!important;color:var(--tx);font-size:13px;white-space:nowrap;transition:border-color .15s,background .15s}
+.psd-pill:hover{border-color:color-mix(in srgb,var(--b500) 55%,var(--line))!important}
+.psd-pill .r{color:var(--mut);font-weight:500}.psd-pill b{font-weight:600}
+.psd-pill.ativo{border-color:var(--b500)!important;background:color-mix(in srgb,var(--b500) 9%,var(--card))!important}
+.psd-pill[aria-expanded=true] .psd-ico:last-child{transform:rotate(180deg)}
+.psd-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--b600);color:#fff;font-size:11px;font-weight:700}
+.psd-dd{position:relative}
+.psd-menu{position:absolute;z-index:40;top:calc(100% + 6px);left:0;min-width:15rem;max-width:22rem;max-height:20rem;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 12px 32px rgba(15,23,42,.16)}
+.psd-opt{display:flex!important;width:100%;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px!important;border-radius:9px;font-size:13px;text-align:left;color:var(--tx)}
+.psd-opt:hover{background:var(--hover)!important}.psd-opt .n{color:var(--mut);font-variant-numeric:tabular-nums;font-size:12px}
+.psd-opt.on{background:color-mix(in srgb,var(--b500) 12%,transparent)!important;color:var(--b700);font-weight:600}
+[data-theme=dark] .psd-opt.on{color:#C9D6FF}
+.psd-seg{display:inline-flex;height:40px;align-items:center;gap:2px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--card)}
+.psd-seg button{height:32px;padding:0 13px!important;border-radius:999px;font-size:13px;font-weight:600;color:var(--mut)}
+.psd-seg button:hover{color:var(--tx)}
+.psd-seg.sm{height:32px;padding:2px}.psd-seg.sm button{height:26px;padding:0 11px!important;font-size:12px}
+.psd-seg button[aria-pressed=true]{background:var(--navy)!important;color:#fff}
+[data-theme=dark] .psd-seg button[aria-pressed=true]{background:var(--b600)!important}
+.psd-mais{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:14px 22px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.psd-mais-g.largo{grid-column:1/-1}
+.psd-mais-g .t{margin-bottom:6px;font:600 11px/1.2 var(--fontd);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.psd-chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px!important;border:1px solid var(--line)!important;border-radius:999px;font-size:12px;font-weight:600;color:var(--tx)}
+.psd-chip:hover{background:var(--hover)!important}.psd-chip .n{color:var(--mut);font-weight:500}
+.psd-chip[aria-pressed=true]{background:var(--b600)!important;border-color:var(--b600)!important;color:#fff}.psd-chip[aria-pressed=true] .n{color:#DCE6FF}
+.psd-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.psd-tag{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 4px 0 11px;border-radius:999px;background:color-mix(in srgb,var(--b500) 12%,transparent);color:var(--tx);font-size:12px;font-weight:600}
+.psd-tag button{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;color:var(--mut)}
+.psd-tag button:hover{background:color-mix(in srgb,var(--b500) 20%,transparent);color:var(--tx)}
+
 /* ---------- mapa do Brasil (tela Garantia, etapa 18): estados clicáveis, rótulos que não roubam o clique, amostras da legenda ---------- */
 .psd-mapa path{cursor:pointer;outline:none;transition:opacity .15s}
 .psd-mapa path:hover,.psd-mapa path:focus-visible{opacity:.78}

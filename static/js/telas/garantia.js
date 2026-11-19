@@ -6,12 +6,8 @@
 (function () {
   const { $, esc, J, qs, root, fail } = PSD;
   const TW = window.PSDTW, { nf, brl0, badge, kpi, card, notice, empty, ico } = TW;
-  const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
-  const botao = "rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10";
-  const primario = "inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white no-underline hover:bg-blue-700";
-  const chip = (attrs, label, on, n) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
-  const seg = (grupo, opts, cur) => `<div class="inline-flex rounded-lg border border-line bg-card p-0.5" role="group">${opts.map(([v, l]) => `<button type="button" data-seg="${grupo}" data-v="${v}" aria-pressed="${v === cur}" class="rounded-md px-2.5 py-1 text-xs font-semibold ${v === cur ? "bg-blue-600 text-white" : "text-mute hover:text-ink"}">${l}</button>`).join("")}</div>`;
-  const rotulo = t => `<span class="mr-1 w-24 shrink-0 text-xs font-semibold uppercase tracking-wide text-mute">${t}</span>`;
+  const botao = "psd-chip";            // botões pequenos dentro dos cards (etapa 19: padrão novo, sem o quadrado cinza)
+  const seg = (grupo, opts, cur) => `<div class="psd-seg sm" role="group">${opts.map(([v, l]) => `<button type="button" data-seg="${grupo}" data-v="${v}" aria-pressed="${v === cur}">${l}</button>`).join("")}</div>`;
   const meio = '<span class="text-mute">–</span>';
   const MES = ["", "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const PROC = { PROCEDENTE: ["Procedente", "red"], IMPROCEDENTE: ["Improcedente", "green"], sem: ["Sem análise", "slate"] };
@@ -78,15 +74,37 @@
     const ano = () => F.get().ano || String(new Date().getFullYear());
     root.innerHTML = `<div class="flex flex-col gap-5">
       <div id="gk" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
-      <div id="gq" class="flex flex-col gap-2"></div>
-      <form id="gf" class="flex flex-wrap items-center gap-2" autocomplete="off"><input name="q" type="search" placeholder="Buscar código, cliente, grupo, lote, autorização ou NF…" class="${campo} min-w-[16rem] flex-1"><button type="button" id="gclr" class="${botao}">Limpar filtros</button></form>
-      <div id="gm" class="flex flex-wrap items-center justify-between gap-3 text-sm text-mute"></div>
+      <div id="gbar"></div>
+      <div id="gm" class="text-sm text-mute"></div>
       <div class="grid grid-cols-1 gap-5 xl:grid-cols-5"><div id="gmap" class="xl:col-span-3"></div><div id="greg" class="xl:col-span-2"></div></div>
       <div class="grid grid-cols-1 gap-5 xl:grid-cols-2"><div id="gmes"></div><div id="gpar"></div></div>
       <div id="gcod"></div>
       <div class="grid grid-cols-1 gap-5 xl:grid-cols-2"><div id="glot"></div><div id="gfor"></div></div>
       <div id="gl"></div><div id="gp" class="flex items-center justify-center gap-3 text-sm text-mute"></div></div>`;
-    $("#gf").q.value = F.get().q || "";
+    let maisAberto = false;
+
+    /* barra de filtros (etapa 19 · Q5): Ano (3 anos + Todos), Tipo e Status à vista; o resto em «Mais filtros»; etiquetas dos ativos */
+    const desenharBarra = () => {
+      const s = F.get(), c = d.counts, hoje = String(new Date().getFullYear());
+      const anos = Object.keys(c.ano).filter(x => x !== "sem").sort().reverse().slice(0, 3);
+      if (s.ano && s.ano !== "todos" && !anos.includes(s.ano)) anos.push(s.ano);
+      const lista = (obj, rot) => Object.entries(obj).sort((a, b) => b[1] - a[1]).map(([v, n]) => ({ v, l: rot ? rot(v) : v.toLowerCase(), n, t: UFN[v] }));
+      const op = (k, rot) => lista(c[k], rot);
+      const R = { fornecedor: v => v === "sem" ? "Não informado" : v, procedencia: v => (PROC[v] || [v])[0], validade: v => VAL[v] || v, unidade: v => nomeUni(v) || v, uf: v => v === "sem" ? "Não informada" : v };
+      const nomes = { ano: "Ano", tipo: "Tipo", status: "Status", fornecedor: "Fornecedor", procedencia: "Procedência", validade: "Lote", unidade: "Unidade", uf: "Estado", defeito: "Defeito", q: "Busca" };
+      const val = (k, v) => k === "ano" ? (v === "todos" ? "todos os anos" : v) : k === "tipo" || k === "status" ? (v === "todos" ? "todos" : v.toLowerCase()) : k === "uf" ? (UFN[v] || R.uf(v)) : R[k] ? R[k](v) : v;
+      TW.pintarBarra($("#gbar"), {
+        busca: { valor: s.q, ph: "Código, cliente, lote, NF…" },
+        principais: [
+          { k: "ano", rotulo: "Ano", tipo: "seg", atual: !s.ano || s.ano === hoje ? "" : s.ano, opcoes: [...anos.map(y => ({ v: y === hoje ? "" : y, l: y, n: c.ano[y] })), { v: "todos", l: "Todos" }] },
+          { k: "tipo", rotulo: "Tipo", tipo: "lista", atual: s.tipo || "", opcoes: [{ v: "", l: "Só garantias" }, { v: "todos", l: "Todos os tipos" }, ...op("tipo")] },
+          { k: "status", rotulo: "Status", tipo: "lista", atual: s.status || "", opcoes: [{ v: "", l: "Sem canceladas" }, { v: "todos", l: "Todos os status" }, ...op("status")] }],
+        mais: ["fornecedor", "procedencia", "validade", "unidade", "uf"].map(k => ({ k, rotulo: nomes[k], atual: s[k] || "", opcoes: op(k, R[k]) })),
+        aberto: maisAberto,
+        etiquetas: Object.keys(nomes).filter(k => s[k] && !(k === "ano" && s[k] === hoje)).map(k => ({ k, l: `${nomes[k]}: ${val(k, s[k])}` })),
+        acoes: TW.botao("Baixar Excel", { href: "/api/export/garantia.xlsx?" + qs(s), icone: "download" })
+      });
+    };
 
     const desenharMapa = () => {
       const s = F.get();
@@ -140,19 +158,8 @@
         + kpi("Valor c/ IPI", brl0(k.valor), sub(k.valor, a && a.valor, false), "amber")
         + kpi("Ocorrências", nf(k.ocorrencias), sub(k.ocorrencias, a && a.ocorrencias, false, a ? "" : "autorizações distintas"), "blue")
         + kpi("Procedentes", k.pct_procedente == null ? "–" : nf(k.pct_procedente, 1) + "%", a ? sub(k.pct_procedente, a.pct_procedente, true) : `${nf(k.proc)} procedentes · ${nf(k.improc)} improcedentes`, "slate");
-      const anos = Object.keys(c.ano).filter(x => x !== "sem").sort().reverse();
-      const linha = (titulo, html) => html ? `<div class="flex flex-wrap items-center gap-2">${rotulo(titulo)}${html}</div>` : "";
-      $("#gq").innerHTML = linha("Ano", anos.map(y => chip(`data-k="ano" data-v="${y}"`, y, ano() === y, c.ano[y])).join("") + chip('data-k="ano" data-v="todos"', "Todos", s.ano === "todos"))
-        + linha("Tipo", chip('data-k="tipo" data-v=""', "Só garantias", !s.tipo) + chip('data-k="tipo" data-v="todos"', "Todos", s.tipo === "todos") + Object.entries(c.tipo).sort((x, y) => y[1] - x[1]).map(([t, n]) => chip(`data-k="tipo" data-v="${esc(t)}"`, esc(t.toLowerCase()), s.tipo === t, n)).join(""))
-        + linha("Status", chip('data-k="status" data-v=""', "Sem canceladas", !s.status) + chip('data-k="status" data-v="todos"', "Todos", s.status === "todos") + Object.entries(c.status).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([t, n]) => chip(`data-k="status" data-v="${esc(t)}"`, esc(t.toLowerCase()), s.status === t, n)).join(""))
-        + linha("Fornecedor", Object.entries(c.fornecedor).sort((x, y) => y[1] - x[1]).map(([t, n]) => chip(`data-k="fornecedor" data-v="${esc(t)}" data-tg`, t === "sem" ? "não informado" : esc(t), s.fornecedor === t, n)).join(""))
-        + linha("Procedência", Object.entries(c.procedencia).map(([t, n]) => chip(`data-k="procedencia" data-v="${esc(t)}" data-tg`, (PROC[t] || [t])[0], s.procedencia === t, n)).join(""))
-        + linha("Lote", Object.entries(c.validade).map(([t, n]) => chip(`data-k="validade" data-v="${esc(t)}" data-tg`, VAL[t] || esc(t), s.validade === t, n)).join(""))
-        + linha("Unidade", Object.entries(c.unidade).map(([t, n]) => chip(`data-k="unidade" data-v="${esc(t)}" data-tg`, esc(nomeUni(t)), s.unidade === t, n)).join(""))
-        + (s.uf ? linha("Estado", chip(`data-k="uf" data-v="${esc(s.uf)}" data-tg`, esc(UFN[s.uf] || s.uf), true, c.uf[s.uf] || 0)) : "");
-      const n = Object.keys(s).filter(x => s[x]).length;
-      $("#gm").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns) de ocorrência${s.defeito ? ` · defeito <b class="text-ink">${esc(s.defeito)}</b>` : ""}${n ? ` · ${n} filtro(s)` : ""}
-        · servidor, cadastros de ${TW.dmy(d.meta.de)} a ${TW.dmy(d.meta.ate)}</span><a class="${primario}" href="/api/export/garantia.xlsx?${qs(s)}">${ico("download")} Baixar Excel</a>`;
+      desenharBarra();
+      $("#gm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns) de ocorrência · servidor, cadastros de ${TW.dmy(d.meta.de)} a ${TW.dmy(d.meta.ate)}`;
       desenharMapa(); desenharMes(); desenharPareto();
       $("#gcod").innerHTML = card("Amortecedores com mais garantia", TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Peças", r: true }, { h: "% das peças", r: true }, { h: "Valor", r: true }, { h: "Defeitos", r: true }, { h: "" }],
         d.codigos.map(r => [itemLink(r.codigo), r.descricao ? `<span class="block max-w-[22rem] truncate" title="${esc(r.descricao)}">${esc(r.descricao)}</span>` : meio, nf(r.pecas), pct(100 * r.pecas / (k.pecas || 1), 1), brl0(r.valor), nf(r.defeitos),
@@ -172,16 +179,14 @@
     const carregar = async () => { try { d = await J("/api/garantias?" + qs({ ...F.get(), page: pg })); } catch (e) { $("#gl").innerHTML = notice(esc(e.message), "red"); return; } desenhar(); };
     const aplicar = (patch, logo) => { if (patch) F.set(patch); pg = 1; clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 300); };
 
-    $("#gf").addEventListener("input", e => { if (e.target.name === "q") aplicar({ q: e.target.value }); });
-    $("#gf").addEventListener("submit", e => e.preventDefault());
-    $("#gclr").addEventListener("click", () => { $("#gf").q.value = ""; F.clear(); aplicar(null, true); });
+    TW.ligarBarra($("#gbar"), { set: (k, v) => aplicar({ [k]: v }, true), busca: t => aplicar({ q: t }, true), limpar: () => { F.clear(); aplicar(null, true); }, mais: ab => { maisAberto = ab; } });
     root.onclick = e => {
       const b = e.target.closest("[data-k]"), uf = e.target.closest("[data-uf]"), sg = e.target.closest("[data-seg]"), df = e.target.closest("[data-def]"), qq = e.target.closest("[data-q]"), p = e.target.closest("[data-p]");
       if (sg) { if (sg.dataset.seg === "metrica") { metrica = sg.dataset.v; desenharMapa(); } else { serie = sg.dataset.v; desenharMes(); } return; }
       if (uf) { F.toggle("uf", uf.dataset.uf); return aplicar(null, true); }
       if (b) { const k = b.dataset.k, v = b.dataset.v; if (b.hasAttribute("data-tg")) F.toggle(k, v); else F.set({ [k]: k === "ano" && v === String(new Date().getFullYear()) ? "" : v }); return aplicar(null, true); }
       if (df) { F.set({ defeito: df.dataset.def === F.get().defeito ? "" : df.dataset.def }); return aplicar(null, true); }
-      if (qq) { $("#gf").q.value = qq.dataset.q; return aplicar({ q: qq.dataset.q }, true); }
+      if (qq) return aplicar({ q: qq.dataset.q }, true);
       if (p && !p.disabled) { pg = +p.dataset.p; carregar(); $("#gl").scrollIntoView({ block: "start" }); }
     };
     desenhar();

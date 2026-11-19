@@ -37,3 +37,8 @@ Pedido: (1) rever Desenvolvimento e Redesenvolvimento (itens de DES aparecendo e
   Na cópia, depois de sincronizar o DES de novo: lista DES 759 → 1.230 códigos (inclui os recebidos que estavam como R-D); R-D com PEDIDO CONFIRMADO 25 → 0;
   R-D pendente compras 23 → 234; meta DES 2026 82 → 110 (DES recebidos em 2026 que depois ganharam R-D); validações do quadro de metas 267 → 282
   (linhas DES 64 → 96, R-D 226 → 194); sugestões de amostra 268 → 271 (DES que voltaram ao DES).
+- **Passo 3 — prévia dos filtros na Garantia** (aguarda aprovação): componente `PSDTW.barra / pintarBarra / ligarBarra / botao` (tw.js) e estilos `.psd-fbar …`
+  (marca.css): busca arredondada, Ano em botões lado a lado (3 anos + Todos), Tipo e Status em listas com contagem, «Mais filtros» (Fornecedor, Procedência,
+  Lote, Unidade, Estado — lista longa ocupa a linha toda), etiquetas com × e «Limpar tudo», Excel azul-marinho à direita. Os «quadrados cinzas» eram o
+  visual padrão do navegador em botões sem estilo (o Tailwind pré-compilado não traz o reset): `:where(main) :where(button)` zera fundo/borda com
+  especificidade 0. Botões dos cards (Índice/Peças, Peças/Valor) no mesmo padrão (`.psd-seg.sm`).
