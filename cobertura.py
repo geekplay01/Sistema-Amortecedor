@@ -39,16 +39,97 @@ def _catalogo_rows():
             lst = apps.setdefault(r["product_id"], [])
             if t and t not in lst: lst.append(t)
     cls = curva_abc.classes(); est, _, _ = estoque.mapa()
+    def linha(pid, comp, ref, fonte):
+        p = prods[pid]; k = _k(p["perfect_code"]); a = apps.get(pid, [])
+        return {"concorrente": comp, "referencia": ref, "codigo": p["perfect_code"], "product_id": pid, "descricao": p["description"], "linha": p["catalog_line"],
+                "aplicacao": " · ".join(a[:3]) + (f" (+{len(a) - 3})" if len(a) > 3 else ""), "curva": cls.get(k) or "sem", "situacao": (est.get(k) or {}).get("situacao") or "sem", "fonte": fonte}
     out = []
     for pid, p in prods.items():
         refs = cross.get(pid) or srv.get(p["perfect_code"].upper()) or []
         fonte = "CrossCatalogo" if pid in cross else "servidor"
-        k = _k(p["perfect_code"]); a = apps.get(pid, [])
-        for comp, ref in refs:
-            out.append({"concorrente": comp, "referencia": ref, "codigo": p["perfect_code"], "product_id": pid, "descricao": p["description"], "linha": p["catalog_line"],
-                        "aplicacao": " · ".join(a[:3]) + (f" (+{len(a) - 3})" if len(a) > 3 else ""), "curva": cls.get(k) or "sem", "situacao": (est.get(k) or {}).get("situacao") or "sem", "fonte": fonte})
+        for comp, ref in refs: out.append(linha(pid, comp, ref, fonte))
+    corr = correcoes_map()          # etapa 19 · Q7: «Nosso código» corrigido na tela vale sobre o CrossCatalogo e o servidor
+    if corr:
+        por_codigo = {p["perfect_code"].upper(): pid for pid, p in prods.items()}
+        out = [r for r in out if (r["concorrente"], _k(r["referencia"])) not in corr]
+        for (comp, _rk), c in corr.items():
+            for cod in c["codigos"]:
+                if cod in por_codigo: out.append(linha(por_codigo[cod], comp, c["referencia"], "corrigido no app"))
     out.sort(key=lambda r: (r["concorrente"], r["codigo"], r["referencia"]))
     return out
+
+# ---------------- correções do «Nosso código» feitas na tela (etapa 19 · Q7) ----------------
+CORR_TABLE = """CREATE TABLE IF NOT EXISTS cross_correcoes(concorrente TEXT NOT NULL, ref_key TEXT NOT NULL, referencia TEXT, codigos TEXT, antes TEXT, por TEXT,
+  em TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(concorrente, ref_key))"""
+def _corr_ensure():
+    import database as db
+    c = db.conn()
+    try: c.execute(CORR_TABLE); c.commit()
+    finally: c.close()
+def correcoes_map():
+    """{(concorrente, ref_key): {referencia, codigos: [...], antes: [...], por, em}} — o conjunto de códigos PERFECT daquela referência (vazio = sem ligação)."""
+    try: rows = q("SELECT * FROM cross_correcoes")
+    except Exception: return {}
+    sp = lambda t: [x for x in (t or "").split(",") if x]
+    return {(r["concorrente"], r["ref_key"]): {**r, "codigos": sp(r["codigos"]), "antes": sp(r["antes"])} for r in rows}
+
+def _valido(code):
+    """Código PERFECT (AMD…) do catálogo ou de DES/R-D. → None se ok, senão o motivo."""
+    c = _k(code)
+    if not c.startswith("AMD"): return f"{c} não é código PERFECT (AMD…)."
+    if not (q1("SELECT 1 FROM products WHERE upper(perfect_code)=?", (c,)) or q1("SELECT 1 FROM rd_projects WHERE upper(code)=? LIMIT 1", (c,))): return f"{c} não está no catálogo nem em DES/R-D."
+    return None
+
+def codigos_da_referencia(concorrente, referencia):
+    """Conjunto atual (efetivo) de códigos PERFECT ligados à referência: catálogo (com as correções) e, na COFAP, os DES/R-D AMD da regra da aba."""
+    rk = _k(referencia); cods = {r["codigo"].upper() for r in _catalogo_rows() if r["concorrente"] == concorrente and _k(r["referencia"]) == rk}
+    corr = correcoes_map().get((concorrente, rk))
+    if corr: return sorted(set(corr["codigos"]))
+    if _has("concorrentes"):
+        cods |= {r["c"] for r in q("SELECT DISTINCT upper(code) c FROM concorrentes WHERE competitor=? AND ref_key=? AND is_oem=0 AND upper(code) LIKE 'AMD%'", (concorrente, rk))}
+    return sorted(cods)
+
+def corrigir(concorrente, referencia, de=None, para=None, codigos=None, por=None):
+    """Grava a correção. `codigos` = conjunto completo; ou `de` → `para` troca um código do conjunto atual (de vazio = acrescenta; para vazio = tira).
+    → {"anterior": correção que existia (ou None), "codigos": novo conjunto}"""
+    if not concorrente or not _k(referencia): raise ValueError("Informe o concorrente e a referência.")
+    atual = codigos_da_referencia(concorrente, referencia)
+    if codigos is None:
+        novo = [c for c in atual if c != _k(de or "")]
+        if _k(para or ""): novo.append(_k(para))
+    else: novo = [_k(c) for c in codigos if _k(c)]
+    novo = sorted(set(novo))
+    for c in novo:
+        err = _valido(c)
+        if err: raise ValueError(err)
+    _corr_ensure(); ant = correcoes_map().get((concorrente, _k(referencia)))
+    import database as db
+    c = db.conn()
+    try:
+        c.execute("""INSERT INTO cross_correcoes(concorrente, ref_key, referencia, codigos, antes, por) VALUES(?,?,?,?,?,?)
+                     ON CONFLICT(concorrente, ref_key) DO UPDATE SET codigos=excluded.codigos, referencia=excluded.referencia, por=excluded.por, em=CURRENT_TIMESTAMP""",
+                  (concorrente, _k(referencia), referencia.strip(), ",".join(novo), ",".join(ant["antes"] if ant else atual), por)); c.commit()
+    finally: c.close()
+    _CCACHE.clear()
+    return {"anterior": ({k: ant[k] for k in ("referencia", "codigos", "antes", "por")} if ant else None), "codigos": novo}
+
+def desfazer(concorrente, referencia, anterior=None):
+    """Volta ao que era antes da última correção: sem correção anterior apaga a linha (vale de novo o CrossCatalogo/servidor)."""
+    _corr_ensure(); import database as db
+    c = db.conn()
+    try:
+        if anterior: c.execute("UPDATE cross_correcoes SET codigos=?, antes=?, em=CURRENT_TIMESTAMP WHERE concorrente=? AND ref_key=?", (",".join(anterior.get("codigos") or []), ",".join(anterior.get("antes") or []), concorrente, _k(referencia)))
+        else: c.execute("DELETE FROM cross_correcoes WHERE concorrente=? AND ref_key=?", (concorrente, _k(referencia)))
+        c.commit()
+    finally: c.close()
+    _CCACHE.clear()
+
+def correcoes(qtxt=""):
+    """Aba «Cross corrigido no app» de Anomalias: para levar ao CrossCatalogo.xlsx."""
+    t = (qtxt or "").upper().split()
+    rows = [{"concorrente": k[0], "referencia": c["referencia"], "antes": ", ".join(c["antes"]) or "—", "depois": ", ".join(c["codigos"]) or "(sem ligação)", "em": c["em"], "por": c["por"]}
+            for k, c in sorted(correcoes_map().items(), key=lambda x: x[1]["em"] or "", reverse=True)]
+    return [r for r in rows if all(x in f"{r['concorrente']} {r['referencia']} {r['antes']} {r['depois']}".upper() for x in t)]
 
 CAT_F = ("concorrente", "curva", "linha")
 def catalogo(f=None, page=1, size=200):
@@ -154,7 +235,8 @@ def _cofap_rows():
     principais veículos e — para «Não temos» — curva A/B/C pela frota (80/95%)."""
     if not _has("fraga_pecas"): return [], False
     key = (datetime.date.today().isoformat(), (q1("SELECT COUNT(*) n, MAX(rowid) m FROM fraga_pecas") or {}).get("m"), (q1("SELECT MAX(id) i FROM ds_runs") or {}).get("i"),
-           (q1("SELECT COUNT(*) n FROM products WHERE catalog_position IS NOT NULL") or {}).get("n"), (q1("SELECT MAX(id) i FROM import_batches") or {}).get("i"))
+           (q1("SELECT COUNT(*) n FROM products WHERE catalog_position IS NOT NULL") or {}).get("n"), (q1("SELECT MAX(id) i FROM import_batches") or {}).get("i"),
+           tuple(sorted((k, tuple(v["codigos"])) for k, v in correcoes_map().items() if k[0] == "COFAP")))
     if _CCACHE.get("k") == key: return _CCACHE["v"]
     cols = {r["name"] for r in q("PRAGMA table_info(fraga_pecas)")}
     tem_classe = "classificacao" in cols and bool(q("SELECT 1 FROM fraga_pecas WHERE classificacao IS NOT NULL LIMIT 1"))
@@ -185,6 +267,10 @@ def _cofap_rows():
         for r in q("SELECT upper(code) code, reference FROM concorrentes WHERE competitor='COFAP' AND is_oem=0"):
             c = r["code"]
             if not _montadora(c) and c not in no_catalogo and c not in cancel: des.setdefault(_k(r["reference"]), set()).add(c)
+        for (comp, rk), cr in correcoes_map().items():          # correção feita na tela: o conjunto corrigido substitui o do servidor (catálogo já veio corrigido)
+            if comp != "COFAP": continue
+            des[rk] = {c for c in cr["codigos"] if not _montadora(c) and c not in no_catalogo and c not in cancel}
+            if not des[rk]: des.pop(rk)
     out = []
     for k, g in por.items():
         vs = sorted(g.pop("_veic").values(), key=lambda v: -v["frota"]); g.pop("_vy")

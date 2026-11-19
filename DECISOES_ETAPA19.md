@@ -55,3 +55,7 @@ Pedido: (1) rever Desenvolvimento e Redesenvolvimento (itens de DES aparecendo e
   (por aba), Compra de amostras (as duas abas). Telas pequenas (Envio, Pendências, Anomalias, Fontes, Damping, Metas): atalhos e busca com o mesmo
   visual (`psd-chip`, busca arredondada com lupa), Excel com o ícone. Barra: grupos dentro da lista (`{g}`), faixa de atalhos, multisseleção (`multi`),
   atributo `data-ftg` (não colide com o `data-tg` das telas).
+- **Passo 5 — editar «Nosso código» na Cobertura** (`cobertura.corrigir/desfazer/correcoes`, `cross_correcoes`; `/api/cobertura/cross` e `/desfazer`;
+  `anomalias.corrigido`; `telas/cobertura.js`, `telas/anomalias.js`): correção = conjunto de códigos da referência (catálogo: troca de/para; COFAP: lista),
+  aplicada em `_catalogo_rows` e `_cofap_rows` (o cache da COFAP inclui as correções). Toast com «Desfazer» (o fechar do toast passou a ser só o botão
+  de fora). Conferido na cópia: SGB27608 ← AMD0356 tirou o código de «Não temos» (572 → 571) e o «Desfazer» voltou. Teste `test_35`.

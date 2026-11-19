@@ -670,6 +670,29 @@ class Fluxo(unittest.TestCase):
             for v, n in d["counts"][k].items(): self.assertEqual(C.get(f"/api/cobertura?tab=cofap&q=T34&{k}={v}").json["total"], n, (k, v))
         wb = load_workbook(io.BytesIO(C.get("/api/export/cobertura.xlsx?tab=cofap&q=T34&situacao=nao").data)); self.assertEqual(wb.sheetnames[0], "COFAP"); self.assertEqual(wb["COFAP"].max_row - 1, 4)
 
+    def test_35_corrigir_nosso_codigo_na_cobertura(self):
+        """Etapa 19 · Q7: corrigir o «Nosso código» na célula vale sobre o CrossCatalogo/servidor, aparece em Anomalias e o «Desfazer» volta ao que era."""
+        if not C.get("/api/cobertura?tab=cofap&q=T34").json["rows"]: self.test_34_cobertura_cofap()      # mesmo cenário (T34…) quando este teste roda sozinho
+        con = sqlite3.connect(DB)
+        try: pc, outro = [r[0] for r in con.execute("SELECT perfect_code FROM products WHERE catalog_position IS NOT NULL ORDER BY id LIMIT 2")]
+        finally: con.close()
+        self.assertEqual(C.post("/api/cobertura/cross", json={"concorrente": "COFAP", "referencia": "T34-CAT", "de": pc, "para": "1BP0001"}).status_code, 400)     # montadora não
+        self.assertEqual(C.post("/api/cobertura/cross", json={"concorrente": "COFAP", "referencia": "T34-CAT", "de": pc, "para": "AMD99999"}).status_code, 400)    # não existe
+        r = C.post("/api/cobertura/cross", json={"concorrente": "COFAP", "referencia": "T34-CAT", "de": pc, "para": outro}).json
+        self.assertEqual((r["codigos"], r["anterior"]), ([outro], None))
+        cat = [x for x in C.get("/api/cobertura?q=T34-CAT").json["rows"] if x["referencia"] == "T34-CAT"]
+        self.assertEqual([(x["codigo"], x["fonte"]) for x in cat], [(outro, "corrigido no app")])
+        an = C.get("/api/anomalies?tab=corrigido").json; self.assertEqual(an["counts"]["corrigido"], 1); self.assertEqual((an["rows"][0]["antes"], an["rows"][0]["depois"]), (pc, outro))
+        # COFAP: dar um código a um «Não temos» faz ele virar «Temos»
+        C.post("/api/cobertura/cross", json={"concorrente": "COFAP", "referencia": "T34NAO2", "codigos": [pc]})
+        r2 = {x["cofap"]: x for x in C.get("/api/cobertura?tab=cofap&q=T34").json["rows"]}
+        self.assertEqual((r2["T34NAO2"]["situacao"], r2["T34NAO2"]["nossos"]), ("catalogo", [pc]))
+        C.post("/api/cobertura/cross/desfazer", json={"concorrente": "COFAP", "referencia": "T34NAO2", "anterior": None})
+        C.post("/api/cobertura/cross/desfazer", json={"concorrente": "COFAP", "referencia": "T34-CAT", "anterior": None})
+        self.assertEqual(C.get("/api/anomalies?tab=corrigido").json["counts"]["corrigido"], 0)
+        cat = [x for x in C.get("/api/cobertura?q=T34-CAT").json["rows"] if x["referencia"] == "T34-CAT"]; self.assertEqual([x["codigo"] for x in cat], [pc])
+        self.assertEqual({x["cofap"]: x for x in C.get("/api/cobertura?tab=cofap&q=T34").json["rows"]}["T34NAO2"]["situacao"], "nao")
+
     def test_30_nome_do_arquivo_e_filtros_limpos(self):
         """Etapa 17 · Q8/Q16/Q26: arquivo «PerfectAmortecedores - <tela do menu> - dd-mm.xlsx», sem filtros no nome (eles ficam na aba «Filtros aplicados»);
         nenhuma tela guarda filtros da última visita; posição no catálogo fora da interface."""

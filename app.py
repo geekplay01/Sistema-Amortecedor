@@ -341,6 +341,18 @@ def api_cobertura():
     import cobertura
     a = request.args.to_dict(); fn = {"desenvolvimento": cobertura.desenvolvimento, "cofap": cobertura.cofap}.get(a.get("tab"), cobertura.catalogo)
     return jsonify(fn(a, a.get("page")))
+@app.post("/api/cobertura/cross")
+def api_cobertura_cross():
+    """Etapa 19 · Q7: corrige o «Nosso código» de uma referência de concorrente (vale sobre o CrossCatalogo e o servidor). Body: concorrente, referencia e
+    de/para (troca um código) ou codigos (conjunto completo). → {anterior, codigos} — «anterior» serve para o «Desfazer»."""
+    import cobertura
+    d = request.get_json(force=True) or {}
+    try: return jsonify(cobertura.corrigir(d.get("concorrente"), d.get("referencia") or "", d.get("de"), d.get("para"), d.get("codigos"), auth.current_user()))
+    except ValueError as e: return jsonify(error=str(e)), 400
+@app.post("/api/cobertura/cross/desfazer")
+def api_cobertura_cross_undo():
+    import cobertura
+    d = request.get_json(force=True) or {}; cobertura.desfazer(d.get("concorrente"), d.get("referencia") or "", d.get("anterior")); return jsonify(ok=True)
 @app.get("/item-id/<int:pid>")
 def item_by_id(pid):
     """Links antigos de ficha (data-ficha = id do produto) → página do item pelo código."""

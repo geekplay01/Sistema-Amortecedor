@@ -50,7 +50,7 @@ window.PSDTW = (() => {
     const t = Object.assign(document.createElement("div"), { className: "psd-toast " + tom }); t.setAttribute("role", tom === "erro" ? "alert" : "status");
     t.innerHTML = `<span class="t-ico">${ico(TICO[tom] || "info")}</span><div>${o.titulo ? `<b>${esc(o.titulo)}</b>` : ""}${o.html ? msg : esc(msg)}</div><button type="button" aria-label="Fechar aviso">${ico("x", "sm")}</button>`;
     const sai = () => { t.classList.add("saindo"); setTimeout(() => t.remove(), 170); };
-    t.querySelector("button").onclick = sai; box.appendChild(t);
+    t.querySelector(":scope > button").onclick = sai; box.appendChild(t);       // o «fechar» (o aviso pode trazer outros botões, como «Desfazer»)
     if (tom !== "erro" && o.fixo !== true) setTimeout(sai, o.ms || 4000);
     return t;
   };

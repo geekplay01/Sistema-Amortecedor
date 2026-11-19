@@ -83,10 +83,14 @@ def cross(q=""):
 def repetidos(q=""):
     import concorrentes; return concorrentes.repetidos(q)
 
-TABS = {"familia": familia, "ean": ean, "pesoean": pesoean, "cross": cross, "repetidos": repetidos}
+def corrigido(q=""):
+    """Etapa 19 · Q7: «Nosso código» corrigido na tela Cobertura — levar ao CrossCatalogo.xlsx."""
+    import cobertura; return cobertura.correcoes(q)
+
+TABS = {"familia": familia, "ean": ean, "pesoean": pesoean, "cross": cross, "repetidos": repetidos, "corrigido": corrigido}
 
 def counts(q=""):
-    return {"familia": len(familia(q)), "ean": len(ean(q)), "pesoean": len(pesoean(q)), "protheus": len(protheus(q)), "cross": len(cross(q)), "repetidos": len(repetidos(q)),
+    return {"familia": len(familia(q)), "ean": len(ean(q)), "pesoean": len(pesoean(q)), "protheus": len(protheus(q)), "cross": len(cross(q)), "repetidos": len(repetidos(q)), "corrigido": len(corrigido(q)),
             "sugestoes": Q.q1("SELECT COUNT(*) n FROM equivalence_suggestions WHERE status='pendente'")["n"]}
 
 def export_xlsx(q=""):
@@ -102,4 +106,6 @@ def export_xlsx(q=""):
     exporter._sheet(wb, "Cross × servidor", ["Código PERFECT", "Descrição", "Concorrente", "No CrossCatalogo", "No servidor"], [[r["perfect_code"], r["description"], r["concorrente"], " / ".join(r["cross"]), " / ".join(r["servidor"])] for r in cx])
     exporter._sheet(wb, "Concorrentes repetidos", ["Caso", "Concorrente", "Referência(s)", "Código(s) PERFECT"],
                     [["Mesma referência em vários códigos" if r["grupo"] == "ref_em_varios" else "Várias referências no mesmo código", r["concorrente"], " / ".join(r["referencias"]), " / ".join(r["codigos"])] for r in rp])
-    bio = io.BytesIO(); wb.save(bio); bio.seek(0); return bio, len(f) + len(e) + len(pe) + len(pr) + len(cx) + len(rp)
+    co = corrigido(q)
+    exporter._sheet(wb, "Cross corrigido no app", ["Concorrente", "Referência", "Antes", "Depois (vale no app)", "Quando"], [[r["concorrente"], r["referencia"], r["antes"], r["depois"], r["em"]] for r in co])
+    bio = io.BytesIO(); wb.save(bio); bio.seek(0); return bio, len(f) + len(e) + len(pe) + len(pr) + len(cx) + len(rp) + len(co)
