@@ -6,10 +6,6 @@
   const { $, esc, J, qs, root, fail, SYS, dwFill } = PSD;
   const TW = window.PSDTW, { nf, badge, kpi, notice, empty } = TW;
   const BASE = ["q", "family", "rod", "system", "launch", "linha", "hibrido"], PESQ = [...BASE, "origem", "code", "code_type", "make", "model", "year", "axle", "side"];
-  const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
-  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
-  const selectF = (name, rotulo, opts, cur) => `<select name="${name}" class="${campo} max-w-[13rem]" title="${esc(rotulo)}"><option value="">${esc(rotulo)}</option>${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur ?? "") ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
-  const textoF = (name, ph, cur, cls = "") => `<input name="${name}" type="search" value="${esc(cur || "")}" placeholder="${esc(ph)}" class="${campo} ${cls}">`;
   const mm = v => v == null ? '<span class="text-mute">–</span>' : nf(v, v % 1 ? 1 : 0);
   const sistema = s => s ? badge(SYS[s], s === "gas" ? "blue" : "amber") : '<span class="text-mute">–</span>';
   const familia = f => f ? f.charAt(0) + f.slice(1).toLowerCase() : "";
@@ -21,9 +17,8 @@
     root.innerHTML = `<div class="flex flex-col gap-5">
       <p class="m-0 text-sm text-mute">${pesquisa ? "<b>Digite o código PERFECT, OEM ou de um CONCORRENTE</b> (com ou sem ponto/hífen: 16.470 = 16470) ou uma aplicação (ex.: strada 2012 dianteiro). Procura no catálogo e nos itens em DESENVOLVIMENTO e REDESENVOLVIMENTO." : "Na ordem do catálogo (planilha CatalogoAMD, que prevalece). A busca aceita código PERFECT, OEM ou de concorrente — a linha mostra qual referência casou."}</p>
       ${pesquisa ? "" : '<div id="pk" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>'}
-      <div id="pq" class="flex flex-wrap items-center gap-2"></div>
-      <form id="pf" class="flex flex-wrap items-center gap-2" autocomplete="off"></form>
-      <div id="pmeta" class="flex flex-wrap items-center justify-between gap-3 text-sm text-mute"></div>
+      <div id="pbar"></div>
+      <div id="pmeta" class="text-sm text-mute"></div>
       <div id="pt"></div><div id="pp" class="flex items-center justify-center gap-3 text-sm text-mute"></div>
       <div id="px" class="flex flex-col gap-4"></div>
     </div>`;
@@ -33,28 +28,39 @@
       $("#pk").innerHTML = kpi("Itens no catálogo", nf(fc.catalogo), `${nf(fc.total)} produtos cadastrados`, "blue") + kpi("FORCE GAS", nf(fc.system.gas || 0), "sistema a gás", "blue") +
         kpi("FORCE OIL", nf(fc.system.oleo || 0), fc.system.nd ? `${nf(fc.system.nd)} sem sistema informado` : "sistema a óleo", "amber") + kpi("Lançamentos", nf(fc.launch), "coluna Lançamento da planilha", "green");
     };
-    const desenharAtalhos = () => {
-      const s = F.get();
-      $("#pq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` +
-        chip('data-tg="launch" data-v="S"', "Lançamentos", s.launch === "S", fc.launch, true) + chip('data-tg="system" data-v="gas"', "FORCE GAS", s.system === "gas", fc.system.gas || 0) +
-        chip('data-tg="system" data-v="oleo"', "FORCE OIL", s.system === "oleo", fc.system.oleo || 0) +
-        chip('data-tg="hibrido" data-v="S"', "Híbrido ou elétrico", s.hibrido === "S", fc.hibrido.S || 0, true) +
-        fc.linha.map(x => chip(`data-tg="linha" data-v="${esc(x.v)}"`, esc(linha(x.v)), s.linha === x.v, x.n)).join("") + fc.family.map(x => chip(`data-tg="family" data-v="${esc(x.v)}"`, esc(familia(x.v)), s.family === x.v, x.n)).join("");
-    };
+    /* barra de filtros (etapa 19 · Q6). Produtos: Linha, Família e Sistema à vista. Pesquisa: Montadora, Modelo e Ano à vista. O resto em «Mais filtros». */
+    const SISL = { gas: "FORCE GAS", oleo: "FORCE OIL" }, LANL = { S: "Só lançamentos", N: "Fora de lançamento" }, HIBL = { S: "Sim", N: "Não", nd: "Não informado" };
+    const ORIL = { catalogo: "Somente catálogo", des: "Somente DESENVOLVIMENTO", rd: "Somente REDESENVOLVIMENTO" }, TIPL = { oem: "OEM", fornecedor: "Fornecedor", concorrente: "Concorrente" };
+    const AXL = { dianteiro: "Dianteiro", traseiro: "Traseiro" }, SDL = { direito: "Direito", esquerdo: "Esquerdo" };
+    const NOMES = { make: "Montadora", model: "Modelo", year: "Ano", linha: "Linha", family: "Família", system: "Sistema", rod: "Ø haste", launch: "Lançamento", hibrido: "Híbrido ou elétrico",
+      origem: "Origem", code_type: "Tipo de código", code: "Código", axle: "Eixo", side: "Lado", q: "Busca" };
+    let maisAberto = false;
+    const desenharAtalhos = () => {};          // os atalhos agora ficam na própria barra
     const desenharFiltros = () => {
-      const s = F.get();
-      $("#pf").innerHTML = textoF("q", pesquisa ? "Busca livre: código, OEM, concorrente, veículo, ano…" : "Buscar: código PERFECT, OEM, concorrente, descrição, veículo, ano…", s.q, "min-w-[16rem] flex-1") +
-        selectF("family", "Família", fc.family.map(x => [x.v, `${familia(x.v)} (${nf(x.n)})`]), s.family) +
-        selectF("rod", "Ø haste", fc.rod.map(x => [x.v, `${mm(x.v)} mm (${nf(x.n)})`]), s.rod) +
-        selectF("system", "Sistema", [["gas", `FORCE GAS (${nf(fc.system.gas || 0)})`], ["oleo", `FORCE OIL (${nf(fc.system.oleo || 0)})`]], s.system) +
-        selectF("launch", "Lançamento", [["S", `Só lançamentos (${nf(fc.launch)})`], ["N", "Fora de lançamento"]], s.launch) +
-        selectF("linha", "Linha", [...fc.linha.map(x => [x.v, `${linha(x.v)} (${nf(x.n)})`]), ["sem", "Sem linha informada"]], s.linha) +
-        selectF("hibrido", "Híbrido ou elétrico", [["S", `Sim (${nf(fc.hibrido.S || 0)})`], ["N", `Não (${nf(fc.hibrido.N || 0)})`], ["nd", `Não informado (${nf(fc.hibrido.nd || 0)})`]], s.hibrido) +
-        (pesquisa ? selectF("origem", "Origem: todas", [["catalogo", "Somente catálogo"], ["des", "Somente DESENVOLVIMENTO"], ["rd", "Somente REDESENVOLVIMENTO"]], s.origem) +
-          textoF("code", "Código", s.code, "w-36") + selectF("code_type", "Tipo de código", [["oem", "OEM"], ["fornecedor", "Fornecedor"], ["concorrente", "Concorrente"]], s.code_type) +
-          selectF("make", "Montadora", L.makes.map(x => [x, x]), s.make) + selectF("model", "Modelo", L.models.map(x => [x, x]), s.model) + selectF("year", "Ano", L.years.map(y => [y, y]), s.year) +
-          selectF("axle", "Eixo", [["dianteiro", "Dianteiro"], ["traseiro", "Traseiro"]], s.axle) + selectF("side", "Lado", [["direito", "Direito"], ["esquerdo", "Esquerdo"]], s.side) : "") +
-        `<button type="button" id="pclr" class="rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10">Limpar filtros</button>`;
+      const s = F.get(), todos = [{ v: "", l: "Todos" }];
+      const fLinha = { k: "linha", rotulo: "Linha", atual: s.linha || "", opcoes: [...TW.ops(fc.linha, linha), { v: "sem", l: "Sem linha informada" }] };
+      const fFam = { k: "family", rotulo: "Família", atual: s.family || "", opcoes: TW.ops(fc.family, familia) };
+      const fSis = { k: "system", rotulo: "Sistema", atual: s.system || "", opcoes: [{ v: "gas", l: SISL.gas, n: fc.system.gas || 0 }, { v: "oleo", l: SISL.oleo, n: fc.system.oleo || 0 }] };
+      const resto = [{ k: "rod", rotulo: "Ø haste (mm)", atual: s.rod || "", opcoes: fc.rod.map(x => ({ v: x.v, l: `${mm(x.v)} mm`, n: x.n })) },
+                     { k: "launch", rotulo: "Lançamento", atual: s.launch || "", opcoes: [{ v: "S", l: LANL.S, n: fc.launch }, { v: "N", l: LANL.N }] },
+                     { k: "hibrido", rotulo: "Híbrido ou elétrico", atual: s.hibrido || "", opcoes: Object.entries(HIBL).map(([v, l]) => ({ v, l, n: fc.hibrido[v] || 0 })) }];
+      const lista_ = f => ({ ...f, tipo: "lista", opcoes: [...todos, ...f.opcoes] });
+      const principais = pesquisa ? [lista_({ k: "make", rotulo: "Montadora", atual: s.make || "", opcoes: L.makes.map(x => ({ v: x, l: x })) }),
+                                     lista_({ k: "model", rotulo: "Modelo", atual: s.model || "", opcoes: L.models.map(x => ({ v: x, l: x })) }),
+                                     lista_({ k: "year", rotulo: "Ano", atual: s.year || "", opcoes: L.years.map(y => ({ v: y, l: y })) })]
+                                  : [lista_(fLinha), lista_(fFam), lista_(fSis)];
+      const mais = pesquisa ? [{ k: "axle", rotulo: "Eixo", atual: s.axle || "", opcoes: Object.entries(AXL).map(([v, l]) => ({ v, l })) }, { k: "side", rotulo: "Lado", atual: s.side || "", opcoes: Object.entries(SDL).map(([v, l]) => ({ v, l })) },
+                              { k: "origem", rotulo: "Origem", atual: s.origem || "", opcoes: Object.entries(ORIL).map(([v, l]) => ({ v, l })) }, { k: "code_type", rotulo: "Tipo de código", atual: s.code_type || "", opcoes: Object.entries(TIPL).map(([v, l]) => ({ v, l })) },
+                              fLinha, fFam, fSis, ...resto] : resto;
+      const val = (k, v) => ({ linha: linha(v), family: familia(v), system: SISL[v], launch: LANL[v], hibrido: HIBL[v], origem: ORIL[v], code_type: TIPL[v], axle: AXL[v], side: SDL[v], rod: v + " mm" })[k] || v;
+      TW.pintarBarra($("#pbar"), {
+        busca: { valor: s.q, ph: pesquisa ? "Código PERFECT, OEM, concorrente, veículo, ano…" : "Código PERFECT, OEM, concorrente, descrição…" },
+        principais, mais, aberto: maisAberto,
+        atalhos: [{ k: "launch", v: "S", l: "Lançamentos", n: fc.launch, on: s.launch === "S", forte: true }, { k: "system", v: "gas", l: "FORCE GAS", n: fc.system.gas || 0, on: s.system === "gas" },
+                  { k: "system", v: "oleo", l: "FORCE OIL", n: fc.system.oleo || 0, on: s.system === "oleo" }, { k: "hibrido", v: "S", l: "Híbrido ou elétrico", n: fc.hibrido.S || 0, on: s.hibrido === "S", forte: true }],
+        etiquetas: TW.etiquetas(s, NOMES, val),
+        acoes: TW.botao("Baixar Excel", { href: `/api/export/${slug}.xlsx?${new URLSearchParams(s)}`, icone: "download" })
+      });
     };
 
     const via = r => (r.via || []).length ? `<div class="mt-1 flex flex-wrap gap-1">${r.via.map(v => `<span class="rounded-lg border border-line px-1.5 py-0.5 text-xs text-mute" title="Código ${esc(v.type)} que casou com a busca"><b class="text-ink">${esc(v.brand || v.type)}</b> ${esc(v.code)}</span>`).join("")}</div>` : "";
@@ -64,8 +70,7 @@
       try {
         if (!soRd) {
           const d = await J("/api/products?" + qs({ ...s, page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(s).length;
-          $("#pmeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> produto(s)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}</span>
-            <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/${slug}.xlsx?${new URLSearchParams(s)}">⬇ Baixar Excel</a>`;
+          $("#pmeta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> produto(s)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}`;
           $("#pt").innerHTML = TW.table([{ h: "Código PERFECT" }, { h: "Descrição", nw: false }, { h: "Linha" }, { h: "Família" }, { h: "Sistema" }, { h: "Ø haste", r: true }, { h: "Lmin", r: true }, { h: "Lmax", r: true },
             { h: "FOB (US$)", r: true }, { h: "Aplic.", r: true }, { h: "Códigos", r: true }, { h: "Pend.", r: true }, { h: "Desenho" }], d.rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-ficha="${r.id}">${esc(r.perfect_code)}</a>${r.is_launch === "S" ? " " + badge("lançamento", "green") : ""}${r.hybrid === "S" ? " " + badge("híbrido/elétrico", "violet") : ""}`,
             `<div class="min-w-[16rem] max-w-[26rem]">${esc(r.description || "")}${via(r)}</div>`, esc(linha(r.catalog_line)) || '<span class="text-mute">–</span>', esc(familia(r.family)) || '<span class="text-mute">–</span>', sistema(r.system_type), mm(r.rod_diameter_mm), mm(r.lmin_mm), mm(r.lmax_mm),
@@ -91,16 +96,13 @@
         `<a class="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10" href="/${k === "des" ? "desenvolvimento" : "redesenvolvimento"}?${qs(f)}">Ver todos</a>`)).join("");
     };
 
-    const aplicar = (patch, logo = false) => { if (patch) F.set(patch); pg = 1; desenharAtalhos(); clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 300); };
+    const aplicar = (patch, logo = false) => { if (patch) F.set(patch); pg = 1; desenharFiltros(); clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 300); };
     const modelos = async () => { const m = F.get().make; L.models = (await J("/api/filters" + (m ? "?make=" + encodeURIComponent(m) : ""))).models; if (F.get().model && !L.models.includes(F.get().model)) F.set({ model: "" }); };
-    $("#pf").addEventListener("input", async e => {
-      const n = e.target.name; if (!n) return;
-      if (n === "make") { F.set({ make: e.target.value }); await modelos(); desenharFiltros(); }
-      aplicar({ [n]: e.target.value }, e.target.tagName === "SELECT");
-    });
-    $("#pf").addEventListener("submit", e => e.preventDefault());
-    $("#pf").addEventListener("click", async e => { if (e.target.id !== "pclr") return; const tinha = F.get().make; F.clear(); if (pesquisa && tinha) await modelos(); desenharFiltros(); aplicar(null, true); });
-    root.addEventListener("click", e => { const b = e.target.closest("[data-tg]"); if (!b) return; F.toggle(b.dataset.tg, b.dataset.v); desenharFiltros(); aplicar(null, true); });
+    TW.ligarBarra($("#pbar"), {
+      set: async (k, v) => { if (k === "make" && pesquisa) { F.set({ make: v }); await modelos(); } aplicar({ [k]: v }, true); },
+      busca: t => aplicar({ q: t }, true),
+      limpar: async () => { const tinha = F.get().make; F.clear(); if (pesquisa && tinha) await modelos(); aplicar(null, true); },
+      mais: ab => { maisAberto = ab; } });
     $("#pp").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; carregar(); scrollTo(0, 0); } });
 
     (async () => {

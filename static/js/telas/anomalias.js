@@ -36,10 +36,10 @@
     AVISO.repetidos = notice("Referências do servidor que parecem erro de cadastro: a <b>mesma referência</b> de um concorrente ligada a vários códigos PERFECT, ou o <b>mesmo código</b> com várias referências do mesmo concorrente. A mesma referência repetida em várias aplicações do mesmo código não entra aqui.", "amber");
     const META = { familia: "produto(s) com família divergente", ean: "EAN divergente(s)", pesoean: "diferença(s) entre o CatalogoAMD e o BI03", protheus: "item(ns) pendente(s) de cadastro no Protheus",
       cross: "divergência(s) entre o CrossCatalogo e o servidor", repetidos: "caso(s) de referência repetida" };
-    const chip = (k, v, label, n) => { const on = F.get()[k] === v; return `<button type="button" data-tg="${k}" data-v="${esc(v)}" aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${esc(label)} · ${nf(n)}</button>`; };
+    const chip = (k, v, label, n) => { const on = F.get()[k] === v; return `<button type="button" data-tg="${k}" data-v="${esc(v)}" aria-pressed="${on}" class="psd-chip">${esc(label)}<span class="n">${nf(n)}</span></button>`; };      // etapa 19: mesmo visual da barra de filtros
     $("#ab").innerHTML = AVISO[tab] + (tab === "protheus" ? '<div id="aq" class="flex flex-wrap items-center gap-2"></div>' : "")
       + `<form id="af" class="flex flex-wrap items-center gap-2" autocomplete="off"><input name="q" type="search" placeholder="Buscar código, descrição ou valor…" class="${campo} min-w-[16rem] flex-1">
-        <a id="ax" class="${primario}" href="/api/anomalies/export.xlsx">⬇ Baixar Excel</a></form><div id="am" class="text-sm text-mute"></div><div id="at"></div>`;
+        <a id="ax" class="${primario}" href="/api/anomalies/export.xlsx">${PSDTW.ico("download", "sm")} Baixar Excel</a></form><div id="am" class="text-sm text-mute"></div><div id="at"></div>`;
     $("#af").q.value = F.get().q || "";
     const valor = v => typeof v === "number" ? v.toLocaleString("pt-BR", { maximumFractionDigits: 3 }) : esc(v ?? "–");          // peso 2,1 · EAN como texto
     const desc = r => `<span class="block max-w-[18rem] truncate" title="${esc(r.description || "")}">${esc(r.description || "–")}</span>`;

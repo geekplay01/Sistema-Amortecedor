@@ -122,21 +122,27 @@ window.PSDTW = (() => {
      + «Mais filtros» (painel com os demais) + etiquetas dos filtros ativos com × e «Limpar tudo». Ações (Excel…) à direita.
      barra({ busca: {valor, ph}, principais: [{k, rotulo, tipo, atual, opcoes: [{v, l, n}]}], mais: [...mesmo formato], etiquetas: [{k, l}], acoes, aberto })
      ligarBarra(el, { set(k, v), busca(texto), limpar() }) — uma vez por elemento (o HTML de dentro pode ser redesenhado à vontade). */
-  const _opcao = (o, f) => `<button type="button" role="menuitemradio" aria-checked="${String(o.v) === String(f.atual ?? "")}" data-fk="${esc(f.k)}" data-fv="${esc(o.v)}" class="psd-opt${String(o.v) === String(f.atual ?? "") ? " on" : ""}"><span class="truncate">${esc(o.l)}</span>${o.n != null ? `<span class="n">${nf(o.n)}</span>` : ""}</button>`;
+  const _opcao = (o, f) => o.g ? `<div class="psd-opt-g">${esc(o.g)}</div>` : `<button type="button" role="menuitemradio" aria-checked="${String(o.v) === String(f.atual ?? "")}" data-fk="${esc(f.k)}" data-fv="${esc(o.v)}" class="psd-opt${String(o.v) === String(f.atual ?? "") ? " on" : ""}"><span class="truncate">${esc(o.l)}</span>${o.n != null ? `<span class="n">${nf(o.n)}</span>` : ""}</button>`;
   const _filtro = f => {
     if (f.tipo === "seg") return `<div class="psd-seg" role="group" aria-label="${esc(f.rotulo)}">${f.opcoes.map(o => `<button type="button" data-fk="${esc(f.k)}" data-fv="${esc(o.v)}" aria-pressed="${String(o.v) === String(f.atual ?? "")}"${o.n != null ? ` title="${nf(o.n)}"` : ""}>${esc(o.l)}</button>`).join("")}</div>`;
-    const cur = f.opcoes.find(o => String(o.v) === String(f.atual ?? "")) || { l: f.atual || "Todos" };
+    const cur = f.opcoes.find(o => !o.g && String(o.v) === String(f.atual ?? "")) || { l: f.atual || "Todos" };
     return `<div class="psd-dd"><button type="button" data-dd aria-haspopup="menu" aria-expanded="false" class="psd-pill${f.atual ? " ativo" : ""}"><span class="r">${esc(f.rotulo)}</span><b>${esc(cur.l)}</b>${ico("chevron-down", "sm")}</button>
       <div class="psd-menu" role="menu" hidden>${f.opcoes.map(o => _opcao(o, f)).join("")}</div></div>`;
   };
+  /* chip do «Mais filtros»: um valor (clicar de novo limpa) ou, com f.multi, vários juntos por «|» (data-fv já leva a lista resultante) */
+  const _chipMais = (f, x) => {
+    const lst = String(f.atual ?? "").split("|").filter(Boolean), on = f.multi ? lst.includes(String(x.v)) : String(x.v) === String(f.atual ?? "");
+    const fv = f.multi ? (on ? lst.filter(v => v !== String(x.v)) : [...lst, String(x.v)]).join("|") : x.v;
+    return `<button type="button" data-fk="${esc(f.k)}" data-fv="${esc(fv)}" ${f.multi ? "" : "data-ftg"} aria-pressed="${on}"${x.t ? ` title="${esc(x.t)}"` : ""} class="psd-chip">${esc(x.l)}${x.n != null ? `<span class="n">${nf(x.n)}</span>` : ""}</button>`;
+  };
   const barra = o => {
-    const mais = o.mais || [], nm = mais.filter(f => f.atual).length;
-    return `<div class="psd-fbar"><div class="flex flex-wrap items-center gap-2">
+    const mais = o.mais || [], nm = mais.filter(f => f.atual).length;    return `<div class="psd-fbar"><div class="flex flex-wrap items-center gap-2">
         ${o.busca ? `<label class="psd-search">${ico("search", "sm")}<input name="q" type="search" autocomplete="off" value="${esc(o.busca.valor || "")}" placeholder="${esc(o.busca.ph || "Buscar…")}"></label>` : ""}
         ${(o.principais || []).map(_filtro).join("")}
         ${mais.length ? `<button type="button" data-fmais aria-expanded="${!!o.aberto}" class="psd-pill${nm ? " ativo" : ""}">${ico("list-filter", "sm")}<b>Mais filtros</b>${nm ? `<span class="psd-badge">${nm}</span>` : ""}</button>` : ""}
         ${o.acoes ? `<div class="ml-auto flex items-center gap-2">${o.acoes}</div>` : ""}</div>
-      ${mais.length ? `<div class="psd-mais"${o.aberto ? "" : " hidden"}>${mais.map(f => `<div class="psd-mais-g${f.opcoes.length > 8 ? " largo" : ""}"><div class="t">${esc(f.rotulo)}</div><div class="flex flex-wrap gap-1.5">${f.opcoes.map(x => `<button type="button" data-fk="${esc(f.k)}" data-fv="${esc(x.v)}" data-tg aria-pressed="${String(x.v) === String(f.atual ?? "")}"${x.t ? ` title="${esc(x.t)}"` : ""} class="psd-chip">${esc(x.l)}${x.n != null ? `<span class="n">${nf(x.n)}</span>` : ""}</button>`).join("")}</div></div>`).join("")}</div>` : ""}
+      ${mais.length ? `<div class="psd-mais"${o.aberto ? "" : " hidden"}>${mais.map(f => `<div class="psd-mais-g${f.opcoes.length > 8 ? " largo" : ""}"><div class="t">${esc(f.rotulo)}</div><div class="flex flex-wrap gap-1.5">${f.opcoes.map(x => _chipMais(f, x)).join("")}</div></div>`).join("")}</div>` : ""}
+      ${(o.atalhos || []).length ? `<div class="psd-atalhos"><span class="t">Atalhos</span>${o.atalhos.map(a => `<button type="button" data-fk="${esc(a.k)}" data-fv="${esc(a.v)}" data-ftg aria-pressed="${!!a.on}" class="psd-chip${a.forte ? " forte" : ""}">${esc(a.l)}${a.n != null ? `<span class="n">${nf(a.n)}</span>` : ""}</button>`).join("")}</div>` : ""}
       ${(o.etiquetas || []).length ? `<div class="psd-tags">${o.etiquetas.map(t => `<span class="psd-tag">${esc(t.l)}<button type="button" data-fx="${esc(t.k)}" aria-label="Tirar o filtro ${esc(t.l)}">${ico("x", "sm")}</button></span>`).join("")}<button type="button" data-flimpar class="psd-link">Limpar tudo</button></div>` : ""}</div>`;
   };
   const pintarBarra = (el, o) => {        // redesenha mantendo o cursor na busca (a lista recarrega enquanto a pessoa digita)
@@ -150,7 +156,7 @@ window.PSDTW = (() => {
     el.addEventListener("click", e => {
       const dd = e.target.closest("[data-dd]"), fk = e.target.closest("[data-fk]"), fx = e.target.closest("[data-fx]"), fm = e.target.closest("[data-fmais]"), lp = e.target.closest("[data-flimpar]");
       if (dd) { const ab = dd.getAttribute("aria-expanded") !== "true"; fecha(dd); dd.setAttribute("aria-expanded", String(ab)); dd.nextElementSibling.hidden = !ab; return; }
-      if (fk) { fecha(); const on = fk.getAttribute("aria-pressed") === "true" || fk.classList.contains("on"); h.set(fk.dataset.fk, fk.hasAttribute("data-tg") && on ? "" : fk.dataset.fv); return; }
+      if (fk) { fecha(); const on = fk.getAttribute("aria-pressed") === "true" || fk.classList.contains("on"); h.set(fk.dataset.fk, fk.hasAttribute("data-ftg") && on ? "" : fk.dataset.fv); return; }
       if (fx) { h.set(fx.dataset.fx, ""); return; }
       if (fm) { const p = el.querySelector(".psd-mais"), ab = p.hidden; p.hidden = !ab; fm.setAttribute("aria-expanded", String(ab)); h.mais && h.mais(ab); return; }
       if (lp) { h.limpar(); }
@@ -159,9 +165,12 @@ window.PSDTW = (() => {
     el.addEventListener("keydown", e => { if (e.key === "Escape") fecha(); if (e.key === "Enter" && e.target.name === "q") e.preventDefault(); });
     document.addEventListener("click", e => { if (!el.contains(e.target)) fecha(); });
   };
+  /* ajudantes da barra: opções a partir de [{v, n}] ou {valor: n}, e as etiquetas dos filtros ativos ({chave: rótulo}) */
+  const ops = (lst, rot = v => v) => (Array.isArray(lst) ? lst : Object.entries(lst || {}).map(([v, n]) => ({ v, n }))).map(x => ({ v: x.v, l: rot(x.v), n: x.n }));
+  const etiquetas = (s, nomes, val = (k, v) => v) => Object.keys(nomes).filter(k => s[k]).map(k => ({ k, l: `${nomes[k]}: ${val(k, s[k])}` }));
   /* botão principal (navy) e secundário (discreto) do padrão novo */
   const botao = (rotulo, o = {}) => `<${o.href ? `a href="${o.href}"` : `button type="button"`} ${o.attrs || ""} class="psd-btn ${o.secundario ? "" : "prim"}">${o.icone ? ico(o.icone, "sm") : ""}${esc(rotulo)}</${o.href ? "a" : "button"}>`;
 
   document.addEventListener("psd-theme", () => { tema(); vivos.forEach(g => { if (!g.canvas.isConnected) { vivos.delete(g); return; } pinta(g.config.type, g.data.datasets); g.update(); }); });
-  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, enviar, carregando, esqueleto, grafico, CORES, barra, pintarBarra, ligarBarra, botao };
+  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, enviar, carregando, esqueleto, grafico, CORES, barra, pintarBarra, ligarBarra, botao, ops, etiquetas };
 })();

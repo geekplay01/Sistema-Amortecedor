@@ -27,11 +27,14 @@
       <nav id="cba" class="flex flex-wrap gap-1 border-b border-line">${ABAS.map(([t, l, i]) => `<a href="/cobertura?tab=${t}" data-aba="${t}" class="-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-semibold no-underline ${t === tab ? "border-blue-500 text-blue-600" : "border-transparent text-mute hover:text-ink"}">${ico(i, "sm")}${l}</a>`).join("")}</nav>
       <div id="cbk" class="grid grid-cols-2 gap-4 lg:grid-cols-4">${'<div class="skel h-24"></div>'.repeat(4)}</div>
       <div id="cbx"></div>
-      <div id="cbq" class="flex flex-wrap items-center gap-2"></div>
-      <form id="cbf" class="flex flex-wrap items-center gap-2" autocomplete="off"><input name="q" type="search" class="${campo} min-w-[16rem] flex-1" placeholder="${{ catalogo: "Buscar concorrente, referência, nosso código, aplicação…", desenvolvimento: "Buscar código, veículo, concorrente, fornecedor…", cofap: "Buscar código COFAP, nosso código ou veículo…" }[tab]}">
-        <button type="button" id="cbl" class="rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10">Limpar filtros</button><a id="cbe" class="${prim}" href="#">${ico("download", "sm")}Baixar Excel</a></form>
+      <div id="cbq"></div>
       <div id="cbm" class="text-sm text-mute"></div><div id="cbt">${TW.esqueleto(8)}</div><div id="cbp" class="flex items-center justify-center gap-3 text-sm text-mute"></div></div>`;
-    $("#cbf").q.value = F.get().q || "";
+    /* barra (etapa 19 · Q6), por aba: Catálogo = Concorrente, Curva, Linha · Desenvolvimento = Curva, Origem, Lançamento · COFAP = Situação, Curva, Classificação */
+    const PH = { catalogo: "Concorrente, referência, nosso código, aplicação…", desenvolvimento: "Código, veículo, concorrente, fornecedor…", cofap: "Código COFAP, nosso código ou veículo…" };
+    const barra = (d, principais, atalhos, nomes, val) => { const s = F.get();
+      TW.pintarBarra($("#cbq"), { busca: { valor: s.q, ph: PH[tab] }, principais, atalhos, etiquetas: TW.etiquetas(s, { ...nomes, q: "Busca" }, val),
+        acoes: TW.botao("Baixar Excel", { href: "/api/export/cobertura.xlsx?" + qs({ ...s, tab }), icone: "download" }) }); };
+    const curvaOps = (cnt, sem) => [{ v: "", l: "Todas" }, ...["A", "B", "C", "sem"].filter(c => cnt[c]).map(c => ({ v: c, l: c === "sem" ? sem : "Curva " + c, n: cnt[c] }))];
     $("#cba").addEventListener("click", e => { const a = e.target.closest("[data-aba]"); if (!a) return; e.preventDefault(); history.replaceState(null, "", "/cobertura?" + qs({ tab: a.dataset.aba })); cobertura(); });
 
     const pager = (d) => { const pages = Math.max(1, Math.ceil(d.total / d.size));
@@ -46,9 +49,11 @@
           <div class="font-display text-sm font-semibold uppercase tracking-wide text-mute">${esc(c.concorrente)}</div><div class="mt-1 font-display text-2xl font-bold text-ink">${nf(c.codigos)}</div><div class="text-xs text-mute">códigos nossos</div>
           <div class="mt-3 flex h-2 overflow-hidden rounded-full bg-thead" title="A ${c.A} · B ${c.B} · C ${c.C}"><span class="bg-blue-600" style="width:${100 * c.A / t}%"></span><span class="bg-accent" style="width:${100 * c.B / t}%"></span><span class="bg-slate-400" style="width:${100 * c.C / t}%"></span></div>
           <div class="mt-1 flex justify-between text-xs text-mute"><span>A ${nf(c.A)}</span><span>B ${nf(c.B)}</span><span>C ${nf(c.C)}</span></div></button>`; }).join("")}</div>`;
-      $("#cbq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` + ["A", "B", "C", "sem"].filter(c => d.counts.curva[c]).map(c => chip("curva", c, c === "sem" ? "Sem venda" : "Curva " + c, d.counts.curva[c], s.curva === c, c === "A")).join("")
-        + Object.entries(d.counts.linha).map(([l, n]) => chip("linha", l, linha(l === "sem" ? "" : l), n, s.linha === l)).join("")
-        + (s.concorrente ? chip("concorrente", s.concorrente, s.concorrente, d.counts.concorrente[s.concorrente] || 0, true) : "");
+      barra(d, [{ k: "concorrente", rotulo: "Concorrente", tipo: "lista", atual: s.concorrente || "", opcoes: [{ v: "", l: "Todos" }, ...Object.entries(d.counts.concorrente).map(([v, n]) => ({ v, l: v, n }))] },
+                { k: "curva", rotulo: "Curva", tipo: "lista", atual: s.curva || "", opcoes: curvaOps(d.counts.curva, "Sem venda") },
+                { k: "linha", rotulo: "Linha", tipo: "lista", atual: s.linha || "", opcoes: [{ v: "", l: "Todas" }, ...Object.entries(d.counts.linha).map(([v, n]) => ({ v, l: linha(v === "sem" ? "" : v), n }))] }],
+        [{ k: "curva", v: "A", l: "Curva A", n: d.counts.curva.A || 0, on: s.curva === "A", forte: true }],
+        { concorrente: "Concorrente", curva: "Curva", linha: "Linha" }, (k, v) => k === "linha" ? linha(v === "sem" ? "" : v) : k === "curva" ? (v === "sem" ? "sem venda" : v) : v);
       $("#cbm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> referência(s) · <b class="text-ink">${nf(k.nossos_codigos)}</b> código(s) nosso(s)${Object.keys(s).filter(x => x !== "tab").length ? " · com filtros" : ""}`;
       $("#cbt").innerHTML = TW.table([{ h: "Concorrente" }, { h: "Referência" }, { h: "Nosso código" }, { h: "Descrição", nw: false }, { h: "Aplicação", nw: false }, { h: "Linha" }, { h: "Curva" }, { h: "Estoque" }],
         d.rows.map(r => [`<b class="text-ink">${esc(r.concorrente)}</b>`, `<span class="tabular-nums">${esc(r.referencia)}</span>`, codigo(r.codigo), `<span class="block max-w-[16rem] truncate" title="${esc(r.descricao || "")}">${esc(r.descricao || "")}</span>`,
@@ -61,8 +66,11 @@
         + kpi(`Frota ${k.ano}`, nf(k.frota / 1e6, 1) + " mi", "veículos das aplicações somados", "sky", "gauge") + kpi("Curva A", nf(A), "até 80% da frota acumulada", "amber", "target");
       $("#cbx").innerHTML = (k.fraga ? "" : notice("A planilha <b>LANÇAMENTOS</b> da Fraga ainda não foi carregada: a curva usa só a FROTA do servidor. Carregue «LANÇAMENTOS aaaa.xlsx» (e «COFAP_AMORTECEDORES_x_FROTA.xlsx») em Atualização de dados.", "amber"))
         + (d.rows.length ? TW.card("Maiores frotas", '<div id="cbg"></div>') : "");
-      $("#cbq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` + ["A", "B", "C", "sem"].filter(c => d.counts.curva[c]).map(c => chip("curva", c, c === "sem" ? "Sem frota" : "Curva " + c, d.counts.curva[c], s.curva === c, c === "A")).join("")
-        + chip("lancamento", "1", "Lançamento (2024+)", d.counts.lancamento, s.lancamento === "1") + Object.entries(d.counts.origem).map(([o, n]) => chip("origem", o, o, n, s.origem === o)).join("");
+      barra(d, [{ k: "curva", rotulo: "Curva", tipo: "lista", atual: s.curva || "", opcoes: curvaOps(d.counts.curva, "Sem frota") },
+                { k: "origem", rotulo: "Origem da frota", tipo: "lista", atual: s.origem || "", opcoes: [{ v: "", l: "Todas" }, ...Object.entries(d.counts.origem).map(([v, n]) => ({ v, l: v, n }))] },
+                { k: "lancamento", rotulo: "Lançamento", tipo: "lista", atual: s.lancamento || "", opcoes: [{ v: "", l: "Todos" }, { v: "1", l: "Lançamento (2024+)", n: d.counts.lancamento }] }],
+        [{ k: "curva", v: "A", l: "Curva A", n: d.counts.curva.A || 0, on: s.curva === "A", forte: true }, { k: "lancamento", v: "1", l: "Lançamento (2024+)", n: d.counts.lancamento, on: s.lancamento === "1" }],
+        { curva: "Curva", origem: "Origem", lancamento: "Lançamento" }, (k, v) => k === "lancamento" ? "2024+" : k === "curva" ? (v === "sem" ? "sem frota" : v) : v);
       $("#cbm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns) em desenvolvimento`;
       $("#cbt").innerHTML = TW.table([{ h: "Código" }, { h: "Descrição", nw: false }, { h: "Aplicações", nw: false }, { h: `Frota ${k.ano}`, r: true }, { h: "Origem" }, { h: "Curva" }, { h: "Concorrentes", nw: false }, { h: "Status" }],
         d.rows.map(r => [codigo(r.codigo) + (r.lancamento ? " " + badge("lançamento", "green") : ""), `<span class="block max-w-[14rem] truncate" title="${esc(r.descricao || "")}">${esc(r.descricao || "")}</span>`,
@@ -87,9 +95,11 @@
         + TW.card("Temos × não temos", `<div class="flex h-4 overflow-hidden rounded-full bg-thead">${["catalogo", "des", "nao"].map(x => `<span title="${SITC[x][0]}: ${nf(k[x])}" style="width:${100 * k[x] / tot}%;background:${{ catalogo: "#2F4A8C", des: "#64C4E9", nao: "#E72B3B" }[x]}"></span>`).join("")}</div>
           <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-mute">${["catalogo", "des", "nao"].map(x => `<span class="inline-flex items-center gap-1.5"><i class="psd-sw" style="background:${{ catalogo: "#2F4A8C", des: "#64C4E9", nao: "#E72B3B" }[x]}"></i>${SITC[x][0]} <b class="text-ink">${nf(k[x])}</b></span>`).join("")}</div>
           ${s.situacao !== "catalogo" && s.situacao !== "des" ? '<div id="cbg" class="mt-4"></div>' : ""}`, '<span class="text-xs text-mute">pelo nosso cross: CrossCatalogo e servidor; montadora não conta</span>');
-      $("#cbq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` + ["catalogo", "des", "nao"].filter(x => d.counts.situacao[x]).map(x => chip("situacao", x, SITC[x][0], d.counts.situacao[x], s.situacao === x, x === "nao")).join("")
-        + ["A", "B", "C"].filter(c => d.counts.curva[c]).map(c => chip("curva", c, "Não temos · curva " + c, d.counts.curva[c], s.curva === c)).join("")
-        + Object.entries(d.counts.classif).map(([c, n]) => chip("classif", c, CLS[c] || c, n, s.classif === c)).join("");
+      barra(d, [{ k: "situacao", rotulo: "Situação", tipo: "lista", atual: s.situacao || "", opcoes: [{ v: "", l: "Todas" }, ...["catalogo", "des", "nao"].filter(x => d.counts.situacao[x]).map(x => ({ v: x, l: SITC[x][0], n: d.counts.situacao[x] }))] },
+                { k: "curva", rotulo: "Curva (não temos)", tipo: "lista", atual: s.curva || "", opcoes: [{ v: "", l: "Todas" }, ...["A", "B", "C"].filter(c => d.counts.curva[c]).map(c => ({ v: c, l: "Curva " + c, n: d.counts.curva[c] }))] },
+                { k: "classif", rotulo: "Classificação", tipo: "lista", atual: s.classif || "", opcoes: [{ v: "", l: "Todas" }, ...Object.entries(d.counts.classif).map(([v, n]) => ({ v, l: CLS[v] || v, n }))] }],
+        [{ k: "situacao", v: "nao", l: "Não temos", n: d.counts.situacao.nao || 0, on: s.situacao === "nao", forte: true }, { k: "curva", v: "A", l: "Não temos · curva A", n: d.counts.curva.A || 0, on: s.curva === "A" }],
+        { situacao: "Situação", curva: "Curva", classif: "Classificação" }, (k, v) => k === "situacao" ? SITC[v][0] : k === "classif" ? CLS[v] || v : v);
       $("#cbm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> código(s) COFAP${Object.keys(s).filter(x => x !== "tab").length ? " · com filtros" : ""} · ordem: maior frota primeiro (planilha COFAP × frota, Frota 2024)`;
       $("#cbt").innerHTML = TW.table([{ h: "Código COFAP" }, { h: "Situação" }, { h: "Nosso código" }, { h: "Frota 2024", r: true }, { h: "Curva" }, { h: "Principais veículos", nw: false }, { h: "Classificação" }],
         d.rows.map(r => [`<b class="tabular-nums text-ink">${esc(r.cofap)}</b>`, badge(SITC[r.situacao][0], SITC[r.situacao][1]), r.nossos.length ? r.nossos.map(codigo).join(", ") : '<span class="text-xs text-mute">–</span>',
@@ -102,16 +112,14 @@
     };
 
     const carregar = async () => {
-      const s = F.get(); $("#cbe").href = "/api/export/cobertura.xlsx?" + qs({ ...s, tab });
+      const s = F.get();
       try { const d = await J("/api/cobertura?" + qs({ ...s, tab, page: pg })); ({ catalogo, desenvolvimento, cofap })[tab](d); pager(d); }
       catch (e) { $("#cbt").innerHTML = notice(esc(e.message), "red"); }
     };
     const aplicar = patch => { if (patch) F.set(patch); pg = 1; carregar(); };
     root.onclick = e => { const b = e.target.closest("[data-tg]"); if (b) { F.toggle(b.dataset.tg, b.dataset.v); pg = 1; carregar(); }          // onclick (não addEventListener): trocar de aba não acumula ouvintes
       const p = e.target.closest("[data-p]"); if (p && !p.disabled) { pg = +p.dataset.p; carregar(); } };
-    $("#cbf").addEventListener("input", e => { if (e.target.name === "q") { clearTimeout(timer); timer = setTimeout(() => aplicar({ q: e.target.value.trim() }), 300); } });
-    $("#cbf").addEventListener("submit", e => e.preventDefault());
-    $("#cbl").onclick = () => { F.clear(); F.set({ tab }); $("#cbf").q.value = ""; aplicar(); };
+    TW.ligarBarra($("#cbq"), { set: (k, v) => aplicar({ [k]: v }), busca: t => aplicar({ q: t }), limpar: () => { F.clear(); F.set({ tab }); aplicar(); } });
     carregar();
   }
   PSD.tela("cobertura", cobertura);

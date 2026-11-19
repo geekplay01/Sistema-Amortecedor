@@ -25,33 +25,38 @@
       <div id="atab" class="flex flex-wrap items-center gap-2"></div>
       <p id="aintro" class="m-0 text-sm text-mute"></p>
       <div id="ak" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
-      <div id="aq" class="flex flex-wrap items-center gap-2"></div>
-      <form id="af" class="flex flex-wrap items-center gap-2" autocomplete="off"></form>
-      <div id="ameta" class="flex flex-wrap items-center justify-between gap-3 text-sm text-mute"></div>
+      <div id="af"></div>
+      <div id="ameta" class="text-sm text-mute"></div>
       <div id="abody"></div><div id="ap" class="flex items-center justify-center gap-3 text-sm text-mute"></div>
     </div>`;
     const meta = async () => data || (data = await J("/api/samples?" + qs(filtrosDa())));     // etapas e fornecedores (formulário) mesmo vindo da aba de sugestões
 
     const desenharAbas = () => { const a = aba(), b = (k, l, n) => `<button type="button" data-tab="${k}" aria-pressed="${a === k}" class="rounded-lg border px-4 py-2 text-sm font-semibold ${a === k ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${l}${n != null ? ` · ${nf(n)}` : ""}</button>`;
       $("#atab").innerHTML = b("pendentes", "Sugestões de compra", nPend) + b("pedidos", "Pedidos de amostra", data && aba() === "pedidos" ? data.totals.n : null); };
+    /* barra (etapa 19 · Q6): Sugestões = busca; Pedidos = Fornecedor, Mês e Lado à vista + atalhos «Para enviar» e «Pendente fornecedor» */
+    const SIDEL = { direito: "Direito (LD)", esquerdo: "Esquerdo (LE)", ambos: "Ambos (LD/LE)" }, FLAGL = { enviar: "Para enviar", pendente_fornecedor: "Pendente fornecedor" };
     const desenharFiltros = () => {
-      const s = F.get();
+      const s = filtrosDa(), excel = xlsx => TW.botao("Baixar Excel", { href: `/api/export/${xlsx}.xlsx?${new URLSearchParams(s)}`, icone: "download" });
       if (aba() === "pendentes") {
         $("#aintro").innerHTML = 'Itens PERFECT em <b class="text-ink">DESENVOLVIMENTO</b> marcados <b class="text-ink">PENDENTE COMPRAS</b>, sem amostra comprada, fora do catálogo e com status diferente de ITEM RECEBIDO (só Amortecedor). Redesenvolvimento não tem sugestão: para comprar amostra de um item já desenvolvido, use <b class="text-ink">+ Nova amostra</b> em Pedidos de amostra. Cada referência abre a consulta do menor preço.';
-        $("#af").innerHTML = `<input name="q" type="search" value="${esc(s.q || "")}" placeholder="Buscar código, descrição, veículo…" class="${campo} min-w-[16rem] flex-1">` +
-          `<button type="button" id="aclr" class="${botao} py-2">Limpar filtros</button>`;
+        TW.pintarBarra($("#af"), { busca: { valor: s.q, ph: "Código, descrição, veículo…" }, etiquetas: TW.etiquetas(s, { q: "Busca" }), acoes: excel("pendente_compras") });
       } else {
         $("#aintro").innerHTML = 'Pedidos de amostra por etapa. Use ◀ ▶ para mudar a etapa; ao chegar em <b class="text-ink">Chegou</b>, o item entra no <a class="font-semibold text-blue-600" href="/envio">Envio de amostra</a> como «Pendente projeto».';
-        const d = data || { suppliers: [], months: [] };
-        $("#af").innerHTML = `<input name="q" type="search" value="${esc(s.q || "")}" placeholder="Buscar código, SC, aplicação, fornecedor…" class="${campo} min-w-[16rem] flex-1">` +
-          selectF("supplier", "Fornecedor", d.suppliers.map(x => [x, x]), s.supplier) + selectF("month", "Mês", d.months.map(x => [x, x]), s.month) +
-          selectF("side", "Lado", [["direito", "Direito (LD)"], ["esquerdo", "Esquerdo (LE)"], ["ambos", "Ambos (LD/LE)"]], s.side) +
-          `<button type="button" id="aclr" class="${botao} py-2">Limpar filtros</button><button type="button" id="anew" class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700">+ Nova amostra</button>`;
+        const d = data || { suppliers: [], months: [], totals: {} }, t = d.totals || {}, todos = [{ v: "", l: "Todos" }];
+        TW.pintarBarra($("#af"), {
+          busca: { valor: s.q, ph: "Código, SC, aplicação, fornecedor…" },
+          principais: [{ k: "supplier", rotulo: "Fornecedor", tipo: "lista", atual: s.supplier || "", opcoes: [...todos, ...d.suppliers.map(x => ({ v: x, l: x }))] },
+                       { k: "month", rotulo: "Mês", tipo: "lista", atual: s.month || "", opcoes: [...todos, ...d.months.map(x => ({ v: x, l: x }))] },
+                       { k: "side", rotulo: "Lado", tipo: "lista", atual: s.side || "", opcoes: [...todos, ...Object.entries(SIDEL).map(([v, l]) => ({ v, l }))] }],
+          atalhos: [{ k: "flag", v: "enviar", l: FLAGL.enviar, n: s.flag && s.flag !== "enviar" ? null : t.to_send, on: s.flag === "enviar", forte: true },
+                    { k: "flag", v: "pendente_fornecedor", l: FLAGL.pendente_fornecedor, n: s.flag && s.flag !== "pendente_fornecedor" ? null : t.pending_supplier, on: s.flag === "pendente_fornecedor", forte: true }],
+          etiquetas: TW.etiquetas(s, { supplier: "Fornecedor", month: "Mês", side: "Lado", flag: "Atalho", q: "Busca" }, (k, v) => k === "side" ? SIDEL[v] : k === "flag" ? FLAGL[v] : v),
+          acoes: `<button type="button" id="anew" class="psd-btn">+ Nova amostra</button>` + excel("amostras")
+        });
       }
     };
-    const metaLinha = (total, rotulo, xlsx) => { const n = Object.keys(filtrosDa()).length;
-      $("#ameta").innerHTML = `<span><b class="text-ink">${nf(total)}</b> ${rotulo}${n ? ` · ${n} filtro(s) ativo(s)` : ""}</span>
-        <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/${xlsx}.xlsx?${new URLSearchParams(filtrosDa())}">⬇ Baixar Excel</a>`; };
+    const metaLinha = (total, rotulo) => { const n = Object.keys(filtrosDa()).length;
+      $("#ameta").innerHTML = `<b class="text-ink">${nf(total)}</b> ${rotulo}${n ? ` · ${n} filtro(s) ativo(s)` : ""}`; };
 
     // ---------- Sugestões de compra ----------
     const carregarPendentes = async () => {
@@ -59,8 +64,7 @@
       if (!s.q) nPend = sm.total; desenharAbas();
       $("#ak").innerHTML = kpi("Sugestões de compra", nf(sm.total), "sem amostra comprada", "amber") + kpi("Com referência cruzada", nf(sm.com_referencia), "dá para cotar já", "green") +
         kpi("Sem referência", nf(sm.total - sm.com_referencia), "buscar a referência antes de cotar", "slate") + kpi("Marcadas «Pendente compras»", nf(sm.pend_compras), "sub status do servidor ou marcação manual", "blue");
-      $("#aq").innerHTML = "";
-      metaLinha(d.total, "sugestão(ões)", "pendente_compras");
+      desenharFiltros(); metaLinha(d.total, "sugestão(ões)");
       $("#abody").innerHTML = TW.table([{ h: "Código" }, { h: "Descrição / veículos", nw: false }, { h: "Status", nw: false }, { h: "Referência cruzada (abre a consulta)", nw: false }, { h: "Menor preço", nw: false }, { h: "" }], d.rows.map((r, i) => {
         const k = r.suggestion === "DESENVOLVIMENTO" ? "des" : "rd", refs = topRefs(r.cross);
         const cr = r.cross.slice(0, 6).map(c => `<a class="mb-1 mr-1 inline-flex items-center gap-1 rounded-full bg-slate-500/15 px-2 py-0.5 text-xs text-ink hover:bg-slate-500/20" target="_blank" rel="noopener" href="${mlUrl(c.brand, c.code)}" title="Abrir a consulta no Mercado Livre, do menor preço"><b>${esc(c.brand || "")}</b> ${esc(c.code)} ↗</a>`).join("") +
@@ -97,12 +101,10 @@
         <div class="mt-1 flex items-center justify-between gap-1"><button type="button" class="${botao} px-2" data-mv="${r.id}" data-d="-1" ${i === 0 ? "disabled" : ""} title="Etapa anterior">◀</button><button type="button" class="${botao}" data-ed="${r.id}">Editar</button><button type="button" class="${botao} px-2" data-mv="${r.id}" data-d="1" ${i === n - 1 ? "disabled" : ""} title="Próxima etapa">▶</button></div></div>`;
     };
     const carregarPedidos = async () => {
-      const s = filtrosDa(), novo = !data; data = await J("/api/samples?" + qs(s)); const t = data.totals; desenharAbas(); if (novo) desenharFiltros();
+      const s = filtrosDa(); data = await J("/api/samples?" + qs(s)); const t = data.totals; desenharAbas(); desenharFiltros();
       $("#ak").innerHTML = kpi("Amostras", nf(t.n), `${nf(t.to_send)} para enviar`, "blue") + kpi("Total (preço escolhido)", brl(t.chosen), `menor cotação ${brl(t.best)}`, "green") +
         kpi("Melhor preço (planilha)", brl(t.best_sheet), usd(t.usd), "slate") + kpi("Pendente fornecedor", nf(t.pending_supplier), "aguardando resposta", "red");
-      $("#aq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` + chip('data-tg="flag" data-v="enviar"', "Para enviar", s.flag === "enviar", s.flag && s.flag !== "enviar" ? null : t.to_send, true) +
-        chip('data-tg="flag" data-v="pendente_fornecedor"', "Pendente fornecedor", s.flag === "pendente_fornecedor", s.flag && s.flag !== "pendente_fornecedor" ? null : t.pending_supplier, true);
-      metaLinha(t.n, "pedido(s) de amostra", "amostras"); $("#ap").innerHTML = "";
+      metaLinha(t.n, "pedido(s) de amostra"); $("#ap").innerHTML = "";
       const n = data.stages.length;
       $("#abody").innerHTML = t.n ? `<div class="overflow-x-auto pb-2"><div class="grid gap-3" style="grid-template-columns:repeat(${n},minmax(15rem,1fr))">${data.stages.map(([k, l], i) => { const rs = data.rows.filter(r => r.stage === k);
         return `<section class="flex flex-col gap-2 rounded-2xl border border-line p-3"><h4 class="m-0 flex items-center justify-between text-sm font-semibold text-ink">${esc(l)} ${badge(nf(rs.length), rs.length ? "blue" : "slate")}</h4>${rs.map(r => cartao(r, i, n)).join("") || '<div class="py-4 text-center text-xs text-mute">–</div>'}</section>`; }).join("")}</div></div>`
@@ -115,16 +117,12 @@
       try { await (aba() === "pendentes" ? carregarPendentes() : carregarPedidos()); } catch (e) { $("#abody").innerHTML = notice(esc(e.message), "red"); }
     };
     const aplicar = (logo = false) => { pg = 1; clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 300); };
-    const trocarAba = t => { F.set({ tab: t === "pedidos" ? "pedidos" : "" }); pg = 1; $("#ak").innerHTML = $("#aq").innerHTML = ""; desenharAbas(); desenharFiltros(); carregar(); };
+    const trocarAba = t => { F.set({ tab: t === "pedidos" ? "pedidos" : "" }); pg = 1; $("#ak").innerHTML = ""; desenharAbas(); desenharFiltros(); carregar(); };
 
     $("#atab").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b && b.dataset.tab !== aba()) trocarAba(b.dataset.tab); });
-    $("#af").addEventListener("input", e => { const n = e.target.name; if (!n) return; F.set({ [n]: e.target.value }); aplicar(e.target.tagName === "SELECT"); });
-    $("#af").addEventListener("submit", e => e.preventDefault());
-    $("#af").addEventListener("click", e => {
-      if (e.target.id === "aclr") { F.set(Object.fromEntries(ABA[aba()].map(k => [k, ""]))); desenharFiltros(); aplicar(true); }
-      if (e.target.id === "anew") form({ stage: "cotacao", quotes: [{ price: "", link: "", chosen: 1 }] });
-    });
-    $("#aq").addEventListener("click", e => { const b = e.target.closest("[data-tg]"); if (!b) return; F.toggle(b.dataset.tg, b.dataset.v); desenharFiltros(); aplicar(true); });
+    TW.ligarBarra($("#af"), { set: (k, v) => { F.set({ [k]: v }); desenharFiltros(); aplicar(true); }, busca: t => { F.set({ q: t }); aplicar(true); },
+      limpar: () => { F.set(Object.fromEntries(ABA[aba()].map(k => [k, ""]))); desenharFiltros(); aplicar(true); } });
+    $("#af").addEventListener("click", e => { if (e.target.closest("#anew")) form({ stage: "cotacao", quotes: [{ price: "", link: "", chosen: 1 }] }); });
     $("#ap").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; carregar(); scrollTo(0, 0); } });
     $("#abody").addEventListener("click", async e => {
       const bp = e.target.closest("[data-bp]"), np = e.target.closest("[data-np]"), mv = e.target.closest("[data-mv]"), ed = e.target.closest("[data-ed]");

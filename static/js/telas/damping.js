@@ -7,7 +7,7 @@
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
   const botao = "rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10";
   const primario = "rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700";
-  const chip = (attrs, label, on, n) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
+  const chip = (attrs, label, on, n) => `<button type="button" ${attrs} aria-pressed="${on}" class="psd-chip">${label}${n != null ? `<span class="n">${nf(n)}</span>` : ""}</button>`;      // etapa 19: mesmo visual da barra de filtros
   const RES = { APPROVED: ["Aprovado", "green"], DISAPPROVED: ["Reprovado", "red"], INCOMPLETO: ["Incompleto", "amber"], "FAIXA INVÁLIDA": ["Faixa inválida", "amber"] };
   const selo = r => r ? `<span title="${esc(r)}">${badge(RES[r]?.[0] || r, RES[r]?.[1])}</span>` : "";
   const fx = v => v == null ? "–" : v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -43,7 +43,7 @@
           <a id="dm-x" class="${botao} hidden" href="#">⬇ Baixar este ensaio (Excel)</a><span id="dm-msg" class="hidden text-sm" role="status"></span></div>
       </section>
       <section class="rounded-2xl border border-line bg-card p-5 shadow-sm">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h3 class="m-0 text-base font-semibold text-ink">Ensaios salvos</h3><a id="dm-xl" class="${primario}" href="/api/export/damping.xlsx">⬇ Baixar Excel</a></div>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h3 class="m-0 text-base font-semibold text-ink">Ensaios salvos</h3><a id="dm-xl" class="${primario}" href="/api/export/damping.xlsx">${PSDTW.ico("download", "sm")} Baixar Excel</a></div>
         <div class="flex flex-col gap-3"><div id="dm-q" class="flex flex-wrap items-center gap-2"></div>
           <div class="flex flex-wrap items-center gap-2"><input id="dm-busca" type="search" placeholder="Buscar código ou identificação…" class="${campo} min-w-[16rem] flex-1"><button type="button" id="dm-clr" class="${botao}">Limpar filtros</button></div>
           <div id="dm-meta" class="text-sm text-mute"></div><div id="dm-l"></div></div>

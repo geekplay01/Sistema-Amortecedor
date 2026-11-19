@@ -7,7 +7,7 @@
   const TW = window.PSDTW, { nf, dmy, badge, kpi, card, notice, empty } = TW;
   const DES = "DESENVOLVIMENTO", RD = "REDESENVOLVIMENTO", TIPO = { des: DES, rd: RD }, SLUG = { [DES]: "des", [RD]: "rd" }, COR = { [DES]: "#2f6bff", [RD]: "#10b981" };
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
-  const chip = (attrs, label, on) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}</button>`;
+  const chip = (attrs, label, on) => `<button type="button" ${attrs} aria-pressed="${on}" class="psd-chip">${label}</button>`;      // etapa 19: mesmo visual da barra de filtros
   const LIMITE = 5000;                                       // recebidos no ano: lista inteira (contadores «conta?» exatos)
   const pct = p => p == null ? "–" : nf(p, 1) + "%";
   const put = (u, b) => J(u, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) });

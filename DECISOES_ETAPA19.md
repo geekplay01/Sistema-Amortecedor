@@ -48,3 +48,10 @@ Pedido: (1) rever Desenvolvimento e Redesenvolvimento (itens de DES aparecendo e
   Lote, Unidade, Estado — lista longa ocupa a linha toda), etiquetas com × e «Limpar tudo», Excel azul-marinho à direita. Os «quadrados cinzas» eram o
   visual padrão do navegador em botões sem estilo (o Tailwind pré-compilado não traz o reset): `:where(main) :where(button)` zera fundo/borda com
   especificidade 0. Botões dos cards (Índice/Peças, Peças/Valor) no mesmo padrão (`.psd-seg.sm`).
+- **Passo 4 — barra nas outras telas** (tabela da Q6; nenhum filtro some, só muda de lugar): Desenvolvimento/Redesenvolvimento (Status, Controle com grupos,
+  Fornecedor; atalhos Pendente compras e Curtidos), Produtos (Linha, Família, Sistema), Pesquisa (Montadora, Modelo, Ano; o resto em «Mais filtros»; o campo
+  separado «Código» saiu — a busca já procura código PERFECT/OEM/concorrente), Aplicações, Equivalências (multisseleção de critérios/diferenças/ausentes e
+  pontuação mínima em «Mais filtros»), Lados (atalhos combinados mantidos), Brands, Desenhos (tamanho dos cartões ao lado do Excel), Estoque, Cobertura
+  (por aba), Compra de amostras (as duas abas). Telas pequenas (Envio, Pendências, Anomalias, Fontes, Damping, Metas): atalhos e busca com o mesmo
+  visual (`psd-chip`, busca arredondada com lupa), Excel com o ícone. Barra: grupos dentro da lista (`{g}`), faixa de atalhos, multisseleção (`multi`),
+  atributo `data-ftg` (não colide com o `data-tg` das telas).

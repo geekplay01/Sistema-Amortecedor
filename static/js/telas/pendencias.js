@@ -11,7 +11,7 @@
   const botao = "rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10";
   const primario = "rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700";
   const mini = "rounded-lg border border-line bg-card px-2.5 py-1 text-xs font-semibold text-ink hover:bg-slate-500/10";
-  const chip = (attrs, label, on, n) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
+  const chip = (attrs, label, on, n) => `<button type="button" ${attrs} aria-pressed="${on}" class="psd-chip">${label}${n != null ? `<span class="n">${nf(n)}</span>` : ""}</button>`;      // etapa 19: mesmo visual da barra de filtros
   const rotulo = t => `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">${t}</span>`;
   const aba = (href, label, on) => `<a href="${href}" data-aba class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline ${on ? "border-blue-500 text-blue-600" : "border-transparent text-mute hover:text-ink"}">${label}</a>`;
   const pager = (pg, pages) => { const b = (p, dis, l) => `<button type="button" data-p="${p}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${dis ? "disabled" : ""}>${l}</button>`;
@@ -30,7 +30,7 @@
     const api = () => { const s = F.get(); return { q: s.q || "", status: st(), kind: s.kind || "", field: s.field || "" }; };
     root.innerHTML = `<div class="flex flex-col gap-5">
       <div class="flex flex-wrap items-end justify-between gap-3 border-b border-line"><nav class="flex gap-1">${aba("/pendencias?tab=", "Pendências e conflitos", !dup)}${aba("/pendencias?tab=dup", 'Possíveis duplicidades <span id="pdn"></span>', dup)}</nav>
-        <a id="pdl" class="${primario} mb-2" href="/api/export/pendencias.xlsx">⬇ Baixar Excel</a></div>
+        <a id="pdl" class="${primario} mb-2" href="/api/export/pendencias.xlsx">${PSDTW.ico("download", "sm")} Baixar Excel</a></div>
       <div id="pbody" class="flex flex-col gap-5"></div></div>`;
     // as abas trocam só a chave «tab» (os filtros da lista ficam guardados)
     root.querySelector("nav").addEventListener("click", e => { const a = e.target.closest("[data-aba]"); if (!a) return; e.preventDefault(); F.set({ tab: a.href.includes("tab=dup") ? "dup" : "" }); pendencias(); });

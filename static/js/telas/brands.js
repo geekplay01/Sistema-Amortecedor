@@ -7,11 +7,6 @@
   const BC = { PERFECT: "#d4372c", BPROAUTO: "#2f7de1", MOTRIO: "#f2c12e", MOTORCRAFT: "#7c8cff", OUTROS: "#7b8794" }, NOME = { OUTROS: "Sem marca" };
   const ONDE = [["catalog", "No catálogo"], ["des", "Em DES"], ["rd", "Em R-D"], ["base", "Na base Motorcraft"]];
   const CTRL = ["pend_compras", "pend_validacao", "val_reprovada", "pend_desenho_forn"];
-  const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
-  const botao = "rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10";
-  const primario = "rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700";
-  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
-  const rotulo = t => `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">${t}</span>`;
   const meio = '<span class="text-mute">–</span>';
   const pager = (pg, pages) => { const b = (p, dis, l) => `<button type="button" data-p="${p}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${dis ? "disabled" : ""}>${l}</button>`;
     return pages > 1 ? `${b(pg - 1, pg < 2, "‹")} Página ${pg} de ${pages} ${b(pg + 1, pg >= pages, "›")}` : ""; };
@@ -22,12 +17,10 @@
     root.innerHTML = `<div class="flex flex-col gap-5">
       <p class="m-0 text-sm text-mute">Itens agrupados pelo código: <b class="text-ink">AMD…</b> = PERFECT · <b class="text-ink">1BP…</b> = BPROAUTO · <b class="text-ink">somente números</b> = MOTRIO · itens da base <b class="text-ink">ItensMotorcraft</b> (PN Ford e a mesma família de código) = MOTORCRAFT. Reúne catálogo, desenvolvimento, redesenvolvimento, base de marcas e pedidos de amostra.</p>
       <div id="bg" class="grid grid-cols-2 gap-4 lg:grid-cols-5"></div>
-      <div id="bq" class="flex flex-col gap-2"></div>
-      <form id="bf" class="flex flex-wrap items-center gap-2" autocomplete="off"><input name="q" type="search" placeholder="Buscar código, código PERFECT, descrição ou veículo…" class="${campo} min-w-[16rem] flex-1"><button type="button" id="bclr" class="${botao}">Limpar filtros</button></form>
-      <div id="bm" class="flex flex-wrap items-center justify-between gap-3 text-sm text-mute"></div>
+      <div id="bq"></div>
+      <div id="bm" class="text-sm text-mute"></div>
       <div id="bt"></div><div id="bp" class="flex items-center justify-center gap-3 text-sm text-mute"></div>
     </div>`;
-    $("#bf").q.value = F.get().q || "";
 
     const cartoes = () => {
       const cur = marca(), c = d.counts.brand, lista = [...S.brands, ...(S.unclassified ? [{ brand: "OUTROS", rule: "Não se encaixa em nenhuma regra", total: S.unclassified }] : [])];
@@ -39,15 +32,22 @@
           <div class="mt-1 text-xs text-mute">${filtrado() ? `com os filtros · de ${nf(b.total)}` : esc(b.rule)}</div>
           ${det.length ? `<div class="mt-2 flex flex-wrap gap-1">${det.map(([l, n]) => `<span class="rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-mute">${l} ${nf(n)}</span>`).join("")}</div>` : ""}</button>`; }).join("");
     };
+    /* barra (etapa 19 · Q6): a marca é escolhida nos cartões; Onde está e Controle à vista (listas com contagem) */
     const atalhos = () => {
-      const s = F.get(), c = d.counts, onde = ONDE.filter(([k]) => c.scope[k] || s.scope === k), ctrl = CTRL.filter(k => c.flag[k] || s.flag === k);
-      $("#bq").innerHTML = `<div class="flex flex-wrap items-center gap-2">${rotulo("Onde está")}${chip('data-tg="scope" data-v=""', "Todos", !s.scope, c.scope.all)}${onde.map(([k, l]) => chip(`data-tg="scope" data-v="${k}"`, l, s.scope === k, c.scope[k])).join("")}</div>`
-        + (ctrl.length ? `<div class="flex flex-wrap items-center gap-2">${rotulo("Controle")}${ctrl.map(k => chip(`data-tg="flag" data-v="${k}"`, esc(FLG[k] ? FLG[k][0] : k), s.flag === k, c.flag[k], k === "pend_compras")).join("")}</div>` : "");
+      const s = F.get(), c = d.counts, x = { ...s }; delete x.b;
+      const onde = ONDE.filter(([k]) => c.scope[k] || s.scope === k), ctrl = CTRL.filter(k => c.flag[k] || s.flag === k), nomeOnde = Object.fromEntries(ONDE);
+      TW.pintarBarra($("#bq"), {
+        busca: { valor: s.q, ph: "Código, código PERFECT, descrição ou veículo…" },
+        principais: [{ k: "scope", rotulo: "Onde está", tipo: "lista", atual: s.scope || "", opcoes: [{ v: "", l: "Todos", n: c.scope.all }, ...onde.map(([k, l]) => ({ v: k, l, n: c.scope[k] }))] },
+                     { k: "flag", rotulo: "Controle", tipo: "lista", atual: s.flag || "", opcoes: [{ v: "", l: "Todos" }, ...ctrl.map(k => ({ v: k, l: FLG[k] ? FLG[k][0] : k, n: c.flag[k] }))] }],
+        atalhos: c.flag.pend_compras ? [{ k: "flag", v: "pend_compras", l: "Pendente compras", n: c.flag.pend_compras, on: s.flag === "pend_compras", forte: true }] : [],
+        etiquetas: TW.etiquetas(s, { scope: "Onde está", flag: "Controle", q: "Busca" }, (k, v) => k === "scope" ? nomeOnde[v] || v : FLG[v] ? FLG[v][0] : v),
+        acoes: TW.botao("Baixar Excel", { href: `/api/export/brands.xlsx?${qs({ ...x, brand: marca() })}`, icone: "download" })
+      });
     };
     const tabela = () => {
-      const s = F.get(), cur = marca(), n = ["q", "scope", "flag"].filter(k => s[k]).length, x = { ...s }; delete x.b;
-      $("#bm").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns) ${esc(nome(cur))}${d.fora_base ? ` · inclui <b class="text-amber-700">${nf(d.fora_base)}</b> PN Ford fora da base (não contam no cartão)` : ""}${n ? ` · ${n} filtro(s) ativo(s)` : ""}</span>
-        <a class="${primario}" href="/api/export/brands.xlsx?${qs({ ...x, brand: cur })}">⬇ Baixar Excel</a>`;
+      const s = F.get(), cur = marca(), n = ["q", "scope", "flag"].filter(k => s[k]).length;
+      $("#bm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns) ${esc(nome(cur))}${d.fora_base ? ` · inclui <b class="text-amber-700">${nf(d.fora_base)}</b> PN Ford fora da base (não contam no cartão)` : ""}${n ? ` · ${n} filtro(s) ativo(s)` : ""}`;
       $("#bt").innerHTML = TW.table([{ h: "Código" }, { h: "Código PERFECT" }, { h: "Descrição" }, { h: "Veículo / aplicação" }, { h: "Onde está" }, { h: "Controle de status", nw: false }, { h: "Desenho" }, { h: "Amostras", r: true }],
         d.rows.map(i => [
           i.catalog && i.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${i.product_id}">${esc(i.code)}</a>` : i.des || i.rd ? `<a href="#" class="font-semibold text-blue-600" data-rd="${i.des ? "des" : "rd"}" data-code="${esc(i.code)}">${esc(i.code)}</a>` : `<b class="text-ink">${esc(i.code)}</b>`,
@@ -67,11 +67,8 @@
     };
     const aplicar = (patch, logo) => { if (patch) F.set(patch); pg = 1; clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 300); };
 
-    $("#bf").addEventListener("input", e => { if (e.target.name === "q") aplicar({ q: e.target.value }); });
-    $("#bf").addEventListener("submit", e => e.preventDefault());
-    $("#bclr").addEventListener("click", () => { $("#bf").q.value = ""; aplicar({ q: "", scope: "", flag: "" }, true); });
+    TW.ligarBarra($("#bq"), { set: (k, v) => aplicar({ [k]: v }, true), busca: t => aplicar({ q: t }, true), limpar: () => aplicar({ q: "", scope: "", flag: "" }, true) });
     $("#bg").addEventListener("click", e => { const b = e.target.closest("[data-b]"); if (b) aplicar({ b: b.dataset.b === "PERFECT" ? "" : b.dataset.b }, true); });
-    $("#bq").addEventListener("click", e => { const b = e.target.closest("[data-tg]"); if (!b) return; if (b.dataset.v) F.toggle(b.dataset.tg, b.dataset.v); else F.set({ [b.dataset.tg]: "" }); aplicar(null, true); });
     $("#bp").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; carregar(); scrollTo(0, 0); } });
     (async () => { S = await J("/api/brands"); await carregar(); })().catch(fail);
   }

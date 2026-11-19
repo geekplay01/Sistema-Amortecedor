@@ -8,8 +8,6 @@
   const CHAVES = ["kind", "q", "where", "origin", "ext", "sort"];
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
   const botao = "rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10";
-  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
-  const selectF = (name, rotulo, opts, cur, extra = "") => `<select name="${name}" class="${campo} max-w-[15rem]" title="${esc(rotulo)}" ${extra}>${rotulo ? `<option value="">${esc(rotulo)}</option>` : ""}${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur ?? "") ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
   const TAM = { P: 170, M: 215, G: 290 };
   const tam = { get: () => { try { return localStorage.getItem("psd-dw-tam") || "M"; } catch (e) { return "M"; } }, set: v => { try { localStorage.setItem("psd-dw-tam", v); } catch (e) { } } };
 
@@ -31,9 +29,8 @@
       </section>
       <p id="dw-msg" class="m-0 hidden text-sm" role="status"></p><div id="dw-done"></div>
       <div id="dw-k" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
-      <div id="dw-q" class="flex flex-wrap items-center gap-2"></div>
-      <form id="dw-form" class="flex flex-wrap items-center gap-2" autocomplete="off"></form>
-      <div id="dw-meta" class="flex flex-wrap items-center justify-between gap-3 text-sm text-mute"></div>
+      <div id="dw-form"></div>
+      <div id="dw-meta" class="text-sm text-mute"></div>
       <div id="dw-grid"></div><div id="dw-pg" class="flex items-center justify-center gap-3 text-sm text-mute"></div>
     </div>`;
     const msg = (t, err) => { const m = $("#dw-msg"); m.textContent = t; m.classList.toggle("hidden", !t); m.classList.toggle("text-red-600", !!err); m.classList.toggle("text-mute", !err); };
@@ -49,18 +46,26 @@
         kpi("Revisões anteriores", nf(s.old), "guardadas no histórico", "slate") +
         kpi("Sem vínculo", nf(s.orphans), s.orphans ? "arquivos sem código: abra o cartão e informe" : "todo arquivo tem código", s.orphans ? "amber" : "green") +
         kpi(k === "projeto" ? "DES em andamento sem projeto" : "Catálogo sem desenho", nf(s.missing), k === "projeto" ? "fora do catálogo, sem recebidos e cancelados · use o atalho" : "use o atalho para ver a lista", s.missing ? "red" : "green");
-      $("#dw-q").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` +
-        ATALHOS.map(([l, v, forte]) => chip(`data-w="${v}"`, l || semNome(), w === v, v === "sem" ? s.orphans : v === "falta" ? s.missing : s[v], forte)).join("");
+      desenharFiltros();
     };
+    /* barra (etapa 19 · Q6): Cadastro (onde), Origem e Formato à vista; Ordenar em «Mais filtros»; tamanho dos cartões ao lado do Excel */
+    const ORIG = { DESENVOLVIMENTO: "Origem DES", REDESENVOLVIMENTO: "Origem RED" }, SORT = { recent: "Mais recentes", code: "Código (A–Z)", rev: "Mais revisões" };
+    let maisAberto = false;
     const desenharFiltros = () => {
-      const f = F.get(), s = st || {}, c = k => s[k] != null ? ` (${nf(s[k])})` : "", falta = f.where === "falta", off = falta ? 'disabled title="Não se aplica à lista de itens sem arquivo"' : "";
-      $("#dw-form").innerHTML = `<input name="q" type="search" value="${esc(f.q || "")}" placeholder="Buscar código, descrição ou nome do arquivo…" class="${campo} min-w-[16rem] flex-1">` +
-        selectF("where", "Todos os cadastros", [["cat", "No catálogo" + c("cat")], ["des", "Em desenvolvimento" + c("des")], ["rd", "Em redesenvolvimento" + c("rd")], ["sem", "Sem vínculo" + c("orphans")], ["falta", semNome() + c("missing")]], f.where) +
-        selectF("origin", "Origem: todas", [["DESENVOLVIMENTO", "Origem DES"], ["REDESENVOLVIMENTO", "Origem RED"]], f.origin, off) +
-        selectF("ext", "Todos os formatos", [".pdf", ".dwg", ".dxf", ".step", ".png", ".jpg"].map(x => [x, x.slice(1).toUpperCase()]), f.ext, off) +
-        selectF("sort", "", [["recent", "Mais recentes"], ["code", "Código (A–Z)"], ["rev", "Mais revisões"]], f.sort || "recent", off) +
-        `<span class="inline-flex overflow-hidden rounded-lg border border-line" title="Tamanho dos cartões">${Object.keys(TAM).map(v => `<button type="button" data-s="${v}" class="px-3 py-2 text-sm font-semibold ${tam.get() === v ? "bg-blue-600 text-white" : "bg-card text-ink hover:bg-slate-500/10"}">${v}</button>`).join("")}</span>` +
-        `<button type="button" id="dw-clr" class="${botao}">Limpar filtros</button>`;
+      const f = F.get(), s = st || {}, n = k => s[k] != null ? s[k] : null, falta = f.where === "falta", todos = [{ v: "", l: "Todos" }];
+      const ONDE = { cat: "No catálogo", des: "Em desenvolvimento", rd: "Em redesenvolvimento", sem: "Sem vínculo", falta: semNome() };
+      TW.pintarBarra($("#dw-form"), {
+        busca: { valor: f.q, ph: "Código, descrição ou nome do arquivo…" },
+        principais: [{ k: "where", rotulo: "Cadastro", tipo: "lista", atual: f.where || "", opcoes: [...todos, { v: "cat", l: ONDE.cat, n: n("cat") }, { v: "des", l: ONDE.des, n: n("des") }, { v: "rd", l: ONDE.rd, n: n("rd") }, { v: "sem", l: ONDE.sem, n: n("orphans") }, { v: "falta", l: ONDE.falta, n: n("missing") }] },
+                     ...(falta ? [] : [{ k: "origin", rotulo: "Origem", tipo: "lista", atual: f.origin || "", opcoes: [...todos, ...Object.entries(ORIG).map(([v, l]) => ({ v, l }))] },
+                                       { k: "ext", rotulo: "Formato", tipo: "lista", atual: f.ext || "", opcoes: [...todos, ...[".pdf", ".dwg", ".dxf", ".step", ".png", ".jpg"].map(x => ({ v: x, l: x.slice(1).toUpperCase() }))] }])],
+        mais: falta ? [] : [{ k: "sort", rotulo: "Ordenar por", atual: f.sort || "", opcoes: Object.entries(SORT).map(([v, l]) => ({ v: v === "recent" ? "" : v, l })) }],
+        aberto: maisAberto,
+        atalhos: st ? [{ k: "where", v: "sem", l: "Sem vínculo", n: s.orphans, on: f.where === "sem", forte: true }, { k: "where", v: "falta", l: semNome(), n: s.missing, on: falta, forte: true }] : [],
+        etiquetas: TW.etiquetas(f, { where: "Cadastro", origin: "Origem", ext: "Formato", sort: "Ordem", q: "Busca" }, (k, v) => ({ where: ONDE, origin: ORIG, sort: SORT }[k] || {})[v] || (k === "ext" ? v.slice(1).toUpperCase() : v)),
+        acoes: `<span class="psd-seg sm" title="Tamanho dos cartões">${Object.keys(TAM).map(v => `<button type="button" data-s="${v}" aria-pressed="${tam.get() === v}">${v}</button>`).join("")}</span>` +
+          TW.botao("Baixar Excel", { href: `/api/export/desenhos.xlsx?${new URLSearchParams({ ...f, kind: kind() })}`, icone: "download" })
+      });
     };
 
     const cartao = c => c.code
@@ -81,8 +86,7 @@
       const f = F.get(), falta = f.where === "falta";
       const d = await J("/api/drawings?" + qs({ ...f, kind: kind(), page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(f).filter(k => k !== "kind" && k !== "sort").length;
       dwNav.list = falta ? [] : d.rows.filter(c => c.code).map(c => c.code);
-      $("#dw-meta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> ${falta ? "item(ns) sem arquivo" : "desenho(s)"}${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}</span>
-        <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/desenhos.xlsx?${new URLSearchParams({ ...f, kind: kind() })}">⬇ Baixar Excel</a>`;
+      $("#dw-meta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> ${falta ? "item(ns) sem arquivo" : "desenho(s)"}${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}`;
       $("#dw-grid").innerHTML = falta
         ? notice(`Para anexar, arraste o arquivo com o código no nome para a área acima (ex.: <code>DES_${esc(d.rows[0]?.code || "AMD0000")}_REV00.pdf</code>).`, "blue") + `<div class="mt-3">${TW.table([{ h: "Código" }, { h: "Descrição", nw: false }, { h: "Cadastros" }], d.rows.map(faltando), { h: "max-h-[65vh]" })}</div>`
         : d.rows.length ? `<div class="dw-grid" style="--cw:${TAM[tam.get()]}px">${d.rows.map(cartao).join("")}</div>` : TW.empty("Nenhum desenho com esses filtros. Arraste os arquivos para a área acima.");
@@ -92,13 +96,11 @@
     const refresh = () => { stats(); load(); }; dwNav.onDone = refresh;
     const aplicar = (logo = false) => { pg = 1; desenharTopo(); clearTimeout(t); t = setTimeout(load, logo ? 0 : 300); };
     const f = $("#dw-form");
-    f.addEventListener("input", e => { const n = e.target.name; if (!n) return; F.set({ [n]: e.target.value }); if (n === "where") desenharFiltros(); aplicar(e.target.tagName === "SELECT"); });
-    f.addEventListener("submit", e => e.preventDefault());
+    TW.ligarBarra(f, { set: (k, v) => { F.set({ [k]: v }); aplicar(true); }, busca: x => { F.set({ q: x }); aplicar(true); },
+      limpar: () => { const k = F.get().kind; F.clear(); if (k) F.set({ kind: k }); aplicar(true); }, mais: ab => { maisAberto = ab; } });
     f.addEventListener("click", e => {
-      const s = e.target.closest("[data-s]"); if (s) { tam.set(s.dataset.s); desenharFiltros(); const g = $("#dw-grid .dw-grid"); if (g) g.style.setProperty("--cw", TAM[s.dataset.s] + "px"); return; }
-      if (e.target.id === "dw-clr") { const k = F.get().kind; F.clear(); if (k) F.set({ kind: k }); desenharFiltros(); aplicar(true); }
+      const s = e.target.closest("[data-s]"); if (s) { tam.set(s.dataset.s); desenharFiltros(); const g = $("#dw-grid .dw-grid"); if (g) g.style.setProperty("--cw", TAM[s.dataset.s] + "px"); }
     });
-    $("#dw-q").addEventListener("click", e => { const b = e.target.closest("[data-w]"); if (!b) return; F.toggle("where", b.dataset.w); desenharFiltros(); aplicar(true); });
     $("#dw-kind").addEventListener("click", e => { const b = e.target.closest("[data-k]"); if (!b || b.dataset.k === kind()) return; F.set({ kind: b.dataset.k === "projeto" ? "projeto" : "" }); st = null; pg = 1; desenharTopo(); refresh(); });
     $("#dw-pg").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; load(); scrollTo(0, 0); } });
     $("#dw-grid").addEventListener("click", e => { if (e.target.closest("a")) return; openCard(e); }); $("#dw-grid").addEventListener("keydown", openCard);

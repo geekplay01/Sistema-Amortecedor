@@ -8,7 +8,7 @@
   const STL = { ok: ["Gravada", "green"], simulado: ["Só verificação", "slate"] }, CH = [["todas", "Todas"], ["ok", "Gravadas"], ["simulado", "Só verificação"]];
   const primario = "rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700 no-underline";
   const mini = "rounded-lg border border-line bg-card px-2.5 py-1 text-xs font-semibold text-ink hover:bg-slate-500/10 no-underline";
-  const chip = (attrs, label, on, n) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label} · ${nf(n)}</button>`;
+  const chip = (attrs, label, on, n) => `<button type="button" ${attrs} aria-pressed="${on}" class="psd-chip">${label}<span class="n">${nf(n)}</span></button>`;      // etapa 19: mesmo visual da barra de filtros
   const quando = s => s ? `${TW.dmy(s)} ${String(s).slice(11, 16)}` : "–";
   const alerta = (n, tone) => n ? `<b class="${tone}">${nf(n)}</b>` : '<span class="text-mute">0</span>';
 
@@ -40,7 +40,7 @@
             b.map(x => [x.id, quando(x.imported_at), `<span class="block max-w-[20rem] truncate" title="${esc(x.filename || "")}">${esc(x.filename || "–")}</span>`, esc(x.sheet || "–"), esc(x.category || "–"),
               nf(x.rows_read), nf(x.rows_new), nf(x.rows_updated), alerta(x.rows_conflict, "text-amber-700"), alerta(x.rows_error, "text-red-600"), badge(...(STL[x.status] || [x.status, "amber"]))]), { h: "max-h-[55vh]" })
           : empty("Nenhuma importação ainda. Use «Atualização de dados».")),
-        `<a class="${primario}" href="/api/export/fontes.xlsx${st === "todas" ? "" : "?status=" + st}">⬇ Baixar Excel</a>`);
+        `<a class="${primario}" href="/api/export/fontes.xlsx${st === "todas" ? "" : "?status=" + st}">${PSDTW.ico("download", "sm")} Baixar Excel</a>`);
     };
     $("#fs").innerHTML = card("Fontes e prioridade", `<p class="mb-3 mt-0 text-sm text-mute">Prioridade de 1 (maior) a 9: indica qual fonte prevalece quando você analisa um conflito em <a class="text-blue-600" href="/pendencias">Pendências</a>. O sistema nunca sobrescreve um valor sozinho. <span id="fsm" class="font-semibold" role="status"></span></p>`
       + TW.table([{ h: "Fonte" }, { h: "Tipo de dado" }, { h: "Importações", r: true }, { h: "Dados avulsos" }, { h: "Prioridade" }],

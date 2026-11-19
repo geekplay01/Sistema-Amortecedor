@@ -10,8 +10,9 @@
   const POSSUI = { exata: ["Sim", "green"], desenvolvimento: ["Em DES/R-D", "amber"], provavel: ["Provável", "slate"], nao: ["NÃO", "red"] };
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
   const nada = t => `<span class="text-mute">${t || "–"}</span>`;
-  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
-  const selectF = (name, rotulo, opts, cur) => `<select name="${name}" class="${campo} max-w-[15rem]" title="${esc(rotulo)}"><option value="">${esc(rotulo)}</option>${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur ?? "") ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="psd-chip${forte ? " forte" : ""}">${label}${n != null ? `<span class="n">${nf(n)}</span>` : ""}</button>`;
+  const OUTRO = { exata: "Possuímos (relacionado / mesma aplicação)", desenvolvimento: "Em DES/R-D (servidor)", provavel: "Provável (confira a versão)", nao: "NÃO possuímos", sem_aplicacao: "Sem aplicação cadastrada" };
+  const REAR = { com: "Com traseiro encontrado", sem: "Dianteiro sem traseiro" }, PAR = { com: "Com par do outro lado", sem: "LD/LE sem par" }, SIT = { ativo: "Ativo", em_breve: "Em breve", inativo: "Inativo" };
   const lado = s => s ? badge(SDL[s], s === "direito" ? "blue" : s === "esquerdo" ? "violet" : "slate") : nada();
 
   async function ladosPage() {
@@ -21,9 +22,9 @@
         O amortecedor do <b class="text-ink">outro eixo</b> (traseiro de um dianteiro e vice-versa) é procurado nesta ordem, do mais confiável ao menos:</p>
       <div id="lleg" class="flex flex-wrap gap-1.5"></div>
       <div id="lk" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
-      <div id="lq" class="flex flex-wrap items-center gap-2"></div>
-      <form id="lf" class="flex flex-wrap items-center gap-2" autocomplete="off"></form>
-      <div id="lmeta" class="flex flex-wrap items-center justify-between gap-3 text-sm text-mute"></div>
+      <div id="lf"></div>
+      <div id="lq" class="psd-atalhos"></div>
+      <div id="lmeta" class="text-sm text-mute"></div>
       <div id="lt"></div><div id="lp" class="flex items-center justify-center gap-3 text-sm text-mute"></div>
     </div>`;
 
@@ -41,19 +42,26 @@
         kpi("Traseiro confirmado", nf(s.traseiro_exato), `de ${nf(s.dianteiro)} dianteiros · ${nf(s.traseiro_provavel)} provável(is)`, "green") +
         kpi("Dianteiro SEM traseiro", nf(s.traseiro_nao), `${nf(s.traseiro_desenvolvimento)} com traseiro em DES/R-D`, "red") +
         kpi("Sem par do outro lado", nf(s.sem_par), `${nf(s.pares_planilha)} pares da planilha · ${nf(s.pares_automaticos)} automáticos`, "amber");
-      $("#lq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` + ATALHOS.map(([l, k, a, forte]) => chip(`data-at="${a}"`, l, ligado(a), s[k], forte)).join("");
+      $("#lq").innerHTML = `<span class="t">Atalhos</span>` + ATALHOS.map(([l, k, a, forte]) => chip(`data-at="${a}"`, l, ligado(a), s[k], forte)).join("");
     };
+    /* barra (etapa 19 · Q6): Escopo, Eixo e Lado à vista; Outro eixo, Traseiro, Par e Situação em «Mais filtros»; os atalhos combinados ficam logo abaixo */
+    let maisAberto = false;
     const desenharFiltros = () => {
-      const f = F.get(), s = st || {}, c = k => s[k] != null ? ` (${nf(s[k])})` : "";
-      $("#lf").innerHTML = `<input name="q" type="search" value="${esc(f.q || "")}" placeholder="Buscar código, descrição, veículo, par ou traseiro…" class="${campo} min-w-[16rem] flex-1">` +
-        `<select name="escopo" class="${campo} max-w-[17rem]" title="Escopo"><option value="">Itens com lados (LD/LE) e da planilha Lados</option><option value="todos" ${f.escopo === "todos" ? "selected" : ""}>Todos os dianteiros e traseiros do catálogo</option></select>` +
-        selectF("axle", "Eixo", [["dianteiro", "Dianteiro" + c("dianteiro")], ["traseiro", "Traseiro" + c("traseiro")], ["cabine", "Cabine"]], f.axle) +
-        selectF("side", "Lado", [["direito", "Direito (LD)" + c("direito")], ["esquerdo", "Esquerdo (LE)" + c("esquerdo")]], f.side) +
-        selectF("other", "Outro eixo pela aplicação", [["exata", "Possuímos (relacionado / mesma aplicação)"], ["desenvolvimento", "Em DES/R-D (servidor)"], ["provavel", "Provável (confira a versão)"], ["nao", "NÃO possuímos"], ["sem_aplicacao", "Sem aplicação cadastrada" + c("sem_aplicacao")]], f.other) +
-        selectF("rear", "Traseiro", [["com", "Com traseiro encontrado"], ["sem", "Dianteiro sem traseiro"]], f.rear) +
-        selectF("pair", "Par", [["com", "Com par do outro lado" + c("com_par")], ["sem", "LD/LE sem par" + c("sem_par")]], f.pair) +
-        selectF("status", "Situação", [["ativo", "Ativo" + c("ativo")], ["em_breve", "Em breve" + c("em_breve")], ["inativo", "Inativo" + c("inativo")]], f.status) +
-        `<button type="button" id="lclr" class="rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10">Limpar filtros</button>`;
+      const f = F.get(), s = st || {}, c = k => s[k] != null ? s[k] : null, todos = [{ v: "", l: "Todos" }];
+      TW.pintarBarra($("#lf"), {
+        busca: { valor: f.q, ph: "Código, descrição, veículo, par ou traseiro…" },
+        principais: [{ k: "escopo", rotulo: "Escopo", tipo: "seg", atual: f.escopo || "", opcoes: [{ v: "", l: "Com lados (LD/LE)" }, { v: "todos", l: "Todos diant./tras." }] },
+                     { k: "axle", rotulo: "Eixo", tipo: "lista", atual: f.axle || "", opcoes: [...todos, { v: "dianteiro", l: "Dianteiro", n: c("dianteiro") }, { v: "traseiro", l: "Traseiro", n: c("traseiro") }, { v: "cabine", l: "Cabine" }] },
+                     { k: "side", rotulo: "Lado", tipo: "lista", atual: f.side || "", opcoes: [...todos, { v: "direito", l: "Direito (LD)", n: c("direito") }, { v: "esquerdo", l: "Esquerdo (LE)", n: c("esquerdo") }] }],
+        mais: [{ k: "other", rotulo: "Outro eixo pela aplicação", atual: f.other || "", opcoes: Object.entries(OUTRO).map(([v, l]) => ({ v, l, n: v === "sem_aplicacao" ? c("sem_aplicacao") : null })) },
+               { k: "rear", rotulo: "Traseiro", atual: f.rear || "", opcoes: Object.entries(REAR).map(([v, l]) => ({ v, l })) },
+               { k: "pair", rotulo: "Par", atual: f.pair || "", opcoes: [{ v: "com", l: PAR.com, n: c("com_par") }, { v: "sem", l: PAR.sem, n: c("sem_par") }] },
+               { k: "status", rotulo: "Situação", atual: f.status || "", opcoes: Object.entries(SIT).map(([v, l]) => ({ v, l, n: c(v) })) }],
+        aberto: maisAberto,
+        etiquetas: TW.etiquetas(f, { axle: "Eixo", side: "Lado", other: "Outro eixo", rear: "Traseiro", pair: "Par", status: "Situação", q: "Busca" },
+          (k, v) => ({ axle: AXL, side: { direito: "Direito (LD)", esquerdo: "Esquerdo (LE)" }, other: OUTRO, rear: REAR, pair: PAR, status: SIT }[k] || {})[v] || v),
+        acoes: TW.botao("Baixar Excel", { href: `/api/export/lados.xlsx?${new URLSearchParams(f)}`, icone: "download" })
+      });
     };
 
     // célula de candidato do outro eixo: nível pela cor, lado, par dele; código fora do catálogo leva à lista DES/R-D
@@ -77,9 +85,8 @@
       try {
         const d = await J("/api/sides?" + qs({ ...f, page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(f).filter(k => k !== "escopo").length;
         const novo = !st || JSON.stringify(st) !== JSON.stringify(d.stats); LV = d.levels || {}; st = d.stats;
-        desenharTopo(); if (novo) desenharFiltros();
-        $("#lmeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> item(ns)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}</span>
-          <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/lados.xlsx?${new URLSearchParams(f)}">⬇ Baixar Excel</a>`;
+        desenharTopo(); desenharFiltros();
+        $("#lmeta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}`;
         $("#lt").innerHTML = TW.table([{ h: "Código" }, { h: "Descrição", nw: false }, { h: "Eixo" }, { h: "Lado" }, { h: "Par (outro lado)" }, { h: "Traseiro (mesma aplicação)", nw: false }, { h: "Dianteiro (mesma aplicação)", nw: false },
           { h: "Possuímos?" }, { h: "Conjunto do veículo", nw: false }, { h: "Veículos", nw: false }], d.rows.map(i => [
           `<a href="#" class="font-semibold text-blue-600" data-ficha="${i.id}">${esc(i.code)}</a>${window.psdCode ? " " + psdCode(i.code, "↗") : ""}${i.status !== "ativo" ? " " + badge(i.status === "inativo" ? "inativo" : "em breve", i.status === "inativo" ? "red" : "amber") : ""}`,
@@ -90,10 +97,9 @@
       } catch (e) { $("#lt").innerHTML = notice(esc(e.message), "red"); }
     };
 
-    const aplicar = (logo = false) => { pg = 1; if (st) desenharTopo(); clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 300); };
-    $("#lf").addEventListener("input", e => { const n = e.target.name; if (!n) return; F.set({ [n]: e.target.value }); aplicar(e.target.tagName === "SELECT"); });
-    $("#lf").addEventListener("submit", e => e.preventDefault());
-    $("#lf").addEventListener("click", e => { if (e.target.id !== "lclr") return; const esc0 = F.get().escopo; F.clear(); if (esc0) F.set({ escopo: esc0 }); desenharFiltros(); aplicar(true); });
+    const aplicar = (logo = false) => { pg = 1; if (st) desenharTopo(); desenharFiltros(); clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 300); };
+    TW.ligarBarra($("#lf"), { set: (k, v) => { F.set({ [k]: v }); aplicar(true); }, busca: t => { F.set({ q: t }); aplicar(true); },
+      limpar: () => { const esc0 = F.get().escopo; F.clear(); if (esc0) F.set({ escopo: esc0 }); aplicar(true); }, mais: ab => { maisAberto = ab; } });
     $("#lq").addEventListener("click", e => {
       const b = e.target.closest("[data-at]"); if (!b) return; const a = b.dataset.at, on = ligado(a);
       F.set(Object.fromEntries(ATALHO.map(k => [k, ""]))); if (!on) F.set(Object.fromEntries(new URLSearchParams(a)));

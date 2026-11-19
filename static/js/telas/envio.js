@@ -7,7 +7,7 @@
   const ST = { pendente_projeto: ["Pendente projeto", "amber"], enviada: ["Amostra enviada", "green"], finalizada: ["Finalizada", "slate"] }, SDL = { direito: "LD", esquerdo: "LE", ambos: "LD/LE" };
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
   const botao = "rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10";
-  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
+  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="psd-chip${forte ? " forte" : ""}">${label}${n != null ? `<span class="n">${nf(n)}</span>` : ""}</button>`;      // etapa 19: mesmo visual da barra de filtros
   const nada = '<span class="text-mute">–</span>';
   const put = (u, b) => J(u, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) });
 
@@ -48,7 +48,7 @@
         desenharTopo(); if (novo) desenharFiltros();
         const n = Object.keys(f).filter(k => !(k === "status" && f[k] === "abertos")).length;
         $("#emeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> envio(s)${n ? ` · ${n} filtro(s) ativo(s)` : ""}</span>
-          <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/envio.xlsx?${new URLSearchParams({ ...f, status: status() })}">⬇ Baixar Excel</a>`;
+          <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/envio.xlsx?${new URLSearchParams({ ...f, status: status() })}">${PSDTW.ico("download", "sm")} Baixar Excel</a>`;
         $("#et").innerHTML = TW.table([{ h: '<input type="checkbox" class="eall" title="Selecionar a página">' }, { h: "Código" }, { h: "Aplicação", nw: false }, { h: "Lado" }, { h: "Fornecedor" }, { h: "EX" }, { h: "SC" }, { h: "Recebida" }, { h: "Status" }, { h: "Enviada em" }, { h: "Rastreio" }, { h: "Projeto PERFECT" }, { h: "" }], d.rows.map(r => {
           const code = r.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${r.product_id}">${esc(r.perfect_code)}</a>` : r.rd ? `<a href="#" class="font-semibold text-blue-600" data-rd="${r.rd}" data-code="${esc(r.perfect_code)}">${esc(r.perfect_code)}</a>` : `<b>${esc(r.perfect_code)}</b>`;
           const s = ST[r.status] || [r.status, "slate"];
