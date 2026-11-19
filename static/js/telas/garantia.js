@@ -22,12 +22,8 @@
       <span class="w-48 shrink-0 truncate text-xs text-ink sm:w-72" title="${esc(lab(r))}">${esc(lab(r))}</span><span class="h-2.5 flex-1 rounded-full bg-slate-500/10"><span class="block h-2.5 rounded-full ${cor}" style="width:${Math.max(2, 100 * val(r) / mx)}%"></span></span>
       <span class="w-14 shrink-0 text-right text-xs font-semibold tabular-nums text-ink">${nf(val(r))}</span></button>`).join("")}</div>`; };
 
-  async function servidor() {          // sem planilha: o resumo antigo (servidor), compacto
-    let d; try { d = await J("/api/warranty?top=10"); } catch (e) { d = { available: false }; }
-    const como = notice('Carregue a planilha <b>Analítico de Garantias.xlsx</b> em <a class="text-blue-600" href="/atualizacao">Atualização de dados</a> (com esse nome). Ela traz tipo, status, cliente, valor, lote, fabricação, procedência e unidade; a cada carga, substitui a anterior.', "amber");
-    if (!d.available) { root.innerHTML = `<div class="flex flex-col gap-5">${como}${empty("Ainda não há dados de garantia.")}</div>`; return; }
-    root.innerHTML = `<div class="flex flex-col gap-5">${como}<div class="grid grid-cols-2 gap-4 lg:grid-cols-3">${kpi("Peças (servidor)", nf(d.total), "view ANALITICO_GARANTIA_DEVOLUCAO", "red")}${kpi("Códigos", nf(d.codigos))}${kpi("Defeitos", nf(d.defeitos), "", "amber")}</div>
-      ${card("Defeitos mais frequentes", barras(d.top_defeitos, r => r.defeito, r => r.quantidade, () => ""))}</div>`;
+  function servidor() {          // ainda sem dados: a garantia vem só do servidor (etapa 18)
+    root.innerHTML = `<div class="flex flex-col gap-5">${notice('A garantia vem direto do servidor (view ANALITICO_GARANTIA_DEVOLUCAO) e é atualizada a cada sincronização. Use <b>Sincronizar agora</b> no topo ou aguarde a sincronização diária.', "amber")}${empty("Ainda não há dados de garantia.")}</div>`;
   }
 
   async function garantia() {

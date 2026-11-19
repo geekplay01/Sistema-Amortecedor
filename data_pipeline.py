@@ -389,9 +389,18 @@ DATASETS = {
         "defect": ["DEFEITO", "DEFEITO_RELATADO", "DEFEITO_APRESENTADO", "MOTIVO", "MOTIVO_DEVOLUCAO", "MOTIVO_GARANTIA", "PROBLEMA"],
         "qty": ["QTDE", "QUANTIDADE", "QTD", "QTDE_DEVOLVIDA", "QTD_DEVOLVIDA", "QUANTIDADE_DEVOLVIDA"],
         "event_date": ["DATA_CADASTRO", "DATA", "DATA_DEVOLUCAO", "DT_DEVOLUCAO", "DATA_ENTRADA", "DATA_GARANTIA", "DATA_EMISSAO", "DT_EMISSAO"],
-        "family": ["FAMILIA"], "kind": ["TIPO_OCO"], "verdict": ["PROC_IMPROC"]},
-        "num": ["qty"], "dates": ["event_date"],
-        "where": [({"FAMILIA"}, "FAMILIA LIKE '%AMORTECEDOR%'")]},
+        "family": ["FAMILIA"], "kind": ["TIPO_OCO"], "verdict": ["PROC_IMPROC"],
+        # etapa 18 · Q1/Q2: a tela Garantia vem só do servidor (garantias.build) — mesmos campos da planilha «Analítico de Garantias» + UF, lote válido/vencido e status do item.
+        # Sem `extra`: CNPJ e o resto da view não são guardados. O nome do cliente fica só no banco local.
+        "auth": ["COD_AUTORIZA"], "unit": ["UNIDADE"], "uf": ["UF"], "status": ["STATUS_AUTO"], "status_item": ["STATUS_AUTO_ITEM"], "client_group": ["GRUPO_CLIENTE"],
+        "customer": ["NOME_CLI"], "nf": ["NF_ORI"], "nf_serie": ["SERIE_ORI"], "entry_date": ["DATA_ENT"], "value": ["VALOR"], "analysis_date": ["DATA_ANALISE"],
+        "lot": ["LOTE_GRV"], "fab_date": ["DATA_FABRICACAO_GRV"], "supplier": ["FORNECEDOR_SHORT_GRV"], "dept": ["DEPARTAMENTO"], "lot_error": ["ERRO_LOTE"], "lot_valid": ["VALIDO_VENCIDO"]},
+        "num": ["qty", "value"], "dates": ["event_date", "entry_date", "analysis_date", "fab_date"], "no_extra": True,
+        "where": [({"FAMILIA"}, "LTRIM(RTRIM(FAMILIA)) IN ('AMORTECEDOR', 'AMORTECEDOR LINHA PESADA')")]},
+    # vendas de amortecedor somadas por mês × UF (etapa 18 · índice de garantia por estado = peças em garantia ÷ peças vendidas). Consulta pronta (vendas_uf_sql), incremental.
+    "vendas_uf": {"object": os.environ.get("DEV_DB_OBJECT_VENDAS", "VENDAS_FATURAMENTO_DETALHADO"), "table": "ds_vendas_uf", "aliases": {
+        "sale_date": ["DATA"], "uf": ["UF"], "qty": ["QTDE"], "total": ["VALOR_TOTAL"]},
+        "num": ["qty", "total"], "dates": ["sale_date"], "no_extra": True},
     "embarques": {"object": os.environ.get("DEV_DB_OBJECT_EMBARQUES", "EMBARQUES_DETALHADO"), "table": "ds_embarques", "aliases": {
         "pedido": ["PEDIDO", "NUM_PEDIDO", "NUMERO_PEDIDO", "N_PEDIDO", "PEDIDO_COMPRA", "ORDEM_COMPRA", "OC", "NUMERO_PC", "PC"],
         "supplier": ["FORNECEDOR", "NOME_FORNECEDOR", "COD_FORNECEDOR", "CODIGO_FORNECEDOR", "EX"],
@@ -445,6 +454,16 @@ def vendas_agg_sql(obj, cols, since_month):
     cli = f"COUNT(DISTINCT {qi(by['CODIGO_CLIENTE'])})" if "CODIGO_CLIENTE" in by else "NULL"
     return (f"SELECT {am} AS ANO_MES, LTRIM(RTRIM({pr})) AS PRODUTO, LTRIM(RTRIM({ln})) AS LINHA, SUM({qt}) AS QTDE, SUM({qi(val)}) AS VALOR_TOTAL, {net} AS VALOR_TOTAL_NET, {cli} AS N_CLIENTES "
             f"FROM {obj['sql']} WHERE {ln} LIKE '%AMORTECEDOR%' AND {am} >= '{since_month}' GROUP BY {am}, LTRIM(RTRIM({pr})), LTRIM(RTRIM({ln}))")
+
+def vendas_uf_sql(obj, cols, since_month):
+    """Vendas de amortecedor (LINHA AMORTECEDOR e AMORTECEDOR LINHA PESADA, o mesmo universo da garantia) somadas NO SERVIDOR por mês × UF — ~28 linhas por mês.
+    None se a view não tiver as colunas."""
+    by = {canon_col(c): c for c in cols}
+    need = [by.get(n) for n in ("ANO_MES", "UF", "LINHA", "QUANTIDADE")]; val = by.get("VALOR_TOTAL_CIPI")
+    if None in need or not val: return None
+    am, uf, ln, qt = (qi(x) for x in need)
+    return (f"SELECT {am} AS ANO_MES, LTRIM(RTRIM({uf})) AS UF, SUM({qt}) AS QTDE, SUM({qi(val)}) AS VALOR_TOTAL FROM {obj['sql']} "
+            f"WHERE LTRIM(RTRIM({ln})) IN ('AMORTECEDOR', 'AMORTECEDOR LINHA PESADA') AND {am} >= '{since_month}' GROUP BY {am}, LTRIM(RTRIM({uf}))")
 
 def where_for(spec_where, cols, refs=None):
     """Monta o WHERE do servidor só com os filtros cujas colunas existem no objeto (o servidor de testes não tem LINHA, por exemplo). '' = sem filtro."""
@@ -514,6 +533,7 @@ CREATE TABLE IF NOT EXISTS ds_embarques(pedido TEXT, supplier TEXT, code TEXT, d
 CREATE INDEX IF NOT EXISTS ix_dse2_ped ON ds_embarques(pedido);
 CREATE TABLE IF NOT EXISTS ds_garantia(code TEXT, description TEXT, defect TEXT, qty REAL, event_date TEXT, extra TEXT);
 CREATE INDEX IF NOT EXISTS ix_dsg_code ON ds_garantia(code);
+CREATE TABLE IF NOT EXISTS ds_vendas_uf(sale_date TEXT, uf TEXT, qty REAL, total REAL);
 CREATE TABLE IF NOT EXISTS ds_situacao(code TEXT, active TEXT, blocked TEXT, line TEXT, extra TEXT);
 CREATE INDEX IF NOT EXISTS ix_dssit_code ON ds_situacao(code);
 CREATE TABLE IF NOT EXISTS ds_concorrentes(dev_id TEXT, comp_code TEXT, competitor TEXT, reference TEXT, extra TEXT);
@@ -629,13 +649,13 @@ class Store:
             c.rollback(); raise
         finally: c.close()
 
-    def vendas_since(self, scope, years=3):
+    def vendas_since(self, scope, years=3, key="vendas"):
         """Início da janela de vendas a buscar: com a mesma consulta já carregada, só o mês anterior em diante (o que ainda pode mudar); senão `years` anos completos."""
         c = self.conn()
         try:
             full = f"{datetime.date.today().year - years + 1}-01-01"
-            if self._last_scope(c, "vendas") != scope: return full, True
-            m = c.execute("SELECT MAX(sale_date) FROM ds_vendas").fetchone()[0]
+            if self._last_scope(c, key) != scope: return full, True
+            m = c.execute(f"SELECT MAX(sale_date) FROM {DATASETS[key]['table']}").fetchone()[0]
             if not m: return full, True
             d = datetime.date(int(m[:4]), int(m[5:7]), 1) - datetime.timedelta(days=1)
             return max(f"{d.year}-{d.month:02d}-01", full), False
@@ -782,10 +802,22 @@ def _sync(cfg, store, conn_factory):
                     df, warn, mp = normalize_dataset(key, raw_v, ov)
                     dss[key] = {**store.replace_dataset(key, df, out["run_id"], obj["sql"], cfg, scope=probe_sql, since=since), "mapped": sorted(mp), "avisos": warn, "desde": since[:7], "completa": full}
                     continue
+                if key == "vendas_uf":   # vendas por mês × UF (índice de garantia por estado): somadas no servidor, incremental como as vendas
+                    probe_sql = vendas_uf_sql(obj, cols, "2000-01")
+                    if not probe_sql: dss[key] = {"status": "ausente", "note": "a view de vendas não tem ANO_MES, UF, LINHA e QUANTIDADE"}; continue
+                    since, full = store.vendas_since(probe_sql, int(os.environ.get("DEV_VENDAS_UF_ANOS", "10")), key="vendas_uf")
+                    raw_v = extract_raw(conn, obj, sql=vendas_uf_sql(obj, cols, since[:7]))
+                    raw_v["DATA"] = raw_v["ANO_MES"].astype(str).str.strip() + "-01"
+                    df, warn, mp = normalize_dataset(key, raw_v, ov)
+                    dss[key] = {**store.replace_dataset(key, df, out["run_id"], obj["sql"], cfg, scope=probe_sql, since=since), "desde": since[:7], "completa": full}
+                    continue
                 where = where_for(spec.get("where"), cols, refs)
                 df, warn, mp = normalize_dataset(key, extract_raw(conn, obj, where=where, limit=None if where else int(os.environ.get("DEV_DS_MAX_ROWS", "300000"))), ov)
                 dss[key] = {**store.replace_dataset(key, df, out["run_id"], obj["sql"], cfg, scope=where or "tudo"), "mapped": sorted(mp), "avisos": warn, "filtro": where or None}
             except Exception as e: dss[key] = {"status": "erro", "note": cfg.masked(f"{e.__class__.__name__}: {e}")}
+        if (dss.get("garantia") or {}).get("status") == "ok":      # etapa 18 · Q1: a tela Garantia passa a ser alimentada só pelo servidor
+            try: import garantias; dss["garantia"]["tela"] = garantias.build()
+            except Exception as e: log.warning("garantias: %s", e)
         if (dss.get("concorrentes") or {}).get("status") == "ok":  # liga as referências ao código PERFECT pelo ID (concorrentes.build)
             try: import concorrentes; dss["concorrentes"]["ligadas"] = concorrentes.build()
             except Exception as e: log.warning("concorrentes: %s", e)

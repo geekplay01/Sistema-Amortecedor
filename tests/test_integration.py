@@ -322,10 +322,7 @@ class Fluxo(unittest.TestCase):
 
     def test_18_garantia_e_fob(self):
         import io, pandas as pd
-        b = io.BytesIO(); pd.DataFrame({"Código": ["AMD1", "AMD1", "AMD2"], "Qtd": [2, 1, 4], "Valor C_ST": [1, 1, 1], "Defeito": ["HASTE TRAVADA", "HASTE TRAVADA", "SEM AÇÃO"], "Cliente": list("abc"), "Fabricante": ["ZS"] * 3}).to_excel(b, index=False); b.seek(0)
-        r = C.post("/api/warranty/parse", data={"file": (b, "g.xlsx")}, content_type="multipart/form-data").json; self.assertEqual(len(r["rows"]), 3); self.assertEqual(set(r["rows"][0]), {"codigo", "defeito", "quantidade"})
-        w = C.get("/api/warranty").json; self.assertEqual(w["total"], 7); self.assertEqual(w["top_defeitos"][0]["defeito"], "SEM AÇÃO"); self.assertEqual(w["top_codigos"][0]["codigo"], "AMD2")
-        self.assertEqual(C.post("/api/warranty/parse", data={}, content_type="multipart/form-data").status_code, 400)
+        self.assertEqual(C.get("/api/warranty").status_code, 404)          # etapa 18: a garantia só vem do servidor (rotas antigas da planilha saíram)
         code = sqlite3.connect(DB).execute("SELECT perfect_code FROM products ORDER BY id LIMIT 1").fetchone()[0]
         b = io.BytesIO(); pd.DataFrame({"Linha": ["AMORTECEDOR"] * 2, "Codigo": ["S1", "S2"], "Mínimo": [7.25, 9], "Melhor Preço": ["E-WIN = DES. 2026-11-03", "ZS = DES. 2026-11-03"], "PartNumber": [code, "NAOEXISTE"], "FOB EWIN": ["$ 7,25", None], "FOB ZS": [None, "$ 9"], "FOB XGM": [None, None]}).to_excel(b, index=False); b.seek(0)
         r = C.post("/api/fob/import", data={"file": (b, "fob.xlsx")}, content_type="multipart/form-data").json; self.assertEqual((r["com_fob"], r["fob_sem_produto"]), (1, 1))
@@ -551,7 +548,7 @@ class Fluxo(unittest.TestCase):
             self.assertEqual((row["Estoque disponível"], row["Estoque reservado"]), (42, 5))
 
     def test_28_garantia_planilha(self):
-        """D8: sem planilha, /api/garantias avisa (a tela usa o servidor) e o Excel recusa; com a planilha carregada, rota e Excel seguem os filtros."""
+        """D8/etapa 18: sem dados do servidor, /api/garantias avisa e o Excel recusa; com a tabela da tela preenchida, rota e Excel seguem os filtros."""
         import io, datetime, garantias
         from openpyxl import load_workbook
         self.assertFalse(C.get("/api/garantias").json["available"]); self.assertEqual(C.get("/api/export/garantia.xlsx").status_code, 400)

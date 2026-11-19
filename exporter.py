@@ -119,7 +119,7 @@ LABELS = {"desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvol
           "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra", "cobertura": "Cobertura de concorrentes"}      # nome da tela como no menu (nome do arquivo baixado)
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
-          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "linha": "Linha", "hibrido": "Híbrido ou elétrico","origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito", "concorrente": "Concorrente", "curva": "Curva ABC", "lancamento": "Lançamento", "tab": "Aba"}
+          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "linha": "Linha", "hibrido": "Híbrido ou elétrico","origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito", "concorrente": "Concorrente", "curva": "Curva ABC", "lancamento": "Lançamento", "tab": "Aba", "uf": "UF", "validade": "Lote válido/vencido", "situacao": "Situação", "classif": "Classificação"}
 FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "hibrido": {"S": "Sim", "N": "Não", "nd": "Não informado"}, "linha": {"sem": "Sem linha"},"kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT", "conflito": "Conflito entre fontes", "campo_ausente": "Campo ausente", "campo_invalido": "Campo inválido"},
           "status": {"aberta": "Abertas", "resolvida": "Resolvidas", "ignorada": "Ignoradas", "todas": "Todas", "simulado": "Só verificação"},
           "field": {"family": "Família", "package_code": "Código da caixa", "ean": "EAN", "peso": "Peso", "sistema": "Sistema"},
@@ -196,17 +196,19 @@ def _parados(a):
              [12, 14, 16, 38, 10, 12, 14, 16, 14, 12, 12])], len(rows)
 BUILD["parados"] = _parados
 def _garantia(a):
-    """Garantia (planilha Analítico de Garantias) com os filtros da tela: ocorrências + rankings de defeito, código, cliente e lote."""
+    """Garantia (servidor, etapa 18) com os filtros da tela: ocorrências + defeitos (Pareto), códigos, UF (índice), fornecedores e lotes."""
     import garantias
     f = {k: a.get(k, "") for k in garantias.FILTROS}; rows = garantias.rows_all(f); s = garantias.summary(f, size=1)
-    if not s.get("available"): raise ValueError("Sem dados de garantia: envie a planilha «Analítico de Garantias» em Atualização de dados.")
-    return [("Ocorrências", ["Data", "Autorização", "Tipo", "Status", "Unidade", "Grupo cliente", "Cliente", "NF", "Código", "Qtd", "Valor c/ IPI", "Defeito", "Cód. defeito", "Lote", "Fabricação", "Fornecedor", "Procedência", "Responsável", "Erro lote"],
-             [[r["data_cadastro"], r["autorizacao"], r["tipo"], r["status"], r["unidade"], r["grupo_cliente"], r["cliente"], r["nf"], r["codigo"], r["qtd"], r["valor"], r["defeito"], r["defeito_cod"], r["lote"], r["data_fabricacao"],
-               r["fornecedor"], r["procedencia"], r["responsavel"], r["erro_lote"]] for r in rows], [11, 12, 20, 24, 14, 18, 30, 12, 14, 8, 12, 40, 10, 12, 11, 10, 13, 14, 10]),
-            ("Defeitos", ["Defeito", "Cód.", "Linhas", "Peças", "% das peças"], [[r["defeito"], r["cod"], r["linhas"], r["pecas"], r["pct"]] for r in s["defeitos"]], [50, 10, 10, 10, 12]),
+    if not s.get("available"): raise ValueError("Sem dados de garantia: sincronize com o servidor (a garantia vem da view ANALITICO_GARANTIA_DEVOLUCAO).")
+    return [("Ocorrências", ["Data", "Autorização", "Tipo", "Status", "Status do item", "Unidade", "UF", "Grupo cliente", "Cliente", "NF", "Código", "Qtd", "Valor c/ IPI", "Defeito", "Cód. defeito", "Lote", "Lote válido/vencido", "Fabricação", "Fornecedor", "Procedência", "Responsável", "Erro lote"],
+             [[r["data_cadastro"], r["autorizacao"], r["tipo"], r["status"], r["status_item"], r["unidade"], r["uf"], r["grupo_cliente"], r["cliente"], r["nf"], r["codigo"], r["qtd"], r["valor"], r["defeito"], r["defeito_cod"], r["lote"], r["lote_validade"], r["data_fabricacao"],
+               r["fornecedor"], r["procedencia"], r["responsavel"], r["erro_lote"]] for r in rows], [11, 12, 20, 24, 24, 14, 6, 18, 30, 12, 14, 8, 12, 40, 10, 12, 12, 11, 10, 13, 14, 10]),
+            ("Defeitos", ["Defeito", "Cód.", "Linhas", "Peças", "% das peças", "% acumulado"], [[r["defeito"], r["cod"], r["linhas"], r["pecas"], r["pct"], r["acum"]] for r in s["defeitos"]], [50, 10, 10, 10, 12, 12]),
             ("Códigos", ["Código", "Descrição", "Linhas", "Peças", "Valor c/ IPI", "Defeitos"], [[r["codigo"], r["descricao"], r["linhas"], r["pecas"], r["valor"], r["defeitos"]] for r in s["codigos"]], [16, 38, 10, 10, 14, 10]),
-            ("Clientes", ["Cliente", "Grupo", "Ocorrências", "Peças", "Valor c/ IPI"], [[r["cliente"], r["grupo"], r["ocorrencias"], r["pecas"], r["valor"]] for r in s["clientes"]], [40, 24, 12, 10, 14]),
-            ("Lotes", ["Lote", "Código", "Códigos", "Fabricação", "Peças", "Linhas com erro de lote"], [[r["lote"], r["codigo"], r["codigos"], r["fabricacao"], r["pecas"], r["erro_lote"]] for r in s["lotes"]], [16, 16, 10, 12, 10, 18])], len(rows)
+            ("Por UF", ["UF", "Ocorrências", "Peças em garantia", "Valor c/ IPI", "Peças vendidas", "Índice de garantia (%)", "Código com mais peças", "Peças do código"],
+             [[r["uf"] or "não informada", r["ocorrencias"], r["pecas"], r["valor"], r["vendidas"], r["indice"], (r["top"] or [{}])[0].get("codigo"), (r["top"] or [{}])[0].get("pecas")] for r in s["por_uf"]], [8, 12, 14, 14, 14, 14, 18, 12]),
+            ("Fornecedores", ["Fornecedor", "Códigos", "Peças", "Valor c/ IPI", "% procedente"], [[r["fornecedor"] or "não informado", r["codigos"], r["pecas"], r["valor"], r["pct_procedente"]] for r in s["fornecedores"]], [18, 10, 10, 14, 12]),
+            ("Lotes", ["Lote", "Código", "Códigos", "Fabricação", "Válido/vencido", "Peças", "Linhas com erro de lote"], [[r["lote"], r["codigo"], r["codigos"], r["fabricacao"], r["validade"], r["pecas"], r["erro_lote"]] for r in s["lotes"]], [16, 16, 10, 12, 12, 10, 18])], len(rows)
 BUILD["garantia"] = _garantia
 def _estoque(a):
     """Vendas × estoque com os filtros da tela (situação, classe, busca). `today` só para teste."""

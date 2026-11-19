@@ -2,7 +2,7 @@
 from flask import Flask, send_file, Response, render_template, jsonify, request, abort, send_from_directory
 import os, re, glob, uuid, shutil, datetime
 import database as db, importer, loaders, queries, equivalence, damping, exporter, rd, updater, drawings, purchases, brands, shipments, sides
-import kinds, statuses, data_pipeline, goals, analytics, price_search, auth, rules, metas, orders, curva_abc, warranty, fob_merge
+import kinds, statuses, data_pipeline, goals, analytics, price_search, auth, rules, metas, orders, curva_abc, fob_merge
 
 data_pipeline.load_env()          # lê o .env (usuário/senha do servidor, chaves do Mercado Livre...)
 app = Flask(__name__)
@@ -627,26 +627,15 @@ def api_curva_a():
     try: return jsonify(curva_abc.payload(request.args.get("year"), request.args.get("month"), request.args.get("limit"), request.args.get("linhas")))
     except ValueError as e: return jsonify(error=str(e)), 400
 
-@app.post("/api/warranty/parse")
-def api_warranty_parse():
-    f = request.files.get("file")
-    if not f or not f.filename: return jsonify(error="Envie a planilha de garantia (.xlsx, .xls ou .csv) no campo «file»."), 400
-    try: r = warranty.parse(f.stream, f.filename)
-    except ValueError as e: return jsonify(error=str(e)), 400
-    if request.values.get("save", "1") != "0": warranty.save(r["rows"], f.filename)
-    if request.values.get("rows", "1") == "0": r = {k: v for k, v in r.items() if k != "rows"}
-    return jsonify(r)
 @app.get("/api/estoque")
 def api_estoque():              # vendas × estoque (etapa 16 · C2–C4)
     import estoque
     return jsonify(estoque.listing({k: request.args.get(k, "") for k in ("situacao", "classe", "q", "falta", "page")}))
 @app.get("/api/garantias")
-def api_garantias():            # planilha «Analítico de Garantias» (etapa 16 · D8); sem planilha → available=False e a tela usa /api/warranty (servidor)
+def api_garantias():            # tela Garantia: só o servidor (etapa 18 · Q1; garantias.build a cada sincronização); sem dados → available=False
     import garantias
     f = {k: request.args.get(k, "") for k in garantias.FILTROS}
     return jsonify(garantias.summary(f, request.args.get("page", 1, type=int)))
-@app.get("/api/warranty")
-def api_warranty(): return jsonify(warranty.summary(int(request.args.get("top") or 15), request.args.get("code")))
 
 @app.get("/api/fob")
 def api_fob_list():

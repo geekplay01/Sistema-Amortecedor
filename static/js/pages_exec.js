@@ -231,7 +231,7 @@ window.PSD_EXEC = ctx => {
     load();
   }
 
-  // (Garantia: telas/garantia.js — planilha «Analítico de Garantias», etapa 16 · D8)
+  // (Garantia: telas/garantia.js — servidor, view ANALITICO_GARANTIA_DEVOLUCAO, etapa 18)
   // ───────────────────────── FOB (preços de compra em US$) ─────────────────────────
   async function fob() {
     const st = { q: "", filtro: "", page: 1 }; let msg = "", d;

@@ -40,3 +40,8 @@ listar itens de montadora: virar regra de negócio.
 - **Passo 1 — amostras só PERFECT** (`purchases.py`, `app.py`, `telas/amostras.js`): sugestões com `upper(code) LIKE 'AMD%'`; `purchases.code_problem` recusa no
   pedido novo (ou com código trocado) o que não é AMD ou não está em `rd_projects` (API 400 com o motivo; aviso no formulário); `/api/samples/codes` sugere
   só AMD de DES/R-D. Na cópia: 336 → 272 sugestões.
+- **Passo 2 — garantia pelo servidor** (`data_pipeline.py`, `garantias.py`, `updater.py`, `exporter.py`; `warranty.py` e as rotas `/api/warranty*` saíram):
+  dataset `garantia` traz os campos da planilha + UF/validade/status do item, FAMILIA exata, sem `extra` (o CNPJ ficava no `extra` antes; some na 1ª sincronização);
+  `garantias.build()` roda depois da sincronização; dataset novo `vendas_uf` (mês × UF, somado no servidor, incremental, 10 anos) para o índice por UF.
+  Mapa: malha do IBGE (API de malhas, qualidade mínima, baixada com autorização do usuário) → `tools/mapa_uf.py` → `static/js/brasil_uf.js` (59 KB, offline).
+  Na cópia: sincronização garantia + vendas_uf em 33 s; 36.171 linhas; 2026 = 9.094 peças / R$ 1,20 mi (2025 até 18/11: 6.031); índice RS 0,90% · SP 0,69% · DF 1,13%.

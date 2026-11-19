@@ -2,7 +2,7 @@
 import os, sys, io, tempfile, unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
-import metas, orders, curva_abc as curva, warranty, fob_merge
+import metas, orders, curva_abc as curva, fob_merge
 
 class Metas(unittest.TestCase):
     def test_sujeira_oculta_nao_zera(self):
@@ -40,16 +40,6 @@ class CurvaA(unittest.TestCase):
         r = curva.curva_a(df); self.assertEqual(r["PRODUTO"].tolist(), ["AMD2", "AMD1", "AMD3"]); self.assertEqual(r.loc[1, "QTD"], 3); self.assertEqual(r.loc[1, "VALOR"], 150)
         self.assertTrue(r["VALOR"].is_monotonic_decreasing); self.assertEqual(r["classe"].tolist()[0], "A"); self.assertAlmostEqual(r["acum_pct"].iloc[-1], 100, places=1)
 
-class Garantia(unittest.TestCase):
-    def test_parse_so_tres_colunas(self):
-        buf = io.BytesIO(); pd.DataFrame({"Código": ["amd1 ", "AMD2", None, "AMD3", "Total"], "Qtd": [2, 1, 4, 0, 7], "Valor C_ST": [1, 2, 3, 4, 10], "Defeito": ["haste travada", None, "X", "Y", None], "Cliente": list("abcde"), "Fabricante": ["ZS"] * 5}).to_excel(buf, index=False); buf.seek(0)
-        r = warranty.parse(buf, "g.xlsx"); self.assertEqual(r["rows"], [{"codigo": "AMD1", "defeito": "HASTE TRAVADA", "quantidade": 2}, {"codigo": "AMD2", "defeito": "NÃO INFORMADO", "quantidade": 1}])
-        self.assertEqual(r["descartadas"], {"sem_codigo": 1, "sem_quantidade": 1, "linha_de_total": 1}); self.assertEqual(sorted(r["colunas_removidas"]), ["Cliente", "Fabricante", "Valor C_ST"])
-    def test_csv(self):
-        r = warranty.parse(io.BytesIO("Código;Defeito;Qtd\nAMD1;VAZAMENTO;3\n".encode("cp1252")), "g.csv"); self.assertEqual(r["rows"][0], {"codigo": "AMD1", "defeito": "VAZAMENTO", "quantidade": 3})
-    def test_sem_coluna(self):
-        with self.assertRaises(ValueError): warranty.parse(io.BytesIO(b"a;b\n1;2\n"), "x.csv")
-
 class Fob(unittest.TestCase):
     def test_money(self): self.assertEqual([fob_merge.money(x) for x in ("$ 7,25", "$ 1.234,50", "$ -", None, 6, "$ 6")], [7.25, 1234.5, None, None, 6.0, 6.0])
     def test_left_join(self):
@@ -78,14 +68,26 @@ class _TmpDB(unittest.TestCase):
         c = self.db.conn(); (c.executemany(q, rows) if rows else c.execute(q)); c.commit(); c.close()
 
 class GarantiaServidor(_TmpDB):
-    def test_ds_garantia_alimenta_resumo(self):
-        import data_pipeline as dp
-        raw = pd.DataFrame({"Código": [" amd1 ", "AMD1", "AMD2", None], "Defeito Relatado": ["Vazando", "vazando", None, "x"], "Qtde": ["2", 3, 1, 5], "Cliente": list("abcd")})
+    def test_view_vira_tabela_da_tela_sem_cnpj(self):
+        """Etapa 18 · Q1/Q2: colunas da view ANALITICO_GARANTIA_DEVOLUCAO → ds_garantia (sem CNPJ, sem extra) → garantias.build() → tela."""
+        import data_pipeline as dp, garantias, datetime
+        y = datetime.date.today().year
+        raw = pd.DataFrame({"UNIDADE": ["PRIVATE-MOGI"], "CNPJ": [123], "NOME_CLI": ["CLIENTE A  "], "UF": ["sp"], "COD_AUTORIZA": [1706], "DATA_CADASTRO": [f"{y}-02-03"], "TIPO_OCO": ["GARANTIA"],
+                            "STATUS_AUTO": ["GARANTIA FINALIZADA"], "STATUS_AUTO_ITEM": ["GARANTIA FINALIZADA"], "NF_ORI": ["000280108"], "SERIE_ORI": ["1"], "FAMILIA": ["AMORTECEDOR   "], "COD_PROD": ["amd1   "],
+                            "QTD": [2.0], "VALOR": [100.0], "DEFEITO": ["AM-006 AMORTECEDOR SEM AÇÃO"], "LOTE": ["X"], "LOTE_GRV": ["L1"], "DATA_FABRICACAO_GRV": ["2025-01-01"], "FORNECEDOR_SHORT_GRV": ["ZS"],
+                            "PROC_IMPROC": ["PROCEDENTE"], "DEPARTAMENTO": ["CLIENTE\r\n"], "ERRO_LOTE": [None], "VALIDO_VENCIDO": ["VALIDO"], "GRUPO_CLIENTE": ["G1"]})
         df, warn, mp = dp.normalize_dataset("garantia", raw)
-        self.assertEqual(mp["code"], "Código"); self.assertEqual(mp["defect"], "Defeito Relatado"); self.assertEqual(mp["qty"], "Qtde")
-        self.sql("INSERT INTO ds_garantia(code,defect,qty) VALUES(?,?,?)", list(df[["code", "defect", "qty"]].itertuples(index=False, name=None)))
-        s = warranty.summary()
-        self.assertEqual(s["meta"]["origem"], "servidor"); self.assertEqual(s["total"], 6); self.assertEqual(s["top_defeitos"][0]["defeito"], "VAZANDO")
+        self.assertNotIn("CNPJ", mp.values()); self.assertTrue(df["extra"].isna().all())                       # CNPJ não é guardado
+        cols = [c for c in df.columns if c != "extra"]
+        c = self.db.conn(); have = {r[1] for r in c.execute("PRAGMA table_info(ds_garantia)")}
+        for k in cols:
+            if k not in have: c.execute(f"ALTER TABLE ds_garantia ADD COLUMN {k}")
+        c.executemany(f"INSERT INTO ds_garantia({','.join(cols)}) VALUES({','.join('?' * len(cols))})", list(df[cols].itertuples(index=False, name=None))); c.commit(); c.close()
+        self.assertEqual(garantias.build(), 1)
+        r = garantias.rows_all({})[0]
+        self.assertEqual((r["codigo"], r["autorizacao"], r["nf"], r["lote"], r["uf"], r["lote_validade"], r["responsavel"], r["fornecedor"], r["procedencia"], r["cliente"]),
+                         ("AMD1", "1706", "280108-1", "L1", "SP", "VALIDO", "CLIENTE", "ZS", "PROCEDENTE", "CLIENTE A"))
+        self.assertEqual((r["defeito"], r["defeito_cod"]), ("AMORTECEDOR SEM AÇÃO", "AM-006"))
 
 class LeadTime(_TmpDB):
     def test_prazos_embarque_e_adiamento(self):
@@ -224,43 +226,47 @@ class FragaPlanilhas(_TmpDB):
         self.assertEqual([tuple(x) for x in p], [(None, "GP1", 800.0), ("AMD9", "GP2", 60.0)])
 
 class GarantiaAnalitico(_TmpDB):
-    def test_planilha_substitui_filtros_e_atalhos(self):
-        """Etapa 16 · D8: «Analítico de Garantias» (cabeçalho na 2ª linha) entra pela Atualização de dados e substitui a carga anterior; verificação não grava.
-        Padrão: só garantias, sem canceladas, ano atual; defeito agrupado sem o prefixo AM-xxx; cada atalho = linhas da lista ao clicar."""
+    def test_servidor_filtros_atalhos_mapa_e_planilha_ignorada(self):
+        """Etapa 18: a tela vem do servidor (ds_garantia → garantias.build); a planilha «Analítico de Garantias» é ignorada com aviso.
+        Padrão: só garantias, sem canceladas, ano atual; defeito agrupado sem o prefixo AM-xxx; cada atalho = linhas da lista ao clicar;
+        mapa: índice = peças em garantia ÷ vendidas na UF; comparação com o mesmo período do ano anterior."""
         import garantias, updater, datetime
-        from openpyxl import Workbook
         self.db.init_db(); y = datetime.date.today().year
-        head = ["Unidade", "Nº Autorização", "Data Cadastro", "Tipo Ocorrência", "Status Ocorrência", "Grupo Cliente", "Razão Social", "CNPJ", "NF", "Linha", "Codigo", "Qtd", "Valor C.IPI",
-                "Defeito", "Lote", "Data Fabricacao", "Fornecedor Short", "Tipo I/P", "Responsável", "Erro Lote"]
-        L = [("PRIVATE-MOGI", 1, f"{y}-02-03", "GARANTIA", "GARANTIA FINALIZADA", "G1", "CLIENTE A", "00", "N1", "AMORTECEDOR", "AMD1", 2, 100.0, "AM-006 AMORTECEDOR SEM AÇÃO", "L1", "2025-01-01", "ZS", "PROCEDENTE", "INSPEÇÃO", None),
-             ("PRIVATE-ARUJA", 2, f"{y}-03-04", "GARANTIA AUTOMATICA", "PAGAMENTO FINALIZADO", "G2", "CLIENTE B", "00", "N2", "AMORTECEDOR", "AMD1", 1, 50.0, "AMORTECEDOR SEM AÇÃO", "L1", "2025-01-01", "ZS", "IMPROCEDENTE", "CLIENTE_x000D_", "SIM"),
-             ("PRIVATE-MOGI", 3, f"{y}-03-10", "ACORDO COMERCIAL", "PAGAMENTO FINALIZADO", "G1", "CLIENTE A", "00", "N3", "AMORTECEDOR", "AMD2", 5, 10.0, "BATENDO FIM DE CURSO", None, None, "E-WIN", None, None, None),
-             ("PRIVATE-MOGI", 4, f"{y}-04-01", "GARANTIA", "OCORRÊNCIA CANCELADA", "G1", "CLIENTE A", "00", "N4", "AMORTECEDOR", "AMD2", 7, 70.0, "VAZAMENTO", None, None, "E-WIN", None, None, None),
-             ("PRIVATE-MOGI", 5, f"{y - 1}-12-01", "GARANTIA", "GARANTIA FINALIZADA", "G1", "CLIENTE A", "00", "N5", "AMORTECEDOR", "AMD3", 3, 30.0, "AM-014 SEM PRESSÃO", None, None, "E-WIN", "PROCEDENTE", None, None)]
-        def planilha(linhas):
-            wb = Workbook(); ws = wb.active; ws.append([None] * 11 + [sum(r[11] for r in linhas)]); ws.append(head)
-            for r in linhas: ws.append(list(r))
-            f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); f.close(); wb.save(f.name); return f.name
-        p = planilha(L)
-        v = updater.run([("Analítico de Garantias.xlsx", p)], confirm=False)          # verificação: lê, mas não grava
-        self.assertEqual(v["results"][0]["label"], garantias.LABEL); self.assertEqual(v["results"][0]["counts"]["new"], 5); self.assertFalse(garantias.available())
-        from unittest import mock                                                      # o backup de verdade iria para backups\ do projeto
-        with mock.patch("queries.backup_create", return_value="x.db"): r = updater.run([("Analitico de Garantias (1).xlsx", p)], confirm=True)
-        os.remove(p); self.assertEqual(r["results"][0]["status"], "ok")
+        c = self.db.conn(); have = {r[1] for r in c.execute("PRAGMA table_info(ds_garantia)")}
+        import data_pipeline as dp
+        for k in dp.DATASETS["garantia"]["aliases"]:
+            if k not in have: c.execute(f"ALTER TABLE ds_garantia ADD COLUMN {k}")
+        c.commit(); c.close()
+        ins = "INSERT INTO ds_garantia(unit,auth,event_date,kind,status,client_group,customer,nf,family,code,qty,value,defect,lot,fab_date,supplier,verdict,dept,lot_error,uf,lot_valid) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        L = [("PRIVATE-MOGI", 1, f"{y}-01-03", "GARANTIA", "GARANTIA FINALIZADA", "G1", "CLIENTE A", "N1", "AMORTECEDOR", "AMD1", 2, 100.0, "AM-006 AMORTECEDOR SEM AÇÃO", "L1", "2025-01-01", "ZS", "PROCEDENTE", "INSPEÇÃO", None, "SP", "VALIDO"),
+             ("PRIVATE-ARUJA", 2, f"{y}-01-04", "GARANTIA AUTOMATICA", "PAGAMENTO FINALIZADO", "G2", "CLIENTE B", "N2", "AMORTECEDOR", "AMD1", 1, 50.0, "AMORTECEDOR SEM AÇÃO", "L1", "2025-01-01", "ZS", "IMPROCEDENTE", "CLIENTE_x000D_", "SIM", "RS", "VENCIDO"),
+             ("PRIVATE-MOGI", 3, f"{y}-01-05", "ACORDO COMERCIAL", "PAGAMENTO FINALIZADO", "G1", "CLIENTE A", "N3", "AMORTECEDOR", "AMD2", 5, 10.0, "BATENDO FIM DE CURSO", None, None, "E-WIN", None, None, None, "SP", None),
+             ("PRIVATE-MOGI", 4, f"{y}-01-06", "GARANTIA", "OCORRÊNCIA CANCELADA", "G1", "CLIENTE A", "N4", "AMORTECEDOR", "AMD2", 7, 70.0, "VAZAMENTO", None, None, "E-WIN", None, None, None, "SP", None),
+             ("PRIVATE-MOGI", 5, f"{y - 1}-01-02", "GARANTIA", "GARANTIA FINALIZADA", "G1", "CLIENTE A", "N5", "AMORTECEDOR", "AMD3", 3, 30.0, "AM-014 SEM PRESSÃO", None, None, "E-WIN", "PROCEDENTE", None, None, "SP", None),
+             ("PRIVATE-MOGI", 6, f"{y - 1}-12-31", "GARANTIA", "GARANTIA FINALIZADA", "G1", "CLIENTE A", "N6", "AMORTECEDOR", "AMD3", 9, 90.0, "VAZAMENTO", None, None, "E-WIN", "PROCEDENTE", None, None, "SP", None)]
+        self.sql(ins, L)
+        self.sql("INSERT INTO ds_vendas_uf(sale_date,uf,qty,total) VALUES(?,?,?,?)", [(f"{y}-01-01", "SP", 400, 1), (f"{y}-01-01", "RS", 50, 1), (f"{y - 1}-01-01", "SP", 999, 1)])
+        self.assertEqual(garantias.build(), 6)
         s = garantias.summary({})
         self.assertEqual((s["kpis"]["linhas"], s["kpis"]["pecas"], s["kpis"]["valor"]), (2, 3, 150.0))          # só garantias, sem canceladas, ano atual
         self.assertEqual(s["kpis"]["pct_procedente"], 66.7); self.assertEqual(s["defeitos"][0]["defeito"], "AMORTECEDOR SEM AÇÃO"); self.assertEqual(s["defeitos"][0]["pecas"], 3)
-        self.assertEqual(s["defeitos"][0]["cod"], "AM-006"); self.assertEqual(s["clientes"][0]["cliente"], "CLIENTE A"); self.assertEqual(s["lotes"][0]["lote"], "L1"); self.assertEqual(s["lotes"][0]["erro_lote"], 1)
-        c = s["counts"]
-        for grp, base in (("ano", {}), ("tipo", {}), ("status", {}), ("fornecedor", {}), ("procedencia", {}), ("unidade", {}), ("tipo", {"ano": "todos"})):
+        self.assertEqual(s["defeitos"][0]["cod"], "AM-006"); self.assertEqual(s["defeitos"][0]["acum"], 100.0); self.assertEqual(s["lotes"][0]["lote"], "L1"); self.assertEqual(s["lotes"][0]["erro_lote"], 1)
+        # mesmo período do ano anterior: até o dia-mês do último cadastro filtrado (04/jan) → só a ocorrência 5 (3 peças); a 6 (31/dez) fica fora
+        self.assertEqual((s["anterior"]["ano"], s["anterior"]["ate"], s["anterior"]["pecas"]), (str(y - 1), "01-04", 3))
+        jan = s["por_mes"][0]; self.assertEqual((len(s["por_mes"]), jan["pecas"], jan["pecas_ant"]), (12, 3, 3)); self.assertTrue(s["por_mes"][5]["futuro"])
+        # mapa: índice = peças em garantia ÷ vendidas na UF (mesmo ano) e o código com mais peças
+        uf = {r["uf"]: r for r in s["por_uf"]}
+        self.assertEqual((uf["SP"]["pecas"], uf["SP"]["vendidas"], uf["SP"]["indice"], uf["SP"]["top"][0]["codigo"]), (2, 400, 0.5, "AMD1")); self.assertEqual(uf["RS"]["indice"], 2.0)
+        for grp, base in (("ano", {}), ("tipo", {}), ("status", {}), ("fornecedor", {}), ("procedencia", {}), ("unidade", {}), ("uf", {}), ("validade", {}), ("tipo", {"ano": "todos"})):
             cc = garantias.summary(base)["counts"][grp]
             for val, n in cc.items(): self.assertEqual(garantias.summary({**base, grp: val})["total"], n, f"{grp}={val} {base}")
-        self.assertEqual(garantias.summary({"tipo": "todos", "status": "todos"})["total"], 4); self.assertEqual(garantias.summary({"ano": "todos"})["total"], 3)
+        self.assertEqual(garantias.summary({"tipo": "todos", "status": "todos"})["total"], 4); self.assertEqual(garantias.summary({"ano": "todos"})["total"], 4)
         self.assertEqual(garantias.summary({"q": "cliente b"})["total"], 1); self.assertEqual(garantias.summary({"defeito": "AMORTECEDOR SEM AÇÃO"})["kpis"]["pecas"], 3)
-        p = planilha(L[:2])
-        with mock.patch("queries.backup_create", return_value="x.db"): r = updater.run([("Analítico de Garantias.xlsx", p)], confirm=True)
-        os.remove(p); self.assertEqual(r["results"][0]["counts"]["present"], 2); self.assertTrue(r["results"][0]["messages"])
-        self.assertEqual(garantias.summary({"ano": "todos", "tipo": "todos", "status": "todos"})["total"], 2)     # substituiu
+        self.assertIsNone(garantias.summary({"ano": "todos"})["anterior"])
+        # a planilha antiga é reconhecida e ignorada (não grava nada)
+        r = updater.run([("Analitico de Garantias (2).xlsx", "nao_existe.xlsx")], confirm=False)
+        self.assertEqual(r["results"][0]["status"], "ignorado"); self.assertIn("servidor", r["results"][0]["messages"][0])
+        self.assertEqual(garantias.summary({"ano": "todos", "tipo": "todos", "status": "todos"})["total"], 6)
         c = self.db.conn()
         try: self.assertNotIn("cnpj", [x[1] for x in c.execute("PRAGMA table_info(garantias)")])
         finally: c.close()

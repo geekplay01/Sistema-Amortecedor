@@ -8,7 +8,8 @@ import database as db, importer, loaders, queries
 KNOWN = [("CatalogoAMD.xlsx", None), ("CrossCatalogo.xlsx", None), ("CaixasAMD.xlsx", None), ("Lados - Amortecedores.xlsx", None), ("CodigosZSxPERFECT.xlsx", None),
          ("ItensMotorcraft.xlsx", "MOTORCRAFT"), ("EstruturaAMD.xls", None),
          ("InmetroZS - Todos - Certificado.xlsx", None), ("InmetroE-win - Todos - Certificado.xlsx", None), ("ZS.csv", "(csv)"), ("e-win.csv", "(csv)"),
-         ("Compra_de_amostra.xlsx", None), ("DAMPING FORCE - REGRA.xlsx", "damping"), ("Analítico de Garantias.xlsx", "garantias")]      # garantias: substitui a carga anterior (garantias.py)
+         ("Compra_de_amostra.xlsx", None), ("DAMPING FORCE - REGRA.xlsx", "damping")]
+# «Analítico de Garantias»: desde a etapa 18 a garantia vem só do servidor; a planilha é reconhecida (garantias.is_file) e ignorada com aviso.
 # planilhas com leitor próprio (módulo.load(path, name, confirm, conn) substitui a carga anterior), reconhecidas por módulo.is_file(nome) — o nome muda a cada exportação
 ESPECIAIS = [("bi03", 1), ("fraga", 20)]           # (módulo, ordem) — BI03 logo depois do CatalogoAMD, para o peso/EAN do BI03 prevalecer; Fraga: LANÇAMENTOS e COFAP × frota
 FOLDER = os.path.join(db.BASE, "bases_exemplo")
@@ -67,7 +68,9 @@ def run(files, confirm=False):
         if re.sub(r"[^a-z0-9]", "", _norm(name)[0]) in LEGACY:
             results.append({"file": name, "status": "ignorado", "label": "Desenvolvimento (planilha antiga)", "rows": 0, "counts": {}, "messages": ["A fonte oficial de Desenvolvimento/Redesenvolvimento agora é o servidor SQL (DESENVOLVIMENTO_PRODUTOS). Esta planilha foi ignorada para não sobrescrever os dados do servidor."]}); continue
         import garantias, importlib
-        k = identify(name) or (_IDX[_norm("Analítico de Garantias.xlsx")] if garantias.is_file(name) else None)      # aceita «Analitico de Garantias (2).xlsx» etc.
+        if garantias.is_file(name):          # aceita «Analitico de Garantias (2).xlsx» etc.
+            results.append({"file": name, "status": "ignorado", "label": "Garantias (planilha antiga)", "rows": 0, "counts": {}, "messages": [garantias.AVISO_PLANILHA]}); continue
+        k = identify(name)
         esp = None if k else next((m for m, _ in ESPECIAIS if importlib.import_module(m).is_file(name)), None)
         if esp: items.append((dict(ESPECIAIS)[esp] + 0.5, name, "especial:" + esp, name, path))
         elif k: items.append((k[0], k[1], k[2], name, path))
@@ -83,8 +86,8 @@ def run(files, confirm=False):
                 results += _nova(conn, name, path, confirm); continue
             conn.execute("SAVEPOINT f")
             try:
-                if sheet == "garantias" or str(sheet).startswith("especial:"):
-                    import importlib; mod = importlib.import_module("garantias" if sheet == "garantias" else sheet.split(":", 1)[1])
+                if str(sheet).startswith("especial:"):
+                    import importlib; mod = importlib.import_module(sheet.split(":", 1)[1])
                     r = mod.load(path, name, confirm, conn); conn.execute("RELEASE f"); r.update(file=name, status="ok"); results.append(r); continue
                 df, _ = importer.read_table(path, None if sheet in (None, "(csv)") else sheet)
                 r = loaders.run(path, sheet, importer.suggest_mapping(df.columns), None, official, confirm, "keep", True, conn)
