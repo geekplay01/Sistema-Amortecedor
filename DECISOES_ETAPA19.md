@@ -26,6 +26,7 @@ Pedido: (1) rever Desenvolvimento e Redesenvolvimento (itens de DES aparecendo e
 | Q6 | Demais telas | Tabela por tela (visível / Mais filtros / sai) para aprovar; manter um padrão. |
 | Q7 | Cobertura | Editar «Nosso código» na célula (Catálogo e COFAP); correção local vale sobre CrossCatalogo/servidor; aba «Cross corrigido no app» em Anomalias; vazio = tira a ligação. |
 | Q8 | Pedidos em aberto | Tabela como a imagem (bolinha, código sem MP-, fornecedor, pedido, pedido em, barra dias ÷ média, dias, média forn., previsão); o resto ao passar o mouse/abrir e no Excel. |
+| Q10 | Meta DES (após a prévia) | «A meta de DES é tudo aquilo que passou de pedido confirmado para item recebido, em 2026. R-D é outra lógica: tudo que foi validado por mim e passou a ser item recebido com o fornecedor diferente do atual.» → DES sem exigir validação. |
 | Q9 | Ordem | 1 DES×R-D · 2 amostras · 3 prévia dos filtros na Garantia (aprovar) · 4 filtros nas outras telas · 5 Cobertura · 6 Pedidos em aberto · 7 docs. |
 
 ## Checkpoints
@@ -37,7 +38,12 @@ Pedido: (1) rever Desenvolvimento e Redesenvolvimento (itens de DES aparecendo e
   Na cópia, depois de sincronizar o DES de novo: lista DES 759 → 1.230 códigos (inclui os recebidos que estavam como R-D); R-D com PEDIDO CONFIRMADO 25 → 0;
   R-D pendente compras 23 → 234; meta DES 2026 82 → 110 (DES recebidos em 2026 que depois ganharam R-D); validações do quadro de metas 267 → 282
   (linhas DES 64 → 96, R-D 226 → 194); sugestões de amostra 268 → 271 (DES que voltaram ao DES).
-- **Passo 3 — prévia dos filtros na Garantia** (aguarda aprovação): componente `PSDTW.barra / pintarBarra / ligarBarra / botao` (tw.js) e estilos `.psd-fbar …`
+- **Passo 1b — meta DES (Q10)** (`goals.des_recebidos`; `progress`, `events_list`, `rules_text`, `telas/metas.js`): PEDIDO CONFIRMADO → ITEM RECEBIDO no ano
+  pela DATA_RECEBIDO do servidor (senão a transição vista), sem validação. Na cópia: 212 itens em 2026 (jan 17 · jun 23 · set 19 · out 44 · nov 103 — em
+  novembro, 65 transições vistas pelas sincronizações e 38 datadas pelo servidor em 03/11); 52 deles validados por ITALOC; 30 também têm R-D; inclui itens
+  de montadora (1BP…, a regra não pediu para tirar). Com o «já realizado antes do rastreio» de 58 cadastrado na tela, a meta mostra 270 de 125 —
+  esse campo agora soma em dobro (a data do servidor cobre o ano todo) e deve ir a 0 na tela Metas (decisão do usuário).
+- **Passo 3 — prévia dos filtros na Garantia** (aprovada: «O restante pode seguir»): componente `PSDTW.barra / pintarBarra / ligarBarra / botao` (tw.js) e estilos `.psd-fbar …`
   (marca.css): busca arredondada, Ano em botões lado a lado (3 anos + Todos), Tipo e Status em listas com contagem, «Mais filtros» (Fornecedor, Procedência,
   Lote, Unidade, Estado — lista longa ocupa a linha toda), etiquetas com × e «Limpar tudo», Excel azul-marinho à direita. Os «quadrados cinzas» eram o
   visual padrão do navegador em botões sem estilo (o Tailwind pré-compilado não traz o reset): `:where(main) :where(button)` zera fundo/borda com

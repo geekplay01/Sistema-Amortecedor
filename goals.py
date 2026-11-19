@@ -54,9 +54,11 @@ def _meta(kind):
     import json
     out = {}; vu = rules.valid_user()
     for r in q(f"SELECT code, extra, description FROM rd_projects WHERE suggestion=? AND {rules.desc_sql('description', erp=False)}", (kind,)):      # meta: item bloqueado depois de recebido continua contando
-        m = out.setdefault(r["code"], {"validated": False, "status_date": None, "valid_by": None, "valid_at": None})
+        m = out.setdefault(r["code"], {"validated": False, "status_date": None, "valid_by": None, "valid_at": None, "pedido_conf": None})
         try: ex = json.loads(r["extra"]) if r["extra"] else {}
         except ValueError: ex = {}
+        pc = ex.get("PEDIDO CONFIRMADO")
+        if isinstance(pc, str) and len(pc) >= 10: m["pedido_conf"] = min(m["pedido_conf"] or pc[:10], pc[:10])
         u = ex.get("USER APROV")
         if rules.is_valid_user(u, vu): m["validated"] = True; m["valid_by"] = u.strip().upper(); m["valid_at"] = m["valid_at"] or ex.get("DATA APROV")
         d = ex.get("DATA STATUS")
@@ -80,6 +82,26 @@ def _events(year):
             if d and d.startswith(str(year)) and (code, kind) in cur and (code, kind) not in out:
                 out[(code, kind)] = {"code": code, "kind": kind, "recebido": d, "origem": "coluna", "pend_to_rec": None}
     return out
+
+DES_DE = ("PEDIDO CONFIRMADO", "FINALIZANDO CIT")      # transição vista que prova que o item passou por PEDIDO CONFIRMADO
+def des_recebidos(year):
+    """Meta DESENVOLVIMENTO (etapa 19): tudo que passou de PEDIDO CONFIRMADO para ITEM RECEBIDO no ano — sem exigir validação do usuário.
+    Recebido = alguma aplicação DES em ITEM RECEBIDO; data = DATA_RECEBIDO do servidor («DATA STATUS»), senão a transição vista na sincronização.
+    Passou por pedido confirmado = coluna PEDIDO_CONFIRMADO preenchida ou transição vista a partir de PEDIDO CONFIRMADO/FINALIZANDO CIT.
+    → ({código: 'AAAA-MM-DD'} que contam, {código: motivo} recebidos no ano que não contam)"""
+    y = str(year); meta = _meta(kinds.DES)
+    rec = {r["code"] for r in q("SELECT DISTINCT code FROM rd_projects WHERE suggestion=? AND status=?", (kinds.DES, RECEBIDO))}
+    tr = {}
+    for r in q("SELECT code, from_value, MIN(substr(at,1,10)) d FROM dev_status_events WHERE kind=? AND field='status' AND to_value=? AND coalesce(origin,'')<>'novo_item' GROUP BY code, from_value", (kinds.DES, RECEBIDO)):
+        t = tr.setdefault(r["code"], {"d": r["d"], "pc": False}); t["d"] = min(t["d"], r["d"]); t["pc"] = t["pc"] or r["from_value"] in DES_DE
+    conta, fora = {}, {}
+    for code, m in meta.items():
+        if code not in rec: continue
+        d = m["status_date"] or (tr.get(code) or {}).get("d")
+        if not d or not d.startswith(y): continue
+        if m["pedido_conf"] or (tr.get(code) or {}).get("pc"): conta[code] = d
+        else: fora[code] = "não passou por PEDIDO CONFIRMADO"
+    return conta, fora
 
 RD_FLAGS = ("pend_validacao", "pend_validacao_qual", "val_reprovada", "val_reprovada_qual", "pend_compras", "pend_confirmacao")      # controles mostrados na lista de validações R-D
 
@@ -111,7 +133,7 @@ def progress(year=None):
     """Andamento das duas metas + evolução mensal (alimenta os velocímetros do dashboard). Duas bases de contagem (rules.goal_basis, editável na tela):
     «validacao» (padrão) → validações do usuário ITALOC (USER_VALID) em itens de LINHA «Amortecedor», por SUGESTAO DES / R-D, no ano da DATA_APROVACAO (metas.py).
     «recebido»          → REDESENVOLVIMENTO: PENDENTE CONFIRMAÇÃO → ITEM RECEBIDO no ano e validado.
-    DESENVOLVIMENTO é sempre: ITEM RECEBIDO no ano E validado por USER_VALID (nas duas bases). Contagem por código distinto."""
+    DESENVOLVIMENTO (etapa 19, nas duas bases): passou de PEDIDO CONFIRMADO para ITEM RECEBIDO no ano (des_recebidos), sem exigir validação. Contagem por código distinto."""
     import metas
     year = _year(year); g = get_goals(year); ev = _events(year); basis = rules.goal_basis(); vc = metas.dashboard(year)
     out = {"year": year, "basis": basis, "goals": {}, "months": {}, "rules": rules_text(), "validacoes": vc}
@@ -122,10 +144,9 @@ def progress(year=None):
             for e in items:
                 if e["pend_to_rec"] and meta[e["code"]]["validated"]: counted[e["code"]] = e["pend_to_rec"]
             parts = {"recebidos_validados": len(counted), "recebidos_sem_validacao": sum(1 for e in items if e["pend_to_rec"] and not meta[e["code"]]["validated"])}
-        else:
-            for e in items:        # DESENVOLVIMENTO: só item que chegou a ITEM RECEBIDO neste ano E foi validado pelo usuário (USER_VALID)
-                if meta[e["code"]]["validated"]: counted[e["code"]] = e["recebido"]
-            parts = {"recebidos_validados": len(counted), "recebidos_sem_validacao": sum(1 for e in items if not meta[e["code"]]["validated"]), "por_coluna_de_data": sum(1 for e in items if e["origem"] == "coluna")}
+        else:                      # DESENVOLVIMENTO (etapa 19): PEDIDO CONFIRMADO → ITEM RECEBIDO no ano, pela data de recebimento do servidor; sem exigir validação
+            counted, fora = des_recebidos(year)
+            parts = {"recebidos": len(counted), "sem_pedido_confirmado": len(fora)}
         for d in counted.values(): evo[d[:7]] += 1
         rec_series = [{"month": m, "n": n} for m, n in evo.items()]
         if basis == "validacao" and kind != kinds.DES:      # R-D: validados no ano que já chegaram a ITEM RECEBIDO (rd_validations); evolução pelo mês da validação
@@ -143,7 +164,7 @@ def progress(year=None):
 
 def rules_text():
     a = f"Somente LINHA/descrição «{rules.only_desc().title()}»."; u = rules.valid_user()
-    des = f"Conta só o item DESENVOLVIMENTO que chegou a ITEM RECEBIDO dentro do ano (data da mudança de status) E foi validado pelo usuário {u} (USER_VALID). {a}"
+    des = f"Conta o item DESENVOLVIMENTO que passou de PEDIDO CONFIRMADO para ITEM RECEBIDO dentro do ano (data de recebimento do servidor; sem ela, a mudança de status vista na sincronização). Não exige validação. {a}"
     if rules.goal_basis() == "validacao":
         return {kinds.DES: des, kinds.RD: f"Conta o item de SUGESTÃO «R-D» validado pelo usuário {u} (USER_VALID) no ano da data de aprovação, quando ele chegar a ITEM RECEBIDO (mesmo que chegue depois do fim do ano). {a}"}
     return {kinds.DES: des, kinds.RD: f"Conta o item que passou de PENDENTE CONFIRMAÇÃO para ITEM RECEBIDO no ano e que tem a validação do usuário {u}. {a}"}
@@ -187,11 +208,16 @@ def events_list(year=None, kind=None, limit=80):
     ensure(); year = _year(year); k = kinds.normalize_kind(kind) if kind else None; ev = _events(year); rows = []
     for kd in ((k,) if k else (kinds.DES, kinds.RD)):
         meta = _meta(kd)
+        if kd == kinds.DES:        # mesma regra de progress(): PEDIDO CONFIRMADO → ITEM RECEBIDO no ano, pela data de recebimento do servidor
+            conta, fora = des_recebidos(year)
+            for code, d in [*conta.items(), *((c, None) for c in fora)]:
+                rows.append({"code": code, "kind": kd, "from_value": "PEDIDO CONFIRMADO" if code in conta else None, "to_value": RECEBIDO, "at": d or meta[code]["status_date"], "origin": "coluna" if meta[code]["status_date"] else "transicao",
+                             "counts": code in conta, "why_not": fora.get(code), "validated": meta[code]["validated"]})
+            continue
         for e in ev.values():
             if e["kind"] != kd or e["code"] not in meta: continue
             m = meta[e["code"]]
-            if kd == kinds.RD: counts = bool(e["pend_to_rec"]) and m["validated"]; why = None if counts else ("sem validação do usuário " + rules.valid_user() if not m["validated"] else "não veio de PENDENTE CONFIRMAÇÃO")
-            else: counts = m["validated"]; why = None if counts else "sem validação do usuário " + rules.valid_user()      # mesma regra de progress(): DES só conta se validado
+            counts = bool(e["pend_to_rec"]) and m["validated"]; why = None if counts else ("sem validação do usuário " + rules.valid_user() if not m["validated"] else "não veio de PENDENTE CONFIRMAÇÃO")
             rows.append({"code": e["code"], "kind": kd, "from_value": PEND_CONF if e["pend_to_rec"] else None, "to_value": RECEBIDO, "at": e["recebido"], "origin": e["origem"], "counts": counts, "why_not": why, "validated": m["validated"]})
     rows.sort(key=lambda r: r["at"] or "", reverse=True)
     return {"year": year, "rows": rows[:int(limit)]}

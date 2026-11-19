@@ -88,14 +88,18 @@ class Fluxo(unittest.TestCase):
         for cds, usr in ((rd_codes[:4], "ITALOC"), (rd_codes[4:5], "DOUGLASJ"), (rd_codes[5:], None)):
             server("UPDATE DESENVOLVIMENTO_PRODUTOS SET \"USER APROV\"=? WHERE CÓDIGO IN (%s) AND lower(trim(SUGESTÃO)) IN %s" % (",".join("?" * len(cds)), KIND_SQL[RD]), (usr, *cds))
         server("UPDATE DESENVOLVIMENTO_PRODUTOS SET \"DESCRIÇÃO\"='PASTILHA DE FREIO' WHERE CÓDIGO=? AND lower(trim(SUGESTÃO)) IN %s" % KIND_SQL[DES], (des_b[1],))
+        # etapa 19: DES = PEDIDO CONFIRMADO → ITEM RECEBIDO no ano, sem exigir validação. des_a passa por PEDIDO CONFIRMADO; des_b pula direto de EM COTAÇÃO
+        server("UPDATE DESENVOLVIMENTO_PRODUTOS SET \"PEDIDO CONFIRMADO\"=NULL WHERE CÓDIGO IN (%s) AND lower(trim(SUGESTÃO)) IN %s" % (",".join("?" * 6), KIND_SQL[DES]), (*des_a, *des_b))
+        set_status(des_a, "PEDIDO CONFIRMADO", DES); run_sync()
         set_status(des_a, "ITEM RECEBIDO", DES); set_status(des_b, "ITEM RECEBIDO", DES); run_sync()
         g = C.get("/api/goals?year=2026").json["goals"]
         self.assertEqual(g[RD]["tracked"], 4); self.assertEqual(g[RD]["parts"]["recebidos_validados"], 4); self.assertEqual(g[RD]["parts"]["recebidos_sem_validacao"], 2)   # só ITALOC conta
-        self.assertEqual(g[DES]["tracked"], 0); self.assertEqual(g[DES]["parts"]["recebidos_sem_validacao"], 5)             # des_a(4)+des_b[0]; des_b[1] não é amortecedor; já-recebidos no marco zero (sem data) não contam
-        set_status(des_a, "ITEM RECEBIDO", DES); run_sync(); g = C.get("/api/goals?year=2026").json["goals"][DES]; self.assertEqual(g["tracked"], 0)     # repetir não conta duas vezes (e sem validação não conta)
-        m = {x["month"]: x["n"] for x in g["series"]["ITEM RECEBIDO"]}; self.assertEqual(sum(m.values()), 0)
+        self.assertEqual(g[DES]["tracked"], 4); self.assertEqual(g[DES]["parts"]["sem_pedido_confirmado"], 1)               # des_a(4); des_b[0] não passou por PEDIDO CONFIRMADO; des_b[1] não é amortecedor
+        set_status(des_a, "ITEM RECEBIDO", DES); run_sync(); g = C.get("/api/goals?year=2026").json["goals"][DES]; self.assertEqual(g["tracked"], 4)     # repetir não conta duas vezes
+        m = {x["month"]: x["n"] for x in g["series"]["ITEM RECEBIDO"]}; self.assertEqual(sum(m.values()), 4)
         self.assertEqual(C.get("/api/goals?year=2025").json["goals"][DES]["tracked"], 0)                                 # outro ano: nada (a data da mudança está em 2026)
         ev = C.get("/api/goals/events?year=2026").json["rows"]; self.assertTrue(any(e["counts"] for e in ev)); self.assertTrue(any(not e["counts"] and "ITALOC" in (e["why_not"] or "") for e in ev))
+        self.assertTrue(any(not e["counts"] and "PEDIDO CONFIRMADO" in (e["why_not"] or "") for e in ev))
         self.assertFalse(any(e["code"] == des_b[1] for e in ev))                                                          # fora do filtro «Amortecedor»
         # filtro Tipo da tela Metas (etapa 16): aceita sigla ou rótulo; cada tipo traz só os seus e, juntos, dão a lista completa
         ev_des = C.get("/api/goals/events?year=2026&kind=des").json["rows"]; ev_rd = C.get("/api/goals/events?year=2026&kind=REDESENVOLVIMENTO").json["rows"]
@@ -119,10 +123,10 @@ class Fluxo(unittest.TestCase):
         v = C.get("/api/metas/validacoes?year=2026").json
         self.assertEqual((v[DES], v[RD], v["total"]), (3, 2, 5)); self.assertEqual(v["por_mes"]["2026-05"], {DES: 3, RD: 2}); self.assertEqual(v["filtro"]["USER_VALID"], "ITALOC")
         self.assertEqual(C.get("/api/metas/validacoes?year=2025").json[RD], 2)
-        g = C.get("/api/goals?year=2026").json; self.assertEqual(g["basis"], "validacao"); self.assertEqual((g["goals"][DES]["tracked"], g["goals"][RD]["tracked"]), (0, 1)); self.assertEqual(g["validacoes"]["total"], 5)      # DES: só ITEM RECEBIDO no ano E validado — nenhum recebido ainda; R-D: 2 validados, 1 recebido
+        g = C.get("/api/goals?year=2026").json; self.assertEqual(g["basis"], "validacao"); self.assertEqual((g["goals"][DES]["tracked"], g["goals"][RD]["tracked"]), (4, 1)); self.assertEqual(g["validacoes"]["total"], 5)      # DES (etapa 19): os 4 do test_04 (pedido confirmado → recebido, validação não importa); R-D: 2 validados, 1 recebido
         lv = C.get("/api/goals/rd-validations?year=2026").json; self.assertEqual(sorted(r["code"] for r in lv["rows"]), sorted(rd_[2:4])); self.assertEqual((lv["counts"]["contam"], lv["counts"]["aguardando"]), (1, 1))
         self.assertEqual(g["goals"][RD]["parts"]["validacoes"], v[RD])
-        set_status(des[:4], "ITEM RECEBIDO", DES); set_status(rd_[3:4], "ITEM RECEBIDO", RD); run_sync(); g = C.get("/api/goals?year=2026").json; n = g["goals"][DES]["tracked"]; self.assertIn(n, (2, 3))      # validados por ITALOC e recebidos neste ano (o ITALOC2 não conta; item já recebido no marco zero não tem data)
+        set_status(des[:4], "ITEM RECEBIDO", DES); set_status(rd_[3:4], "ITEM RECEBIDO", RD); run_sync(); g = C.get("/api/goals?year=2026").json; n = g["goals"][DES]["tracked"]; self.assertGreaterEqual(n, 4)      # etapa 19: soma quem passou por PEDIDO CONFIRMADO (coluna ou transição); a validação não importa
         self.assertEqual(g["goals"][RD]["tracked"], 2)
         self.assertEqual(sum(m["n"] for m in g["goals"][DES]["series"]["main"]), n); self.assertEqual(C.put("/api/settings", json={"goal_basis": "x"}).status_code, 400)
 
