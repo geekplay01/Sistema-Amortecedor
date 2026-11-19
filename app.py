@@ -414,9 +414,10 @@ def api_sample_prefill():
     code = request.args.get("code", ""); d = queries.sample_prefill(code); d.update(purchases.for_code(d.get("code") or code)); return jsonify(d)
 @app.get("/api/samples/codes")
 def api_sample_codes():
-    """Sugestões do campo «Código PERFECT» do pedido de amostra: só códigos AMD de Desenvolvimento/Redesenvolvimento."""
+    """Sugestões do campo «Código PERFECT» do pedido de amostra: códigos AMD de Desenvolvimento/Redesenvolvimento e do catálogo (etapa 19 · Q3: pedido manual de item já desenvolvido)."""
     t = "%" + (request.args.get("q") or "").strip().upper() + "%"
-    return jsonify(rows=queries.q("SELECT upper(code) perfect_code, MAX(description) description FROM rd_projects WHERE upper(code) LIKE 'AMD%' AND (upper(code) LIKE ? OR upper(description) LIKE ?) GROUP BY upper(code) ORDER BY 1 LIMIT 8", (t, t)))
+    return jsonify(rows=queries.q("""SELECT c perfect_code, MAX(d) description FROM (SELECT upper(code) c, description d FROM rd_projects UNION ALL SELECT upper(perfect_code), description FROM products)
+                                     WHERE c LIKE 'AMD%' AND (c LIKE ? OR upper(coalesce(d,'')) LIKE ?) GROUP BY c ORDER BY 1 LIMIT 8""", (t, t)))
 @app.post("/api/samples")
 def api_sample_save():
     d = request.get_json(force=True) or {}

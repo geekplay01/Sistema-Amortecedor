@@ -68,7 +68,9 @@ def _events(year):
     recebido no marco zero, usa a coluna de data de status do servidor (DATA STATUS), quando existir.
     {(código, tipo): {'code','kind','recebido': 'AAAA-MM-DD'|None,'origem': 'transicao'|'coluna','pend_to_rec': data|None}}"""
     y0, y1 = f"{year}-01-01", f"{year + 1}-01-01"; out = {}
-    for r in q("SELECT code, kind, from_value, substr(at,1,10) d FROM dev_status_events WHERE field='status' AND to_value=? AND at>=? AND at<? ORDER BY at", (RECEBIDO, y0, y1)):
+    # «novo_item» = o item apareceu pela 1ª vez já com esse status (não é uma transição vista): não data o recebimento — vale a coluna de data do servidor.
+    # (Etapa 19: linhas DES que antes eram regravadas como R-D voltaram ao DES e apareceram como itens novos já recebidos; não podem contar como recebidas hoje.)
+    for r in q("SELECT code, kind, from_value, substr(at,1,10) d FROM dev_status_events WHERE field='status' AND to_value=? AND at>=? AND at<? AND coalesce(origin,'')<>'novo_item' ORDER BY at", (RECEBIDO, y0, y1)):
         e = out.setdefault((r["code"], r["kind"]), {"code": r["code"], "kind": r["kind"], "recebido": r["d"], "origem": "transicao", "pend_to_rec": None})
         if r["from_value"] == PEND_CONF and not e["pend_to_rec"]: e["pend_to_rec"] = r["d"]
     cur = {(r["code"], r["kind"] or None) for r in q("SELECT code,kind FROM dev_item_state WHERE status=? AND present=1", (RECEBIDO,))}
@@ -95,7 +97,7 @@ def rd_validations(year=None):
         if s and (b["status"] is None or rk.get(s, -1) > rk.get(b["status"], -1)): b["status"] = s
     fl = {}
     for r in q("SELECT * FROM v_rd_flags WHERE suggestion=?", (kinds.RD,)): fl[r["code"]] = [k for k in RD_FLAGS if r.get(k)]
-    rec = {r["code"]: r["d"] for r in q("SELECT code, MAX(substr(at,1,10)) d FROM dev_status_events WHERE field='status' AND to_value=? AND kind=? GROUP BY code", (RECEBIDO, kinds.RD))}
+    rec = {r["code"]: r["d"] for r in q("SELECT code, MAX(substr(at,1,10)) d FROM dev_status_events WHERE field='status' AND to_value=? AND kind=? AND coalesce(origin,'')<>'novo_item' GROUP BY code", (RECEBIDO, kinds.RD))}
     meta = _meta(kinds.RD); rows = []
     for code, d in sorted(val.items()):
         b = rows_rd.get(code, {}); status = st.get(code) or b.get("status"); ok = status == RECEBIDO

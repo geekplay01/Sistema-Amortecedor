@@ -330,10 +330,10 @@ def normalize_dev(raw, overrides=None):
         rows.append(r)
     cols = ["code", "kind", "status", *SUB_FIELDS, "curtiu", "nao_curtiu", "supplier", "brand", "make", "vehicle", "application", "description", "year_from", "year_to", "user_valid", *DATE_FIELDS, "extra", "line"]
     df = pd.DataFrame(rows, columns=cols)
-    # DESENVOLVIMENTO e REDESENVOLVIMENTO são EXCLUSIVOS: o código que tem linha R-D (item já recebido que está sendo redesenvolvido) vale só como REDESENVOLVIMENTO — nunca aparece nos dois.
+    # Etapa 19 · Q2: cada linha vale pelo tipo que o SERVIDOR deu a ela (SUGESTAO). Redesenvolvimento = item já recebido/no catálogo que ganhou outro fornecedor:
+    # só conta como R-D a linha que o servidor marcou como R-D. Antes, as linhas DES de um código com alguma linha R-D eram regravadas como R-D (DES ativo aparecia em R-D).
     both = df.groupby("code")["kind"].agg(lambda k: {x for x in k if x}); both = {c for c, ks in both.items() if len(ks) > 1}
-    if both:
-        df.loc[df["code"].isin(both) & df["kind"].notna(), "kind"] = "REDESENVOLVIMENTO"; warn["codigos_em_des_e_rd"] = len(both)
+    if both: warn["codigos_em_des_e_rd"] = len(both)          # só informativo: o código aparece em cada lista com as próprias linhas
     return NormResult(df, _items(df), warn, mp, [c for c in raw.columns if c not in mapped_cols])
 
 def _items(df):

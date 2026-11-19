@@ -100,8 +100,7 @@ def _des_rows():
                  WHERE r.suggestion=? AND {rules.desc_sql('r.description')}
                    AND upper(r.code) LIKE 'AMD%'
                    AND upper(r.code) NOT IN (SELECT upper(code) FROM rd_projects GROUP BY upper(code) HAVING MAX(upper(coalesce(status,''))='ITEM RECEBIDO')=1 OR MAX(upper(coalesce(status,'')) LIKE 'CANCEL%')=1)
-                   AND r.code NOT IN (SELECT code FROM rd_projects WHERE suggestion=?)
-                 ORDER BY r.code""", (kinds.DES, kinds.RD))
+                 ORDER BY r.code""", (kinds.DES,))
     idx = _fraga_index()
     cofap = {}
     if _has("fraga_pecas"):

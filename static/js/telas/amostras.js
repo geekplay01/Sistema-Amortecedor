@@ -5,7 +5,7 @@
 (function () {
   const { $, $$, esc, J, post, qs, root, fail, dlg, dwBlocks, dwFill, NEW } = PSD;
   const TW = window.PSDTW, { nf, brl, badge, kpi, notice, empty } = TW;
-  const ABA = { pendentes: ["q", "kind"], pedidos: ["q", "supplier", "month", "side", "flag"] };
+  const ABA = { pendentes: ["q"], pedidos: ["q", "supplier", "month", "side", "flag"] };
   const SDL = { direito: "LD", esquerdo: "LE", ambos: "LD/LE" };
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
   const botao = "rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10";
@@ -37,9 +37,9 @@
     const desenharFiltros = () => {
       const s = F.get();
       if (aba() === "pendentes") {
-        $("#aintro").innerHTML = 'Itens em <b class="text-ink">DESENVOLVIMENTO / REDESENVOLVIMENTO</b> marcados <b class="text-ink">PENDENTE COMPRAS</b>, sem amostra comprada, fora do catálogo e com status diferente de ITEM RECEBIDO (só Amortecedor). Cada referência abre a consulta do menor preço; <b class="text-ink">Buscar menor preço</b> traz o anúncio mais barato (unitário ou par/kit).';
+        $("#aintro").innerHTML = 'Itens PERFECT em <b class="text-ink">DESENVOLVIMENTO</b> marcados <b class="text-ink">PENDENTE COMPRAS</b>, sem amostra comprada, fora do catálogo e com status diferente de ITEM RECEBIDO (só Amortecedor). Redesenvolvimento não tem sugestão: para comprar amostra de um item já desenvolvido, use <b class="text-ink">+ Nova amostra</b> em Pedidos de amostra. Cada referência abre a consulta do menor preço.';
         $("#af").innerHTML = `<input name="q" type="search" value="${esc(s.q || "")}" placeholder="Buscar código, descrição, veículo…" class="${campo} min-w-[16rem] flex-1">` +
-          selectF("kind", "DES e R-D", [["des", "Somente DESENVOLVIMENTO"], ["rd", "Somente REDESENVOLVIMENTO"]], s.kind) + `<button type="button" id="aclr" class="${botao} py-2">Limpar filtros</button>`;
+          `<button type="button" id="aclr" class="${botao} py-2">Limpar filtros</button>`;
       } else {
         $("#aintro").innerHTML = 'Pedidos de amostra por etapa. Use ◀ ▶ para mudar a etapa; ao chegar em <b class="text-ink">Chegou</b>, o item entra no <a class="font-semibold text-blue-600" href="/envio">Envio de amostra</a> como «Pendente projeto».';
         const d = data || { suppliers: [], months: [] };
@@ -56,10 +56,10 @@
     // ---------- Sugestões de compra ----------
     const carregarPendentes = async () => {
       const s = filtrosDa(), d = await J("/api/purchases/pending?" + qs({ ...s, page: pg })), sm = d.summary, pages = Math.max(1, Math.ceil(d.total / d.size)); pend = d; rows = d.rows;
-      if (!s.q && !s.kind) nPend = sm.total; desenharAbas();
+      if (!s.q) nPend = sm.total; desenharAbas();
       $("#ak").innerHTML = kpi("Sugestões de compra", nf(sm.total), "sem amostra comprada", "amber") + kpi("Com referência cruzada", nf(sm.com_referencia), "dá para cotar já", "green") +
         kpi("Sem referência", nf(sm.total - sm.com_referencia), "buscar a referência antes de cotar", "slate") + kpi("Marcadas «Pendente compras»", nf(sm.pend_compras), "sub status do servidor ou marcação manual", "blue");
-      $("#aq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` + chip('data-tg="kind" data-v="des"', "DESENVOLVIMENTO", s.kind === "des") + chip('data-tg="kind" data-v="rd"', "REDESENVOLVIMENTO", s.kind === "rd");
+      $("#aq").innerHTML = "";
       metaLinha(d.total, "sugestão(ões)", "pendente_compras");
       $("#abody").innerHTML = TW.table([{ h: "Código" }, { h: "Descrição / veículos", nw: false }, { h: "Status", nw: false }, { h: "Referência cruzada (abre a consulta)", nw: false }, { h: "Menor preço", nw: false }, { h: "" }], d.rows.map((r, i) => {
         const k = r.suggestion === "DESENVOLVIMENTO" ? "des" : "rd", refs = topRefs(r.cross);

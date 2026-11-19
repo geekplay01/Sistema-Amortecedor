@@ -2,7 +2,7 @@
 Cada status é detectado pelo texto do STATUS e dos sub status da planilha (desenho, validação, projeto/invoice, Inmetro) e pode ser marcado/desmarcado à mão
 (a marcação manual prevalece e pode voltar ao automático). Textos diferentes ficam em status diferentes — ex.: «validação reprovada» ≠ «validação reprovada pela qualidade»."""
 
-import rules
+import rules, kinds
 GROUPS = [("compras", "Compras"), ("validacao", "Validação"), ("desenho", "Desenho e projeto"), ("fornecedor", "Fornecedor e cadastro"), ("inmetro", "Inmetro")]
 
 # key, rótulo, grupo, classe de cor, trechos que precisam aparecer (LIKE, maiúsculas, sem acento), trechos que não podem aparecer
@@ -39,10 +39,16 @@ def view_sql(has_cols):
     parts = ["coalesce(status,'')", "coalesce(drawing_substatus,'')", "coalesce(validation_substatus,'')"]
     for col in ("project_substatus", "inmetro_substatus"):
         if col in has_cols: parts.append(f"coalesce({col},'')")
-    # «Pendente compras» de um item já recebido é resíduo do servidor: não vale (etapa 16 · D5). O item está recebido quando alguma aplicação dele está
-    # em ITEM RECEBIDO (= status mais avançado, o que a lista mostra), mesmo que outra aplicação ainda traga o sub status antigo. A marcação manual continua prevalecendo.
-    extra = {"pend_compras": " * (1 - MAX(st='ITEM RECEBIDO'))"}
-    agg = ", ".join(f"MAX({_cond(inc, exc)}){extra.get(k, '')} {k}_a" for k, _, _, _, inc, exc in DEFS)
+    # «Pendente compras» (a marcação manual continua prevalecendo):
+    #  · DESENVOLVIMENTO — de um item já recebido é resíduo do servidor: não vale (etapa 16 · D5). O item está recebido quando alguma aplicação dele está em
+    #    ITEM RECEBIDO, mesmo que outra aplicação ainda traga o sub status antigo.
+    #  · REDESENVOLVIMENTO — vale POR APLICAÇÃO (etapa 19 · Q1): a aplicação R-D marcada «Pendente compras» conta enquanto ELA não estiver em ITEM RECEBIDO,
+    #    mesmo que outra aplicação do código já tenha sido recebida (cada aplicação R-D é um redesenvolvimento com outro fornecedor).
+    def agg1(k, inc, exc):
+        c = _cond(inc, exc)
+        if k != "pend_compras": return f"MAX({c})"
+        return f"CASE WHEN suggestion='{kinds.RD}' THEN MAX({c} AND st<>'ITEM RECEBIDO') ELSE MAX({c}) * (1 - MAX(st='ITEM RECEBIDO')) END"
+    agg = ", ".join(f"{agg1(k, inc, exc)} {k}_a" for k, _, _, _, inc, exc in DEFS)
     eff = ",\n ".join(f"COALESCE((SELECT value FROM rd_flags f WHERE f.code=g.code AND f.suggestion=g.suggestion AND f.flag='{k}'), g.{k}_a) {k}" for k in KEYS)
     auto = ", ".join(f"g.{k}_a a_{k}" for k in KEYS)
     return (f"CREATE VIEW v_rd_flags AS\nWITH a AS (SELECT code, suggestion, upper({"||' '||".join(parts)}) t, upper(trim(coalesce(status,''))) st FROM rd_projects WHERE {rules.desc_sql()}),\n"

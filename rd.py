@@ -1,17 +1,14 @@
 """Módulos «Desenvolvimento» e «Redesenvolvimento». Fonte oficial: SQL Server (DESENVOLVIMENTO_PRODUTOS) via data_pipeline.
-Item = código distinto dentro do tipo. Um código pode ter várias linhas (aplicações) e NÃO aparece em DES e R-D ao mesmo tempo (R-D prevalece)."""
+Item = código distinto dentro do tipo. Um código pode ter várias linhas (aplicações). Cada linha vale pelo tipo do servidor (SUGESTAO): o código que tem
+linhas DES e R-D aparece nas duas listas, cada uma com as próprias linhas (etapa 19 · Q2; antes o R-D prevalecia e escondia o DES ativo)."""
 import re, database as db
 from queries import q, q1
 
 import kinds, statuses, rules
 KINDS = dict(kinds.SLUG)          # {"des": "DESENVOLVIMENTO", "rd": "REDESENVOLVIMENTO"}
 
-def _excl(kind, a="r"):
-    """Exclusividade na leitura: o que é REDESENVOLVIMENTO não aparece em DESENVOLVIMENTO (R-D prevalece)."""
-    return f"{a}.code NOT IN (SELECT code FROM rd_projects WHERE suggestion='{kinds.RD}')" if kind == kinds.DES else "1=1"
-
 def _where(kind, f):
-    w, p = ["r.suggestion=:kind", rules.desc_sql("r.description"), _excl(kind)], {"kind": kind}
+    w, p = ["r.suggestion=:kind", rules.desc_sql("r.description")], {"kind": kind}
     for i, t in enumerate((f.get("q") or "").split()):
         k = re.sub(r"[^A-Z0-9]", "", t.upper())        # referência de concorrente/OEM do servidor (DESENVOLVIMENTO_CONCORRENTES), com ou sem pontuação
         ref = f" OR upper(r.code) IN (SELECT code FROM concorrentes WHERE ref_key LIKE :t{i}k)" if len(k) >= 3 else ""
@@ -74,8 +71,8 @@ def items(kind, f):
     return {"total": total, "rows": rows, "size": size, "kind": KINDS.get(kind, kind)}
 
 def facets(kind):
-    g = lambda col: q(f"SELECT {col} v,COUNT(DISTINCT code) n FROM rd_projects WHERE {rules.desc_sql()} AND {_excl(kind, "rd_projects")} AND suggestion=? AND {col} IS NOT NULL AND trim({col})<>'' GROUP BY {col} ORDER BY n DESC", (kind,))
-    base = "suggestion=? AND " + rules.desc_sql() + " AND " + _excl(kind, "rd_projects")
+    g = lambda col: q(f"SELECT {col} v,COUNT(DISTINCT code) n FROM rd_projects WHERE {rules.desc_sql()} AND suggestion=? AND {col} IS NOT NULL AND trim({col})<>'' GROUP BY {col} ORDER BY n DESC", (kind,))
+    base = "suggestion=? AND " + rules.desc_sql()
     tot = q1("SELECT COUNT(DISTINCT code) n,COUNT(*) l FROM rd_projects WHERE " + base, (kind,))
     cur = q1(f"SELECT SUM(cu>0) curtidos,SUM(nc>0) nao_curtidos FROM (SELECT MAX(coalesce(curtiu,0)) cu,MAX(coalesce(nao_curtiu,0)) nc FROM rd_projects WHERE {base} GROUP BY code)", (kind,))
     return {"status": g("status"), "drawing": g("drawing_substatus"), "validation": g("validation_substatus"), "supplier": g("supplier"), "make": g("make"), "total": tot["n"], "lines": tot["l"], "flags": flag_counts(kind),
@@ -150,7 +147,7 @@ def quick(term, limit=5):
         WHERE p.perfect_code LIKE ?1 OR p.description LIKE ?1 OR k.code LIKE ?1 OR (?3<>'' AND replace(replace(replace(replace(upper(k.code),'-',''),'.',''),'/',''),' ','') LIKE ?3) OR a.make LIKE ?1 OR a.model LIKE ?1 ORDER BY p.catalog_position LIMIT ?2""", (like, limit, "%" + re.sub(r'[^A-Z0-9]', '', term.upper()) + "%" if len(re.sub(r'[^A-Za-z0-9]', '', term)) >= 3 else ""))
     out = [{"kind": "Catálogo", "code": r["code"], "text": r["description"], "url": "/pesquisa?q=" + r["code"]} for r in prods]
     for k, label, slug in ((kinds.DES, kinds.DES, "desenvolvimento"), (kinds.RD, kinds.RD, "redesenvolvimento")):
-        rs = q(f"""SELECT code,MAX(description) d,MAX(vehicle) v,MAX(status) s FROM rd_projects WHERE suggestion=?1 AND {rules.desc_sql()} AND {_excl(k, "rd_projects")} AND (code LIKE ?2 OR description LIKE ?2 OR vehicle LIKE ?2 OR make LIKE ?2 OR application_text LIKE ?2)
+        rs = q(f"""SELECT code,MAX(description) d,MAX(vehicle) v,MAX(status) s FROM rd_projects WHERE suggestion=?1 AND {rules.desc_sql()} AND (code LIKE ?2 OR description LIKE ?2 OR vehicle LIKE ?2 OR make LIKE ?2 OR application_text LIKE ?2)
             GROUP BY code ORDER BY code LIMIT ?3""", (k, like, limit))
         out += [{"kind": label, "code": r["code"], "text": " · ".join(x for x in (r["d"], r["v"], r["s"]) if x), "url": f"/{slug}?q=" + r["code"]} for r in rs]
     return out

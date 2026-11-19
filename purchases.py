@@ -3,7 +3,7 @@
 import re
 import database as db
 from queries import q, q1, cross_for
-import rd, rules
+import rd, rules, kinds
 
 DONE = {"chegou", "finalizado", "aprovado"}
 BRAND_ORDER = ["MONROE", "KAYABA", "COFAP", "NAKATA", "SACHS", "CORVEN", "TRW", "TRW AMD", "ISAPA", "ALBARUS", "DEVIGILI", "RECORD", "CILBRAKE", "GLOBO", "FRIC ROT", "JINBO AUTOPART", "PERFECT", "OEM"]
@@ -11,15 +11,16 @@ STAGE = {"cotacao": "Cotação", "sc_aberta": "SC aberta", "chegou": "Chegou", "
 def _k(c): return re.sub(r"[^A-Z0-9]", "", (c or "").upper())
 def _base(c): return re.sub(r"^(MP-|D-)", "", re.sub(r"[/\s]", "", (c or "").strip().upper()))
 
-# Etapa 18 · Q11: compra de amostra só para código PERFECT (AMD…) em desenvolvimento. Itens de montadora — BPROAUTO (1BP…), MOTRIO (só números) e
-# MOTORCRAFT (PN Ford) — não são sugeridos nem aceitos no pedido.
+# Etapa 18 · Q11: compra de amostra só para código PERFECT (AMD…). Itens de montadora — BPROAUTO (1BP…), MOTRIO (só números) e
+# MOTORCRAFT (PN Ford) — não são sugeridos nem aceitos no pedido. Etapa 19 · Q3: o pedido MANUAL aceita também item já desenvolvido (no catálogo).
 def is_perfect(code): return _base(code).startswith("AMD")
 def code_problem(code):
     """None se o código pode ter pedido de amostra; senão o motivo (mostrado no formulário e devolvido pela API)."""
     c = _base(code)
-    if not c: return "Informe o código PERFECT do item em desenvolvimento."
+    if not c: return "Informe o código PERFECT do item."
     if not c.startswith("AMD"): return f"{c} não é código PERFECT (AMD…). Itens de montadora (BPROAUTO, MOTRIO, MOTORCRAFT) não têm pedido de amostra."
-    if not q1("SELECT 1 FROM rd_projects WHERE upper(code)=? LIMIT 1", (c,)): return f"{c} não está em Desenvolvimento nem em Redesenvolvimento."
+    if not (q1("SELECT 1 FROM rd_projects WHERE upper(code)=? LIMIT 1", (c,)) or q1("SELECT 1 FROM products WHERE upper(perfect_code)=? LIMIT 1", (c,))):
+        return f"{c} não está em Desenvolvimento, Redesenvolvimento nem no catálogo."
     return None
 
 def _orders():
@@ -62,11 +63,10 @@ def _sort_cross(cs):
 def pending(f):
     """Sugestões de compra de amostra: itens (Amortecedor) em DESENVOLVIMENTO/REDESENVOLVIMENTO marcados «PENDENTE COMPRAS», que NÃO estão no catálogo, cujo status é DIFERENTE
     de ITEM RECEBIDO e para os quais AINDA NÃO compramos amostra (sem data de amostra comprada/enviada e sem pedido de amostra além da cotação)."""
-    kind = {"des": "DESENVOLVIMENTO", "rd": "REDESENVOLVIMENTO"}.get(f.get("kind") or "")
-    # SÓ o que está em desenvolvimento/redesenvolvimento com «PENDENTE COMPRAS»; ITEM RECEBIDO e itens que já estão no catálogo não são listados
+    # SÓ DESENVOLVIMENTO com «PENDENTE COMPRAS» (etapa 19 · Q3: Redesenvolvimento não tem sugestão de amostra; o pedido de item já desenvolvido é manual);
+    # ITEM RECEBIDO e itens que já estão no catálogo não são listados
     w, p = [rules.desc_sql("r.description"), "coalesce(v.pend_compras,0)=1", "upper(r.code) LIKE 'AMD%'",     # só PERFECT (sem itens de montadora)
-            "NOT EXISTS (SELECT 1 FROM products pp WHERE pp.catalog_position IS NOT NULL AND (pp.id=r.product_id OR upper(pp.perfect_code)=upper(r.code)))"], {}
-    if kind: w.append("r.suggestion=:k"); p["k"] = kind
+            "NOT EXISTS (SELECT 1 FROM products pp WHERE pp.catalog_position IS NOT NULL AND (pp.id=r.product_id OR upper(pp.perfect_code)=upper(r.code)))", "r.suggestion=:k"], {"k": kinds.DES}
     for i, t in enumerate((f.get("q") or "").split()):
         w.append(f"(r.code LIKE :t{i} OR r.description LIKE :t{i} OR r.make LIKE :t{i} OR r.vehicle LIKE :t{i})"); p[f"t{i}"] = f"%{t}%"
     rows = q(f"""SELECT r.code,r.suggestion,MAX(r.description) description,MAX(r.product_id) product_id,group_concat(DISTINCT r.make) makes,group_concat(DISTINCT r.vehicle) vehicles,

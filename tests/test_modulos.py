@@ -578,7 +578,9 @@ class MetaRdPorValidacao(_TmpDB):
     def test_pendente_compras_some_quando_recebido(self):
         self.assertEqual(self.flags()["V1"], 0); self.assertEqual(self.flags()["V3"], 1)
         self.sql("INSERT INTO rd_projects(code,suggestion,status,validation_substatus,description,line) VALUES('V4',?,'FINALIZANDO CIT','PENDENTE COMPRAS','AMORTECEDOR','AMORTECEDOR')", [(self.R,)])
-        self.assertEqual(self.flags()["V4"], 0)                                   # outra aplicação do item ainda traz o sub status, mas o item já está recebido
+        self.assertEqual(self.flags()["V4"], 1)                                   # etapa 19 · Q1: no R-D vale por aplicação — esta aplicação ainda não foi recebida
+        self.sql("UPDATE rd_projects SET status='ITEM RECEBIDO' WHERE code='V4'")
+        self.assertEqual(self.flags()["V4"], 0)                                   # todas as aplicações recebidas: o sub status antigo não vale
         self.sql("INSERT INTO rd_flags(code,suggestion,flag,value) VALUES('V1',?,'pend_compras',1)", [(self.R,)])
         self.assertEqual(self.flags()["V1"], 1)                                   # marcação manual prevalece
 
@@ -653,7 +655,7 @@ class UniversoDesRd(_TmpDB):
                             "STATUS": ["EM COTAÇÃO"] * 7, "DESCRIÇÃO": ["AMORTECEDOR DIANT", "AMORTECEDOR TRAS", "AMORTECEDOR PESADO", "COXIM DO AMORTECEDOR", "KIT AMORTECEDOR", "AMORTECEDOR X", "AMORTECEDOR X"],
                             "LINHA": ["AMORTECEDOR", " amortecedor ", "AMORTECEDOR LINHA PESADA", "COX", "KAD", "AMORTECEDOR", "AMORTECEDOR"]})
         res = dp.normalize_dev(raw); df = res.rows
-        self.assertEqual(df.loc[df["code"] == "B1", "kind"].unique().tolist(), ["REDESENVOLVIMENTO"]); self.assertEqual(res.warnings.get("codigos_em_des_e_rd"), 1)      # B1 em DES e R-D → só R-D
+        self.assertEqual(sorted(df.loc[df["code"] == "B1", "kind"].unique().tolist()), ["DESENVOLVIMENTO", "REDESENVOLVIMENTO"]); self.assertEqual(res.warnings.get("codigos_em_des_e_rd"), 1)      # etapa 19: cada linha pelo tipo do servidor
         self.db.init_db(); c = self.db.conn(); c.executemany("INSERT INTO rd_projects(code,suggestion,description,line) VALUES(?,?,?,?)", list(df[["code", "kind", "description", "line"]].itertuples(index=False, name=None))); c.commit()
         ok = sorted(r[0] for r in c.execute("SELECT DISTINCT code FROM rd_projects WHERE " + rules.desc_sql())); c.close()
         self.assertEqual(ok, ["A1", "A2", "A3", "B1"])          # COX e KAD fora; «AMORTECEDOR LINHA PESADA» dentro
@@ -704,14 +706,24 @@ class MercadoLivreFallback(unittest.TestCase):
         self.assertEqual(r.status_code, 500); self.assertIn("falha de teste", r.get_json()["error"])
 
 
+class EventoNovoItem(_TmpDB):
+    def test_item_que_aparece_ja_recebido_nao_conta_como_recebido_hoje(self):
+        """Etapa 19: linha DES que antes era regravada como R-D volta ao DES e aparece como item novo já recebido (origin «novo_item»): não data o recebimento."""
+        import goals
+        self.db.init_db(); goals.ensure()
+        self.sql("INSERT INTO dev_status_events(code,kind,field,from_value,to_value,at,origin) VALUES(?,?,?,?,?,?,?)",
+                 [("N1", "DESENVOLVIMENTO", "status", None, "ITEM RECEBIDO", "2026-11-19 10:00", "novo_item"), ("N2", "DESENVOLVIMENTO", "status", "FINALIZANDO CIT", "ITEM RECEBIDO", "2026-11-19 10:00", "sync")])
+        self.assertEqual(sorted(c for c, _ in goals._events(2026)), ["N2"])
+
+
 class MetasEstritas(unittest.TestCase):
-    def test_linha_estrita_sem_cox_kad_e_des_rd_exclusivos(self):
+    def test_linha_estrita_sem_cox_kad_e_tipo_por_linha(self):
         import metas
         df = pd.DataFrame([("A1", "DES", "AMORTECEDOR", "italoc "), ("A2", "des", "Amortecedor Linha Pesada", "ITALOC"), ("C1", "DES", "COXIM DO AMORTECEDOR", "ITALOC"),
                            ("K1", "R-D", "AMORTECEDOR KAD", "ITALOC"), ("A3", "R-D", "AMORTECEDOR", "ITALOC"), ("A1", "R-D", "AMORTECEDOR", "ITALOC"),
                            ("A4", "DES", "AMORTECEDOR", "OUTRO")], columns=["CODIGO", "SUGESTAO", "LINHA", "USER_VALID"])
         r = metas.validation_counts(df)
-        self.assertEqual((r["DES"], r["R-D"]), (1, 2))      # A2 em DES; A3 e A1 em R-D (A1 está nos dois → só R-D); COX/KAD e outro usuário ficam fora
+        self.assertEqual((r["DES"], r["R-D"]), (2, 2))      # etapa 19: A1 e A2 em DES; A3 e A1 em R-D (cada linha pelo tipo do servidor); COX/KAD e outro usuário ficam fora
 
 
 class BrandsPlanilha(_TmpDB):
@@ -765,12 +777,12 @@ class CompraAmostra(_TmpDB):
                        ("AMD2", "DESENVOLVIMENTO", "PENDENTE COMPRAS", "AMORTECEDOR X"),      # já está no catálogo → fora
                        ("AMD3", "DESENVOLVIMENTO", "ITEM RECEBIDO", "AMORTECEDOR X"),         # recebido → fora
                        ("AMD4", "REDESENVOLVIMENTO", "EM ANDAMENTO", "AMORTECEDOR X"),        # sem «Pendente compras» → fora
-                       ("AMD5", "REDESENVOLVIMENTO", "PENDENTE COMPRAS", "AMORTECEDOR Y"),    # entra
+                       ("AMD5", "REDESENVOLVIMENTO", "PENDENTE COMPRAS", "AMORTECEDOR Y"),    # R-D não tem sugestão de amostra (etapa 19 · Q3) → fora
                        ("COX6", "DESENVOLVIMENTO", "PENDENTE COMPRAS", "COXIM DO AMORTECEDOR"),   # COX → fora
                        ("1BP31901AB", "DESENVOLVIMENTO", "PENDENTE COMPRAS", "AMORTECEDOR X"),     # montadora (BPROAUTO) → fora (etapa 18)
                        ("8550514114", "DESENVOLVIMENTO", "PENDENTE COMPRAS", "AMORTECEDOR X"),     # MOTRIO → fora
                        ("JS1/18097/AA", "DESENVOLVIMENTO", "PENDENTE COMPRAS", "AMORTECEDOR X")])  # MOTORCRAFT → fora
-        r = purchases.pending({}); self.assertEqual(sorted(x["code"] for x in r["rows"]), ["AMD1", "AMD5"]); self.assertEqual(r["summary"]["total"], 2)
+        r = purchases.pending({}); self.assertEqual(sorted(x["code"] for x in r["rows"]), ["AMD1"]); self.assertEqual(r["summary"]["total"], 1)
 
     def test_planilha_traz_melhor_preco_e_dolar(self):
         import loaders, importer

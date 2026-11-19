@@ -52,7 +52,7 @@ def prepare(df):
     return out
 
 def _select(df, user, line, year):
-    """Linhas validadas pelo usuário, na LINHA certa, com tipo (T = DES / R-D, exclusivos) e, se houver data, no ano. → (p, sel, m_user, m_line, avisos)"""
+    """Linhas validadas pelo usuário, na LINHA certa, com tipo (T = DES / R-D, pela SUGESTAO de cada linha) e, se houver data, no ano. → (p, sel, m_user, m_line, avisos)"""
     avisos = []; p = prepare(df)
     if not (p["USER_VALID"] != "").any(): avisos.append("coluna USER_VALID ausente ou vazia — nada pôde ser validado")
     if not (p["LINHA"] != "").any():
@@ -65,9 +65,7 @@ def _select(df, user, line, year):
     if "DESCRICAO" in p.columns:                                         # linha vazia (servidor antigo): vale a descrição, também sem COX/KAD
         sem = p["LINHA"] == ""
         m_line = m_line | (sem & p["DESCRICAO"].str.contains(re.escape(line), regex=True, na=False) & ~p["DESCRICAO"].str.contains("|".join(rules.LINE_EXCLUDE), regex=True, na=False))
-    sel = p[m_user & m_line].copy(); sel["T"] = sel["SUGESTAO"].map(tipo)
-    cod_rd = set(sel.loc[sel["T"] == RD, "CODIGO"]) - {""}              # DES e R-D mutuamente exclusivos: código em R-D não conta em DES (R-D prevalece)
-    sel = sel[~((sel["T"] == DES) & sel["CODIGO"].isin(cod_rd))]
+    sel = p[m_user & m_line].copy(); sel["T"] = sel["SUGESTAO"].map(tipo)      # etapa 19 · Q2: cada linha conta pelo tipo do servidor (sem «R-D prevalece»)
     if year:
         has = sel["DATA_APROVACAO"].notna().any()
         if has: sel = sel[sel["DATA_APROVACAO"].dt.year == int(year)]
