@@ -45,3 +45,9 @@ listar itens de montadora: virar regra de negócio.
   `garantias.build()` roda depois da sincronização; dataset novo `vendas_uf` (mês × UF, somado no servidor, incremental, 10 anos) para o índice por UF.
   Mapa: malha do IBGE (API de malhas, qualidade mínima, baixada com autorização do usuário) → `tools/mapa_uf.py` → `static/js/brasil_uf.js` (59 KB, offline).
   Na cópia: sincronização garantia + vendas_uf em 33 s; 36.171 linhas; 2026 = 9.094 peças / R$ 1,20 mi (2025 até 18/11: 6.031); índice RS 0,90% · SP 0,69% · DF 1,13%.
+- **Passo 3 — visual da Garantia** (`telas/garantia.js`, `marca.css`, `page.html` carrega `brasil_uf.js` só na Garantia): KPIs com ▲/▼ × mesmo período do ano anterior
+  (subir = vermelho); mapa SVG por UF (rampa do vermelho da marca misturado ao fundo do card — serve aos dois temas; 5 faixas por quantil; Índice/Peças; dica com o
+  código de mais garantia; clicar filtra `uf`); painel Regiões (índice da região = soma das peças ÷ soma das vendidas) ou, com estado escolhido, os 3 códigos do estado;
+  mensal Peças/Valor com a linha do ano anterior; Pareto (barras + % acumulado; clicar filtra o defeito); top códigos com link para `/item/<código>`; lotes e
+  fornecedores lado a lado; atalho «Lote» (válido/vencido). Card de clientes saiu (Q4: «somente os descritos»). Consultas por faixa de data (índice): 2,4 s → 0,7 s.
+  Corrigido erro de sintaxe do passo 1 em `amostras.js` (comentário `//` engolia o resto da linha).

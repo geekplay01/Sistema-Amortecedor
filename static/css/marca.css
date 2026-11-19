@@ -171,6 +171,12 @@ header.top{view-transition-name:psd-top}
 @keyframes psd-fade-in{from{opacity:0;transform:translateY(4px)}}
 main#psd-main{animation:psd-fade-in .18s ease-out both}
 
+/* ---------- mapa do Brasil (tela Garantia, etapa 18): estados clicáveis, rótulos que não roubam o clique, amostras da legenda ---------- */
+.psd-mapa path{cursor:pointer;outline:none;transition:opacity .15s}
+.psd-mapa path:hover,.psd-mapa path:focus-visible{opacity:.78}
+.psd-mapa text{pointer-events:none;user-select:none;font-family:var(--fontd)}
+.psd-sw{display:inline-block;width:20px;height:12px;border-radius:3px}
+
 @media (prefers-reduced-motion:reduce){
   ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}

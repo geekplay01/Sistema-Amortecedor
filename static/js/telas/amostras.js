@@ -181,7 +181,7 @@
       };
       let tt; pc.addEventListener("input", async () => {
         clearTimeout(tt); tt = setTimeout(fill, 200);
-        if (pc.value.length < 3) return; const d = await J("/api/samples/codes?q=" + encodeURIComponent(pc.value));     // só códigos PERFECT em desenvolvimento $("#pl").innerHTML = d.rows.map(r => `<option value="${esc(r.perfect_code)}">${esc(r.description || "")}</option>`).join(""); });
+        if (pc.value.length < 3) return; const d = await J("/api/samples/codes?q=" + encodeURIComponent(pc.value)); /* só códigos PERFECT em desenvolvimento */ $("#pl").innerHTML = d.rows.map(r => `<option value="${esc(r.perfect_code)}">${esc(r.description || "")}</option>`).join(""); });
       pc.addEventListener("change", fill); if (o.perfect_code) fill();
       $("#sform").onsubmit = async e => { e.preventDefault(); const v = Object.fromEntries(new FormData(e.target));
         const body = { ...v, id: o.id, to_send: !!v.to_send, pending_supplier: !!v.pending_supplier, quotes: $$(".qrow", dlg).map(r => ({ price: $(".qp", r).value, link: $(".ql", r).value, chosen: $("input[type=radio]", r).checked })) };

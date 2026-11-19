@@ -88,8 +88,8 @@ def _where(f, skip="", ano=None, ate=None):
     `ano`/`ate` (parâmetros): troca o ano do filtro e corta no dia-mês `ate` (MM-DD) — usado no «mesmo período do ano anterior»."""
     w, p = [], []
     a = ano or _ano(f)
-    if skip != "ano" and a != "todos": w.append("substr(data_cadastro,1,4)=?"); p.append(a)
-    if ate: w.append("substr(data_cadastro,6,5)<=?"); p.append(ate)
+    if skip != "ano" and a != "todos" and a.isdigit():          # faixa de datas (usa o índice ix_gar_data; substr() varria a tabela inteira)
+        w.append("data_cadastro>=? AND data_cadastro<=?"); p += [f"{a}-01-01", f"{a}-{ate or '12-31'}"]
     t = f.get("tipo") or ""
     if skip != "tipo":
         if not t: w.append(f"tipo IN ({','.join('?' * len(GARANTIA))})"); p += list(GARANTIA)
@@ -145,7 +145,7 @@ def summary(f, page=1, size=100):
         wa, pa = _where(f, ano=per[0], ate=per[1]); ant = {**_kpis(wa, pa), "ano": per[0], "ate": per[1]}
     lw = (w + " AND " if w else " WHERE ") + "coalesce(lote,'')<>''"
     desc = {r["perfect_code"]: r["description"] for r in q("SELECT perfect_code,description FROM products")}
-    codigos = T("SELECT codigo, COUNT(*) linhas, COALESCE(SUM(qtd),0) pecas, COALESCE(SUM(valor),0) valor, COUNT(DISTINCT defeito) defeitos FROM garantias{w} GROUP BY codigo ORDER BY pecas DESC LIMIT 15")
+    codigos = T("SELECT codigo, COUNT(*) linhas, COALESCE(SUM(qtd),0) pecas, COALESCE(SUM(valor),0) valor, COUNT(DISTINCT defeito) defeitos FROM garantias{w} GROUP BY +codigo ORDER BY pecas DESC LIMIT 15")   # +codigo: não percorre o índice do código (10× mais lento)
     for r in codigos: r["descricao"] = desc.get(r["codigo"])
     tot = k["pecas"] or 1
     defeitos = T("SELECT defeito, MAX(defeito_cod) cod, COUNT(*) linhas, COALESCE(SUM(qtd),0) pecas FROM garantias{w} GROUP BY defeito ORDER BY pecas DESC LIMIT 15")
