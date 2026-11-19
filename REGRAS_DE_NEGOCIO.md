@@ -121,7 +121,12 @@ Cada regra cita o arquivo onde ela está implementada. Onde a etapa 15 mudou alg
 - Fraga (`fraga.py`): «LANÇAMENTOS aaaa» (frota por veículo × ano de venda; usa a coluna do ano atual) e «COFAP × frota» (veículo × amortecedor COFAP). Pela Atualização de dados; cada carga substitui a anterior.
 - Anomalias: «Cross × servidor» (mesmo concorrente sem referência em comum) e «Concorrentes repetidos» (mesma referência em 2+ códigos; mesmo código e concorrente com 2+ referências).
 
-## 11. Interface (etapa 17)
+## 11. Cobertura de concorrentes e página do item (etapa 17)
+- Cobertura · catálogo (`cobertura.catalogo`): só itens do catálogo; referência pela regra dos concorrentes (CrossCatalogo, servidor quando a planilha não tem o item); OEM fora. Curva ABC = vendas dos 12 meses fechados no universo do BI (`curva_abc.classes`), A até 80% do valor acumulado, B até 95%.
+- Cobertura · desenvolvimento (`cobertura.desenvolvimento`): DES em andamento (sem ITEM RECEBIDO, sem cancelado, universo amortecedor, não bloqueado; R-D fora). Frota = soma da frota do ano atual dos veículos da Fraga (LANÇAMENTOS) com a mesma marca, o nome do veículo da aplicação (1ª palavra no começo, as duas primeiras contidas) e ano de venda dentro dos anos da aplicação; o mesmo veículo × ano conta uma vez. Sem casamento: COFAP × Fraga pela referência COFAP do servidor; depois a FROTA do servidor. Curva A até 80% da frota acumulada, B até 95%. Lançamento = veículo com início de produção a partir de 2024.
+- Página do item (`item.py`): junta catálogo, DES/R-D, vendas, estoque, pedidos, garantia (padrão da tela Garantia, todos os anos), desenhos, Inmetro, FOB, Brands, pendências e anomalias do código. Não mostra posição no catálogo nem IDs.
+
+## 12. Interface (etapa 17)
 - Filtros **[mudou em 18/11/2026]**: ficam só na URL (`PSDTW.filtros` em `static/js/tw.js`). Tela aberta pelo menu vem limpa; links entre telas e o Voltar do navegador abrem filtrados. Nada é lembrado da visita anterior.
 - Posição no catálogo e IDs não aparecem na interface; seguem no Excel. A ordem padrão de Produtos continua a do catálogo.
 - Arquivos baixados: «PerfectAmortecedores - <nome da tela como no menu> - dd-mm.xlsx» (`exporter.friendly_name`; CSV: `PSDTW.nome`). Os filtros não entram no nome: estão na aba «Filtros aplicados».

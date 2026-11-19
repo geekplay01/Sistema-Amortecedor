@@ -70,6 +70,18 @@ def base(today=None):
                     "chegadas": ch, "projecao": proj, "falta_em": falta, "antes_de_chegar": bool(falta) and x["a_caminho"] > 0})
     return out, {"risco": risco, "excesso": EXCESSO}, {"de": de, "ate": ate, "meses": meses}
 
+_MAPA = {}
+def mapa(today=None):
+    """(linhas por código sem pontuação, limites, janela) — o mesmo cálculo da tela, em memória até a próxima sincronização ou a virada do dia
+    (página do item e Cobertura de concorrentes, etapa 17)."""
+    from queries import q1
+    hoje = today or datetime.date.today(); run = (q1("SELECT MAX(id) i FROM ds_runs") or {}).get("i"); key = (hoje.isoformat(), run)
+    if _MAPA.get("k") != key:
+        try: rows, lim, jan = base(hoje)
+        except Exception: rows, lim, jan = [], {}, {"meses": []}
+        _MAPA.update(k=key, v=({r["codigo"]: r for r in rows}, lim, jan))
+    return _MAPA["v"]
+
 ORDEM = {"ruptura": 0, "risco": 1, "ok": 2, "excesso": 3, "sem_giro": 4}
 def listing(f, today=None, size=100):
     rows, lim, jan = base(today)

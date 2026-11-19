@@ -97,3 +97,10 @@ Pedido do usuário: design moderno em todos os módulos (cores do logo, ícones 
 - Desempenho: ~0,7 s por item (garantia por consulta direta ao código; estoque e curva em memória até a próxima sincronização). A 1ª abertura depois de sincronizar calcula a previsão (~13 s), como a tela Estoque.
 - `tw.js`: gráfico misto (barra + linha) respeita o tipo de cada série.
 - Teste `test_31`. Na cópia: AMD0637 (curva A, ruptura, 36 linhas de pedido, falta em nov/26 antes de chegar), AMD0100 (anomalia Cross × servidor), AMD0340 (só DES, pendente cadastro Protheus).
+
+### Passo 5 · Cobertura de concorrentes (19/11/2026) ✅
+- Tela nova `/cobertura` (menu 3 · Catálogo; `cobertura.py`, `telas/cobertura.js`, `/api/cobertura`, Excel `/api/export/cobertura.xlsx` com as abas Catálogo e Desenvolvimento).
+- **Catálogo:** concorrente × referência × nosso código (só catálogo; referência pela regra Q18; OEM fora), com descrição, aplicação, linha, curva ABC de vendas (12 meses fechados, universo do BI) e situação do estoque. Cartões por concorrente (códigos cobertos e barra A/B/C; clique filtra), atalhos de curva e linha, busca; contagem = lista.
+- **Desenvolvimento:** DES em andamento (sem ITEM RECEBIDO/cancelado, universo amortecedor, não bloqueado; R-D fora) com frota da Fraga pelo veículo e anos da aplicação (mesmo veículo × ano conta uma vez), reserva COFAP × Fraga e FROTA do servidor; curva A/B/C pela frota acumulada (80/95); selo Lançamento (início de produção ≥ 2024); gráfico das 15 maiores frotas; dica com os veículos que somaram.
+- `estoque.mapa()`: linha do Estoque por código em memória (usada aqui e na página do item).
+- Teste `test_32`. Na cópia: 3.956 referências de 17 concorrentes cobrindo 874 dos 914 itens (95,6%); COFAP 795 códigos (149 curva A). Desenvolvimento: 410 itens, 377 com frota (344 Fraga·veículos, 16 Fraga·COFAP, 17 servidor), frota somada 25,7 mi, curva A 65 · B 75 · C 237 · sem frota 33; 105 com lançamento. Maior: AMD0835 (Gol 2001–2016, 1,9 mi).

@@ -7,16 +7,10 @@ from queries import q, q1
 
 def _k(c): return re.sub(r"[^A-Z0-9]", "", re.sub(r"^\s*MP-", "", str(c or "").upper()))
 
-_EST = {}
 def _estoque(code, today=None):
     """Linha da tela Estoque do código (mesma regra: armazém 04, média de 12 meses fechados, cobertura e projeção de 6 meses). Em memória até a próxima sincronização."""
     import estoque
-    hoje = today or datetime.date.today(); run = (q1("SELECT MAX(id) i FROM ds_runs") or {}).get("i"); key = (hoje.isoformat(), run)
-    if _EST.get("k") != key:
-        try: rows, lim, jan = estoque.base(hoje)
-        except Exception: rows, lim, jan = [], {}, {"meses": []}
-        _EST.update(k=key, v=({r["codigo"]: r for r in rows}, lim, jan))
-    by, lim, jan = _EST["v"]
+    by, lim, jan = estoque.mapa(today)
     r = by.get(_k(code))
     return {"available": bool(by), "row": r, "limites": lim, "meses": jan.get("meses", [])}
 

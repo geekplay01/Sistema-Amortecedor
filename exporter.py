@@ -116,10 +116,10 @@ BUILD = {"desenvolvimento": _rd("DESENVOLVIMENTO"), "redesenvolvimento": _rd("RE
 
 LABELS = {"desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvolvimento", "produtos": "Produtos e códigos", "pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares",
           "comparacao": "Comparação técnica", "pendencias": "Pendências de dados", "fontes": "Fontes e histórico", "amostras": "Compra de amostras", "damping": "Damping force",
-          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra"}      # nome da tela como no menu (nome do arquivo baixado)
+          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra", "cobertura": "Cobertura de concorrentes"}      # nome da tela como no menu (nome do arquivo baixado)
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
-          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "linha": "Linha", "hibrido": "Híbrido ou elétrico","origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito"}
+          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "linha": "Linha", "hibrido": "Híbrido ou elétrico","origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito", "concorrente": "Concorrente", "curva": "Curva ABC", "lancamento": "Lançamento", "tab": "Aba"}
 FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "hibrido": {"S": "Sim", "N": "Não", "nd": "Não informado"}, "linha": {"sem": "Sem linha"},"kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT", "conflito": "Conflito entre fontes", "campo_ausente": "Campo ausente", "campo_invalido": "Campo inválido"},
           "status": {"aberta": "Abertas", "resolvida": "Resolvidas", "ignorada": "Ignoradas", "todas": "Todas", "simulado": "Só verificação"},
           "field": {"family": "Família", "package_code": "Código da caixa", "ean": "EAN", "peso": "Peso", "sistema": "Sistema"},
@@ -231,6 +231,22 @@ def _previsao(a):
                r.get("dias_vencida"), ", ".join(A[x] for x in r["alertas"]), r.get("confianca")] for r in d["rows"]],
              [10, 10, 16, 34, 10, 20, 14, 11, 11, 11, 11, 13, 11, 11, 12, 10, 22, 10])], d["total"]
 BUILD["previsao"] = _previsao
+
+def _cobertura(a):
+    """Cobertura de concorrentes (etapa 17): aba Catálogo (concorrente × referência × nosso código, curva e estoque) e aba Desenvolvimento (DES em andamento com frota e curva),
+    cada uma com os filtros da sua aba na tela (`tab` diz qual aba estava aberta; a outra sai sem filtro)."""
+    import cobertura
+    des = a.get("tab") == "desenvolvimento"
+    c = cobertura.catalogo({**({} if des else a), "all": 1}); d = cobertura.desenvolvimento({**(a if des else {}), "all": 1})
+    SITL = {"ruptura": "Ruptura", "risco": "Risco", "ok": "OK", "excesso": "Excesso", "sem_giro": "Sem giro", "sem": ""}
+    return [("Catálogo", ["Concorrente", "Referência", "Código PERFECT", "Descrição", "Linha", "Aplicação", "Curva ABC", "Situação do estoque", "Fonte da referência"],
+             [[r["concorrente"], r["referencia"], r["codigo"], r["descricao"], r["linha"], r["aplicacao"], "" if r["curva"] == "sem" else r["curva"], SITL.get(r["situacao"], r["situacao"]), r["fonte"]] for r in c["rows"]],
+             [16, 16, 14, 34, 24, 40, 10, 14, 16]),
+            ("Desenvolvimento", ["Código", "Descrição", "Status", "Fornecedor", "Aplicações", f"Frota {d['kpis']['ano']}", "Origem da frota", "Curva", "Lançamento", "Concorrentes", "Veículos que mais somaram"],
+             [[r["codigo"], r["descricao"], r["status"], r["fornecedor"], " · ".join(r["aplicacoes"]), r["frota"], r["origem"], "" if r["curva"] == "sem" else r["curva"], "Sim" if r["lancamento"] else "",
+               ", ".join(r["concorrentes"]), "; ".join(f"{v['nome']} ({v['frota']:,.0f})".replace(",", ".") for v in r["veiculos"])] for r in d["rows"]],
+             [14, 30, 20, 12, 40, 12, 16, 8, 10, 36, 50])], c["total"] + d["total"]
+BUILD["cobertura"] = _cobertura
 
 def build(name, args):
     if name not in BUILD: raise ValueError("Módulo sem exportação.")

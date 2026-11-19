@@ -592,6 +592,41 @@ class Fluxo(unittest.TestCase):
             x = C.get("/api/item/" + rd[0]); self.assertEqual(x.status_code, 200); self.assertTrue(x.json["desenvolvimento"]["rows"]); self.assertFalse(x.json["topo"]["no_catalogo"])
         self.assertEqual(C.get("/api/item/NAOEXISTE999").status_code, 404)
 
+    def test_32_cobertura_de_concorrentes(self):
+        """Etapa 17 · Q12/Q13/Q27: catálogo = concorrente × referência × nosso código (atalhos de curva/linha/concorrente = lista); desenvolvimento = DES em andamento
+        com frota da Fraga pelo veículo e anos da aplicação, curva A/B/C pela frota acumulada e selo de lançamento; Excel com as duas abas."""
+        import io, datetime
+        from openpyxl import load_workbook
+        y = datetime.date.today().year; con = sqlite3.connect(DB)
+        try:
+            pid, pc = con.execute("SELECT id, perfect_code FROM products WHERE catalog_position IS NOT NULL ORDER BY id LIMIT 1").fetchone()
+            con.execute("INSERT INTO sources(name,category) SELECT 'CrossCatalogo.xlsx','Referência cruzada' WHERE NOT EXISTS(SELECT 1 FROM sources WHERE name='CrossCatalogo.xlsx')")
+            src = con.execute("SELECT id FROM sources WHERE name='CrossCatalogo.xlsx'").fetchone()[0]
+            con.executemany("INSERT INTO codes(product_id,code,normalized_code,code_type,brand,source_id) VALUES(?,?,?,?,?,?)", [(pid, "T32-A1", "T32A1", "concorrente", "MONROE", src), (pid, "T32-B1", "T32B1", "concorrente", "NAKATA", src)])
+            con.executemany("INSERT INTO rd_projects(code,suggestion,status,description,line,make,vehicle,year_from,year_to,extra) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                            [("T32DES1", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR", "FIAT", "UNO MILLE", 2010, 2012, "{}"), ("T32DES2", "DESENVOLVIMENTO", "EM COTAÇÃO", "AMORTECEDOR", "AMORTECEDOR", "VOLKSWAGEN", "GOL", 2024, 2026, "{}"),
+                             ("T32DES3", "DESENVOLVIMENTO", "ITEM RECEBIDO", "AMORTECEDOR", "AMORTECEDOR", "FIAT", "UNO", 2010, 2012, "{}")])
+            con.executemany("INSERT INTO fraga_veiculos(codigo_fraga,marca,veiculo,ano_venda,frota,frota_ano,inicio) VALUES(?,?,?,?,?,?,?)",
+                            [("F1", "FIAT", "UNO MILLE FIRE", 2010, 9000, y, "2004-01-01"), ("F1", "FIAT", "UNO MILLE FIRE", 2011, 8000, y, "2004-01-01"), ("F1", "FIAT", "UNO MILLE FIRE", 2015, 7000, y, "2004-01-01"),
+                             ("F2", "VOLKSWAGEN", "GOL", 2025, 100, y, "2024-02-01")])
+            con.commit()
+        finally: con.close()
+        d = C.get("/api/cobertura?q=T32").json; self.assertEqual(sorted((r["concorrente"], r["referencia"], r["codigo"]) for r in d["rows"]), [("MONROE", "T32-A1", pc), ("NAKATA", "T32-B1", pc)])
+        base = C.get("/api/cobertura").json
+        for k in ("curva", "linha", "concorrente"):
+            for v, n in list(base["counts"][k].items())[:3]: self.assertEqual(C.get(f"/api/cobertura?{k}={v}").json["total"], n, (k, v))
+        self.assertEqual(C.get("/api/cobertura?concorrente=MONROE&q=T32").json["total"], 1)
+        des = {r["codigo"]: r for r in C.get("/api/cobertura?tab=desenvolvimento&q=T32").json["rows"]}
+        self.assertEqual(set(des), {"T32DES1", "T32DES2"})                                         # recebido fica fora
+        self.assertEqual((des["T32DES1"]["frota"], des["T32DES1"]["origem"], des["T32DES1"]["lancamento"]), (17000, "Fraga · veículos", False))      # 2015 fora dos anos da aplicação
+        self.assertEqual((des["T32DES2"]["frota"], des["T32DES2"]["lancamento"]), (100, True))
+        t = C.get("/api/cobertura?tab=desenvolvimento").json
+        for k in ("curva", "origem"):
+            for v, n in t["counts"][k].items(): self.assertEqual(C.get(f"/api/cobertura?tab=desenvolvimento&{k}={v}").json["total"], n, (k, v))
+        self.assertEqual(C.get("/api/cobertura?tab=desenvolvimento&lancamento=1").json["total"], t["counts"]["lancamento"])
+        wb = load_workbook(io.BytesIO(C.get("/api/export/cobertura.xlsx?q=T32").data)); self.assertEqual(wb.sheetnames[:2], ["Catálogo", "Desenvolvimento"]); self.assertEqual(wb["Catálogo"].max_row - 1, 2)
+        self.assertIn("/cobertura", C.get("/dashboard").get_data(as_text=True))                     # está no menu
+
     def test_30_nome_do_arquivo_e_filtros_limpos(self):
         """Etapa 17 · Q8/Q16/Q26: arquivo «PerfectAmortecedores - <tela do menu> - dd-mm.xlsx», sem filtros no nome (eles ficam na aba «Filtros aplicados»);
         nenhuma tela guarda filtros da última visita; posição no catálogo fora da interface."""

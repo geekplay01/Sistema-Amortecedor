@@ -27,6 +27,7 @@ PAGES = [
  ("aplicacoes", "Aplicações veiculares", "car", 3),
  ("comparacao", "Comparação técnica", "git-compare-arrows", 4),
  ("anomalias", "Anomalias", "triangle-alert", 4),          # antiga «Equivalências» (agora uma das abas); /equivalencias redireciona
+ ("cobertura", "Cobertura de concorrentes", "swords", 17),          # etapa 17: concorrentes × nossos itens (catálogo) e curva dos DES pela frota
  ("atualizacao", "Atualização de dados", "refresh-cw", 2),
  ("lados", "Lados", "arrow-left-right", 3),
  ("envio", "Envio de amostra", "send", 3),
@@ -69,7 +70,7 @@ PRIMARY = ["metas", "pedidos-aberto", "vendas", "estoque", "garantia"]     # men
 MENU = [("Visão geral", ["dashboard", "brands"]),
         ("1 · Desenvolvimento", ["desenvolvimento", "redesenvolvimento", "desenhos", "damping"]),
         ("2 · Amostras", ["amostras", "envio"]),
-        ("3 · Catálogo", ["pesquisa", "produtos", "aplicacoes", "lados", "comparacao", "anomalias"]),
+        ("3 · Catálogo", ["pesquisa", "produtos", "aplicacoes", "lados", "comparacao", "cobertura", "anomalias"]),
         ("4 · Compras", ["fob"]),
         ("Dados", ["atualizacao", "importacao", "fontes", "pendencias"])]
 FLOW_GROUPS = {"1 · Desenvolvimento", "2 · Amostras", "3 · Catálogo", "4 · Compras"}
@@ -81,7 +82,7 @@ RELATED = {
  "lados": (["produtos", "desenvolvimento"], ["pedidos-aberto", "vendas"]), "aplicacoes": (["produtos"], ["lados"]),
  "pedidos-aberto": (["fob", "amostras"], ["vendas", "lados"]), "vendas": (["pedidos-aberto", "produtos"], ["garantia", "lados"]),
  "garantia": (["vendas"], ["redesenvolvimento"]), "estoque": (["vendas", "pedidos-aberto"], ["pedidos-aberto"]), "metas": (["desenvolvimento", "redesenvolvimento"], []), "fob": (["produtos"], ["pedidos-aberto"]),
- "atualizacao": ([], ["produtos", "lados"]), "anomalias": (["produtos", "pendencias"], ["pesquisa"]), "desenhos": (["desenvolvimento"], ["envio"]),
+ "atualizacao": ([], ["produtos", "lados"]), "anomalias": (["produtos", "pendencias"], ["pesquisa"]), "cobertura": (["produtos", "desenvolvimento"], ["pesquisa", "amostras"]), "desenhos": (["desenvolvimento"], ["envio"]),
 }
 _NAMES = {"pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares", "comparacao": "Comparação técnica", "desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvolvimento"}
 
@@ -334,6 +335,12 @@ def api_ficha(pid):
 def api_item(code):
     import item
     return jsonify(item.ficha(code) or abort(404))
+@app.get("/api/cobertura")
+def api_cobertura():
+    """Cobertura de concorrentes (etapa 17): tab=catalogo (padrão) ou desenvolvimento; filtros e atalhos com contagem = lista."""
+    import cobertura
+    a = request.args.to_dict()
+    return jsonify(cobertura.desenvolvimento(a, a.get("page")) if a.get("tab") == "desenvolvimento" else cobertura.catalogo(a, a.get("page")))
 @app.get("/item-id/<int:pid>")
 def item_by_id(pid):
     """Links antigos de ficha (data-ficha = id do produto) → página do item pelo código."""
