@@ -9,6 +9,18 @@ DONE = {"chegou", "finalizado", "aprovado"}
 BRAND_ORDER = ["MONROE", "KAYABA", "COFAP", "NAKATA", "SACHS", "CORVEN", "TRW", "TRW AMD", "ISAPA", "ALBARUS", "DEVIGILI", "RECORD", "CILBRAKE", "GLOBO", "FRIC ROT", "JINBO AUTOPART", "PERFECT", "OEM"]
 STAGE = {"cotacao": "Cotação", "sc_aberta": "SC aberta", "chegou": "Chegou", "finalizado": "Finalizado", "aprovado": "Aprovado"}
 def _k(c): return re.sub(r"[^A-Z0-9]", "", (c or "").upper())
+def _base(c): return re.sub(r"^(MP-|D-)", "", re.sub(r"[/\s]", "", (c or "").strip().upper()))
+
+# Etapa 18 · Q11: compra de amostra só para código PERFECT (AMD…) em desenvolvimento. Itens de montadora — BPROAUTO (1BP…), MOTRIO (só números) e
+# MOTORCRAFT (PN Ford) — não são sugeridos nem aceitos no pedido.
+def is_perfect(code): return _base(code).startswith("AMD")
+def code_problem(code):
+    """None se o código pode ter pedido de amostra; senão o motivo (mostrado no formulário e devolvido pela API)."""
+    c = _base(code)
+    if not c: return "Informe o código PERFECT do item em desenvolvimento."
+    if not c.startswith("AMD"): return f"{c} não é código PERFECT (AMD…). Itens de montadora (BPROAUTO, MOTRIO, MOTORCRAFT) não têm pedido de amostra."
+    if not q1("SELECT 1 FROM rd_projects WHERE upper(code)=? LIMIT 1", (c,)): return f"{c} não está em Desenvolvimento nem em Redesenvolvimento."
+    return None
 
 def _orders():
     out = {}
@@ -52,7 +64,7 @@ def pending(f):
     de ITEM RECEBIDO e para os quais AINDA NÃO compramos amostra (sem data de amostra comprada/enviada e sem pedido de amostra além da cotação)."""
     kind = {"des": "DESENVOLVIMENTO", "rd": "REDESENVOLVIMENTO"}.get(f.get("kind") or "")
     # SÓ o que está em desenvolvimento/redesenvolvimento com «PENDENTE COMPRAS»; ITEM RECEBIDO e itens que já estão no catálogo não são listados
-    w, p = [rules.desc_sql("r.description"), "coalesce(v.pend_compras,0)=1",
+    w, p = [rules.desc_sql("r.description"), "coalesce(v.pend_compras,0)=1", "upper(r.code) LIKE 'AMD%'",     # só PERFECT (sem itens de montadora)
             "NOT EXISTS (SELECT 1 FROM products pp WHERE pp.catalog_position IS NOT NULL AND (pp.id=r.product_id OR upper(pp.perfect_code)=upper(r.code)))"], {}
     if kind: w.append("r.suggestion=:k"); p["k"] = kind
     for i, t in enumerate((f.get("q") or "").split()):
@@ -88,4 +100,4 @@ def for_code(code):
             if _k(code_) == k: cross = lst; break
     cross = _sort_cross(cross)
     ors = _orders().get(k, [])
-    return {"pending": fl, "cross": cross, "state": state_of(ors), "orders": len(ors)}
+    return {"pending": fl, "cross": cross, "state": state_of(ors), "orders": len(ors), "problem": code_problem(code)}

@@ -212,7 +212,7 @@ def stash(uploads, kind="desenho"):
             for e in ents: e["source"] = name; man.append(e)
         else: man.append({"name": name, "path": p, "source": None, "folder": ""})
     info = {"kind": _kind(kind), "files": man, "zips": zips, "warnings": warns}
-    json.dump(info, open(os.path.join(d, "manifest.json"), "w", encoding="utf-8"), ensure_ascii=False)
+    with open(os.path.join(d, "manifest.json"), "w", encoding="utf-8") as fh: json.dump(info, fh, ensure_ascii=False)
     return tok, info
 def stashed(tok):
     if not re.fullmatch(r"[0-9a-f]{32}", tok or ""): return None

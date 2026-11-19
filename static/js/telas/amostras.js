@@ -174,14 +174,14 @@
           const com = (d.cross || []).filter(c => c.brand && !["OEM", "PERFECT"].includes(c.brand)), oth = (d.cross || []).filter(c => !com.includes(c)); ps.setRefs([...com, ...oth].map(c => ({ brand: c.brand, code: c.code })));
           if (o.autoSearch && !autoDone) { autoDone = true; ps.search(); }
           const xp = $("#xproj"); xp.dataset.dwblock = d.code || code; xp.innerHTML = ""; dwBlocks(dlg);   // Projeto PERFECT do item
-          $("#xref").innerHTML = (d.pending && d.pending.length ? `<div class="notice">Este código está <b>pendente de compra</b> em ${d.pending.map(x => x === "DESENVOLVIMENTO" ? "Desenvolvimento" : "Redesenvolvimento").join(" e ")}${d.state === "sem" ? " e ainda <b>não tem pedido de amostra</b>" : d.state === "andamento" ? " (já há pedido em andamento)" : " (já foi comprado)"}.</div>` : "")
+          $("#xref").innerHTML = (d.problem ? `<div class="notice">${esc(d.problem)}</div>` : "") + (d.pending && d.pending.length ? `<div class="notice">Este código está <b>pendente de compra</b> em ${d.pending.map(x => x === "DESENVOLVIMENTO" ? "Desenvolvimento" : "Redesenvolvimento").join(" e ")}${d.state === "sem" ? " e ainda <b>não tem pedido de amostra</b>" : d.state === "andamento" ? " (já há pedido em andamento)" : " (já foi comprado)"}.</div>` : "")
             + (d.cross && d.cross.length ? `<div class="xref"><b>Referência cruzada — o que cotar:</b> ${d.cross.map(c => `<span class="xchip"><b>${esc(c.brand || "")}</b> ${esc(c.code)}</span>`).join("")}</div>` : "");
           hint.textContent = d.application ? `Aplicação importada de ${d.source === "Catálogo" ? "Catálogo" : "Desenvolvimento"}${d.options.length > 1 ? ` (${d.options.length} opções na lista)` : ""}.` : (d.in_catalog ? "Sem aplicação cadastrada para este código." : "Código não encontrado em Desenvolvimento nem no catálogo.");
         } catch (e) { hint.textContent = ""; }
       };
       let tt; pc.addEventListener("input", async () => {
         clearTimeout(tt); tt = setTimeout(fill, 200);
-        if (pc.value.length < 3) return; const d = await J("/api/products?size=8&q=" + encodeURIComponent(pc.value)); $("#pl").innerHTML = d.rows.map(r => `<option value="${esc(r.perfect_code)}">${esc(r.description || "")}</option>`).join(""); });
+        if (pc.value.length < 3) return; const d = await J("/api/samples/codes?q=" + encodeURIComponent(pc.value));     // só códigos PERFECT em desenvolvimento $("#pl").innerHTML = d.rows.map(r => `<option value="${esc(r.perfect_code)}">${esc(r.description || "")}</option>`).join(""); });
       pc.addEventListener("change", fill); if (o.perfect_code) fill();
       $("#sform").onsubmit = async e => { e.preventDefault(); const v = Object.fromEntries(new FormData(e.target));
         const body = { ...v, id: o.id, to_send: !!v.to_send, pending_supplier: !!v.pending_supplier, quotes: $$(".qrow", dlg).map(r => ({ price: $(".qp", r).value, link: $(".ql", r).value, chosen: $("input[type=radio]", r).checked })) };

@@ -180,9 +180,15 @@ class Fluxo(unittest.TestCase):
         A.app.config["PRICE_FETCH"] = lambda *a, **k: (500, ""); r4 = C.post("/api/prices/search", json={"refs": [{"brand": "MONROE", "code": "16470"}]}).json
         self.assertEqual(r4["results"], []); self.assertIn("google_shopping", r4["refs"][0]["links"]); self.assertEqual(C.post("/api/prices/search", json={"refs": []}).status_code, 400)
         # salvar a escolha em sample_quotes
-        oid = C.post("/api/samples", json={"perfect_code": "AMD0100", "stage": "cotacao", "quotes": []}).json["id"]
+        # etapa 18 · Q11: pedido de amostra só para código PERFECT (AMD…) em desenvolvimento
+        for bad in ("1BP31901AB", "8550514114", "JS1/18097/AA", "AMD9999", ""):
+            r = C.post("/api/samples", json={"perfect_code": bad, "stage": "cotacao", "quotes": []}); self.assertEqual(r.status_code, 400, bad); self.assertTrue(r.json["error"])
+        self.assertTrue(all(x["perfect_code"].startswith("AMD") for x in C.get("/api/samples/codes?q=50").json["rows"]))
+        self.assertIsNone(C.get("/api/samples/prefill?code=AMD5001").json["problem"]); self.assertIn("montadora", C.get("/api/samples/prefill?code=1BP31901AB").json["problem"])
+        oid = C.post("/api/samples", json={"perfect_code": "AMD5001", "stage": "cotacao", "quotes": []}).json["id"]
+        self.assertEqual(C.post("/api/samples", json={"id": oid, "perfect_code": "AMD5001", "stage": "sc_aberta", "quotes": []}).status_code, 200)    # editar sem trocar o código
         qid = C.post("/api/prices/save", json={"order_id": oid, "price": 99.9, "link": "https://produto.mercadolivre.com.br/MLB5"}).json["id"]
-        row = next(x for x in C.get("/api/samples?q=AMD0100").json["rows"] if x["id"] == oid); self.assertEqual((row["quotes"][0]["price"], row["quotes"][0]["chosen"]), (99.9, 1))
+        row = next(x for x in C.get("/api/samples?q=AMD5001").json["rows"] if x["id"] == oid); self.assertEqual((row["quotes"][0]["price"], row["quotes"][0]["chosen"]), (99.9, 1))
         self.assertEqual(C.post("/api/prices/save", json={"order_id": 99999, "price": 1, "link": "x"}).status_code, 400); A.app.config.pop("PRICE_FETCH")
 
     def test_07b_busca_a_prova_de_falhas(self):

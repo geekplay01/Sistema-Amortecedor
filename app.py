@@ -412,9 +412,19 @@ def api_samples(): return jsonify(queries.samples(A()))
 @app.get("/api/samples/prefill")
 def api_sample_prefill():
     code = request.args.get("code", ""); d = queries.sample_prefill(code); d.update(purchases.for_code(d.get("code") or code)); return jsonify(d)
+@app.get("/api/samples/codes")
+def api_sample_codes():
+    """Sugestões do campo «Código PERFECT» do pedido de amostra: só códigos AMD de Desenvolvimento/Redesenvolvimento."""
+    t = "%" + (request.args.get("q") or "").strip().upper() + "%"
+    return jsonify(rows=queries.q("SELECT upper(code) perfect_code, MAX(description) description FROM rd_projects WHERE upper(code) LIKE 'AMD%' AND (upper(code) LIKE ? OR upper(description) LIKE ?) GROUP BY upper(code) ORDER BY 1 LIMIT 8", (t, t)))
 @app.post("/api/samples")
 def api_sample_save():
-    oid = queries.sample_save(request.get_json(force=True)); shipments.sync(); return jsonify(id=oid)   # etapa «Chegou» gera o envio «Pendente projeto»
+    d = request.get_json(force=True) or {}
+    old = queries.q1("SELECT perfect_code FROM sample_orders WHERE id=?", (d["id"],)) if d.get("id") else None
+    if not old or purchases._base(old.get("perfect_code")) != purchases._base(d.get("perfect_code")):     # pedido novo ou código trocado: só PERFECT em desenvolvimento
+        err = purchases.code_problem(d.get("perfect_code"))
+        if err: return jsonify(error=err), 400
+    oid = queries.sample_save(d); shipments.sync(); return jsonify(id=oid)   # etapa «Chegou» gera o envio «Pendente projeto»
 @app.delete("/api/samples/<int:i>")
 def api_sample_del(i): queries.run("DELETE FROM sample_orders WHERE id=?", (i,)); return jsonify(ok=True)
 @app.get("/api/backups")

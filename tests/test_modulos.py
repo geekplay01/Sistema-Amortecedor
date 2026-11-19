@@ -760,7 +760,10 @@ class CompraAmostra(_TmpDB):
                        ("AMD3", "DESENVOLVIMENTO", "ITEM RECEBIDO", "AMORTECEDOR X"),         # recebido → fora
                        ("AMD4", "REDESENVOLVIMENTO", "EM ANDAMENTO", "AMORTECEDOR X"),        # sem «Pendente compras» → fora
                        ("AMD5", "REDESENVOLVIMENTO", "PENDENTE COMPRAS", "AMORTECEDOR Y"),    # entra
-                       ("COX6", "DESENVOLVIMENTO", "PENDENTE COMPRAS", "COXIM DO AMORTECEDOR")])   # COX → fora
+                       ("COX6", "DESENVOLVIMENTO", "PENDENTE COMPRAS", "COXIM DO AMORTECEDOR"),   # COX → fora
+                       ("1BP31901AB", "DESENVOLVIMENTO", "PENDENTE COMPRAS", "AMORTECEDOR X"),     # montadora (BPROAUTO) → fora (etapa 18)
+                       ("8550514114", "DESENVOLVIMENTO", "PENDENTE COMPRAS", "AMORTECEDOR X"),     # MOTRIO → fora
+                       ("JS1/18097/AA", "DESENVOLVIMENTO", "PENDENTE COMPRAS", "AMORTECEDOR X")])  # MOTORCRAFT → fora
         r = purchases.pending({}); self.assertEqual(sorted(x["code"] for x in r["rows"]), ["AMD1", "AMD5"]); self.assertEqual(r["summary"]["total"], 2)
 
     def test_planilha_traz_melhor_preco_e_dolar(self):
