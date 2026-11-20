@@ -41,7 +41,7 @@ def build():
         ensure(c)
         try: raw = c.execute(f"""SELECT upper(r.code) code, r.suggestion kind, r.status, k.dev_id, k.competitor, k.reference FROM ds_concorrentes k
                                  JOIN rd_projects r ON json_extract(r.extra,'$.ID')=k.dev_id
-                                 WHERE upper(trim(coalesce(r.line,''))) IN ('AMORTECEDOR','AMORTECEDOR LINHA PESADA') AND {rules.desc_sql('r.description')}""").fetchall()
+                                 WHERE upper(trim(coalesce(r.line,''))) IN ('AMORTECEDOR','AMORTECEDOR LINHA PESADA') AND {rules.desc_sql('r.description', pesada=True)}""").fetchall()      # referência não é contagem: linha pesada continua tendo concorrentes
         except Exception: raw = []
         rows = []
         for r in raw:

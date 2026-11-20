@@ -53,7 +53,7 @@ def _meta(kind):
     """Por código: é «Amortecedor»? validado pelo usuário (ITALOC)? data de status vinda do servidor (se a view tiver essa coluna)?"""
     import json
     out = {}; vu = rules.valid_user()
-    for r in q(f"SELECT code, extra, description FROM rd_projects WHERE suggestion=? AND {rules.desc_sql('description', erp=False)}", (kind,)):      # meta: item bloqueado depois de recebido continua contando
+    for r in q(f"SELECT code, extra, description FROM rd_projects WHERE suggestion=? AND {rules.desc_sql('description', erp=False, pesada=True)}", (kind,)):      # meta: item bloqueado depois de recebido continua contando
         m = out.setdefault(r["code"], {"validated": False, "status_date": None, "valid_by": None, "valid_at": None, "pedido_conf": None})
         try: ex = json.loads(r["extra"]) if r["extra"] else {}
         except ValueError: ex = {}
@@ -183,7 +183,7 @@ def pending_validations(limit=200):
     rows = q("""SELECT s.code, s.kind, s.status, s.updated_at,
                 (SELECT MAX(v.sent_at) FROM validations v WHERE v.code=s.code AND v.kind=s.kind) sent_at,
                 (SELECT description FROM rd_projects r WHERE r.code=s.code AND r.suggestion=s.kind LIMIT 1) description
-                FROM dev_item_state s WHERE s.kind=? AND s.status=? AND s.present=1 AND s.code IN (SELECT code FROM rd_projects WHERE suggestion=s.kind AND """ + rules.desc_sql("description") + """) ORDER BY s.code LIMIT ?""", (kinds.RD, PEND_CONF, int(limit)))
+                FROM dev_item_state s WHERE s.kind=? AND s.status=? AND s.present=1 AND s.code IN (SELECT code FROM rd_projects WHERE suggestion=s.kind AND """ + rules.desc_sql("description", pesada=True) + """) ORDER BY s.code LIMIT ?""", (kinds.RD, PEND_CONF, int(limit)))
     meta = _meta(kinds.RD)
     for r in rows: r["validated"] = bool(meta.get(r["code"], {}).get("validated"))
     return {"rows": rows, "total": len(rows), "sent": sum(1 for r in rows if r["sent_at"])}

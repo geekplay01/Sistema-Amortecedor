@@ -657,8 +657,10 @@ class UniversoDesRd(_TmpDB):
         res = dp.normalize_dev(raw); df = res.rows
         self.assertEqual(sorted(df.loc[df["code"] == "B1", "kind"].unique().tolist()), ["DESENVOLVIMENTO", "REDESENVOLVIMENTO"]); self.assertEqual(res.warnings.get("codigos_em_des_e_rd"), 1)      # etapa 19: cada linha pelo tipo do servidor
         self.db.init_db(); c = self.db.conn(); c.executemany("INSERT INTO rd_projects(code,suggestion,description,line) VALUES(?,?,?,?)", list(df[["code", "kind", "description", "line"]].itertuples(index=False, name=None))); c.commit()
-        ok = sorted(r[0] for r in c.execute("SELECT DISTINCT code FROM rd_projects WHERE " + rules.desc_sql())); c.close()
-        self.assertEqual(ok, ["A1", "A2", "A3", "B1"])          # COX e KAD fora; «AMORTECEDOR LINHA PESADA» dentro
+        ok = sorted(r[0] for r in c.execute("SELECT DISTINCT code FROM rd_projects WHERE " + rules.desc_sql()))
+        pes = sorted(r[0] for r in c.execute("SELECT DISTINCT code FROM rd_projects WHERE " + rules.desc_sql(pesada=True))); c.close()
+        self.assertEqual(ok, ["A1", "A2", "B1"])                # etapa 20: módulos e Dashboard só com a LINHA exata «AMORTECEDOR»; COX e KAD fora
+        self.assertEqual(pes, ["A1", "A2", "A3", "B1"])         # metas: «AMORTECEDOR LINHA PESADA» dentro
         c = self.db.conn(); c.execute("UPDATE rd_projects SET line=NULL"); c.commit()      # banco antigo, sem LINHA: vale a descrição, ainda sem COX/KAD
         ok2 = sorted(r[0] for r in c.execute("SELECT DISTINCT code FROM rd_projects WHERE " + rules.desc_sql())); c.close(); self.assertEqual(ok2, ["A1", "A2", "A3", "B1", "K1"])      # fallback pela descrição: K1 («KIT AMORTECEDOR») só sai quando a coluna LINHA (KAD) chega do servidor
 
