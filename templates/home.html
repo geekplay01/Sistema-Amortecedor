@@ -15,8 +15,6 @@
       <div><span class="num" data-stat="imports">{{ s.imports }}</span>bases importadas</div>
     </div>
   </div>
-  <div class="hero-art"><div class="stage">
-    <video id="hero-video" autoplay muted loop playsinline preload="auto" poster="{{ url_for('static', filename='img/amortecedor-poster.jpg', v=2) }}" data-fallback="{{ url_for('static', filename='img/amortecedor-poster.jpg', v=2) }}">
-      <source src="{{ url_for('static', filename='img/amortecedor.mp4', v=2) }}" type="video/mp4"></video></div></div>
+  <div class="hero-art"><div class="stage stage-anim">{% include "_amortecedor.html" %}</div></div>
 </section>
 {% endblock %}

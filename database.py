@@ -55,8 +55,9 @@ def stats():
      "imports": "SELECT COUNT(*) FROM import_batches",
      "pendencies": "SELECT COUNT(*) FROM pendencies WHERE status='aberta'",
      "duplicates": "SELECT COUNT(*) FROM (SELECT 1 FROM codes WHERE coalesce(source_id,0) NOT IN (SELECT id FROM sources WHERE name LIKE 'CrossCatalogo%') GROUP BY coalesce(normalized_code,code), code_type HAVING COUNT(DISTINCT product_id)>1)",
-     "des_items": "SELECT COUNT(DISTINCT code) FROM rd_projects WHERE suggestion='DESENVOLVIMENTO' AND " + rules.desc_sql(),
-     "rd_items": "SELECT COUNT(DISTINCT code) FROM rd_projects WHERE suggestion='REDESENVOLVIMENTO' AND " + rules.desc_sql(),
+     # etapa 20 · Q2: «em desenvolvimento» = em andamento (aplicação que ainda não é ITEM RECEBIDO), o mesmo número que abre a tela
+     "des_items": "SELECT COUNT(DISTINCT code) FROM rd_projects WHERE suggestion='DESENVOLVIMENTO' AND upper(trim(coalesce(status,'')))<>'ITEM RECEBIDO' AND " + rules.desc_sql(),
+     "rd_items": "SELECT COUNT(DISTINCT code) FROM rd_projects WHERE suggestion='REDESENVOLVIMENTO' AND upper(trim(coalesce(status,'')))<>'ITEM RECEBIDO' AND " + rules.desc_sql(),
      "equivalences_pending": "SELECT COUNT(*) FROM equivalence_suggestions WHERE status='pendente'",
     }
     with session() as c: return {k: c.execute(v).fetchone()[0] for k, v in q.items()}
