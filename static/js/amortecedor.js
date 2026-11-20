@@ -8,9 +8,9 @@
 (function () {
   const cv = document.querySelector(".psd-sa canvas"); if (!cv) return;
   const ctx = cv.getContext("2d");
-  const VB = [120, 30, 640, 580], PIV = [460, 330], CICLO = 13.1, GIRO = .76, VOLTAS = 2, K = .2;      // K: achatamento das tampas (vista um pouco de cima)
+  const VB = [120, 30, 640, 580], PIV = [460, 360], ESC = .9, CICLO = 13.1, GIRO = .76, VOLTAS = 2, K = .2;   // ESC: escala da peça (a ponta fica abaixo do nome); K: achatamento das tampas
   const TOMBA = [[0, -58], [.13, -30], [.26, 42], [.38, 36], [.5, -12], [.63, -40], [.76, 0], [.92, 0], [1, -58]];
-  const R = 30, CORPO = [-104, 160], ETQ = [-46, 104], OLHAL = 222;                                    // raio e trecho do corpo, trecho da etiqueta, centro do olhal
+  const R = 30, CORPO = [-104, 160], ETQ = [-28, 92], OLHAL = 222;                                    // raio e trecho do corpo, trecho da etiqueta, centro do olhal
   const suave = p => .5 - .5 * Math.cos(Math.PI * p);
   function tomba(f) {
     for (let i = 0; i < TOMBA.length - 1; i++) { const [f0, a0] = TOMBA[i], [f1, a1] = TOMBA[i + 1]; if (f <= f1) return (a0 + (a1 - a0) * suave((f - f0) / (f1 - f0))) * Math.PI / 180; }
@@ -89,7 +89,7 @@
   function quadro(f) {
     const ang = tomba(f), phi = giro(f); escuro = document.documentElement.dataset.theme === "dark";
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
-    const e = cv.width / VB[2]; ctx.setTransform(e, 0, 0, e, -VB[0] * e, -VB[1] * e); ctx.translate(PIV[0], PIV[1]); ctx.rotate(ang);
+    const e = cv.width / VB[2]; ctx.setTransform(e, 0, 0, e, -VB[0] * e, -VB[1] * e); ctx.translate(PIV[0], PIV[1]); ctx.rotate(ang); ctx.scale(ESC, ESC);
     // de baixo para cima: cada peça cobre a tampa da de baixo
     peca(CORPO[1] + 8, OLHAL - 22, 14, 12, PRETO);                          // pescoço do olhal
     olhal(phi);

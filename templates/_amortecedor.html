@@ -10,9 +10,11 @@
       <path d="M378 192h138q10 0 6 10L398 538q-4 8-14 8H262q-10 0-6-10L368 200q4-8 10-8z" fill="#E72B3B"/>
       <path d="M562 192h96q36 0 30 34l-26 112q-12 58-70 58H498q-10 0-6-10l60-186q4-8 10-8z" fill="#F6A019"/>
     </g>
-    <!-- nome (sem as faixas do logo, que já estão ao fundo): azul no tema claro, branco no escuro -->
-    <svg class="sa-nome claro" x="128" y="48" width="600" height="80" viewBox="150 0 813 101" preserveAspectRatio="xMinYMid meet"><image href="{{ url_for('static', filename='img/logo-perfect.png') }}" width="963" height="101"/></svg>
-    <svg class="sa-nome escuro" x="128" y="48" width="600" height="80" viewBox="150 0 813 101" preserveAspectRatio="xMinYMid meet"><image href="{{ url_for('static', filename='img/logo-perfect-branca.png') }}" width="963" height="101"/></svg>
+    <!-- nome (sem as faixas do logo, que já estão ao fundo): azul no tema claro, branco no escuro. O recorte segue o vão inclinado entre a faixa laranja
+         e o texto, sem cortar o «A» de AUTOMOTIVE; centrado no eixo do amortecedor (x 460), acima da ponta dele -->
+    <defs><clipPath id="sa-nome-recorte"><path d="M157 0H965V101H128L140 58Z"/></clipPath></defs>
+    <svg class="sa-nome claro" x="170.5" y="40" width="579" height="70" viewBox="128 0 835 101"><image href="{{ url_for('static', filename='img/logo-perfect.png') }}" width="963" height="101" clip-path="url(#sa-nome-recorte)"/></svg>
+    <svg class="sa-nome escuro" x="170.5" y="40" width="579" height="70" viewBox="128 0 835 101"><image href="{{ url_for('static', filename='img/logo-perfect-branca.png') }}" width="963" height="101" clip-path="url(#sa-nome-recorte)"/></svg>
   </svg>
   <canvas aria-hidden="true" data-etiqueta="{{ url_for('static', filename='img/force-gas.png') }}"></canvas>
 </div>
