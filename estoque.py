@@ -113,4 +113,10 @@ def listing(f, today=None, size=100):
     kp["cobertura"] = round((kp["estoque"] + kp["a_caminho"]) / kp["venda_mes"], 1) if kp["venda_mes"] else None
     page = max(int(f.get("page") or 1), 1); n = 10**9 if f.get("all") else size
     return {"total": len(sel), "page": page, "size": n, "rows": sel[(page - 1) * n: page * n], "counts": counts, "limites": lim, "janela": jan, "meses": jan["meses"], "kpis": kp,
-            "fonte": FONTE, "conta": conta, "contas": CONTA}
+            "fonte": FONTE, "conta": conta, "contas": CONTA, "estoque_ok": _tem_estoque()}
+
+def _tem_estoque():
+    """False enquanto a ds_situacao não trouxe o estoque (banco sincronizado antes da etapa 20): a tela avisa em vez de mostrar tudo como ruptura."""
+    from queries import q1
+    try: return bool((q1("SELECT COUNT(*) n FROM ds_situacao WHERE stock_total IS NOT NULL") or {}).get("n"))
+    except Exception: return False

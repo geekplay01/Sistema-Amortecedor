@@ -178,3 +178,15 @@ ETAPA 19 — 19/11/2026 (decisões em DECISOES_ETAPA19.md, regras em REGRAS_DE_N
 
  DEPOIS DE ATUALIZAR PARA A ETAPA 19 (uma vez, no banco real)
  1. Sincronize uma vez: as linhas de Desenvolvimento que estavam como R-D voltam ao tipo certo (as listas e as metas mudam).
+
+ETAPA 20 — 20/11/2026 (decisões em DECISOES_ETAPA20.md, regras em REGRAS_DE_NEGOCIO.md)
+ - Telas e Dashboard só com a LINHA «AMORTECEDOR» (como o BI); as metas continuam com a linha pesada.
+ - Desenvolvimento e Redesenvolvimento abrem «em andamento» (sem o que já é ITEM RECEBIDO). A esteira de estágios mostra itens e aplicações e troca
+   o estágio com um clique; o quadro «Sub status do servidor» mostra tudo o que vem do servidor (desenho, validação, projeto, negociação, vendas, CIT,
+   Inmetro) e filtra com um clique. Sem filtro de montadora, sem «também DES/R-D» e sem marcação manual: só vale o servidor.
+ - Estoque: vem de ESTOQUE_ANALISE_REPOSICAO, só itens do catálogo, total PRIVATE + FECT (PA + MP). A barra fina sob o número mostra PA × MP
+   (passe o mouse para ver PA, MP, PRIVATE e FECT); em «Mais filtros», «Contar no estoque» troca para só PA ou só MP.
+ - Gráficos no tema escuro com cores mais claras e grade discreta. Tela inicial com o amortecedor animado em código, sem a caixa cinza.
+
+ DEPOIS DE ATUALIZAR PARA A ETAPA 20 (uma vez, no banco real)
+ 1. Sincronize uma vez: traz o estoque PRIVATE/FECT para a tela Estoque (até lá ela avisa que o estoque não veio) e grava os sub status de negociação, vendas e CIT.

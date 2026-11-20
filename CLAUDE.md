@@ -3,7 +3,7 @@
 App Flask de uso interno (um usuário, um PC Windows) para amortecedores PERFECT: catálogo, DES/R-D, amostras, lados, compras, vendas e lead time. A interface, os textos e os commits são em **português**.
 
 - Regras de negócio, cada uma com o arquivo que a implementa: [`REGRAS_DE_NEGOCIO.md`](REGRAS_DE_NEGOCIO.md). Leia antes de mudar qualquer cálculo, contagem ou filtro.
-- Plano e decisões da etapa em curso (ponto de retomada após `/compact`): [`DECISOES_ETAPA19.md`](DECISOES_ETAPA19.md). Ao fim de cada passo, registre ali o checkpoint. Etapas concluídas: [`16`](DECISOES_ETAPA16.md), [`17`](DECISOES_ETAPA17.md), [`18`](DECISOES_ETAPA18.md).
+- Plano e decisões da etapa em curso (ponto de retomada após `/compact`): [`DECISOES_ETAPA20.md`](DECISOES_ETAPA20.md). Ao fim de cada passo, registre ali o checkpoint. Etapas concluídas: [`16`](DECISOES_ETAPA16.md), [`17`](DECISOES_ETAPA17.md), [`18`](DECISOES_ETAPA18.md), [`19`](DECISOES_ETAPA19.md).
 
 ## Rodar e testar
 
