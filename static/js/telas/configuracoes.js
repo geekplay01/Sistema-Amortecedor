@@ -1,4 +1,5 @@
-/* Tela · Configurações — visual Tailwind (etapa 16 · B). Seções: perfil, senha, aparência; e, só para administradores: usuários, regras de negócio,
+/* Tela · Configurações — visual Tailwind (etapa 16 · B). Seções: perfil, senha, aparência, regras das telas (etapa 21: os textos que explicavam cada
+   tela, abertos pelo link «Regras da tela» ao lado do título — #telas-<tela>); e, só para administradores: usuários, regras de negócio,
    servidor e sincronização (somente leitura no POWERBI), backups. A seção aberta fica no endereço (#perfil, #servidor…).
    Com PSD_AUTH=off (desenvolvimento) não há usuário: perfil e senha mostram o aviso; as seções de administração continuam abertas. */
 (function () {
@@ -16,7 +17,7 @@
   const ICO = {
     perfil: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z", seg: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4", tema: "M12 3a9 9 0 109 9 7 7 0 01-9-9z",
     users: "M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 11a4 4 0 100-8 4 4 0 000 8zM21 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8", regras: "M4 6h16M4 12h10M4 18h6M18 14l2 2 3-4", srv: "M4 5h16v5H4zM4 14h16v5H4zM8 7.5h.01M8 16.5h.01", bk: "M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" };
-  const SECT = [["perfil", "Meu perfil", ICO.perfil], ["seguranca", "Senha e acesso", ICO.seg], ["aparencia", "Aparência", ICO.tema]];
+  const SECT = [["perfil", "Meu perfil", ICO.perfil], ["seguranca", "Senha e acesso", ICO.seg], ["aparencia", "Aparência", ICO.tema], ["telas", "Regras das telas", ICO.regras]];
   const ADM = [["usuarios", "Usuários", ICO.users], ["regras", "Regras de negócio", ICO.regras], ["servidor", "Servidor e sincronização", ICO.srv], ["backups", "Backups", ICO.bk]];
 
   // ---------- servidor SQL (só leitura) e sincronização ----------
@@ -46,7 +47,9 @@
   async function configuracoes() {
     let me; try { me = await J("/api/auth/me"); } catch (e) { return fail(e); }
     const user = me.user, admin = !!me.admin;
-    let cur = (location.hash || "#perfil").slice(1); if (![...SECT, ...ADM].some(x => x[0] === cur) || (!admin && ADM.some(x => x[0] === cur))) cur = "perfil";
+    let cur = (location.hash || "#perfil").slice(1), alvo = "";
+    if (cur.startsWith("telas-")) { alvo = cur; cur = "telas"; }            // «Regras da tela» (link ao lado do título de cada tela) abre direto na tela certa
+    if (![...SECT, ...ADM].some(x => x[0] === cur) || (!admin && ADM.some(x => x[0] === cur))) cur = "perfil";
     const put = (u, b) => J(u, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) });
     const nav = b => `<button type="button" data-s="${b[0]}" aria-current="${b[0] === cur}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold ${b[0] === cur ? "bg-blue-500/10 text-blue-600" : "text-ink hover:bg-slate-500/10"}"><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${b[2]}"/></svg>${b[1]}</button>`;
     root.innerHTML = `<div class="flex flex-col gap-5 lg:flex-row lg:items-start">
@@ -65,6 +68,11 @@
       seguranca: () => !user ? semLogin : card("Alterar senha", sub("Use ao menos 8 caracteres. A senha é guardada com hash: nem o administrador consegue lê-la.") + `<form id="fp" class="grid gap-4 sm:grid-cols-2">${rot("Senha atual", inp("old", 'type="password" required autocomplete="current-password"'), "", "sm:col-span-2")}
           ${rot("Nova senha", inp("new", 'type="password" minlength="8" required autocomplete="new-password"'))}${rot("Repita a nova senha", inp("new2", 'type="password" minlength="8" required autocomplete="new-password"'))}${acoes(`<button class="${primario}" type="submit">Alterar senha</button>`, "fpm")}</form>`)
         + card("Sessão", sub("A sessão expira sozinha após 12 horas.") + `<a class="${botao}" href="/logout">Sair deste computador</a>`),
+      /* etapa 21: os textos de regra saíram das telas e ficam aqui (regras_telas.py), um cartão por tela, com o link de volta */
+      telas: async () => { const d = await J("/api/regras-telas");
+        return `<div class="flex flex-wrap gap-2 rounded-2xl border border-line bg-card p-3 shadow-sm">${d.map(t => `<a class="${mini}" href="#telas-${t.slug}" data-ir="${t.slug}">${esc(t.titulo)}</a>`).join("")}</div>`
+          + d.map(t => `<section id="telas-${t.slug}" class="psd-regra scroll-mt-4">${card(esc(t.titulo), `<ul class="m-0 flex list-disc flex-col gap-2 pl-5 text-sm leading-relaxed text-ink">${t.itens.map(i => `<li>${i}</li>`).join("")}</ul>`,
+              `<a class="${mini}" href="/${t.slug}">Abrir a tela</a>`)}</section>`).join(""); },
       aparencia: () => card("Aparência", sub("Escolha o modo de cor. Fica gravado neste navegador.") + `<div id="thm" class="inline-flex rounded-lg border border-line p-1">${[["light", "Claro"], ["dark", "Escuro"]].map(([t, l]) => `<button type="button" data-t="${t}" class="rounded-md px-4 py-1.5 text-sm font-semibold">${l}</button>`).join("")}</div>`),
       usuarios: async () => { const d = await J("/api/admin/users");
         return card("Usuários", sub("Administradores podem alterar metas, regras, backups e usuários. Sempre existe ao menos um administrador.") + TW.table([{ h: "Usuário" }, { h: "Perfil" }, { h: "Último acesso" }, { h: "" }],
@@ -99,6 +107,11 @@
       seguranca() {
         const fp = $("#fp"); if (fp) fp.onsubmit = async e => { e.preventDefault(); const v = Object.fromEntries(new FormData(fp)); if (v.new !== v.new2) return msg("fpm", "As senhas novas não conferem.", true);
           try { await post("/api/auth/password", { old: v.old, new: v.new }); fp.reset(); msg("fpm", "Senha alterada."); } catch (er) { msg("fpm", er.message, true); } };
+      },
+      telas() {
+        const ir = s => { const el = document.getElementById("telas-" + s); if (!el) return; $$(".psd-regra.on").forEach(x => x.classList.remove("on")); el.classList.add("on"); el.scrollIntoView({ block: "start" }); };
+        $("#spane").onclick = e => { const a = e.target.closest("[data-ir]"); if (!a) return; e.preventDefault(); history.replaceState(null, "", location.pathname + "#telas-" + a.dataset.ir); ir(a.dataset.ir); };
+        if (alvo) { ir(alvo.slice(6)); alvo = ""; }
       },
       aparencia() { const mark = () => $$("#thm button").forEach(b => { const on = b.dataset.t === psdTheme.get(); b.setAttribute("aria-pressed", on); b.className = "rounded-md px-4 py-1.5 text-sm font-semibold " + (on ? "bg-blue-600 text-white" : "text-ink hover:bg-slate-500/10"); });
         mark(); $("#thm").onclick = e => { const b = e.target.closest("[data-t]"); if (b) { psdTheme.set(b.dataset.t); mark(); } }; },

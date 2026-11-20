@@ -34,7 +34,8 @@
         + `<div title="${esc(dica(k))}">${kpi(d.conta === "total" ? "Estoque PRIVATE + FECT" : `Estoque · ${conta}`, nf(k.estoque), `${tPA ? `<span class="psd-pamp lg"><i style="width:${(100 * k.pa / tPA).toFixed(1)}%"></i></span>` : ""}PA ${nf(k.pa)} · MP ${nf(k.mp)}`, "green")}</div>`
         + kpi("A caminho", nf(k.a_caminho), "pedidos em aberto, sem os parados", "slate") + kpi("Cobertura", k.cobertura == null ? "–" : nf(k.cobertura, 1) + " meses", `venda média ${nf(k.venda_mes, 0)} peças/mês`, "amber");
       const [ay, am] = d.janela.ate.split("-").map(Number), ult = am === 1 ? `12/${ay - 1}` : `${String(am - 1).padStart(2, "0")}/${ay}`;
-      $("#en").innerHTML = (d.estoque_ok ? "" : notice(`<b>O estoque ainda não veio do servidor.</b> Sincronize uma vez para trazer o total PRIVATE + FECT de ${esc(d.fonte)}; até lá os itens aparecem sem estoque.`, "amber") + "<br>") + `Estoque: ${esc(d.fonte)} (${esc(conta)}) · venda média: ${mesAno(d.janela.de)} a ${ult} (12 meses fechados; o mês atual fica de fora) · risco abaixo de <b class="text-ink">${nf(L.risco, 1)} meses</b> (meta de lead time) · excesso acima de <b class="text-ink">${L.excesso} meses</b>.`;
+      /* etapa 21: a explicação do cálculo foi para Configurações › Regras das telas; aqui fica só o aviso e o período em uso */
+      $("#en").innerHTML = (d.estoque_ok ? "" : notice(`<b>O estoque ainda não veio do servidor.</b> Sincronize uma vez para trazer o total PRIVATE + FECT de ${esc(d.fonte)}; até lá os itens aparecem sem estoque.`, "amber") + "<br>") + `Venda média de ${mesAno(d.janela.de)} a ${ult} · estoque ${esc(conta)}`;
       /* barra (etapa 19 · Q6): Situação, Classe ABC e «Falta em» à vista; atalhos Ruptura e Vai faltar */
       const cls = Object.keys(c.classe).sort(), clsL = x => x === "—" ? "Sem venda" : "Classe " + x, FALTA = `Vai faltar em ${d.meses.length} meses`;
       TW.pintarBarra($("#eq"), {
@@ -49,7 +50,7 @@
         acoes: TW.botao("Baixar Excel", { href: `/api/export/estoque.xlsx?${qs(s)}`, icone: "download" })
       });
       const n = ["situacao", "classe", "falta", "conta", "q"].filter(x => s[x]).length;
-      $("#em").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns)${n ? ` · ${n} filtro(s) ativo(s)` : ""} · ${nf(c.antes_de_chegar)} com pedido a caminho que chega tarde · saldo mês a mês = estoque + chegadas previstas − venda média (${mesAno(d.meses[0] + "-01")} a ${mesAno(d.meses[d.meses.length - 1] + "-01")})`;
+      $("#em").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns)${n ? ` · ${n} filtro(s) ativo(s)` : ""} · ${nf(c.antes_de_chegar)} com pedido a caminho que chega tarde`;
       $("#et").innerHTML = d.rows.length ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Situação" }, { h: "Classe" }, { h: "Venda 12 m", r: true }, { h: "Média/mês", r: true }, { h: "Estoque", r: true }, { h: "A caminho", r: true }, { h: "Cobertura (meses)" }, { h: "Falta em" }, { h: "Valor 12 m", r: true }],
           d.rows.map(r => [window.psdCode ? psdCode(r.codigo) : `<b>${esc(r.codigo)}</b>`, r.descricao ? `<span class="block max-w-[18rem] truncate" title="${esc(r.descricao)}">${esc(r.descricao)}</span>` : '<span class="text-mute">–</span>',
             badge(SIT[r.situacao][0], SIT[r.situacao][1]), esc(r.classe), nf(r.venda_12m), nf(r.media_mensal, 1), estoqueCel(r), r.a_caminho ? nf(r.a_caminho) : '<span class="text-mute">–</span>', barra(r.cobertura, L), falta(r, d.meses), brl0(r.valor_12m)]), { h: "max-h-[65vh]" })

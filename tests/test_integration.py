@@ -80,7 +80,13 @@ class Fluxo(unittest.TestCase):
             self.assertLessEqual(a["n"], fc["total"]); self.assertGreater(a["n"], 0, slug)
             for x in fc["esteira"]: self.assertEqual(C.get(f"/api/rd/{slug}?status={quote(x['v'])}").json["total"], x["n"], f"{slug} {x['v']}")
             for g in fc["subs"]:
-                for v in g["values"]: self.assertEqual(C.get(f"/api/rd/{slug}?status=andamento&sub={quote(g['key'] + ':' + v['v'])}").json["total"], v["n"], f"{slug} {g['key']} {v['v']}")
+                for v in g["values"]:
+                    d = C.get(f"/api/rd/{slug}?status=andamento&sub={quote(g['key'] + ':' + (v.get('f') or v['v']))}").json
+                    self.assertEqual((d["total"], d["linhas"]), (v["n"], v["l"]), f"{slug} {g['key']} {v['v']}")
+            # etapa 21: chave de linha (família) — o «Amortecedor» é o padrão e bate com o em andamento; itens = linhas do servidor
+            fam = {x["v"]: x for x in fc["familias"]}; self.assertEqual(fam["amortecedor"]["l"], a["l"]); self.assertEqual(fc["linha"], "amortecedor")
+            self.assertEqual(C.get(f"/api/rd/{slug}?status=andamento").json["linhas"], a["l"])
+            for k, x in fam.items(): self.assertEqual(C.get(f"/api/rd/{slug}?status=andamento&linha={k}").json["linhas"], x["l"], f"{slug} {k}")
             rows = C.get(f"/api/rd/{slug}?status=andamento&all=1").json["rows"]
             self.assertTrue(all("also_other" not in r and isinstance(r["subs"], list) for r in rows))
 

@@ -77,6 +77,11 @@ button.nav-title:hover{color:#DCE3F5}
 .top{background:var(--bar)!important;border-bottom:1px solid var(--line)!important;min-height:56px;box-shadow:none}
 .top h1{font:600 17px/1.2 var(--fontd);letter-spacing:.01em;color:var(--tx)}
 main .ptitle{font:700 28px/1.15 var(--fontd);letter-spacing:-.01em;color:var(--tx);margin:0 0 6px}
+/* etapa 21: as regras de cada tela ficam em Configurações; ao lado do título, só o link discreto */
+.ptitle-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}.ptitle-row .ptitle{margin-bottom:6px}
+.ptitle-regras{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:4px 10px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--mut);text-decoration:none;border:1px solid transparent}
+.ptitle-regras:hover,.ptitle-regras:focus-visible{color:var(--b600);border-color:var(--line);background:var(--card)}
+.psd-regra.on>section{border-color:var(--b500)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--b500) 18%,transparent)}
 
 /* ---------- cartões, KPIs e tabelas ---------- */
 main .bg-card.border{box-shadow:var(--shadow)}
@@ -264,6 +269,10 @@ tr:hover .psd-ed-btn,.psd-ed-btn:focus-visible{opacity:1}.psd-ed-btn:hover{backg
 .psd-sub .n{font-weight:700;font-variant-numeric:tabular-nums}
 .psd-sub .l{min-width:5.2em;text-align:right;font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums}
 .psd-sub button[aria-pressed=true]{background:var(--b600)!important;color:#fff}.psd-sub button[aria-pressed=true] .l{color:#DCE6FF}
+.psd-sub button.zero{opacity:.55}.psd-sub button.zero .v{font-weight:500}
+/* chave de linha (etapa 21): três opções lado a lado, mais baixas que a esteira; a escolhida em azul */
+.psd-linha{grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))}
+.psd-linha button{min-height:64px}
 .psd-sd{flex:none;width:8px;height:8px;border-radius:999px;background:var(--pf-orange)}.psd-sd.ok{background:var(--ok)}.psd-sd.no{background:var(--pf-red)}
 .psd-sublist{display:flex;min-width:22rem;max-width:30rem;flex-wrap:wrap;gap:4px}
 .psd-sublist span{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:color-mix(in srgb,var(--mut) 12%,transparent);font-size:11.5px;font-weight:600;color:var(--tx);white-space:nowrap}

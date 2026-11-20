@@ -231,13 +231,13 @@ COLUMN_ALIASES = {
     "sub_negociacao": ["SUB_STATUS_NEGOCIACAO"], "sub_vendas": ["SUB_STATUS_VENDAS"], "sub_cit": ["SUB_STATUS_CIT"], "sub_inmetro": ["SUB_STATUS_INMETRO"],
     "curtiu": ["CURTIU"], "nao_curtiu": ["NAO_CURTIU"],
     "supplier": ["FORNECEDOR"], "brand": ["MARCA"], "make": ["MONTADORA"], "vehicle": ["VEICULO", "MODELO"], "application": ["APLICACAO"],
-    "description": ["DESCRICAO", "DESCRICAO_PRODUTO"], "line": ["LINHA"], "year_from": ["ANO_INICIAL", "ANO_INI"], "year_to": ["ANO_FINAL", "ANO_FIM"],
+    "description": ["DESCRICAO", "DESCRICAO_PRODUTO"], "line": ["LINHA"], "family": ["FAMILIA"], "year_from": ["ANO_INICIAL", "ANO_INI"], "year_to": ["ANO_FINAL", "ANO_FIM"],
     "sample_bought": ["AMOSTRA_COMPRADA"], "sample_sent": ["AMOSTRA_ENVIADA"], "date_start": ["DATA_INICIO"], "pedido_confirmado": ["PEDIDO_CONFIRMADO", "DATA_PEDIDO_CONFIRMADO"],
     # validação/aprovação pelo usuário (regra de metas do REDESENVOLVIMENTO) e data em que o status mudou (regra do ano em DESENVOLVIMENTO)
     "user_valid": ["USER_VALID", "USER_APROV", "USUARIO_APROV", "USUARIO_APROVACAO", "APROVADO_POR", "VALIDADO_POR"], "date_valid": ["DATA_APROV", "DATA_APROVACAO", "DATA_VALIDACAO"],
     "status_date": ["DATA_STATUS", "DATA_MUDANCA_STATUS", "DATA_ALTERACAO_STATUS", "DATA_ULTIMA_ALTERACAO_STATUS", "DATA_ITEM_RECEBIDO", "DATA_RECEBIDO", "DATA_RECEBIMENTO", "DT_STATUS"],
 }
-TEXT_UPPER = ["line", "user_valid", "status", "sub_desenho", "sub_validacao", "sub_projeto", "sub_negociacao", "sub_vendas", "sub_cit", "sub_inmetro", "supplier", "brand", "make", "vehicle"]
+TEXT_UPPER = ["line", "family", "user_valid", "status", "sub_desenho", "sub_validacao", "sub_projeto", "sub_negociacao", "sub_vendas", "sub_cit", "sub_inmetro", "supplier", "brand", "make", "vehicle"]
 DATE_FIELDS = ["sample_bought", "sample_sent", "date_start", "pedido_confirmado", "date_valid", "status_date"]
 SUB_FIELDS = ["sub_desenho", "sub_validacao", "sub_projeto", "sub_negociacao", "sub_vendas", "sub_cit", "sub_inmetro"]
 
@@ -320,7 +320,7 @@ def normalize_dev(raw, overrides=None):
         kind = normalize_kind(rec.get(mp["kind"])) if "kind" in mp else None
         if kind is None and "kind" in mp and clean_text(rec.get(mp["kind"])): w("tipo_desconhecido")
         r["kind"] = kind
-        for f in ("status", "user_valid", *SUB_FIELDS, "supplier", "brand", "make", "vehicle", "application", "description", "line"):
+        for f in ("status", "user_valid", *SUB_FIELDS, "supplier", "brand", "make", "vehicle", "application", "description", "line", "family"):
             v = clean_text(rec.get(mp[f])) if f in mp else None
             r[f] = (normalize_status(v) if f == "status" else v.upper() if v and f in TEXT_UPPER else v)
         for f in ("curtiu", "nao_curtiu", "year_from", "year_to"): r[f] = to_int(rec.get(mp[f])) if f in mp else None
@@ -328,7 +328,7 @@ def normalize_dev(raw, overrides=None):
         if r["status"] and r["status"] not in STATUS_RANK: w("status_novo:" + r["status"])
         r["extra"] = json.dumps({str(c): _json_safe(v) for c, v in rec.items() if c not in mapped_cols and _json_safe(v) is not None}, ensure_ascii=False)
         rows.append(r)
-    cols = ["code", "kind", "status", *SUB_FIELDS, "curtiu", "nao_curtiu", "supplier", "brand", "make", "vehicle", "application", "description", "year_from", "year_to", "user_valid", *DATE_FIELDS, "extra", "line"]
+    cols = ["code", "kind", "status", *SUB_FIELDS, "curtiu", "nao_curtiu", "supplier", "brand", "make", "vehicle", "application", "description", "year_from", "year_to", "user_valid", *DATE_FIELDS, "extra", "line", "family"]
     df = pd.DataFrame(rows, columns=cols)
     # Etapa 19 · Q2: cada linha vale pelo tipo que o SERVIDOR deu a ela (SUGESTAO). Redesenvolvimento = item já recebido/no catálogo que ganhou outro fornecedor:
     # só conta como R-D a linha que o servidor marcou como R-D. Antes, as linhas DES de um código com alguma linha R-D eram regravadas como R-D (DES ativo aparecia em R-D).
@@ -439,7 +439,8 @@ DATASETS = {
         "num": [], "dates": [], "no_extra": True},
 }
 # DESENVOLVIMENTO_PRODUTOS: só as linhas de amortecedor (as demais linhas do servidor não são usadas por nenhuma tela nem meta)
-DEV_WHERE = [({"LINHA"}, "LINHA LIKE '%AMORTECEDOR%'")]
+DEV_WHERE = [({"LINHA", "FAMILIA"}, "(LINHA LIKE '%AMORTECEDOR%' OR FAMILIA LIKE '%AMORTECEDOR%')")]      # etapa 21: a FAMILIA decide o universo
+DEV_WHERE_SEM_FAMILIA = [({"LINHA"}, "LINHA LIKE '%AMORTECEDOR%'")]
 
 def scope_on():
     """DEV_SYNC_ESCOPO=amortecedor (padrão) aplica os filtros no servidor; «tudo» traz as views inteiras (comportamento antigo)."""
@@ -606,7 +607,7 @@ class Store:
         c.execute("DELETE FROM rd_projects"); c.execute(f"DELETE FROM applications WHERE source_id IN ({','.join('?' * len(legacy))})", legacy)
         try: import loaders; axle_side = loaders._axle_side
         except Exception: axle_side = lambda d: (None, None)
-        seen, n_app = set(), 0; names = {"sub_negociacao": "SUB STATUS NEGOCIAÇÃO", "sub_vendas": "SUB STATUS VENDAS", "sub_cit": "SUB STATUS CIT", "date_start": "DATA INICIO", "pedido_confirmado": "PEDIDO CONFIRMADO", "user_valid": "USER APROV", "date_valid": "DATA APROV", "line": "LINHA", "status_date": "DATA STATUS"}
+        seen, n_app = set(), 0; names = {"sub_negociacao": "SUB STATUS NEGOCIAÇÃO", "sub_vendas": "SUB STATUS VENDAS", "sub_cit": "SUB STATUS CIT", "date_start": "DATA INICIO", "pedido_confirmado": "PEDIDO CONFIRMADO", "user_valid": "USER APROV", "date_valid": "DATA APROV", "line": "LINHA", "family": "FAMILIA", "status_date": "DATA STATUS"}
         out = []
         for r in rows.to_dict("records"):
             ex = json.loads(r["extra"]) if isinstance(r.get("extra"), str) and r["extra"] else {}
@@ -617,13 +618,13 @@ class Store:
             iv = lambda f: None if r.get(f) is None or r.get(f) != r.get(f) else int(r[f])
             pid = pmap.get(r["code"]); out.append((r["code"], pid, r["kind"], t("status"), t("sub_desenho"), t("sub_validacao"), t("supplier"), t("sample_bought"), t("sample_sent"), src_id, bid, t("make"), t("vehicle"), t("application"), iv("year_from"), iv("year_to"),
                                                   t("description"), t("brand"), t("sub_projeto"), t("sub_inmetro"), iv("curtiu"), iv("nao_curtiu"), json.dumps(ex, ensure_ascii=False) if ex else None, t("line"),
-                                                  t("sub_negociacao"), t("sub_vendas"), t("sub_cit")))
+                                                  t("sub_negociacao"), t("sub_vendas"), t("sub_cit"), t("family")))
             if pid:
                 ax, sd = axle_side(t("description")); k = (pid, t("make"), t("vehicle"), t("application"), iv("year_from"), iv("year_to"), ax, sd)
                 if k not in seen:
                     seen.add(k); n_app += 1
                     c.execute("INSERT INTO applications(product_id,make,model,application_text,year_from,year_to,axle,side,source_id) VALUES(?,?,?,?,?,?,?,?,?)", (pid, k[1], k[2], k[3], k[4], k[5], ax, sd, src_id))
-        c.executemany("INSERT INTO rd_projects(code,product_id,suggestion,status,drawing_substatus,validation_substatus,supplier,sample_bought,sample_sent,source_id,batch_id,make,vehicle,application_text,year_from,year_to,description,brand,project_substatus,inmetro_substatus,curtiu,nao_curtiu,extra,line,negotiation_substatus,sales_substatus,cit_substatus) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", out)
+        c.executemany("INSERT INTO rd_projects(code,product_id,suggestion,status,drawing_substatus,validation_substatus,supplier,sample_bought,sample_sent,source_id,batch_id,make,vehicle,application_text,year_from,year_to,description,brand,project_substatus,inmetro_substatus,curtiu,nao_curtiu,extra,line,negotiation_substatus,sales_substatus,cit_substatus,family) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", out)
         return {"publicado": True, "linhas": len(out), "itens": int(new_items), "sem_tipo": int(skipped), "aplicacoes": n_app}
 
     def _last_scope(self, c, key):
@@ -781,7 +782,7 @@ def _sync(cfg, store, conn_factory):
         found = locate(conn, wanted, cfg)
         if cfg.dev_object not in found: raise RuntimeError(f"Tabela/view {cfg.dev_object} não encontrada no servidor {cfg.host} (login {cfg.user}). Rode 'python data_pipeline.py probe' e confira o banco/esquema (DEV_DB_NAME / DEV_DB_SCHEMA).")
         dl = dialect_for(conn); cols_of = lambda o: [c for c, _ in dl.columns(conn, o["db"], o["schema"], o["name"])]
-        dev_where = where_for(DEV_WHERE, cols_of(found[cfg.dev_object]))
+        dev_where = where_for(DEV_WHERE, cols_of(found[cfg.dev_object])) or where_for(DEV_WHERE_SEM_FAMILIA, cols_of(found[cfg.dev_object]))
         raw = extract_raw(conn, found[cfg.dev_object], where=dev_where); res = normalize_dev(raw, cfg.column_overrides)
         backup = None
         if not store.has_published():       # 1ª vez que o servidor vira a fonte oficial: guarda uma cópia do banco antes de trocar

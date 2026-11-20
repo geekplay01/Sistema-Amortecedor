@@ -24,7 +24,6 @@ window.PSD_EXEC = ctx => {
     const al = L.linhas.filter(r => r.alertas.length).slice(0, 60);
     return TW.card(`Lead time por fornecedor <span class="ml-2 text-sm font-normal text-mute">meta ${nf(M)} dias (${nf(M / 30, 0)} meses)</span>`,
       `<div class="flex flex-col gap-4">
-        <p class="text-sm text-mute"><b>Prometido</b> = previsão − emissão · <b>Pedido→embarque</b> = embarque − emissão · <b>Embarque→chegada</b> = previsão de chegada − embarque · <b>Real</b> = recebimento − emissão (só entregues) · <b>Atraso</b> = recebimento − previsão. Média e p90 (9 de cada 10 pedidos levam até esse prazo).</p>
         ${avail.map(t => TW.notice(t, "amber")).join("")}
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi("Prazo prometido (médio)", dd(G.prazo_prometido.media), `mediana ${dd(G.prazo_prometido.mediana)} · meta ${M} d`, over(G.prazo_prometido.media) ? "red" : "green")}
           ${TW.kpi("Pedido → embarque", dd(G.ate_embarque.media), G.ate_embarque.n ? `${nf(G.ate_embarque.n)} linhas com embarque` : "sem dados de embarque", "blue")}
@@ -49,7 +48,6 @@ window.PSD_EXEC = ctx => {
     const md = s => s && s.mediana != null ? `${nf(s.mediana)} d` : "–";
     const fornList = Object.keys(M).filter(k => k !== "Geral");
     el.innerHTML = TW.card(`Previsão de embarques e chegadas <span class="ml-2 text-sm font-normal text-mute">base: ${nf(F.historico_embarques)} embarques entregues nos últimos ${F.historico_meses} meses</span>`, `<div class="flex flex-col gap-5">
-      <p class="text-sm text-mute">Cada linha em aberto é prevista a partir de <b>onde ela está hoje</b>, somando as etapas que faltam com o prazo <b>típico (mediana)</b> daquele fornecedor; a faixa é p25–p75 (metade dos casos históricos cai nela). No mar, usa o <b>ETA do servidor</b>. Fornecedor com menos de ${F.min_n} casos usa a base geral.</p>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi("Chegam em 30 dias", nf(F.proximos_30), "peças previstas na filial", "blue")}${TW.kpi("Chegam em 90 dias", nf(F.proximos_90), "peças", "green")}
         ${TW.kpi("Vão atrasar (> 15 d da promessa)", nf(F.risco.quantidade), `${nf(F.risco.linhas)} linhas · atraso previsto mediano ${F.risco.atraso_mediano == null ? "–" : nf(F.risco.atraso_mediano) + " d"}`, F.risco.linhas ? "red" : "green")}
         ${TW.kpi("Parados — verificar saldo", nf(F.parados.quantidade), `${nf(F.parados.linhas)} linhas em ${nf(F.parados.pedidos)} pedidos sem embarque há mais de 2× o p90 da produção${F.parados.linhas ? ` · <a class="font-semibold text-blue-600" href="/api/export/parados.xlsx">⬇ Excel por pedido × código</a>` : ""}`, F.parados.linhas ? "amber" : "green")}</div>
@@ -115,7 +113,7 @@ window.PSD_EXEC = ctx => {
     const linha = (rot, s) => [rot, nf(s.n), sg(s.erro_mediano), s.erro_medio_abs == null ? "–" : nf(s.erro_medio_abs, 1) + " d", pc_(s.pct_faixa), pc_(s.pct_7d)];
     const corpo = !a.desde ? TW.notice("A previsão passa a ser fotografada a cada sincronização a partir de hoje. Quando os embarques previstos chegarem, aqui aparece o acerto por fornecedor e por etapa.", "blue")
       : !a.geral.n ? TW.notice(`Fotos da previsão desde ${dmy(a.desde)}; ${nf(a.aguardando)} linha(s) previstas aguardando chegar. O acerto aparece quando as primeiras chegarem.`, "blue")
-      : `<p class="mb-3 mt-0 text-sm text-mute">Desde ${dmy(a.desde)}: ${nf(a.geral.n)} previsões já conferidas com a chegada real · ${nf(a.aguardando)} aguardando. Erro + = chegou <b>depois</b> do previsto; «na faixa» = dentro do p25–p75. Vale a 1ª previsão de cada etapa.</p>`
+      : `<p class="mb-3 mt-0 text-sm text-mute">Desde ${dmy(a.desde)}: ${nf(a.geral.n)} previsões já conferidas com a chegada real · ${nf(a.aguardando)} aguardando.</p>`
         + TW.table([{ h: "Grupo" }, { h: "Previsões", r: 1 }, { h: "Erro mediano", r: 1 }, { h: "Erro médio (absoluto)", r: 1 }, { h: "Na faixa", r: 1 }, { h: "Até 7 dias", r: 1 }],
             [linha("<b>Geral</b>", a.geral), ...a.por_fornecedor.map(f => linha(TW.badge(f.fornecedor, FORN[f.fornecedor]), f)), ...a.por_etapa.map(e => linha(`<span class="text-mute">etapa</span> ${esc(e.etapa)}`, e))], { h: "max-h-[40vh]" });
     el.innerHTML = TW.card("Previsão × realizado", corpo);
@@ -136,7 +134,6 @@ window.PSD_EXEC = ctx => {
     root.innerHTML = `<div class="flex flex-col gap-6">
       <div id="pprev">${waiting("Calculando a previsão de embarques e chegadas…")}</div>
       ${leadtimeBlock(lt)}
-      <p class="text-sm text-mute">Pedidos de compra de <b>amortecedor</b> com código iniciado em <b>MP-</b> e saldo em aberto. O fornecedor vem do código EX do ERP (EX0002116 = ZS · EX0002110 = E-WIN · EX008042 = XGM; outro código aparece como <b>VERIFICAR</b>).</p>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi("Pedidos em aberto", nf(S.pedidos), `${nf(S.linhas)} linhas`, "blue")}${TW.kpi("Itens (códigos)", nf(S.itens), "", "green")}
         ${TW.kpi("Quantidade em aberto", nf(S.quantidade), "peças aguardando entrega", "slate")}${TW.kpi("Com previsão vencida", nf(S.vencidas), S.verificar ? `${nf(S.verificar)} linha(s) com fornecedor a VERIFICAR` : "entrega após a previsão", S.vencidas ? "red" : "green")}</div>
       ${TW.card("Pedidos", `<div id="pf" class="mb-4"></div><div id="ptab"></div><div id="ppg" class="mt-3 flex items-center justify-between text-sm text-mute"></div>`, `<span id="pcount" class="text-sm text-mute"></span>`)}</div>`;

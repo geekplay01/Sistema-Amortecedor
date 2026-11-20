@@ -37,8 +37,7 @@
     J("/api/duplicates").then(r => { $("#pdn").textContent = "· " + nf(r.length); if (dup) duplicidades(r); }).catch(fail);
     if (dup) return;
 
-    $("#pbody").innerHTML = `<p class="m-0 text-sm text-mute">Diferenças encontradas ao importar planilhas (<b class="text-ink">conflito</b>: o banco e a planilha trazem valores diferentes; o valor do banco foi mantido) e campos que faltam no cadastro. Resolva no ERP ou na planilha de origem e marque aqui como <b class="text-ink">resolvida</b>, ou <b class="text-ink">ignore</b> o que não precisa de ação.</p>
-      <div id="pq" class="flex flex-col gap-2"></div>
+    $("#pbody").innerHTML = `<div id="pq" class="flex flex-col gap-2"></div>
       <form id="pf" class="flex flex-wrap items-center gap-2" autocomplete="off"><input name="q" type="search" placeholder="Buscar código PERFECT, campo ou texto da pendência…" class="${campo} min-w-[16rem] flex-1"><button type="button" id="pclr" class="${botao}">Limpar filtros</button></form>
       <div id="pm" class="text-sm text-mute"></div><div id="pt"></div><div id="pp" class="flex items-center justify-center gap-3 text-sm text-mute"></div>`;
     $("#pf").q.value = s0.q || "";
@@ -85,8 +84,7 @@
 
   function duplicidades(r) {
     $("#pdl").href = "/api/export/pendencias.xlsx";
-    $("#pbody").innerHTML = `<p class="m-0 text-sm text-mute">Mesmo código (OEM, concorrente, EAN…) ligado a mais de um produto PERFECT. Pode ser correto (aplicações em comum) ou erro de cadastro: confira na Pesquisa. Nada é unido ou excluído automaticamente. O Excel traz as duas abas.</p>
-      <div class="text-sm text-mute"><b class="text-ink">${nf(r.length)}</b> código(s) em mais de um produto</div>`
+    $("#pbody").innerHTML = `<div class="text-sm text-mute"><b class="text-ink">${nf(r.length)}</b> código(s) em mais de um produto</div>`
       + TW.table([{ h: "Tipo de código" }, { h: "Código" }, { h: "Produtos", nw: false }, { h: "Qtd.", r: true }],
         r.map(x => [esc(x.code_type), `<a class="font-semibold text-blue-600" href="/pesquisa?code=${encodeURIComponent(x.code)}">${esc(x.code)}</a>`,
           String(x.products || "").split(",").map(c => `<a class="text-blue-600" href="/pesquisa?q=${encodeURIComponent(c)}">${esc(c)}</a>`).join(" · "), nf(x.n)]), { h: "max-h-[65vh]" });

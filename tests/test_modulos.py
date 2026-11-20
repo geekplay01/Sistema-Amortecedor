@@ -597,7 +597,9 @@ class MetaRdPorValidacao(_TmpDB):
         """Etapa 20 · Q4: «A / B» conta em A e em B; em andamento deixa de fora as aplicações recebidas; filtro sub=<chave>:<valor>."""
         import rd
         fc = rd.facets(self.R); val = {x["v"]: (x["n"], x["l"]) for g in fc["subs"] if g["key"] == "validacao" for x in g["values"]}
-        self.assertEqual(val, {"VALIDAÇÃO REPROVADA": (1, 1), "PENDENTE VALIDAÇÃO QUALIDADE": (1, 1), "PENDENTE COMPRAS": (1, 1)})      # V1 (recebido) fora
+        # V1 (recebido) fora; etapa 21: aprovada, reprovada e pendente qualidade ficam sempre no quadro e juntam as grafias do servidor
+        self.assertEqual(val, {"VALIDAÇÃO REPROVADA": (1, 1), "PENDENTE QUALIDADE": (1, 1), "VALIDAÇÃO APROVADA": (0, 0), "PENDENTE COMPRAS": (1, 1)})
+        self.assertEqual([r["code"] for r in rd.items(self.R, {"status": "andamento", "sub": "validacao:@QUALIDADE"})["rows"]], ["V3"])
         self.assertEqual([r["code"] for r in rd.items(self.R, {"status": "andamento", "sub": "validacao:PENDENTE COMPRAS"})["rows"]], ["V3"])
         self.assertEqual(sorted(r["code"] for r in rd.items(self.R, {"status": "", "sub": "validacao:PENDENTE COMPRAS"})["rows"]), ["V1", "V3"])
         self.assertEqual((fc["andamento"]["n"], fc["total"]), (2, 5))
@@ -696,6 +698,24 @@ class UniversoDesRd(_TmpDB):
         self.assertEqual(sorted(x["code"] for x in rd.items("DESENVOLVIMENTO", {"all": 1})["rows"]), ["A2", "A4"])
         self.assertEqual(self.db.stats()["des_items"], 2)
         import goals; self.assertEqual(sorted(goals._meta("DESENVOLVIMENTO")), ["A1", "A2", "A3", "A4"])      # metas: o que foi recebido e validado continua contando
+
+    def test_familia_do_servidor_marca_e_itens_por_linha(self):
+        """Etapa 21: a FAMILIA decide a linha (amortecedor · moto · pesada), mesmo com LINHA «AMORTECEDOR»; DES padrão = marca PERFECT (ou vazia);
+        itens = linhas do servidor, códigos = distintos."""
+        import rd, rules
+        self.db.init_db(); D, R = "DESENVOLVIMENTO", "REDESENVOLVIMENTO"
+        rows = [("F1", D, "AMORTECEDOR", "AMORTECEDOR", "PERFECT"), ("F2", D, "AMORTECEDOR", "AMORTECEDOR DE MOTO", "PERFECT"), ("F3", D, "AMORTECEDOR", "AMORTECEDOR LINHA PESADA", "PERFECT"),
+                ("F4", D, "AMORTECEDOR", "AMORTECEDOR", "BPROAUTO"), ("F5", D, "AMORTECEDOR", "AMORTECEDOR", None), ("F6", D, "AMORTECEDOR", None, "PERFECT"),
+                ("G1", R, "AMORTECEDOR", "AMORTECEDOR", None), ("G1", R, "AMORTECEDOR", "AMORTECEDOR", "MOTORCRAFT"), ("G2", R, "AMORTECEDOR LINHA PESADA", "AMORTECEDOR LINHA PESADA", None)]
+        self.sql("INSERT INTO rd_projects(code,suggestion,description,line,family,brand,status) VALUES(?,?,'AMORTECEDOR',?,?,?,'EM COTAÇÃO')", rows)
+        cod = lambda k, f: sorted({x["code"] for x in rd.items(k, {"all": 1, **f})["rows"]})
+        self.assertEqual(cod(D, {}), ["F1", "F5", "F6"])                       # F2 moto e F3 pesada fora; F4 outra marca fora; F6 sem FAMILIA vale pela LINHA
+        self.assertEqual(cod(D, {"linha": "moto"}), ["F2"]); self.assertEqual(cod(D, {"linha": "pesada"}), ["F3"])
+        self.assertEqual(cod(D, {"marca": "todas"}), ["F1", "F4", "F5", "F6"]); self.assertEqual(cod(D, {"marca": "BPROAUTO"}), ["F4"])
+        r = rd.items(R, {"all": 1}); self.assertEqual((r["total"], r["linhas"]), (1, 2))      # R-D sem filtro de marca: 2 itens (linhas) do mesmo código
+        fc = rd.facets(R); self.assertEqual({x["v"]: x["l"] for x in fc["familias"]}, {"amortecedor": 2, "moto": 0, "pesada": 1})
+        self.assertEqual((fc["andamento"]["l"], fc["andamento"]["n"]), (2, 1))
+        self.assertEqual(self.db.stats()["des_items"], 3); self.assertEqual(self.db.stats()["rd_items"], 2)      # tela inicial: itens em andamento, como a tela
 
 
 class MercadoLivreFallback(unittest.TestCase):

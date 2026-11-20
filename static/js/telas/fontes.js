@@ -42,7 +42,7 @@
           : empty("Nenhuma importação ainda. Use «Atualização de dados».")),
         `<a class="${primario}" href="/api/export/fontes.xlsx${st === "todas" ? "" : "?status=" + st}">${PSDTW.ico("download", "sm")} Baixar Excel</a>`);
     };
-    $("#fs").innerHTML = card("Fontes e prioridade", `<p class="mb-3 mt-0 text-sm text-mute">Prioridade de 1 (maior) a 9: indica qual fonte prevalece quando você analisa um conflito em <a class="text-blue-600" href="/pendencias">Pendências</a>. O sistema nunca sobrescreve um valor sozinho. <span id="fsm" class="font-semibold" role="status"></span></p>`
+    $("#fs").innerHTML = card("Fontes e prioridade", `<p class="mb-3 mt-0 text-sm text-mute"><span id="fsm" class="font-semibold" role="status"></span></p>`
       + TW.table([{ h: "Fonte" }, { h: "Tipo de dado" }, { h: "Importações", r: true }, { h: "Dados avulsos" }, { h: "Prioridade" }],
         h.sources.map(s => [`<span class="block max-w-[22rem] truncate" title="${esc(s.name)}">${esc(s.name)}</span>`, esc(s.category || "–"), nf(s.imports),
           s.generic_rows ? `<span class="flex gap-1"><button type="button" class="${mini}" data-gv="${s.id}">Ver ${nf(s.generic_rows)} linha(s)</button><a class="${mini}" href="/api/sources/${s.id}/export.xlsx">⬇ Excel</a></span>` : '<span class="text-mute">–</span>',

@@ -46,15 +46,14 @@
     const flagsCard = () => {
       const k = F.get().pk === "rd" ? RD : DES, f = d.flags[k];
       const rows = d.groups.defs.filter(s => f[s.key]).map(s => ({ l: s.label, n: f[s.key], href: `/${SLUG[k]}?flag=${s.key}` })).sort((a, b) => b.n - a.n);
-      $("#dfl").innerHTML = card(`Pendências por controle de status`, `<p class="m-0 mb-3 text-sm text-mute">Itens de ${k} com cada pendência marcada (um item pode ter mais de uma). Clique numa linha para abrir a lista filtrada.</p>`
-        + (rows.length ? barras(rows, "#64748b") : vazio("Nenhuma pendência de status.")),
+      $("#dfl").innerHTML = card(`Pendências por controle de status`, (rows.length ? barras(rows, "#64748b") : vazio("Nenhuma pendência de status.")),
         `<div class="flex gap-2">${chip('data-pk=""', DES, k === DES)}${chip('data-pk="rd"', RD, k === RD)}</div>`);
     };
 
     const corpo = () => {
       const g = d.goals.goals, tr = d.tracking, vb = d.goals.basis === "validacao", u = esc(d.goals.validacoes?.filtro?.USER_VALID || "ITALOC"), y = d.goals.year;
       const funil = k => card(`Funil · ${k}`, d.funnel[k].length
-        ? `<p class="m-0 mb-3 text-sm text-mute">Itens distintos por status, do início ao recebimento. Clique num status para abrir a lista.</p>` + barras(d.funnel[k].map(r => ({ l: r.status, n: r.n, href: `/${SLUG[k]}?status=${encodeURIComponent(r.status)}` })), COR[k])
+        ? barras(d.funnel[k].map(r => ({ l: r.status, n: r.n, href: `/${SLUG[k]}?status=${encodeURIComponent(r.status)}` })), COR[k])
         : vazio("Sem itens ainda. Sincronize com o servidor."), `<a class="${botao}" href="/${SLUG[k]}">Abrir lista</a>`);
       const est = d.stock, st = (n, l) => `<div class="rounded-xl bg-slate-500/10 px-3 py-3 text-center"><div class="text-2xl font-bold tabular-nums text-ink">${n}</div><div class="text-xs text-mute">${l}</div></div>`;
       const ORD = ["gas", "oleo", "nd"], sys = [...d.system].sort((a, b) => ORD.indexOf(a.s) - ORD.indexOf(b.s)), LAB ={ gas: "FORCE GAS", oleo: "FORCE OIL", nd: "Sem dado" };

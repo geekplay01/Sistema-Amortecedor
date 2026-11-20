@@ -15,7 +15,6 @@
     const F = TW.filtros("brands", ["b", "q", "scope", "flag"]); let pg = 1, S = null, d = null, timer;
     const marca = () => F.get().b || "PERFECT", nome = b => NOME[b] || b, filtrado = () => ["q", "scope", "flag"].some(k => F.get()[k]);
     root.innerHTML = `<div class="flex flex-col gap-5">
-      <p class="m-0 text-sm text-mute">Itens agrupados pelo código: <b class="text-ink">AMD…</b> = PERFECT · <b class="text-ink">1BP…</b> = BPROAUTO · <b class="text-ink">somente números</b> = MOTRIO · itens da base <b class="text-ink">ItensMotorcraft</b> (PN Ford e a mesma família de código) = MOTORCRAFT. Reúne catálogo, desenvolvimento, redesenvolvimento, base de marcas e pedidos de amostra.</p>
       <div id="bg" class="grid grid-cols-2 gap-4 lg:grid-cols-5"></div>
       <div id="bq"></div>
       <div id="bm" class="text-sm text-mute"></div>

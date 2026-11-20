@@ -40,8 +40,7 @@
       const kp = ks.map(k => kpi(k, nf(v[k]), g[k] ? `meta ${nf(g[k].target)} · ${pct(g[k].pct)} atingido` : "", k === DES ? "green" : "slate"));
       if (ks.length > 1) kp.unshift(kpi("Total de validações", nf(v.total), `${nf(v.linhas?.do_usuario_e_linha)} linhas de ${nf(v.linhas?.lidas)} lidas`, "blue"));
       $("#mx").innerHTML = `<section class="flex flex-col gap-4">
-        <div><h3 class="m-0 text-lg font-semibold text-ink">Validações ${u} · ${d.year}</h3>
-          <p class="m-0 mt-1 text-sm text-mute">USER_VALID = <b>${u}</b> · LINHA contém <b>${esc(v.filtro?.LINHA_contem || "AMORTECEDOR")}</b> · contagem por código distinto · tipo pela SUGESTÃO</p></div>
+        <div><h3 class="m-0 text-lg font-semibold text-ink">Validações ${u} · ${d.year}</h3></div>
         <div class="grid grid-cols-1 gap-4 ${kp.length > 2 ? "md:grid-cols-3" : "md:grid-cols-2"}">${kp.join("")}</div>
         ${warn.length ? notice(warn.map(esc).join("<br>"), "amber") : ""}
         ${card("Validações por mês", '<div id="mxc" class="chart"></div>')}</section>`;
@@ -59,7 +58,7 @@
         return card(`${k} ${g.reached ? badge("meta atingida", "green") : ""}`, `<div id="gg-${SLUG[k]}" class="chart"></div>
           <div class="mt-3 grid grid-cols-4 gap-2">${st(nf(g.target), "meta " + d.year)}${st(nf(g.done), "realizado")}${st(nf(g.missing), "faltam")}${st(pct(g.pct), "da meta")}</div>
           <div class="mt-3 flex flex-col gap-1.5 text-sm text-mute"><p class="m-0">${g.prior_aplica === false ? `Contado pelo servidor: <b class="text-ink">${nf(g.tracked)}</b> (sem itens de montadora)` : `Rastreado pelo sistema: <b class="text-ink">${nf(g.tracked)}</b> + já realizado antes do rastreio: <b class="text-ink">${nf(g.prior_done)}</b>`}${g.note ? ` · <i>${esc(g.note)}</i>` : ""}</p>
-          <p class="m-0">${esc(d.rules[k])}</p><p class="m-0">${base}</p></div>`,
+          <p class="m-0">${base}</p></div>`,
           `<button type="button" data-edit="${k}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10">Editar meta</button>`, g.reached ? "ring-1 ring-emerald-500/50" : "");
       }).join("");
       ks.forEach(k => PSDCharts.gauge($("#gg-" + SLUG[k]), { value: d.goals[k].done, target: d.goals[k].target, title: "", subtitle: `realizado × meta ${d.goals[k].target}` }));
@@ -74,8 +73,7 @@
       if (!rv || !tipos().includes(RD)) { $("#mrd").innerHTML = ""; return; }
       const s = F.get().rdv || "todas", c = rv.counts, ok = r => s === "contam" ? r.counts : s === "aguardando" ? !r.counts : s === "todas" ? true : r.flags.includes(s), rows = rv.rows.filter(ok);
       const chips = Object.entries(RDF).filter(([k]) => k === "todas" || c[k] || s === k).map(([k, l]) => chip(`data-rdv="${k}"`, `${l} · ${nf(c[k])}`, s === k)).join("");
-      $("#mrd").innerHTML = card(`Validações ${RD} · ${d.year}`, `<p class="m-0 mb-3 text-sm text-mute">Todas as validações do usuário em ${RD} no ano (data de aprovação), inclusive as que estão com validação pendente da qualidade ou reprovada. Cada item <b class="text-ink">entra na meta de ${d.year} quando chegar a ITEM RECEBIDO</b>, mesmo que chegue depois.</p>
-        <div class="mb-3 flex flex-wrap gap-2">${chips}</div>`
+      $("#mrd").innerHTML = card(`Validações ${RD} · ${d.year}`, `<div class="mb-3 flex flex-wrap gap-2">${chips}</div>`
         + (rows.length ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Validado em" }, { h: "Status atual" }, { h: "Controle de status", nw: false }, { h: "Recebido em" }, { h: "Conta?" }],
             rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="rd" data-code="${esc(r.code)}">${esc(r.code)}</a>`, r.description ? `<span class="block max-w-[18rem] truncate" title="${esc(r.description)}">${esc(r.description)}</span>` : "–",
               dmy(r.valid_at), r.status ? badge(r.status, r.counts ? "green" : "slate") : "–", `<div class="flex min-w-[10rem] flex-wrap gap-1">${PSD.flagChips(r.flags)}</div>`,
@@ -98,7 +96,7 @@
 
     const desenharPendentes = () => {
       if (!tipos().includes(RD)) { $("#mval").innerHTML = ""; return; }
-      $("#mval").innerHTML = card(`Validações — ${RD}`, `<p class="m-0 mb-3 text-sm text-mute">Itens em <b class="text-ink">PENDENTE CONFIRMAÇÃO</b> (Amortecedor): ${nf(pv.total)}, com validação enviada: <b class="text-ink">${nf(pv.sent)}</b>. Quando o servidor mostrar <b class="text-ink">ITEM RECEBIDO</b> e o item tiver a validação do usuário, ele entra na meta automaticamente.</p>` +
+      $("#mval").innerHTML = card(`Validações — ${RD}`, `<p class="m-0 mb-3 text-sm text-mute">Itens em <b class="text-ink">PENDENTE CONFIRMAÇÃO</b> (Amortecedor): ${nf(pv.total)}, com validação enviada: <b class="text-ink">${nf(pv.sent)}</b>.</p>` +
         (pv.rows.length ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Validação" }, { h: "" }], pv.rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="rd" data-code="${esc(r.code)}">${esc(r.code)}</a>`,
           r.description ? `<span class="block max-w-[22rem] truncate" title="${esc(r.description)}">${esc(r.description)}</span>` : '<span class="text-mute">–</span>',
           r.sent_at ? `${badge("enviada em " + dmy(r.sent_at), "green")} <span class="text-xs text-mute">aguardando ITEM RECEBIDO</span>` : badge("não enviada", "amber"),

@@ -190,3 +190,13 @@ ETAPA 20 — 20/11/2026 (decisões em DECISOES_ETAPA20.md, regras em REGRAS_DE_N
 
  DEPOIS DE ATUALIZAR PARA A ETAPA 20 (uma vez, no banco real)
  1. Sincronize uma vez: traz o estoque PRIVATE/FECT para a tela Estoque (até lá ela avisa que o estoque não veio) e grava os sub status de negociação, vendas e CIT.
+
+ETAPA 21 — 20/11/2026 (decisões em DECISOES_ETAPA21.md, regras em REGRAS_DE_NEGOCIO.md)
+ - Desenvolvimento e Redesenvolvimento contam como o sistema PERFECT: pela FAMILIA do servidor, por item (cada linha/ID) e, no desenvolvimento, só a
+   marca PERFECT. No topo, a chave Amortecedor · Amortecedor de moto · Linha pesada. Negociação e vendas foram para «Mais filtros»; validação
+   aprovada, reprovada e pendente qualidade ficam no quadro; no desenvolvimento, «Pendente controladoria» em «Mais filtros».
+ - Os textos que explicavam cada tela saíram dela: estão em Configurações › Regras das telas. Cada tela tem o link «Regras da tela» ao lado do título.
+ - Tela inicial: etiqueta FORCE GAS menor e o nome PERFECT AUTOMOTIVE inteiro e centrado acima do amortecedor.
+
+ DEPOIS DE ATUALIZAR PARA A ETAPA 21 (uma vez, no banco real)
+ 1. Sincronize uma vez: grava a FAMILIA de cada linha (a chave de linha e a moto dependem dela) e traz as linhas de amortecedor cuja LINHA é outra.

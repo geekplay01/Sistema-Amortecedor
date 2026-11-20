@@ -18,8 +18,7 @@
   async function ladosPage() {
     const F = TW.filtros("lados", CHAVES); let pg = 1, timer, LV = {}, st = null;
     root.innerHTML = `<div class="flex flex-col gap-5">
-      <p class="m-0 text-sm text-mute">Amortecedores <b class="text-ink">do catálogo (CatalogoAMD.xlsx)</b>. O <b class="text-ink">par LD × LE</b> vem da planilha <b class="text-ink">Lados - Amortecedores.xlsx</b>; se ela não cobrir, dos Produtos Relacionados ou da aplicação.
-        O amortecedor do <b class="text-ink">outro eixo</b> (traseiro de um dianteiro e vice-versa) é procurado nesta ordem, do mais confiável ao menos:</p>
+      <p class="m-0 text-xs font-semibold uppercase tracking-wide text-mute">Outro eixo · ordem de busca, do mais confiável ao menos</p>
       <div id="lleg" class="flex flex-wrap gap-1.5"></div>
       <div id="lk" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
       <div id="lf"></div>

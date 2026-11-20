@@ -42,19 +42,43 @@ def only_desc():
 
 LINE_EXCLUDE = ("COX", "KAD")          # linhas COX (coxim) e KAD: não entram nas listas nem nas metas
 
-def desc_sql(col="description", erp=True, pesada=False):
-    """Condição SQL que define o UNIVERSO de Desenvolvimento/Redesenvolvimento: nos módulos e no Dashboard só a LINHA exatamente «AMORTECEDOR» (etapa 20 · Q1,
-    como o faturamento do BI); `pesada=True` (metas) inclui também «AMORTECEDOR LINHA PESADA». COX e KAD ficam de fora. `col` carrega o alias da tabela
-    («r.description» → usa r.line e r.code). Enquanto a coluna LINHA não veio do servidor (banco antigo), vale a descrição contendo o texto da regra — sempre sem
-    itens COX/KAD. `erp=False` mantém os bloqueados/inativos no ERP (metas: o que já foi recebido e validado continua contando)."""
+# Chave de linha das telas DES/R-D (etapa 21): a FAMILIA do servidor, como o sistema PERFECT conta. «{t}» = texto da regra (AMORTECEDOR).
+FAMILIAS = {"amortecedor": ("{t}", "Amortecedor"), "moto": ("{t} DE MOTO", "Amortecedor de moto"), "pesada": ("{t} LINHA PESADA", "Linha pesada")}
+FAMILIA_PADRAO = "amortecedor"
+# Marca padrão por tipo (etapa 21): o sistema PERFECT mostra em Desenvolvimento só a marca PERFECT (as marcas próprias de clientes — BPROAUTO,
+# MOTORCRAFT, MOTRIO — ficam fora); em Redesenvolvimento a MARCA quase sempre vem vazia, então não há filtro. «todas» desliga.
+MARCA_PADRAO = {"DESENVOLVIMENTO": "PERFECT"}
+
+def familia_key(v):
+    v = (v or "").strip().lower()
+    return v if v in FAMILIAS else FAMILIA_PADRAO
+
+def desc_sql(col="description", erp=True, pesada=False, familia=None):
+    """Condição SQL que define o UNIVERSO de Desenvolvimento/Redesenvolvimento. Vale a FAMILIA do servidor (etapa 21: é o que o sistema PERFECT usa);
+    `familia` = chave de FAMILIAS, lista de chaves ou «todas» (as três). Padrão: só «AMORTECEDOR» (módulos e Dashboard, etapa 20 · Q1); `pesada=True` (metas)
+    = amortecedor + linha pesada. Linha sem FAMILIA (banco sincronizado antes da etapa 21) usa a LINHA — e, sem LINHA, a descrição contendo o texto da regra,
+    sempre sem COX/KAD. `col` carrega o alias da tabela («r.description» → r.family, r.line, r.code). `erp=False` mantém os bloqueados/inativos no ERP
+    (metas: o que já foi recebido e validado continua contando)."""
     t = re.sub(r"[^A-Z0-9 ]", "", only_desc())
     pre = col[:-len("description")] if col.endswith("description") else ""
-    ln, cd, ds = f"upper(trim(coalesce({pre}line,'')))", f"upper(coalesce({pre}code,''))", f"upper(coalesce({col},''))"
+    fm, ln, cd, ds = f"upper(trim(coalesce({pre}family,'')))", f"upper(trim(coalesce({pre}line,'')))", f"upper(coalesce({pre}code,''))", f"upper(coalesce({col},''))"
     off = f"{cd} NOT IN ({ERP_OFF_SQL})" if erp else "1=1"
     if not t: return f"({off})"
+    ks = list(FAMILIAS) if familia == "todas" else ["amortecedor", "pesada"] if pesada and familia is None else [familia_key(x) for x in (familia if isinstance(familia, (list, tuple)) else [familia])]
+    fams = [FAMILIAS[k][0].format(t=t) for k in dict.fromkeys(ks)]
     ex = " AND ".join(f"{cd} NOT LIKE '{x}%' AND {ds} NOT LIKE '{x}%'" for x in LINE_EXCLUDE)
-    linhas = f"'{t}', '{t} LINHA PESADA'" if pesada else f"'{t}'"
-    return f"((({ln} IN ({linhas})) OR ({ln}='' AND {ds} LIKE '%{t}%' AND {ex})) AND {off})"
+    sem_fam = [f for f in fams if not f.endswith(" DE MOTO")]          # sem FAMILIA não dá para separar a moto: ela só aparece depois da sincronização
+    pela_linha = f"({ln} IN ({', '.join(repr(f) for f in sem_fam)}) OR ({ln}='' AND {ds} LIKE '%{t}%' AND {ex}))" if t in sem_fam else f"({ln} IN ({', '.join(repr(f) for f in sem_fam)}))" if sem_fam else "0"
+    return f"((({fm} IN ({', '.join(repr(f) for f in fams)})) OR ({fm}='' AND {pela_linha})) AND {off})"
+
+def marca_sql(kind, marca=None, pre="r."):
+    """Condição da marca no universo DES/R-D: vazio = padrão do tipo (MARCA_PADRAO: a marca padrão ou MARCA vazia — só as outras marcas saem),
+    «todas» = sem filtro, outro valor = a MARCA exata. None se não filtra."""
+    m = re.sub(r"[^A-Z0-9 .&-]", "", (marca or "").strip().upper()); col = f"upper(trim(coalesce({pre}brand,'')))"
+    if m == "TODAS": return None
+    if m: return f"{col}='{m}'"
+    d = MARCA_PADRAO.get(kind, "")
+    return f"{col} IN ('{d}','')" if d else None
 
 # Bloqueado (BLOQ=SIM) ou inativo no ERP: sai de DES/R-D (listas, contadores e metas). Vem de ESTOQUE_ANALISE_REPOSICAO pela sincronização (tabela ds_situacao).
 ERP_OFF_SQL = "SELECT upper(code) FROM ds_situacao WHERE upper(trim(coalesce(blocked,'')))='SIM' OR upper(trim(coalesce(active,'ATIVO')))<>'ATIVO'"

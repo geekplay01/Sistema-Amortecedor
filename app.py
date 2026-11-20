@@ -2,7 +2,7 @@
 from flask import Flask, send_file, Response, render_template, jsonify, request, abort, send_from_directory
 import os, re, glob, uuid, shutil, datetime
 import database as db, importer, loaders, queries, equivalence, damping, exporter, rd, updater, drawings, purchases, brands, shipments, sides
-import kinds, statuses, data_pipeline, goals, analytics, price_search, auth, rules, metas, orders, curva_abc, fob_merge
+import kinds, statuses, data_pipeline, goals, analytics, price_search, auth, rules, metas, orders, curva_abc, fob_merge, regras_telas
 
 data_pipeline.load_env()          # lê o .env (usuário/senha do servidor, chaves do Mercado Livre...)
 app = Flask(__name__)
@@ -91,7 +91,10 @@ def inject():
     byslug = {p[0]: p for p in PAGES}
     rel = lambda slug: tuple([byslug[s] for s in side if s in byslug] for side in RELATED.get(slug, ([], [])))
     return {"pages": PAGES, "primary": [byslug[s] for s in PRIMARY], "tw_local": os.path.exists(os.path.join(app.root_path, "static", "vendor", "tailwind.js")), "menu": [(t, [byslug[s] for s in ss if s in byslug]) for t, ss in MENU],
-            "flow_groups": FLOW_GROUPS, "related": rel, "cfg_page": byslug.get("configuracoes"), "status_defs": statuses.public()}
+            "flow_groups": FLOW_GROUPS, "related": rel, "cfg_page": byslug.get("configuracoes"), "status_defs": statuses.public(), "regras_slugs": regras_telas.slugs()}
+
+@app.get("/api/regras-telas")
+def api_regras_telas(): return jsonify(regras_telas.lista())          # etapa 21: os textos de regra das telas ficam em Configurações › Regras das telas
 
 _cnt = {"t": 0, "v": {}}
 @app.get("/api/menu/counts")
@@ -485,7 +488,7 @@ def _rdk(k): return rd.KINDS.get(k) or abort(404)
 @app.get("/api/rd/<kind>")
 def api_rd(kind): return jsonify(rd.items(_rdk(kind), A()))
 @app.get("/api/rd/<kind>/facets")
-def api_rd_f(kind): return jsonify(rd.facets(_rdk(kind), request.args.get("status")))
+def api_rd_f(kind): return jsonify(rd.facets(_rdk(kind), request.args.get("status"), {k: request.args.get(k) for k in ("linha", "marca")}))
 @app.get("/api/rd/<kind>/item/<path:code>")
 def api_rd_d(kind, code): return jsonify(rd.detail(_rdk(kind), code) or abort(404))
 @app.get("/api/filters")

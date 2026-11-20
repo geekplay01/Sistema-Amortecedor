@@ -23,7 +23,6 @@
     const aba = () => F.get().tab === "pedidos" ? "pedidos" : "pendentes", filtrosDa = () => { const s = F.get(); return Object.fromEntries(ABA[aba()].filter(k => s[k]).map(k => [k, s[k]])); };
     root.innerHTML = `<div class="flex flex-col gap-5">
       <div id="atab" class="flex flex-wrap items-center gap-2"></div>
-      <p id="aintro" class="m-0 text-sm text-mute"></p>
       <div id="ak" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
       <div id="af"></div>
       <div id="ameta" class="text-sm text-mute"></div>
@@ -38,10 +37,8 @@
     const desenharFiltros = () => {
       const s = filtrosDa(), excel = xlsx => TW.botao("Baixar Excel", { href: `/api/export/${xlsx}.xlsx?${new URLSearchParams(s)}`, icone: "download" });
       if (aba() === "pendentes") {
-        $("#aintro").innerHTML = 'Itens PERFECT em <b class="text-ink">DESENVOLVIMENTO</b> marcados <b class="text-ink">PENDENTE COMPRAS</b>, sem amostra comprada, fora do catálogo e com status diferente de ITEM RECEBIDO (só Amortecedor). Redesenvolvimento não tem sugestão: para comprar amostra de um item já desenvolvido, use <b class="text-ink">+ Nova amostra</b> em Pedidos de amostra. Cada referência abre a consulta do menor preço.';
         TW.pintarBarra($("#af"), { busca: { valor: s.q, ph: "Código, descrição, veículo…" }, etiquetas: TW.etiquetas(s, { q: "Busca" }), acoes: excel("pendente_compras") });
       } else {
-        $("#aintro").innerHTML = 'Pedidos de amostra por etapa. Use ◀ ▶ para mudar a etapa; ao chegar em <b class="text-ink">Chegou</b>, o item entra no <a class="font-semibold text-blue-600" href="/envio">Envio de amostra</a> como «Pendente projeto».';
         const d = data || { suppliers: [], months: [], totals: {} }, t = d.totals || {}, todos = [{ v: "", l: "Todos" }];
         TW.pintarBarra($("#af"), {
           busca: { valor: s.q, ph: "Código, SC, aplicação, fornecedor…" },

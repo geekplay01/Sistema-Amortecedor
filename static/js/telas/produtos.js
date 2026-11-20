@@ -15,7 +15,6 @@
   function lista(slug, pesquisa) {
     const F = TW.filtros(slug, pesquisa ? PESQ : BASE); let pg = 1, fc = null, L = { makes: [], models: [], years: [] }, timer;
     root.innerHTML = `<div class="flex flex-col gap-5">
-      <p class="m-0 text-sm text-mute">${pesquisa ? "<b>Digite o código PERFECT, OEM ou de um CONCORRENTE</b> (com ou sem ponto/hífen: 16.470 = 16470) ou uma aplicação (ex.: strada 2012 dianteiro). Procura no catálogo e nos itens em DESENVOLVIMENTO e REDESENVOLVIMENTO." : "Na ordem do catálogo (planilha CatalogoAMD, que prevalece). A busca aceita código PERFECT, OEM ou de concorrente — a linha mostra qual referência casou."}</p>
       ${pesquisa ? "" : '<div id="pk" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>'}
       <div id="pbar"></div>
       <div id="pmeta" class="text-sm text-mute"></div>

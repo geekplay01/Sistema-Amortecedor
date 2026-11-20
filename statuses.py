@@ -10,6 +10,24 @@ import re, rules, kinds
 SUBS = [("desenho", "drawing_substatus", "Desenho"), ("validacao", "validation_substatus", "Validação"), ("projeto", "project_substatus", "Projeto / invoice"),
         ("negociacao", "negotiation_substatus", "Negociação"), ("vendas", "sales_substatus", "Vendas"), ("cit", "cit_substatus", "CIT"), ("inmetro", "inmetro_substatus", "Inmetro")]
 SUB_COL = {k: c for k, c, _ in SUBS}
+# Etapa 21: valores de validação que ficam sempre no quadro, mesmo zerados (o servidor ainda não manda nenhum). Filtro «sub=validacao:@CHAVE»;
+# cada um junta as grafias do servidor pelo trecho (precisa ter / não pode ter). Negociação e vendas vão para «Mais filtros» (só na tela).
+FIXOS = {"validacao": [("APROVADA", "VALIDAÇÃO APROVADA", ["APROVAD"], ["REPROVAD"]), ("REPROVADA", "VALIDAÇÃO REPROVADA", ["REPROVAD"], []),
+                       ("QUALIDADE", "PENDENTE QUALIDADE", ["QUALIDADE"], ["APROVAD", "REPROVAD"])]}      # «reprovada pela qualidade» é reprovada
+CONTROLADORIA = "CONTROLADORIA"       # «Pendente controladoria» (Mais filtros do DES): o texto em qualquer status ou sub status
+
+def fixo_of(key, v):
+    """Chave do valor fixo que `v` (uma parte do sub status) representa, ou None."""
+    u = (v or "").upper()
+    for k, _, inc, exc in FIXOS.get(key, []):
+        if all(p in u for p in inc) and not any(p in u for p in exc): return k
+    return None
+
+def fixo_sql(key, fk, col):
+    """Condição SQL do valor fixo `fk` na coluna `col` (trechos sem acento comparados em maiúsculas)."""
+    for k, _, inc, exc in FIXOS.get(key, []):
+        if k == fk: return "(" + " AND ".join([f"upper(coalesce({col},'')) LIKE '%{p}%'" for p in inc] + [f"upper(coalesce({col},'')) NOT LIKE '%{p}%'" for p in exc]) + ")"
+    return "0"
 
 def split_sub(v):
     """«A / B /» → ["A", "B"] (maiúsculas, sem vazios)."""
@@ -67,7 +85,8 @@ def view_sql(has_cols):
     agg = ", ".join(f"{agg1(k, inc, exc)} {k}_a" for k, _, _, _, inc, exc in DEFS)
     eff = ",\n ".join(f"g.{k}_a {k}" for k in KEYS)
     auto = ", ".join(f"g.{k}_a a_{k}" for k in KEYS)
-    return (f"CREATE VIEW v_rd_flags AS\nWITH a AS (SELECT code, suggestion, upper({"||' '||".join(parts)}) t, upper(trim(coalesce(status,''))) st FROM rd_projects WHERE {rules.desc_sql()}),\n"
+    # as três famílias (amortecedor, moto, linha pesada): quem lê a view escolhe a família pelo próprio filtro de universo (etapa 21)
+    return (f"CREATE VIEW v_rd_flags AS\nWITH a AS (SELECT code, suggestion, upper({"||' '||".join(parts)}) t, upper(trim(coalesce(status,''))) st FROM rd_projects WHERE {rules.desc_sql(familia='todas')}),\n"
             f"g AS (SELECT code, suggestion, {agg} FROM a GROUP BY code, suggestion)\nSELECT g.code, g.suggestion,\n {eff},\n {auto} FROM g")
 
 ANY_SQL = " OR ".join(KEYS)

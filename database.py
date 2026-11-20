@@ -50,14 +50,15 @@ def stats():
      "applications": "SELECT COUNT(*) FROM applications",
      "drawings": "SELECT COUNT(DISTINCT code) FROM drawing_links",
      "ship_pendente": "SELECT COUNT(*) FROM sample_shipments WHERE status='pendente_projeto'",
-     "pend_compras": "SELECT COUNT(DISTINCT code||suggestion) FROM v_rd_flags WHERE pend_compras=1",
-     "val_reprovada": "SELECT COUNT(DISTINCT code||suggestion) FROM v_rd_flags WHERE val_reprovada=1",
+     "pend_compras": f"SELECT COUNT(DISTINCT code||suggestion) FROM v_rd_flags WHERE pend_compras=1 AND code||'|'||suggestion IN (SELECT code||'|'||suggestion FROM rd_projects WHERE {rules.desc_sql()})",
+     "val_reprovada": f"SELECT COUNT(DISTINCT code||suggestion) FROM v_rd_flags WHERE val_reprovada=1 AND code||'|'||suggestion IN (SELECT code||'|'||suggestion FROM rd_projects WHERE {rules.desc_sql()})",
      "imports": "SELECT COUNT(*) FROM import_batches",
      "pendencies": "SELECT COUNT(*) FROM pendencies WHERE status='aberta'",
      "duplicates": "SELECT COUNT(*) FROM (SELECT 1 FROM codes WHERE coalesce(source_id,0) NOT IN (SELECT id FROM sources WHERE name LIKE 'CrossCatalogo%') GROUP BY coalesce(normalized_code,code), code_type HAVING COUNT(DISTINCT product_id)>1)",
-     # etapa 20 · Q2: «em desenvolvimento» = em andamento (aplicação que ainda não é ITEM RECEBIDO), o mesmo número que abre a tela
-     "des_items": "SELECT COUNT(DISTINCT code) FROM rd_projects WHERE suggestion='DESENVOLVIMENTO' AND upper(trim(coalesce(status,'')))<>'ITEM RECEBIDO' AND " + rules.desc_sql(),
-     "rd_items": "SELECT COUNT(DISTINCT code) FROM rd_projects WHERE suggestion='REDESENVOLVIMENTO' AND upper(trim(coalesce(status,'')))<>'ITEM RECEBIDO' AND " + rules.desc_sql(),
+     # etapa 20 · Q2 / etapa 21: «em desenvolvimento» = itens (linhas do servidor, como o sistema PERFECT conta) em andamento — ainda não ITEM RECEBIDO —,
+     # família AMORTECEDOR e a marca padrão do tipo: o mesmo número que abre a tela
+     **{k: f"SELECT COUNT(*) FROM rd_projects r WHERE r.suggestion='{s}' AND upper(trim(coalesce(r.status,'')))<>'ITEM RECEBIDO' AND {rules.desc_sql('r.description')}"
+           + (f" AND {rules.marca_sql(s)}" if rules.marca_sql(s) else "") for k, s in (("des_items", "DESENVOLVIMENTO"), ("rd_items", "REDESENVOLVIMENTO"))},
      "equivalences_pending": "SELECT COUNT(*) FROM equivalence_suggestions WHERE status='pendente'",
     }
     with session() as c: return {k: c.execute(v).fetchone()[0] for k, v in q.items()}
@@ -136,8 +137,9 @@ NEW_COLUMNS["rd_projects"] = [("make","TEXT"),("vehicle","TEXT"),("application_t
 NEW_COLUMNS.setdefault("rd_projects", []).extend([("brand", "TEXT"), ("project_substatus", "TEXT"), ("inmetro_substatus", "TEXT"), ("curtiu", "INTEGER"), ("nao_curtiu", "INTEGER"), ("extra", "TEXT"), ("line", "TEXT")])
 # etapa 20: os três sub status que só iam para o `extra` ganham coluna (as telas filtram por eles)
 NEW_COLUMNS["rd_projects"] += [("negotiation_substatus", "TEXT"), ("sales_substatus", "TEXT"), ("cit_substatus", "TEXT")]
+NEW_COLUMNS["rd_projects"] += [("family", "TEXT")]      # etapa 21: FAMILIA do servidor (amortecedor / de moto / linha pesada), o universo das telas
 NEW_COLUMNS["ds_situacao"] = [("stock_total", "REAL"), ("priv_pa", "REAL"), ("priv_mp", "REAL"), ("fect_pa", "REAL"), ("fect_mp", "REAL")]      # estoque da tela Estoque (etapa 20 · Q5)
-SUB_EXTRA = {"negotiation_substatus": "SUB STATUS NEGOCIAÇÃO", "sales_substatus": "SUB STATUS VENDAS", "cit_substatus": "SUB STATUS CIT"}
+SUB_EXTRA = {"negotiation_substatus": "SUB STATUS NEGOCIAÇÃO", "sales_substatus": "SUB STATUS VENDAS", "cit_substatus": "SUB STATUS CIT", "family": "FAMILIA"}
 NEW_COLUMNS["drawing_files"] = [("kind", "TEXT DEFAULT 'desenho'"), ("origin", "TEXT"), ("source", "TEXT")]
 
 def rebuild_flags_view():

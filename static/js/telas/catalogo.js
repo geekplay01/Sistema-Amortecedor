@@ -25,7 +25,6 @@
   function aplicacoes() {
     const F = TW.filtros("aplicacoes", ["q", "make", "model", "year", "axle", "side"]); let pg = 1, d = null, L = { makes: [], models: [], years: [] }, timer;
     root.innerHTML = `<div class="flex flex-col gap-5">
-      <p class="m-0 text-sm text-mute">Veículos em que cada amortecedor do catálogo é aplicado (um produto pode ter várias aplicações). Clique no código para abrir a ficha.</p>
       <div id="ak" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
       <div id="abar"></div>
       <div id="am" class="text-sm text-mute"></div>
@@ -85,7 +84,6 @@
     const F = TW.filtros("comparacao", ["ids", "dif"]);
     const ids = () => ((F.get().ids || "").match(/\d+/g) || []).slice(0, 4);
     root.innerHTML = `<div class="flex flex-col gap-5">
-      <p class="m-0 text-sm text-mute">Escolha de 2 a 4 produtos para comparar os dados lado a lado. As linhas que diferem ficam destacadas; dimensões parecidas não bastam para afirmar intercambialidade.</p>
       <section class="flex flex-col gap-3 rounded-2xl border border-line bg-card p-5 shadow-sm">
         <div class="flex flex-wrap items-center gap-2"><input id="cadd" list="cdl" placeholder="Adicionar produto: digite o código PERFECT e escolha" class="${campo} min-w-[16rem] flex-1" autocomplete="off"><datalist id="cdl"></datalist>
           <button type="button" id="cdif" class="${botao}"></button><a id="cxl" class="${primario}" href="#">⬇ Baixar Excel</a></div>
@@ -130,7 +128,6 @@
   function equivalencias(host) {
     const F = TW.filtros("equivalencias", ["tab", "q", "status", "confidence", "diff", "minscore", "crit", "dif", "miss"]); let pg = 1, d = null, timer;
     host.innerHTML = `<div class="flex flex-col gap-5">
-      ${notice("A pontuação (0–100%) mede a <b>similaridade dos dados</b> (códigos, aplicação, medidas, sistema). <b>Não comprova intercambialidade</b> e nenhuma sugestão é aprovada automaticamente.", "blue")}
       <div id="ek" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
       <div id="ebar"></div>
       <div id="em" class="flex flex-wrap items-center justify-between gap-3 text-sm text-mute"></div><span id="emsg" class="hidden text-sm" role="status"></span>

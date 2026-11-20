@@ -27,18 +27,11 @@
     if (tab === "sugestoes") return PSD.equivalencias($("#ab"));
 
     const F = TW.filtros("anomalias", ["tab", "q", "tipo", "status"]); F.set({ tab }); let timer;
-    const AVISO = {
-      familia: notice("O <b>CatalogoAMD prevalece</b> na família. Aqui aparecem os produtos com algum certificado Inmetro de família diferente. A importação do Inmetro não abre mais conflito de família: confira o certificado (ou o catálogo) e corrija na origem."),
-      ean: notice("EAN do catálogo diferente do que veio na planilha. Nada foi sobrescrito: escolha <b>Usar o da planilha</b> (grava o EAN importado no produto) ou <b>Manter o do catálogo</b>. Os mesmos casos aparecem em <a class=\"text-blue-600\" href=\"/pendencias?field=ean\">Pendências</a>.", "amber"),
-      pesoean: notice("O <b>BI03 (cadastro do Protheus) prevalece</b> no peso líquido e no código de barras. Aqui aparecem os itens em que a planilha CatalogoAMD diz outra coisa: corrija a planilha."),
-      protheus: notice("Itens de DESENVOLVIMENTO e REDESENVOLVIMENTO em andamento (sem ITEM RECEBIDO, sem cancelado) que <b>ainda não estão no BI03</b> como amortecedor acabado (PA): pendentes de cadastro no Protheus.", "amber") };
-    AVISO.cross = notice("No catálogo vale o <b>CrossCatalogo.xlsx</b>; em desenvolvimento, o servidor (DESENVOLVIMENTO_CONCORRENTES). Aqui aparecem os itens do catálogo em que o <b>mesmo concorrente</b> tem referência diferente nas duas fontes: confira e corrija a planilha ou o cadastro do desenvolvimento.");
-    AVISO.repetidos = notice("Referências do servidor que parecem erro de cadastro: a <b>mesma referência</b> de um concorrente ligada a vários códigos PERFECT, ou o <b>mesmo código</b> com várias referências do mesmo concorrente. A mesma referência repetida em várias aplicações do mesmo código não entra aqui.", "amber");
-    AVISO.corrigido = notice("«Nosso código» corrigido na tela <a class=\"text-blue-600\" href=\"/cobertura\">Cobertura de concorrentes</a>. A correção já vale no app (sobre o CrossCatalogo e o servidor); leve-a para o <b>CrossCatalogo.xlsx</b> para ficar na planilha também.");
+    // etapa 21: a explicação de cada aba (o que entra, qual fonte prevalece) está em Configurações › Regras das telas › Anomalias
     const META = { familia: "produto(s) com família divergente", ean: "EAN divergente(s)", pesoean: "diferença(s) entre o CatalogoAMD e o BI03", protheus: "item(ns) pendente(s) de cadastro no Protheus",
       cross: "divergência(s) entre o CrossCatalogo e o servidor", repetidos: "caso(s) de referência repetida", corrigido: "referência(s) corrigida(s) no app" };
     const chip = (k, v, label, n) => { const on = F.get()[k] === v; return `<button type="button" data-tg="${k}" data-v="${esc(v)}" aria-pressed="${on}" class="psd-chip">${esc(label)}<span class="n">${nf(n)}</span></button>`; };      // etapa 19: mesmo visual da barra de filtros
-    $("#ab").innerHTML = AVISO[tab] + (tab === "protheus" ? '<div id="aq" class="flex flex-wrap items-center gap-2"></div>' : "")
+    $("#ab").innerHTML = (tab === "protheus" ? '<div id="aq" class="flex flex-wrap items-center gap-2"></div>' : "")
       + `<form id="af" class="flex flex-wrap items-center gap-2" autocomplete="off"><input name="q" type="search" placeholder="Buscar código, descrição ou valor…" class="${campo} min-w-[16rem] flex-1">
         <a id="ax" class="${primario}" href="/api/anomalies/export.xlsx">${PSDTW.ico("download", "sm")} Baixar Excel</a></form><div id="am" class="text-sm text-mute"></div><div id="at"></div>`;
     $("#af").q.value = F.get().q || "";
