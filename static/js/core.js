@@ -61,32 +61,28 @@
   const flagSel = () => `<select name="flag"><option value="">Controle de status</option>${FGROUPS.map(g => `<optgroup label="${esc(g.label)}"><option value="grupo_${g.key}">Todos de ${esc(g.label)}</option>${Object.keys(FLG).filter(x => FLG[x][2] === g.key).map(x => `<option value="${x}">${esc(FLG[x][0])}</option>`).join("")}</optgroup>`).join("")}<option value="nenhum">Sem pendência</option></select>`;
   const flagChips = fs => (fs || []).length ? fs.map(k => `<span class="fchip ${FLG[k][1]}">${FLG[k][0]}</span>`).join("") : '<span class="muted">–</span>';
   const xchips = (cs, max = 99) => cs.slice(0, max).map(c => `<span class="xchip"><b>${esc(c.brand || "")}</b> ${esc(c.code)}</span>`).join("") + (cs.length > max ? `<span class="xchip more">+${cs.length - max}</span>` : "");
-  const flagPanel = (k, code, fl) => `<div class="fpanel" data-fk="${k}" data-fc="${esc(code)}"><h4>Controle de status</h4>${FGROUPS.map(g => { const ks = Object.keys(FLG).filter(x => FLG[x][2] === g.key);
-    return `<div class="fgroup"><h5>${esc(g.label)}</h5><div class="fgrid2">${ks.map(key => { const s = fl[key], cls = FLG[key][1];
-      return `<label class="swl ${cls}"><span class="sw"><input type="checkbox" data-fl="${key}" ${s.value ? "checked" : ""}><i></i></span><span><b>${FLG[key][0]}</b><small>${s.manual ? "marcação manual" + (s.by ? " · " + esc(s.by) : "") + ` · <a href="#" data-flauto="${key}">voltar ao automático</a>` : s.auto ? "indicado pelo servidor" : "automático (sem indicação no servidor)"}</small></span></label>`; }).join("")}</div></div>`; }).join("")}</div>`;
+  /* sub status do servidor no detalhe do item (etapa 20 · Q3: só leitura) — por coluna, com quantas aplicações têm cada valor */
+  const subPanel = rows => { const g = new Map();
+    rows.forEach(r => (r.subs || []).forEach(x => { const m = g.get(x.l) || new Map(); m.set(x.v, (m.get(x.v) || 0) + 1); g.set(x.l, m); }));
+    return `<div class="fpanel"><h4>Sub status do servidor</h4>${g.size ? `<div class="fgrid2">${[...g].map(([l, m]) => `<div class="fgroup"><h5>${esc(l)}</h5>${[...m].map(([v, n]) => `<div>${esc(v)} <small class="muted">· ${n} de ${rows.length} aplicaç${rows.length === 1 ? "ão" : "ões"}</small></div>`).join("")}</div>`).join("")}</div>` : '<p class="muted">Nenhum sub status no servidor.</p>'}</div>`; };
+  const subsTxt = r => [...new Set((r.subs || []).map(x => x.v))].join(" · ");
   const rdOpen = async (k, code) => { try { const d = await J(`/api/rd/${k}/item/` + encodeURIComponent(code)); const lab = k === "des" ? "DESENVOLVIMENTO" : "REDESENVOLVIMENTO", other = d.other.map(o => o.suggestion);
     dlg.innerHTML = `<div class="dh"><div><h2>${esc(d.code)} ${tag(lab)} ${other.map(tag).join(" ")}</h2><p>${esc(d.description || "")}</p></div><div><a class="btn ghost" href="/item/${encodeURIComponent(d.code)}">Página do item</a> <button class="btn ghost" data-close>Fechar</button></div></div>
       ${other.length ? `<div class="notice">Este código também consta em <b>${other.join(", ")}</b>.</div>` : ""}
       <div class="curline"><span class="cur up">▲ Curtiu ${d.curtiu || 0}</span><span class="cur down">▼ Não curtiu ${d.nao_curtiu || 0}</span></div>
       ${k === "rd" ? `<div class="vpanel" data-vc="${esc(d.code)}"><b>Validação</b> ${(d.validations || []).length ? d.validations.map(v => `<span class="vchip">enviada em ${dmy(v.sent_at)}${v.by_user ? " · " + esc(v.by_user) : ""} <a href="#" data-vundo="${v.id}">desfazer</a></span>`).join("") : '<span class="muted">nenhuma validação enviada registrada.</span>'}<button class="btn sm" data-vsend="${esc(d.code)}">Marcar validação enviada</button><small class="muted">A meta de Redesenvolvimento conta quando o status passar de PENDENTE CONFIRMAÇÃO para ITEM RECEBIDO.</small></div>` : ""}
       ${d.product ? "" : '<p class="muted">Ainda não está no catálogo.</p>'}
-      ${flagPanel(k, d.code, d.flags)}
+      ${subPanel(d.rows)}
       ${d.cross && d.cross.length ? `<div class="xref"><b>Referência cruzada:</b> ${xchips(d.cross)}</div>` : ""}
       <div data-dwblock="${esc(d.code)}" data-dwkind="projeto"></div>
       ${d.product ? "" : `<div data-dwblock="${esc(d.code)}"></div>`}
       ${d.info && Object.keys(d.info).length ? `<details class="sec"><summary><b>Todas as informações do servidor</b> <span class="badge">${Object.keys(d.info).length}</span></summary><div class="infogrid">${Object.entries(d.info).map(([k, v]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}</div></details>` : ""}
-      <h4>Aplicações (${d.rows.length})</h4>` + T(["Montadora", "Veículo", "Aplicação", "Anos", "Status", "Pend. desenho", "Pend. validação", "Fornecedor", "Amostra comprada", "Amostra enviada"], d.rows.map(r => `<tr><td>${esc(r.make || "")}</td><td>${esc(r.vehicle || "")}</td><td>${esc(r.application_text || "")}</td><td>${yr(r)}</td><td>${esc(r.status || "")}</td><td>${esc(r.drawing_substatus || "")}</td><td>${esc(r.validation_substatus || "")}</td><td>${esc(r.supplier || "")}</td><td>${r.bought || ""}</td><td>${r.sent || ""}</td></tr>`)) +
+      <h4>Aplicações (${d.rows.length})</h4>` + T(["Montadora", "Veículo", "Aplicação", "Anos", "Status", "Sub status", "Fornecedor", "Amostra comprada", "Amostra enviada"], d.rows.map(r => `<tr><td>${esc(r.make || "")}</td><td>${esc(r.vehicle || "")}</td><td>${esc(r.application_text || "")}</td><td>${yr(r)}</td><td>${esc(r.status || "")}</td><td>${esc(subsTxt(r))}</td><td>${esc(r.supplier || "")}</td><td>${r.bought || ""}</td><td>${r.sent || ""}</td></tr>`)) +
       `<h4>Compras de amostra ligadas (${d.samples.length})</h4>` + (d.samples.length ? d.samples.map(x => `SC ${esc(x.sc_number || "–")} · ${esc(x.sample_code || "")} · ${esc(x.supplier || "")} · ${esc(x.stage)}`).join("<br>") + ` <a href="/amostras?q=${encodeURIComponent(d.code)}">abrir em Compra de amostras</a>` : '<p class="muted">Nenhuma.</p>') +
       `<h4>Ensaios de damping force (${d.damping.length})</h4>` + (d.damping.length ? `<a href="/damping">ver em Damping force</a>` : '<p class="muted">Nenhum.</p>'); dlg.showModal(); dwBlocks(dlg); } catch (e) { PSDTW.erro(e); } };
   dlg.addEventListener("click", async e => {   // validação enviada (REDESENVOLVIMENTO)
     const s = e.target.closest("[data-vsend]"), u = e.target.closest("[data-vundo]"); if (!s && !u) return; e.preventDefault();
     try { if (s) await post("/api/validations", { code: s.dataset.vsend, kind: "REDESENVOLVIMENTO" }); else await J("/api/validations/" + u.dataset.vundo, { method: "DELETE" }); const c = (s || u).closest(".vpanel").dataset.vc; dlg.close(); rdOpen("rd", c); } catch (er) { PSDTW.erro(er); } });
-  const flagRefresh = () => { if (window.PSD && PSD.aoMudarControle) return PSD.aoMudarControle();       // telas migradas avisam por este gancho
-    const f = $("form.toolbar", root); if (f) f.dispatchEvent(new Event("input", { bubbles: true })); };
-  dlg.addEventListener("change", async e => { const t = e.target.closest("[data-fl]"), pn = e.target.closest(".fpanel"); if (!t || !pn) return;
-    try { const r = await post(`/api/rd/${pn.dataset.fk}/item/${encodeURIComponent(pn.dataset.fc)}/flags`, { flag: t.dataset.fl, value: t.checked }); pn.outerHTML = flagPanel(pn.dataset.fk, pn.dataset.fc, r.flags); flagRefresh(); } catch (er) { PSDTW.erro(er); t.checked = !t.checked; } });
-  dlg.addEventListener("click", async e => { const a = e.target.closest("[data-flauto]"), pn = e.target.closest(".fpanel"); if (!a || !pn) return; e.preventDefault();
-    try { const r = await post(`/api/rd/${pn.dataset.fk}/item/${encodeURIComponent(pn.dataset.fc)}/flags`, { flag: a.dataset.flauto, value: null }); pn.outerHTML = flagPanel(pn.dataset.fk, pn.dataset.fc, r.flags); flagRefresh(); } catch (er) { PSDTW.erro(er); } });
   document.addEventListener("click", e => { const a = e.target.closest("[data-rd]"); if (a) { e.preventDefault(); rdOpen(a.dataset.rd, a.dataset.code); } });
   // ---------- desenhos: miniaturas, bloco nos cadastros e a página do módulo ----------
   const FMT = { pdf: "PDF", dwg: "DWG", dxf: "DXF", step: "STEP", stp: "STEP", igs: "IGES", iges: "IGES", png: "PNG", jpg: "JPG", jpeg: "JPG", gif: "GIF", webp: "WEBP", svg: "SVG", zip: "ZIP" };
@@ -138,5 +134,5 @@
     Object.entries(window.PSD_EXEC({ J, post, $, $$, esc, num, root, fail, empty }).pages).forEach(([s, f]) => pages[s] = pages[s] || f);   // Pedidos em Aberto · Vendas (Curva A) · Garantia (Tailwind)
     (pages[page] || (() => root.innerHTML = empty("Página sem conteúdo.")))();
   };
-  window.PSD = { $, $$, esc, J, post, qs, num, brl, SYS, yr, T, lnk, empty, root, page, url, fail, dlg, kv, usd, openFicha, listView, inp, sel, prodRow, prodHead, fillSel, initLists, tag, clip, AX, SD, FLG, FGROUPS, flagSel, flagChips, xchips, flagPanel, rdOpen, flagRefresh, FMT, fext, dwTile, kb, dmy, KL, dwBlocks, dwFill, dwCol, dwCollect, dwPrevOk, dwNav, NEW, pages, tela, iniciar };
+  window.PSD = { $, $$, esc, J, post, qs, num, brl, SYS, yr, T, lnk, empty, root, page, url, fail, dlg, kv, usd, openFicha, listView, inp, sel, prodRow, prodHead, fillSel, initLists, tag, clip, AX, SD, FLG, FGROUPS, flagSel, flagChips, xchips, rdOpen, FMT, fext, dwTile, kb, dmy, KL, dwBlocks, dwFill, dwCol, dwCollect, dwPrevOk, dwNav, NEW, pages, tela, iniciar };
 })();

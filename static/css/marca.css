@@ -229,6 +229,29 @@ tr:hover .psd-ed-btn,.psd-ed-btn:focus-visible{opacity:1}.psd-ed-btn:hover{backg
 .psd-tag{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 4px 0 11px;border-radius:999px;background:color-mix(in srgb,var(--b500) 12%,transparent);color:var(--tx);font-size:12px;font-weight:600}
 .psd-tag button{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;color:var(--mut)}
 .psd-tag button:hover{background:color-mix(in srgb,var(--b500) 20%,transparent);color:var(--tx)}
+/* DES / R-D (etapa 20 · Q4): esteira dos estágios (sem setas; clicar filtra) e quadro dos sub status do servidor */
+.psd-est{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:8px}
+.psd-est button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:78px;padding:11px 14px!important;border:1px solid var(--line)!important;border-radius:14px;background:var(--card)!important;text-align:left;box-shadow:var(--shadow);transition:border-color .15s,background .15s}
+.psd-est button:hover{border-color:color-mix(in srgb,var(--b500) 55%,var(--line))!important}
+.psd-est .t{font:600 11px/1.25 var(--fontd);letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.psd-est .n{font:700 24px/1.1 var(--fontd);color:var(--tx);font-variant-numeric:tabular-nums}
+.psd-est .l{font-size:12px;color:var(--mut)}
+.psd-est button.soma{background:color-mix(in srgb,var(--b500) 7%,var(--card))!important}
+.psd-est button.fim{box-shadow:inset 0 -3px 0 var(--ok),var(--shadow)}
+.psd-est button[aria-pressed=true]{border-color:var(--b600)!important;background:var(--b600)!important}
+.psd-est button[aria-pressed=true] :is(.t,.n,.l){color:#fff}
+.psd-subs{display:grid;grid-template-columns:repeat(auto-fill,minmax(18rem,1fr));gap:10px}
+.psd-sub{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:10px 8px 8px}
+.psd-sub h4{margin:0 8px 6px;font:600 11px/1.2 var(--fontd);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.psd-sub button{display:flex;width:100%;align-items:center;gap:8px;padding:6px 8px!important;border-radius:9px;text-align:left;font-size:12.5px;color:var(--tx)}
+.psd-sub button:hover{background:var(--hover)!important}
+.psd-sub .v{flex:1;min-width:0;font-weight:600}
+.psd-sub .n{font-weight:700;font-variant-numeric:tabular-nums}
+.psd-sub .l{min-width:5.2em;text-align:right;font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums}
+.psd-sub button[aria-pressed=true]{background:var(--b600)!important;color:#fff}.psd-sub button[aria-pressed=true] .l{color:#DCE6FF}
+.psd-sd{flex:none;width:8px;height:8px;border-radius:999px;background:var(--pf-orange)}.psd-sd.ok{background:var(--ok)}.psd-sd.no{background:var(--pf-red)}
+.psd-sublist{display:flex;min-width:22rem;max-width:30rem;flex-wrap:wrap;gap:4px}
+.psd-sublist span{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:color-mix(in srgb,var(--mut) 12%,transparent);font-size:11.5px;font-weight:600;color:var(--tx);white-space:nowrap}
 
 /* ---------- mapa do Brasil (tela Garantia, etapa 18): estados clicáveis, rótulos que não roubam o clique, amostras da legenda ---------- */
 .psd-mapa path{cursor:pointer;outline:none;transition:opacity .15s}

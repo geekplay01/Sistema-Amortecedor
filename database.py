@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS brand_items(id INTEGER PRIMARY KEY, brand TEXT NOT NU
   item_type TEXT, vehicle TEXT, application TEXT, years TEXT, box_code TEXT, suppliers TEXT, source_id INTEGER REFERENCES sources(id));
 CREATE INDEX IF NOT EXISTS ix_bi_norm ON brand_items(brand, norm_code);
 """
-# Controle de status dos itens em DES / R-D. Valor efetivo = marcação manual (rd_flags) ou, se não houver, o que a planilha indica.
+# Pendências dos itens em DES / R-D: só o que o servidor indica (etapa 20 · Q3). rd_flags guarda as marcações manuais antigas, que não valem mais.
 # (a view v_rd_flags é montada por statuses.view_sql() — veja migrate())
 SCHEMA_V7 = """
 CREATE TABLE IF NOT EXISTS supplier_ex(supplier TEXT PRIMARY KEY, ex_code TEXT NOT NULL, full_name TEXT);
@@ -133,6 +133,9 @@ NEW_COLUMNS["sample_orders"] = [("side","TEXT"), ("best_price","REAL"), ("price_
 NEW_COLUMNS["rd_projects"] = [("make","TEXT"),("vehicle","TEXT"),("application_text","TEXT"),("year_from","INTEGER"),("year_to","INTEGER"),("description","TEXT")]
 
 NEW_COLUMNS.setdefault("rd_projects", []).extend([("brand", "TEXT"), ("project_substatus", "TEXT"), ("inmetro_substatus", "TEXT"), ("curtiu", "INTEGER"), ("nao_curtiu", "INTEGER"), ("extra", "TEXT"), ("line", "TEXT")])
+# etapa 20: os três sub status que só iam para o `extra` ganham coluna (as telas filtram por eles)
+NEW_COLUMNS["rd_projects"] += [("negotiation_substatus", "TEXT"), ("sales_substatus", "TEXT"), ("cit_substatus", "TEXT")]
+SUB_EXTRA = {"negotiation_substatus": "SUB STATUS NEGOCIAÇÃO", "sales_substatus": "SUB STATUS VENDAS", "cit_substatus": "SUB STATUS CIT"}
 NEW_COLUMNS["drawing_files"] = [("kind", "TEXT DEFAULT 'desenho'"), ("origin", "TEXT"), ("source", "TEXT")]
 
 def rebuild_flags_view():
@@ -152,6 +155,8 @@ def migrate():
         c.execute("UPDATE rd_projects SET suggestion='DESENVOLVIMENTO' WHERE suggestion='DES'"); c.execute("UPDATE rd_projects SET suggestion='REDESENVOLVIMENTO' WHERE suggestion IN ('R-D','RD')")
         c.execute("UPDATE rd_flags SET suggestion='DESENVOLVIMENTO' WHERE suggestion='DES'"); c.execute("UPDATE rd_flags SET suggestion='REDESENVOLVIMENTO' WHERE suggestion='R-D'")
         c.execute("DROP VIEW IF EXISTS v_rd_flags"); c.execute(statuses.view_sql({r[1] for r in c.execute("PRAGMA table_info(rd_projects)")}))
+        for col, lab in SUB_EXTRA.items():          # banco sincronizado antes da etapa 20: copia do `extra` (uma vez; a próxima sincronização grava direto)
+            c.execute(f"""UPDATE rd_projects SET {col}=json_extract(extra,'$."{lab}"') WHERE {col} IS NULL AND extra IS NOT NULL AND json_valid(extra) AND json_extract(extra,'$."{lab}"') IS NOT NULL""")
         for col in ("sample_bought", "sample_sent"):   # datas sem a hora: 2026-04-22 00:00:00 -> 2026-04-22
             c.execute(f"UPDATE rd_projects SET {col}=substr({col},1,10) WHERE length({col})>10 AND {col} GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] *'")
         import re as _re   # aplicação limpa (uma vez): sem apóstrofo inicial, espaços repetidos ou traço

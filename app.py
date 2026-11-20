@@ -240,19 +240,7 @@ def api_sup_ex():
     try: shipments.set_ex(b.get("supplier"), b.get("ex_code"), b.get("full_name")); return jsonify(ok=True)
     except ValueError as e: return jsonify(error=str(e)), 400
 
-# ---- Controle de status (DES / R-D), compras pendentes e Brands ----
-@app.post("/api/rd/<kind>/item/<path:code>/flags")
-def api_rd_flag(kind, code):
-    b = request.get_json(force=True) or {}
-    try: rd.set_flag(_rdk(kind), code, b.get("flag"), b.get("value"), b.get("user"))
-    except ValueError as e: return jsonify(error=str(e)), 400
-    return jsonify(flags=rd.item_flags(_rdk(kind), code))
-@app.post("/api/rd/<kind>/flags/bulk")
-def api_rd_flag_bulk(kind):
-    b = request.get_json(force=True) or {}; codes = [c for c in (b.get("codes") or []) if c][:2000]
-    try: n = rd.set_flags_bulk(_rdk(kind), codes, b.get("flag"), b.get("value"), b.get("user"))
-    except ValueError as e: return jsonify(error=str(e)), 400
-    return jsonify(updated=n, counts=rd.flag_counts(_rdk(kind)))
+# ---- Compras pendentes e Brands (as pendências de DES / R-D vêm só do servidor: etapa 20 · Q3) ----
 @app.get("/api/purchases/pending")
 def api_pend_buy(): return jsonify(purchases.pending(request.args.to_dict()))
 @app.get("/api/brands")
@@ -497,7 +485,7 @@ def _rdk(k): return rd.KINDS.get(k) or abort(404)
 @app.get("/api/rd/<kind>")
 def api_rd(kind): return jsonify(rd.items(_rdk(kind), A()))
 @app.get("/api/rd/<kind>/facets")
-def api_rd_f(kind): return jsonify(rd.facets(_rdk(kind)))
+def api_rd_f(kind): return jsonify(rd.facets(_rdk(kind), request.args.get("status")))
 @app.get("/api/rd/<kind>/item/<path:code>")
 def api_rd_d(kind, code): return jsonify(rd.detail(_rdk(kind), code) or abort(404))
 @app.get("/api/filters")

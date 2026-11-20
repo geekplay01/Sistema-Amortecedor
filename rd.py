@@ -1,14 +1,29 @@
 """Módulos «Desenvolvimento» e «Redesenvolvimento». Fonte oficial: SQL Server (DESENVOLVIMENTO_PRODUTOS) via data_pipeline.
 Item = código distinto dentro do tipo. Um código pode ter várias linhas (aplicações). Cada linha vale pelo tipo do servidor (SUGESTAO): o código que tem
-linhas DES e R-D aparece nas duas listas, cada uma com as próprias linhas (etapa 19 · Q2; antes o R-D prevalecia e escondia o DES ativo)."""
-import re, database as db
+linhas DES e R-D aparece nas duas listas, cada uma com as próprias linhas (etapa 19 · Q2; antes o R-D prevalecia e escondia o DES ativo).
+Etapa 20 · Q2/Q4: a tela abre «em andamento» (status=andamento: aplicações que ainda não são ITEM RECEBIDO); o recebido aparece no estágio ITEM RECEBIDO.
+Filtro `sub=<chave>:<valor>` = aplicações com aquele sub status do servidor (statuses.SUBS; valor composto vale como cada parte)."""
+import re
 from queries import q, q1
 
 import kinds, statuses, rules
 KINDS = dict(kinds.SLUG)          # {"des": "DESENVOLVIMENTO", "rd": "REDESENVOLVIMENTO"}
+ANDAMENTO, RECEBIDO = "andamento", "ITEM RECEBIDO"
+NAO_RECEBIDA = f"upper(trim(coalesce(r.status,'')))<>'{RECEBIDO}'"
+
+def _stage(st, p):
+    """Condição do estágio: «andamento» (não recebidas), um STATUS exato ou nada (todas)."""
+    if st == ANDAMENTO: return NAO_RECEBIDA
+    if st: p["status"] = st; return "r.status=:status"
+    return None
 
 def _where(kind, f):
     w, p = ["r.suggestion=:kind", rules.desc_sql("r.description")], {"kind": kind}
+    st = _stage(f.get("status") or "", p)
+    if st: w.append(st)
+    sk, _, sv = (f.get("sub") or "").partition(":")
+    if sk in statuses.SUB_COL and sv.strip():
+        w.append(f"{statuses.sub_has('r.' + statuses.SUB_COL[sk])} LIKE :subv"); p["subv"] = f"%/{sv.strip().upper()}/%"
     for i, t in enumerate((f.get("q") or "").split()):
         k = re.sub(r"[^A-Z0-9]", "", t.upper())        # referência de concorrente/OEM do servidor (DESENVOLVIMENTO_CONCORRENTES), com ou sem pontuação
         ref = f" OR upper(r.code) IN (SELECT code FROM concorrentes WHERE ref_key LIKE :t{i}k)" if len(k) >= 3 else ""
@@ -17,8 +32,7 @@ def _where(kind, f):
     if f.get("make"): w.append("upper(trim(r.make))=upper(trim(:make))"); p["make"] = f["make"]
     if f.get("model"): w.append("upper(trim(r.vehicle))=upper(trim(:model))"); p["model"] = f["model"]
     if (f.get("year") or "").isdigit(): w.append("r.year_from<=:year AND coalesce(r.year_to,9999)>=:year"); p["year"] = int(f["year"])
-    for k, col in (("status", "status"), ("drawing", "drawing_substatus"), ("validation", "validation_substatus"), ("supplier", "supplier")):
-        if f.get(k): w.append(f"r.{col}=:{k}"); p[k] = f[k]
+    if f.get("supplier"): w.append("r.supplier=:supplier"); p["supplier"] = f["supplier"]
     fl = f.get("flag")
     if fl in FLAGS: w.append(f"r.code IN (SELECT code FROM v_rd_flags WHERE suggestion=:kind AND {fl}=1)")
     elif fl == "nenhum": w.append(f"r.code IN (SELECT code FROM v_rd_flags WHERE suggestion=:kind AND NOT ({statuses.ANY_SQL}))")
@@ -50,7 +64,6 @@ def _order(f):
     return f"MAX(coalesce(r.curtiu,0)) DESC, {_rank_sql()} DESC, r.code"
 
 FLAGS = dict(statuses.LABEL)
-AUTO = {k: statuses.auto_col(k) for k in statuses.KEYS}
 
 def _j(v): return (v or "").replace(",", " · ")
 
@@ -58,25 +71,47 @@ def items(kind, f):
     w, p = _where(kind, f)
     size = 10**9 if f.get("all") else 50; off = 0 if f.get("all") else (max(int(f.get("page") or 1), 1) - 1) * size
     total = q1(f"SELECT COUNT(DISTINCT r.code) n FROM rd_projects r WHERE {w}", p)["n"]
+    subs = ",".join(f"group_concat(DISTINCT r.{c}) s_{k}" for k, c, _ in statuses.SUBS)          # «,» entre aplicações vira «/» abaixo
     rows = q(f"""SELECT r.code,MAX(r.description) description,MAX(r.product_id) product_id,COUNT(*) n_rows,group_concat(DISTINCT r.make) makes,group_concat(DISTINCT r.vehicle) vehicles,
-        group_concat(DISTINCT r.status) statuses,group_concat(DISTINCT r.drawing_substatus) drawing,group_concat(DISTINCT r.validation_substatus) validation,group_concat(DISTINCT r.supplier) suppliers,
-        MAX(substr(r.sample_bought,1,10)) bought,MAX(substr(r.sample_sent,1,10)) sent,MAX(r.curtiu) curtiu,MAX(r.nao_curtiu) nao_curtiu,
-        EXISTS(SELECT 1 FROM rd_projects o WHERE o.code=r.code AND o.suggestion<>:kind) also_other
+        group_concat(DISTINCT r.status) statuses,group_concat(DISTINCT r.supplier) suppliers,{subs},
+        MAX(substr(r.sample_bought,1,10)) bought,MAX(substr(r.sample_sent,1,10)) sent,MAX(r.curtiu) curtiu,MAX(r.nao_curtiu) nao_curtiu
         FROM rd_projects r WHERE {w} GROUP BY r.code ORDER BY {_order(f)} LIMIT {size} OFFSET {off}""", p)
     for r in rows:
-        for k in ("makes", "vehicles", "statuses", "drawing", "validation", "suppliers"): r[k] = _j(r[k])
-    if rows:
-        fm = {x["code"]: [k for k in FLAGS if x[k]] for x in q("SELECT * FROM v_rd_flags WHERE suggestion=? AND code IN (%s)" % ",".join("?" * len(rows)), [kind, *[r["code"] for r in rows]])}
-        for r in rows: r["flags"] = fm.get(r["code"], [])
+        for k in ("makes", "vehicles", "statuses", "suppliers"): r[k] = _j(r[k])
+        r["subs"] = [{"k": k, "l": lab, "v": v} for k, _, lab in statuses.SUBS for v in dict.fromkeys(statuses.split_sub((r.pop("s_" + k) or "").replace(",", "/")))]
     return {"total": total, "rows": rows, "size": size, "kind": KINDS.get(kind, kind)}
 
-def facets(kind):
+def _sub_counts(kind, st):
+    """Sub status do servidor no estágio `st`, por coluna: [{key, label, values: [{v, n (itens), l (aplicações)}]}] — um valor composto conta em cada parte."""
+    p = {"kind": kind}; c = _stage(st, p)
+    cols = ",".join(f"r.{col}" for _, col, _ in statuses.SUBS)
+    rows = q(f"SELECT r.code,{cols} FROM rd_projects r WHERE r.suggestion=:kind AND {rules.desc_sql('r.description')}{' AND ' + c if c else ''}", p)
+    out = []
+    for k, col, lab in statuses.SUBS:
+        acc = {}
+        for r in rows:
+            for v in dict.fromkeys(statuses.split_sub(r[col])):
+                a = acc.setdefault(v, [set(), 0]); a[0].add(r["code"]); a[1] += 1
+        out.append({"key": k, "label": lab, "values": sorted(({"v": v, "n": len(a[0]), "l": a[1]} for v, a in acc.items()), key=lambda x: (-x["n"], x["v"]))})
+    return out
+
+def facets(kind, status=None):
+    """Contadores da tela. `status` = estágio escolhido (padrão «andamento»): o quadro de sub status e o `etapa` contam só nele.
+    `status`, `total`, `curtidos` e `flags` valem para todas as aplicações (o Dashboard usa estes)."""
+    st = ANDAMENTO if status is None else status
     g = lambda col: q(f"SELECT {col} v,COUNT(DISTINCT code) n FROM rd_projects WHERE {rules.desc_sql()} AND suggestion=? AND {col} IS NOT NULL AND trim({col})<>'' GROUP BY {col} ORDER BY n DESC", (kind,))
     base = "suggestion=? AND " + rules.desc_sql()
     tot = q1("SELECT COUNT(DISTINCT code) n,COUNT(*) l FROM rd_projects WHERE " + base, (kind,))
     cur = q1(f"SELECT SUM(cu>0) curtidos,SUM(nc>0) nao_curtidos FROM (SELECT MAX(coalesce(curtiu,0)) cu,MAX(coalesce(nao_curtiu,0)) nc FROM rd_projects WHERE {base} GROUP BY code)", (kind,))
-    return {"status": g("status"), "drawing": g("drawing_substatus"), "validation": g("validation_substatus"), "supplier": g("supplier"), "make": g("make"), "total": tot["n"], "lines": tot["l"], "flags": flag_counts(kind),
-            "curtidos": cur["curtidos"] or 0, "nao_curtidos": cur["nao_curtidos"] or 0}
+    est = q(f"SELECT r.status v,COUNT(DISTINCT r.code) n,COUNT(*) l FROM rd_projects r WHERE r.suggestion=? AND {rules.desc_sql('r.description')} AND trim(coalesce(r.status,''))<>'' GROUP BY r.status", (kind,))
+    def resumo(s):
+        p = {"kind": kind}; c = _stage(s, p)
+        x = q1(f"""SELECT COUNT(*) n,SUM(l) l,SUM(cu>0) curtidos,SUM(nc>0) nao_curtidos FROM (SELECT COUNT(*) l,MAX(coalesce(r.curtiu,0)) cu,MAX(coalesce(r.nao_curtiu,0)) nc
+                   FROM rd_projects r WHERE r.suggestion=:kind AND {rules.desc_sql('r.description')}{' AND ' + c if c else ''} GROUP BY r.code)""", p)
+        return {k: x[k] or 0 for k in ("n", "l", "curtidos", "nao_curtidos")}
+    return {"status": g("status"), "supplier": g("supplier"), "total": tot["n"], "lines": tot["l"], "flags": flag_counts(kind),
+            "curtidos": cur["curtidos"] or 0, "nao_curtidos": cur["nao_curtidos"] or 0,
+            "esteira": est, "andamento": resumo(ANDAMENTO), "estagio": st, "etapa": resumo(st), "subs": _sub_counts(kind, st)}
 
 def _cross(pid, code):
     import purchases, queries
@@ -100,37 +135,18 @@ def flag_counts(kind):
     t = q1(f"SELECT COUNT(*) n,{sums},SUM(NOT ({statuses.ANY_SQL})) ok FROM v_rd_flags WHERE suggestion=?", (kind,))
     out = {k: t[k] or 0 for k in statuses.KEYS}; out["nenhum"] = t["ok"] or 0; return out
 
-def item_flags(kind, code):
-    """Estado de cada controle: valor efetivo, o que a planilha indica e se há marcação manual."""
-    v = q1("SELECT * FROM v_rd_flags WHERE suggestion=? AND code=?", (kind, code)) or {}
-    man = {x["flag"]: x for x in q("SELECT flag,value,by_user,updated_at FROM rd_flags WHERE suggestion=? AND code=?", (kind, code))}
-    return {k: {"label": lab, "group": statuses.GROUP[k], "value": bool(v.get(k)), "auto": bool(v.get(AUTO[k])), "manual": k in man, "by": man[k]["by_user"] if k in man else None, "at": man[k]["updated_at"] if k in man else None} for k, lab in FLAGS.items()}
-
-def set_flag(kind, code, flag, value, user=None):
-    """value True/False = marcação manual (prevalece sobre a planilha); None = volta ao que a planilha indica."""
-    if flag not in FLAGS: raise ValueError("Controle desconhecido.")
-    if not q1("SELECT 1 FROM rd_projects WHERE code=? AND suggestion=?", (code, kind)): raise ValueError("Item não encontrado.")
-    c = db.conn()
-    try:
-        if value is None: c.execute("DELETE FROM rd_flags WHERE code=? AND suggestion=? AND flag=?", (code, kind, flag))
-        else: c.execute("INSERT INTO rd_flags(code,suggestion,flag,value,by_user) VALUES(?,?,?,?,?) ON CONFLICT(code,suggestion,flag) DO UPDATE SET value=excluded.value,by_user=excluded.by_user,updated_at=CURRENT_TIMESTAMP", (code, kind, flag, int(bool(value)), user))
-        c.commit()
-    finally: c.close()
-
-def set_flags_bulk(kind, codes, flag, value, user=None):
-    for code in codes: set_flag(kind, code, flag, value, user)
-    return len(codes)
-
 def detail(kind, code):
-    rows = q("SELECT make,vehicle,application_text,year_from,year_to,status,drawing_substatus,validation_substatus,supplier,substr(sample_bought,1,10) bought,substr(sample_sent,1,10) sent,description,product_id,curtiu,nao_curtiu FROM rd_projects WHERE code=? AND suggestion=? ORDER BY make,vehicle,year_from", (code, kind))
+    cols = ",".join(f"{c} s_{k}" for k, c, _ in statuses.SUBS)
+    rows = q(f"SELECT make,vehicle,application_text,year_from,year_to,status,{cols},supplier,substr(sample_bought,1,10) bought,substr(sample_sent,1,10) sent,description,product_id,curtiu,nao_curtiu FROM rd_projects WHERE code=? AND suggestion=? ORDER BY make,vehicle,year_from", (code, kind))
     if not rows: return None
+    for r in rows: r["subs"] = [{"k": k, "l": lab, "v": v} for k, _, lab in statuses.SUBS for v in statuses.split_sub(r.pop("s_" + k))]
     pid = max([r["product_id"] for r in rows if r["product_id"]] or [0])
     return {"code": code, "kind": kind, "description": next((r["description"] for r in rows if r["description"]), None), "rows": rows,
             "other": q("SELECT suggestion,COUNT(*) n FROM rd_projects WHERE code=? AND suggestion<>? GROUP BY suggestion", (code, kind)),
             "product": q1("SELECT id,perfect_code,description FROM products WHERE id=?", (pid,)) if pid else None,
             "samples": q("SELECT id,sc_number,sample_code,supplier,stage FROM sample_orders WHERE perfect_code=? OR sample_code=?", (code, code)),
             "damping": q("SELECT id,test_date FROM damping_tests WHERE perfect_code=?", (code,)),
-            "flags": item_flags(kind, code), "cross": _cross(pid, code), "info": _info(kind, code), "validations": __import__("goals").validations_of(code, kind),
+            "cross": _cross(pid, code), "info": _info(kind, code), "validations": __import__("goals").validations_of(code, kind),
             "curtiu": max([r["curtiu"] or 0 for r in rows] or [0]), "nao_curtiu": max([r["nao_curtiu"] or 0 for r in rows] or [0])}
 
 def filter_lists(make=None):

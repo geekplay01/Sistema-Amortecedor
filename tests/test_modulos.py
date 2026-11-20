@@ -556,7 +556,7 @@ class FamiliaInmetro(_TmpDB):
         self.assertEqual(st, {"AMD1": "resolvida", "AMD3": "aberta"})
 
 class MetaRdPorValidacao(_TmpDB):
-    """Etapa 16 · D5/D5b: «Pendente compras» some quando o item já é ITEM RECEBIDO (a marcação manual ainda prevalece);
+    """Etapa 16 · D5/D5b: «Pendente compras» some quando o item já é ITEM RECEBIDO (etapa 20: a marcação manual não vale mais);
     meta R-D = itens validados pelo usuário no ano (DATA APROV) que chegaram a ITEM RECEBIDO, mesmo depois do fim do ano. A lista traz todas as validações do ano."""
     R = "REDESENVOLVIMENTO"
     def setUp(self):
@@ -582,7 +582,18 @@ class MetaRdPorValidacao(_TmpDB):
         self.sql("UPDATE rd_projects SET status='ITEM RECEBIDO' WHERE code='V4'")
         self.assertEqual(self.flags()["V4"], 0)                                   # todas as aplicações recebidas: o sub status antigo não vale
         self.sql("INSERT INTO rd_flags(code,suggestion,flag,value) VALUES('V1',?,'pend_compras',1)", [(self.R,)])
-        self.assertEqual(self.flags()["V1"], 1)                                   # marcação manual prevalece
+        self.assertEqual(self.flags()["V1"], 0)                                   # etapa 20 · Q3: marcação manual antiga não vale mais — só o servidor
+
+    def test_sub_status_do_servidor_por_parte(self):
+        """Etapa 20 · Q4: «A / B» conta em A e em B; em andamento deixa de fora as aplicações recebidas; filtro sub=<chave>:<valor>."""
+        import rd
+        fc = rd.facets(self.R); val = {x["v"]: (x["n"], x["l"]) for g in fc["subs"] if g["key"] == "validacao" for x in g["values"]}
+        self.assertEqual(val, {"VALIDAÇÃO REPROVADA": (1, 1), "PENDENTE VALIDAÇÃO QUALIDADE": (1, 1), "PENDENTE COMPRAS": (1, 1)})      # V1 (recebido) fora
+        self.assertEqual([r["code"] for r in rd.items(self.R, {"status": "andamento", "sub": "validacao:PENDENTE COMPRAS"})["rows"]], ["V3"])
+        self.assertEqual(sorted(r["code"] for r in rd.items(self.R, {"status": "", "sub": "validacao:PENDENTE COMPRAS"})["rows"]), ["V1", "V3"])
+        self.assertEqual((fc["andamento"]["n"], fc["total"]), (2, 5))
+        r3 = rd.items(self.R, {"status": "andamento", "q": "V3"})["rows"][0]["subs"]
+        self.assertEqual([x["v"] for x in r3], ["PENDENTE VALIDAÇÃO QUALIDADE", "PENDENTE COMPRAS"])
 
     def test_meta_rd_conta_validados_do_ano_quando_recebidos(self):
         import goals

@@ -614,13 +614,14 @@ class Store:
             t = lambda f: r[f] if isinstance(r.get(f), str) and r[f] else None
             iv = lambda f: None if r.get(f) is None or r.get(f) != r.get(f) else int(r[f])
             pid = pmap.get(r["code"]); out.append((r["code"], pid, r["kind"], t("status"), t("sub_desenho"), t("sub_validacao"), t("supplier"), t("sample_bought"), t("sample_sent"), src_id, bid, t("make"), t("vehicle"), t("application"), iv("year_from"), iv("year_to"),
-                                                  t("description"), t("brand"), t("sub_projeto"), t("sub_inmetro"), iv("curtiu"), iv("nao_curtiu"), json.dumps(ex, ensure_ascii=False) if ex else None, t("line")))
+                                                  t("description"), t("brand"), t("sub_projeto"), t("sub_inmetro"), iv("curtiu"), iv("nao_curtiu"), json.dumps(ex, ensure_ascii=False) if ex else None, t("line"),
+                                                  t("sub_negociacao"), t("sub_vendas"), t("sub_cit")))
             if pid:
                 ax, sd = axle_side(t("description")); k = (pid, t("make"), t("vehicle"), t("application"), iv("year_from"), iv("year_to"), ax, sd)
                 if k not in seen:
                     seen.add(k); n_app += 1
                     c.execute("INSERT INTO applications(product_id,make,model,application_text,year_from,year_to,axle,side,source_id) VALUES(?,?,?,?,?,?,?,?,?)", (pid, k[1], k[2], k[3], k[4], k[5], ax, sd, src_id))
-        c.executemany("INSERT INTO rd_projects(code,product_id,suggestion,status,drawing_substatus,validation_substatus,supplier,sample_bought,sample_sent,source_id,batch_id,make,vehicle,application_text,year_from,year_to,description,brand,project_substatus,inmetro_substatus,curtiu,nao_curtiu,extra,line) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", out)
+        c.executemany("INSERT INTO rd_projects(code,product_id,suggestion,status,drawing_substatus,validation_substatus,supplier,sample_bought,sample_sent,source_id,batch_id,make,vehicle,application_text,year_from,year_to,description,brand,project_substatus,inmetro_substatus,curtiu,nao_curtiu,extra,line,negotiation_substatus,sales_substatus,cit_substatus) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", out)
         return {"publicado": True, "linhas": len(out), "itens": int(new_items), "sem_tipo": int(skipped), "aplicacoes": n_app}
 
     def _last_scope(self, c, key):

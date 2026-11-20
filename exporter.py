@@ -105,11 +105,14 @@ def _rd(kind):
     def f(a):
         import rd as R
         its = R.items(kind, {**a, "all": 1})["rows"]
-        lines = Q.q("SELECT code,suggestion,description,make,vehicle,application_text,year_from,year_to,status,drawing_substatus,validation_substatus,supplier,substr(sample_bought,1,10) b,substr(sample_sent,1,10) s,product_id FROM rd_projects WHERE suggestion=? ORDER BY code,make,vehicle", (kind,))
-        return [("Itens", ["Código", "Descrição", "Montadoras", "Veículos", "Linhas (aplicações)", "Status", "Pendência desenho", "Pendência validação", "Fornecedores", "Amostra comprada", "Amostra enviada", "No catálogo", "Também no outro tipo"],
-                 [[r["code"], r["description"], r["makes"], r["vehicles"], r["n_rows"], r["statuses"], r["drawing"], r["validation"], r["suppliers"], r["bought"], r["sent"], "SIM" if r["product_id"] else "", "SIM" if r["also_other"] else ""] for r in its], [16, 36, 20, 30, 10, 28, 26, 36, 18, 14, 14, 10, 12]),
-                ("Linhas (todas)", ["Código", "Tipo", "Descrição", "Montadora", "Veículo", "Aplicação", "Ano inicial", "Ano final", "Status", "Pend. desenho", "Pend. validação", "Fornecedor", "Amostra comprada", "Amostra enviada"],
-                 [[l["code"], l["suggestion"], l["description"], l["make"], l["vehicle"], l["application_text"], l["year_from"], l["year_to"], l["status"], l["drawing_substatus"], l["validation_substatus"], l["supplier"], l["b"], l["s"]] for l in lines], [16, 8, 34, 16, 18, 40, 10, 10, 24, 22, 30, 12, 14, 14])], len(its)
+        import statuses as S
+        lines = Q.q(f"SELECT code,suggestion,description,make,vehicle,application_text,year_from,year_to,status,{','.join(c for _, c, _ in S.SUBS)},supplier,substr(sample_bought,1,10) b,substr(sample_sent,1,10) s,product_id FROM rd_projects WHERE suggestion=? ORDER BY code,make,vehicle", (kind,))
+        sub = lambda r: " · ".join(f"{x['l']}: {x['v']}" for x in r["subs"])
+        return [("Itens", ["Código", "Descrição", "Montadoras", "Veículos", "Aplicações", "Status", "Sub status", "Fornecedores", "Amostra comprada", "Amostra enviada", "No catálogo"],
+                 [[r["code"], r["description"], r["makes"], r["vehicles"], r["n_rows"], r["statuses"], sub(r), r["suppliers"], r["bought"], r["sent"], "SIM" if r["product_id"] else ""] for r in its], [16, 36, 20, 30, 10, 28, 60, 18, 14, 14, 10]),
+                ("Linhas (todas)", ["Código", "Tipo", "Descrição", "Montadora", "Veículo", "Aplicação", "Ano inicial", "Ano final", "Status", *[f"Sub status {l.lower()}" for _, _, l in S.SUBS], "Fornecedor", "Amostra comprada", "Amostra enviada"],
+                 [[l["code"], l["suggestion"], l["description"], l["make"], l["vehicle"], l["application_text"], l["year_from"], l["year_to"], l["status"], *[l[c] for _, c, _ in S.SUBS], l["supplier"], l["b"], l["s"]] for l in lines],
+                 [16, 8, 34, 16, 18, 40, 10, 10, 24, *[24] * len(S.SUBS), 12, 14, 14])], len(its)
     return f
 
 BUILD = {"desenvolvimento": _rd("DESENVOLVIMENTO"), "redesenvolvimento": _rd("REDESENVOLVIMENTO"), "produtos": _products, "pesquisa": _products, "aplicacoes": _apps, "comparacao": _compare, "pendencias": _pend, "fontes": _fontes, "amostras": _samples, "damping": _damping, "configuracoes": _backups}

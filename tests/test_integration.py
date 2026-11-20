@@ -69,8 +69,20 @@ class Fluxo(unittest.TestCase):
         n_q = C.get("/api/rd/des?flag=val_reprovada_qual").json["total"]; n_v = C.get("/api/rd/des?flag=val_reprovada").json["total"]
         grp = C.get("/api/rd/des?flag=grupo_validacao").json["total"]; self.assertGreaterEqual(grp, max(n_q, n_v))
         code = C.get("/api/rd/des?size=1").json["rows"][0]["code"]
-        r = C.post(f"/api/rd/des/item/{code}/flags", json={"flag": "pend_inmetro", "value": True}).json; self.assertTrue(r["flags"]["pend_inmetro"]["value"] and r["flags"]["pend_inmetro"]["manual"])
-        self.assertEqual(r["flags"]["pend_inmetro"]["group"], "inmetro"); C.post(f"/api/rd/des/item/{code}/flags", json={"flag": "pend_inmetro", "value": None})
+        self.assertEqual(C.post(f"/api/rd/des/item/{code}/flags", json={"flag": "pend_inmetro", "value": True}).status_code, 405)      # etapa 20 · Q3: nada é marcado à mão
+
+    def test_03b_estagios_e_sub_status_do_servidor(self):
+        """Etapa 20 · Q2/Q4: a lista abre em andamento; cada estágio da esteira e cada sub status do quadro abrem a lista com o mesmo número."""
+        from urllib.parse import quote
+        for slug in ("des", "rd"):
+            fc = C.get(f"/api/rd/{slug}/facets").json; a = fc["andamento"]
+            self.assertEqual(fc["estagio"], "andamento"); self.assertEqual(C.get(f"/api/rd/{slug}?status=andamento").json["total"], a["n"], slug)
+            self.assertLessEqual(a["n"], fc["total"]); self.assertGreater(a["n"], 0, slug)
+            for x in fc["esteira"]: self.assertEqual(C.get(f"/api/rd/{slug}?status={quote(x['v'])}").json["total"], x["n"], f"{slug} {x['v']}")
+            for g in fc["subs"]:
+                for v in g["values"]: self.assertEqual(C.get(f"/api/rd/{slug}?status=andamento&sub={quote(g['key'] + ':' + v['v'])}").json["total"], v["n"], f"{slug} {g['key']} {v['v']}")
+            rows = C.get(f"/api/rd/{slug}?status=andamento&all=1").json["rows"]
+            self.assertTrue(all("also_other" not in r and isinstance(r["subs"], list) for r in rows))
 
     def test_04_metas_regras_de_negocio(self):
         C.put("/api/settings", json={"goal_basis": "recebido"})                         # este teste cobre a base «item recebido»; a base «validação» é o test_04b
