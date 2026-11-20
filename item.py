@@ -8,7 +8,7 @@ from queries import q, q1
 def _k(c): return re.sub(r"[^A-Z0-9]", "", re.sub(r"^\s*MP-", "", str(c or "").upper()))
 
 def _estoque(code, today=None):
-    """Linha da tela Estoque do código (mesma regra: armazém 04, média de 12 meses fechados, cobertura e projeção de 6 meses). Em memória até a próxima sincronização."""
+    """Linha da tela Estoque do código (mesma regra: PRIVATE + FECT, média de 12 meses fechados, cobertura e projeção de 6 meses). Em memória até a próxima sincronização."""
     import estoque
     by, lim, jan = estoque.mapa(today)
     r = by.get(_k(code))

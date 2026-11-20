@@ -425,10 +425,12 @@ DATASETS = {
         "reserved": ["RESERVA", "RESERVADO", "QTDE_RESERVADA", "EMPENHADO"], "line": ["LINHA"]},
         "num": ["qty", "reserved"], "dates": [],
         "where": [({"LINHA"}, "LINHA LIKE '%AMORTECEDOR%'")]},
-    # situação do código no ERP: BLOQ=SIM ou ATIVO≠ATIVO tira o item de DES/R-D (rules.desc_sql). Só as 4 colunas: a view tem ~70 de estoque/vendas que o app não usa aqui
+    # situação do código no ERP: BLOQ=SIM ou ATIVO≠ATIVO tira o item de DES/R-D (rules.desc_sql).
+    # Etapa 20 · Q5/Q6: também o estoque da tela Estoque — total PRIVATE + FECT (PA + MP) e as quatro partes. As outras ~60 colunas da view não são guardadas.
     "situacao": {"object": "ESTOQUE_ANALISE_REPOSICAO", "table": "ds_situacao", "aliases": {
-        "code": ["CODIGO", "COD_PRODUTO", "CODIGO_PRODUTO", "PRODUTO"], "active": ["ATIVO", "SITUACAO"], "blocked": ["BLOQ", "BLOQUEADO", "MSBLQL"], "line": ["LINHA"]},
-        "num": [], "dates": [], "no_extra": True,
+        "code": ["CODIGO", "COD_PRODUTO", "CODIGO_PRODUTO", "PRODUTO"], "active": ["ATIVO", "SITUACAO"], "blocked": ["BLOQ", "BLOQUEADO", "MSBLQL"], "line": ["LINHA"],
+        "stock_total": ["QTD_EST_T_PRIVATE_E_FECT"], "priv_pa": ["PRIVATE_TOTAL_PA"], "priv_mp": ["PRIVATE_TOTAL_MP"], "fect_pa": ["FECT_TOTAL_PA"], "fect_mp": ["FECT_TOTAL_MP"]},
+        "num": ["stock_total", "priv_pa", "priv_mp", "fect_pa", "fect_mp"], "dates": [], "no_extra": True,
         "where": [({"LINHA"}, "LINHA LIKE '%AMORTECEDOR%'")]},
     # referências de concorrentes por ID de DESENVOLVIMENTO_PRODUTOS (etapa 17 · Q10/Q18): ~37 mil linhas, 4 colunas; o universo (amortecedor, não bloqueado) é aplicado
     # localmente ao ligar o ID com rd_projects (concorrentes.build). Só itens em desenvolvimento usam o servidor; no catálogo vale o CrossCatalogo.
@@ -534,7 +536,7 @@ CREATE INDEX IF NOT EXISTS ix_dse2_ped ON ds_embarques(pedido);
 CREATE TABLE IF NOT EXISTS ds_garantia(code TEXT, description TEXT, defect TEXT, qty REAL, event_date TEXT, extra TEXT);
 CREATE INDEX IF NOT EXISTS ix_dsg_code ON ds_garantia(code);
 CREATE TABLE IF NOT EXISTS ds_vendas_uf(sale_date TEXT, uf TEXT, qty REAL, total REAL);
-CREATE TABLE IF NOT EXISTS ds_situacao(code TEXT, active TEXT, blocked TEXT, line TEXT, extra TEXT);
+CREATE TABLE IF NOT EXISTS ds_situacao(code TEXT, active TEXT, blocked TEXT, line TEXT, stock_total REAL, priv_pa REAL, priv_mp REAL, fect_pa REAL, fect_mp REAL, extra TEXT);
 CREATE INDEX IF NOT EXISTS ix_dssit_code ON ds_situacao(code);
 CREATE TABLE IF NOT EXISTS ds_concorrentes(dev_id TEXT, comp_code TEXT, competitor TEXT, reference TEXT, extra TEXT);
 CREATE INDEX IF NOT EXISTS ix_dscc_id ON ds_concorrentes(dev_id);

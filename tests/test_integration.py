@@ -585,7 +585,9 @@ class Fluxo(unittest.TestCase):
         import io
         from openpyxl import load_workbook
         con = sqlite3.connect(DB)
-        try: con.executemany("INSERT INTO ds_estoque(code,warehouse,qty,reserved) VALUES(?,?,?,?)", [("AMD1", "04", 500, 0), ("ZZT29", "04", 7, 0)]); con.commit()
+        try:          # etapa 20: estoque = PRIVATE + FECT (ds_situacao), só itens do catálogo
+            con.execute("INSERT INTO products(perfect_code,description,catalog_position) VALUES('ZZT29','AMORTECEDOR TESTE 29',99999)")
+            con.executemany("INSERT INTO ds_situacao(code,active,blocked,stock_total,priv_pa,priv_mp) VALUES(?,'ATIVO','NAO',?,?,?)", [("AMD1", 500, 400, 100), ("ZZT29", 7, 7, 0)]); con.commit()
         finally: con.close()
         d = C.get("/api/estoque").json; self.assertEqual(sum(d["counts"]["situacao"].values()), d["total"]); self.assertGreater(d["total"], 0)
         for k, n in d["counts"]["situacao"].items(): self.assertEqual(C.get(f"/api/estoque?situacao={k}").json["total"], n, k)

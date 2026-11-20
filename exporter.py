@@ -218,11 +218,13 @@ def _estoque(a):
     import estoque, datetime
     t = datetime.date.fromisoformat(a["today"]) if a.get("today") else None; d = estoque.listing({**a, "all": 1}, today=t); S = {"ruptura": "Ruptura", "risco": "Risco", "ok": "OK", "excesso": "Excesso", "sem_giro": "Sem giro"}
     M = d["meses"]
-    return [("Vendas × estoque", ["Código", "Descrição", "Situação", "Classe", "Venda 12 meses (peças)", "Valor 12 meses", "Venda média/mês", f"Estoque disponível (arm. {d['armazem']})", "Reservado", "A caminho", "Cobertura (meses)",
+    P = ("pa", "mp", "private", "fect")
+    return [("Vendas × estoque", ["Código", "Descrição", "Situação", "Classe", "Venda 12 meses (peças)", "Valor 12 meses", "Venda média/mês", f"Estoque contado ({d['contas'][d['conta']]})",
+                                  "Estoque PA", "Estoque MP", "PRIVATE", "FECT", "A caminho", "Cobertura (meses)",
                                   "Falta em", "Falta antes de chegar o pedido", *[f"Chegada {m}" for m in M], *[f"Saldo fim {m}" for m in M]],
-             [[r["codigo"], r["descricao"], S[r["situacao"]], r["classe"], r["venda_12m"], r["valor_12m"], r["media_mensal"], r["estoque"], r["reservado"], r["a_caminho"], r["cobertura"],
+             [[r["codigo"], r["descricao"], S[r["situacao"]], r["classe"], r["venda_12m"], r["valor_12m"], r["media_mensal"], r["estoque"], *[r["partes"][p] for p in P], r["a_caminho"], r["cobertura"],
                r["falta_em"], "Sim" if r["antes_de_chegar"] else "", *r["chegadas"], *r["projecao"]] for r in d["rows"]],
-             [16, 38, 11, 8, 14, 14, 12, 16, 10, 11, 12, 10, 14] + [11] * (2 * len(M)))], d["total"]
+             [16, 38, 11, 8, 14, 14, 12, 16, 11, 11, 11, 11, 11, 12, 10, 14] + [11] * (2 * len(M)))], d["total"]
 BUILD["estoque"] = _estoque
 def _previsao(a):
     """Previsão de chegadas (linhas) com os filtros da tela: etapa, fornecedor, alerta (atrasar / vencida), busca. Com «vencida» serve para cobrar o fornecedor."""

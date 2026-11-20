@@ -75,14 +75,15 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(self.store.last_sync()['runs'], 3)
 
     def test_bloqueio_do_erp(self):
-        """ESTOQUE_ANALISE_REPOSICAO: a sincronização guarda ATIVO/BLOQ por código (sem os espaços do ERP e sem as dezenas de colunas de estoque)."""
+        """ESTOQUE_ANALISE_REPOSICAO: a sincronização guarda ATIVO/BLOQ por código (sem os espaços do ERP) e o estoque PRIVATE + FECT com as partes PA/MP
+        (etapa 20 · Q5); as outras colunas da view não são guardadas."""
         c = sqlite3.connect(self.server)
-        c.execute('CREATE TABLE "ESTOQUE_ANALISE_REPOSICAO" ("ATIVO","BLOQ","LINHA","CODIGO","DESCRICAO","QTD_EST_T_PRIVATE_E_FECT")')
-        c.executemany('INSERT INTO "ESTOQUE_ANALISE_REPOSICAO" VALUES (?,?,?,?,?,?)', [('ATIVO', 'SIM', 'AMORTECEDOR   ', 'AMD0184        ', 'AMORTECEDOR DIANT. LD PULSE', 200.0),
-            ('ATIVO', 'NAO', 'AMORTECEDOR', 'AMD0170', 'AMORTECEDOR', 5.0), ('ATIVO', 'SIM', 'COXIM', 'CXM0001', 'COXIM', 1.0)]); c.commit(); c.close()
+        c.execute('CREATE TABLE "ESTOQUE_ANALISE_REPOSICAO" ("ATIVO","BLOQ","LINHA","CODIGO","DESCRICAO","QTD_EST_T_PRIVATE_E_FECT","PRIVATE_TOTAL_PA","PRIVATE_TOTAL_MP","FECT_TOTAL_PA","FECT_TOTAL_MP","MEDIA_VENDAS_12_M")')
+        c.executemany('INSERT INTO "ESTOQUE_ANALISE_REPOSICAO" VALUES (?,?,?,?,?,?,?,?,?,?,?)', [('ATIVO', 'SIM', 'AMORTECEDOR   ', 'AMD0184        ', 'AMORTECEDOR DIANT. LD PULSE', 200.0, 150, 30, 20, 0, 9),
+            ('ATIVO', 'NAO', 'AMORTECEDOR', 'AMD0170', 'AMORTECEDOR', 5.0, 5, 0, 0, 0, 1), ('ATIVO', 'SIM', 'COXIM', 'CXM0001', 'COXIM', 1.0, 1, 0, 0, 0, 1)]); c.commit(); c.close()
         r = self.sync(); self.assertTrue(r['ok']); self.assertEqual(r['datasets']['situacao']['status'], 'ok')
-        c = self.store.conn(); got = [tuple(x) for x in c.execute('SELECT code, active, blocked, extra FROM ds_situacao ORDER BY code')]; c.close()
-        self.assertEqual(got, [('AMD0170', 'ATIVO', 'NAO', None), ('AMD0184', 'ATIVO', 'SIM', None)])      # só amortecedor; código sem espaços; sem «extra»
+        c = self.store.conn(); got = [tuple(x) for x in c.execute('SELECT code, active, blocked, stock_total, priv_pa, priv_mp, fect_pa, fect_mp, extra FROM ds_situacao ORDER BY code')]; c.close()
+        self.assertEqual(got, [('AMD0170', 'ATIVO', 'NAO', 5.0, 5.0, 0.0, 0.0, 0.0, None), ('AMD0184', 'ATIVO', 'SIM', 200.0, 150.0, 30.0, 20.0, 0.0, None)])      # só amortecedor; sem «extra»
 
     def test_backfill_is_opt_in(self):
         self.assertEqual(self.sync()['events'], 0)

@@ -631,7 +631,7 @@ def api_curva_a():
 @app.get("/api/estoque")
 def api_estoque():              # vendas × estoque (etapa 16 · C2–C4)
     import estoque
-    return jsonify(estoque.listing({k: request.args.get(k, "") for k in ("situacao", "classe", "q", "falta", "page")}))
+    return jsonify(estoque.listing({k: request.args.get(k, "") for k in ("situacao", "classe", "q", "falta", "conta", "page")}))
 @app.get("/api/garantias")
 def api_garantias():            # tela Garantia: só o servidor (etapa 18 · Q1; garantias.build a cada sincronização); sem dados → available=False
     import garantias

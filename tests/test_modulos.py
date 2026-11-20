@@ -312,23 +312,31 @@ class VendasUniverso(_TmpDB):
 
 class EstoqueCobertura(_TmpDB):
     def test_faixas_e_atalhos(self):
-        """Etapa 16 · C2–C4: venda média = 12 meses fechados; estoque = armazém 04 − reservado; a caminho = pedidos em aberto sem os parados;
-        cobertura = (estoque + a caminho) ÷ média. Ruptura (vende, sem estoque) · Risco < 6 meses · OK 6–18 · Excesso > 18 · Sem giro (estoque sem venda)."""
+        """Etapa 16 · C2–C4 (fonte do estoque: etapa 20 · Q5/Q6): só itens do catálogo; venda média = 12 meses fechados; estoque = PRIVATE + FECT de
+        ESTOQUE_ANALISE_REPOSICAO (ds_situacao); a caminho = pedidos em aberto sem os parados; cobertura = (estoque + a caminho) ÷ média.
+        Ruptura (vende, sem estoque) · Risco < 6 meses · OK 6–18 · Excesso > 18 · Sem giro (estoque sem venda). «Contar» só PA / só MP troca o estoque usado."""
         import estoque, datetime, data_pipeline as dp, exporter, io
         from unittest import mock
         from openpyxl import load_workbook
         self.db.init_db(); dp.Store(self.f.name)
+        self.sql("INSERT INTO products(perfect_code,description,catalog_position) VALUES(?,?,?)", [(x, "AMORTECEDOR " + x, i) for i, x in enumerate("ABCDEF", 1)])
         mes = lambda i: f"{2025 + (10 + i) // 12}-{(10 + i) % 12 + 1:02d}-01"           # 12 meses fechados: 2025-11 … 2026-10
         v = []
-        for code, qtd in (("A", 10), ("B", 1), ("C", 2), ("E", 5), ("F", 1)): v += [(code, qtd, qtd * 10.0, mes(i), "AMORTECEDOR") for i in range(12)]
+        for code, qtd in (("A", 10), ("B", 1), ("C", 2), ("E", 5), ("F", 1), ("Z", 50)): v += [(code, qtd, qtd * 10.0, mes(i), "AMORTECEDOR") for i in range(12)]    # Z: fora do catálogo
         v += [("A", 999, 9.0, "2026-11-01", "AMORTECEDOR"), ("A", 500, 5.0, "2025-10-01", "AMORTECEDOR")]          # mês atual (parcial) e mês fora da janela: não entram
         self.sql("INSERT INTO ds_vendas(code,qty,total,sale_date,line) VALUES(?,?,?,?,?)", v)
-        self.sql("INSERT INTO ds_estoque(code,warehouse,qty,reserved) VALUES(?,?,?,?)", [("A", "04", 30, 5), ("B", "04", 30, 0), ("D", "04", 10, 0), ("E", "05", 100, 0), ("F", "04", 5, 0), ("A", "05", 50, 0)])
+        self.sql("INSERT INTO ds_situacao(code,active,blocked,stock_total,priv_pa,priv_mp,fect_pa,fect_mp) VALUES(?,'ATIVO','NAO',?,?,?,?,?)",
+                 [("A", 25, 20, 5, 0, 0), ("B", 30, 30, 0, 0, 0), ("D", 10, 0, 10, 0, 0), ("F", 5, 3, 0, 2, 0), ("Z", 99, 99, 0, 0, 0)])
         prev = {"available": True, "linhas": [{"codigo": "MP-C", "quantidade": 20, "etapa": "No mar"}, {"codigo": "MP-F", "quantidade": 5, "etapa": "Aguardando embarque"}, {"codigo": "MP-B", "quantidade": 1000, "etapa": "Parado — verificar saldo"}]}
         with mock.patch("leadtime.forecast_cached", return_value=prev):
             d = estoque.listing({}, today=datetime.date(2026, 11, 17)); r = {x["codigo"]: x for x in estoque.listing({"all": 1}, today=datetime.date(2026, 11, 17))["rows"]}
             self.assertEqual({k: x["situacao"] for k, x in r.items()}, {"A": "risco", "B": "excesso", "C": "ruptura", "D": "sem_giro", "E": "ruptura", "F": "ok"})
             self.assertEqual((r["A"]["media_mensal"], r["A"]["estoque"], r["A"]["a_caminho"], r["A"]["cobertura"]), (10.0, 25.0, 0, 2.5))
+            self.assertEqual(r["F"]["partes"], {"total": 5, "pa": 5, "mp": 0, "private": 3, "fect": 2}); self.assertEqual((d["kpis"]["pa"], d["kpis"]["mp"]), (55, 15))
+            pa = {x["codigo"]: x for x in estoque.listing({"all": 1, "conta": "pa"}, today=datetime.date(2026, 11, 17))["rows"]}
+            self.assertEqual((pa["A"]["estoque"], pa["A"]["cobertura"]), (20, 2.0)); self.assertNotIn("D", pa)                # D só tem MP e não vende: fora quando conta só PA
+            mp = {x["codigo"]: x for x in estoque.listing({"all": 1, "conta": "mp"}, today=datetime.date(2026, 11, 17))["rows"]}
+            self.assertEqual((mp["A"]["estoque"], mp["B"]["situacao"], mp["D"]["estoque"]), (5, "ruptura", 10))
             self.assertEqual((r["F"]["a_caminho"], r["F"]["cobertura"]), (5, 10.0)); self.assertEqual(r["B"]["a_caminho"], 0)
             self.assertEqual(d["counts"]["situacao"], {"ruptura": 2, "risco": 1, "ok": 1, "excesso": 1, "sem_giro": 1}); self.assertEqual(d["limites"], {"risco": 6.0, "excesso": 18})
             for k, n in d["counts"]["situacao"].items(): self.assertEqual(estoque.listing({"situacao": k}, today=datetime.date(2026, 11, 17))["total"], n, k)
@@ -348,7 +356,8 @@ class EstoqueProjecao(_TmpDB):
         v = []
         for code, qtd in (("A", 10), ("C", 2), ("F", 1), ("G", 3)): v += [(code, qtd, qtd * 10.0, mes(i), "AMORTECEDOR") for i in range(12)]
         self.sql("INSERT INTO ds_vendas(code,qty,total,sale_date,line) VALUES(?,?,?,?,?)", v)
-        self.sql("INSERT INTO ds_estoque(code,warehouse,qty,reserved) VALUES(?,?,?,?)", [("A", "04", 25, 0), ("F", "04", 5, 0)])
+        self.sql("INSERT INTO products(perfect_code,catalog_position) VALUES(?,?)", [(x, i) for i, x in enumerate("ACFG", 1)])
+        self.sql("INSERT INTO ds_situacao(code,stock_total,priv_pa) VALUES(?,?,?)", [("A", 25, 25), ("F", 5, 5)])
         prev = {"available": True, "linhas": [{"codigo": "MP-C", "quantidade": 20, "etapa": "No mar", "chegada_prevista": "2027-02-10"},
                                               {"codigo": "MP-F", "quantidade": 5, "etapa": "No mar", "chegada_prevista": "2026-12-05"},
                                               {"codigo": "MP-G", "quantidade": 10, "etapa": "No porto / desembaraço", "chegada_prevista": "2026-10-01"},      # vencida: conta em nov/2026

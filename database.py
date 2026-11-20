@@ -135,6 +135,7 @@ NEW_COLUMNS["rd_projects"] = [("make","TEXT"),("vehicle","TEXT"),("application_t
 NEW_COLUMNS.setdefault("rd_projects", []).extend([("brand", "TEXT"), ("project_substatus", "TEXT"), ("inmetro_substatus", "TEXT"), ("curtiu", "INTEGER"), ("nao_curtiu", "INTEGER"), ("extra", "TEXT"), ("line", "TEXT")])
 # etapa 20: os três sub status que só iam para o `extra` ganham coluna (as telas filtram por eles)
 NEW_COLUMNS["rd_projects"] += [("negotiation_substatus", "TEXT"), ("sales_substatus", "TEXT"), ("cit_substatus", "TEXT")]
+NEW_COLUMNS["ds_situacao"] = [("stock_total", "REAL"), ("priv_pa", "REAL"), ("priv_mp", "REAL"), ("fect_pa", "REAL"), ("fect_mp", "REAL")]      # estoque da tela Estoque (etapa 20 · Q5)
 SUB_EXTRA = {"negotiation_substatus": "SUB STATUS NEGOCIAÇÃO", "sales_substatus": "SUB STATUS VENDAS", "cit_substatus": "SUB STATUS CIT"}
 NEW_COLUMNS["drawing_files"] = [("kind", "TEXT DEFAULT 'desenho'"), ("origin", "TEXT"), ("source", "TEXT")]
 

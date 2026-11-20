@@ -32,7 +32,7 @@
         <div class="mt-2 font-display text-3xl font-bold text-ink">${esc(t.code)}</div><div class="mt-1 text-base text-mute">${esc(t.description || "Sem descrição")}</div>
         <div class="mt-3 flex flex-wrap gap-2">${selos || '<span class="text-sm text-mute">Sem dados de catálogo (item em desenvolvimento).</span>'}</div></div></div>
       <div class="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">${kpi("Vendas 12 meses", nf(d.vendas.total_qty || 0), d.vendas.total_value ? brl0(d.vendas.total_value) : "sem venda", "blue", "chart-column")}
-        ${kpi("Estoque disponível", nf(e.estoque || 0), e.reservado ? `${nf(e.reservado)} reservado(s) · armazém 04` : "armazém 04", e.situacao === "ruptura" ? "red" : "slate", "warehouse")}
+        ${kpi("Estoque", nf(e.estoque || 0), e.partes ? `PA ${nf(e.partes.pa)} · MP ${nf(e.partes.mp)} · PRIVATE + FECT` : "PRIVATE + FECT", e.situacao === "ruptura" ? "red" : "slate", "warehouse")}
         ${kpi("Cobertura", e.cobertura == null ? "–" : nf(e.cobertura, 1) + " meses", e.media_mensal ? `venda média ${nf(e.media_mensal, 0)}/mês` : "sem venda média", (SIT[e.situacao] || [, "slate"])[1], "gauge")}
         ${kpi("A caminho", nf(e.a_caminho || 0), d.pedidos.rows.length ? `${nf(d.pedidos.rows.length)} linha(s) de pedido` : "sem pedido em aberto", "sky", "ship")}</div></section>`;
   }
