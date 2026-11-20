@@ -19,7 +19,9 @@
   --t-blue-400:#3E5A9E;--t-blue-500:#2F4A8C;--t-blue-600:#2F4A8C;--t-blue-700:#202D56;
   --t-red-500:#C81E2E;--t-red-600:#C81E2E;--t-amber-500:#9A5B00;--t-amber-700:#8A5200;
   --t-emerald-500:#047857;--t-emerald-600:#047857;--t-emerald-700:#065F46;--t-violet-500:#6D28D9;--t-violet-600:#6D28D9;
-  --ok:#0E9F6E;--chart-grid:#E6EAF1;--chart-1:#2F4A8C;
+  --ok:#0E9F6E;--chart-grid:#E6EAF1;--chart-track:#DCE2EC;--chart-legend:#5A6378;
+  /* paleta dos gráficos (etapa 20 · Q7): mesma ordem de PSDTW.CORES — azul da marca, azul-claro, laranja, vermelho, verde, violeta, cinza */
+  --chart-1:#2F4A8C;--chart-2:#64C4E9;--chart-3:#F6A019;--chart-4:#E72B3B;--chart-5:#0E9F6E;--chart-6:#8B5CF6;--chart-7:#94A3B8;
 }
 /* ---------- tokens: tema escuro ---------- */
 [data-theme="dark"]{
@@ -30,7 +32,9 @@
   --t-blue-400:#B7C6F0;--t-blue-500:#9DB4F2;--t-blue-600:#9DB4F2;--t-blue-700:#C3D0F5;
   --t-red-500:#FF8F99;--t-red-600:#FF8F99;--t-amber-500:#FFC266;--t-amber-700:#FFC266;
   --t-emerald-500:#4ADE9A;--t-emerald-600:#4ADE9A;--t-emerald-700:#6EE7B7;--t-violet-500:#C4B5FD;--t-violet-600:#C4B5FD;
-  --ok:#34D399;--chart-grid:#26324F;--chart-1:#7F9BEA;
+  --ok:#34D399;--chart-grid:#1F2A44;--chart-track:#26324F;--chart-legend:#C3CCE2;
+  /* no escuro as cores da marca clareiam para ler sobre o card (#161F35) sem perder o tom */
+  --chart-1:#8EA8F0;--chart-2:#7DD3F5;--chart-3:#F8B547;--chart-4:#F47B86;--chart-5:#3DD6A0;--chart-6:#B39CFA;--chart-7:#A5B1C6;
 }
 html,body{background:var(--bg);color:var(--tx)}
 h1,h2,h3,.ptitle,.dh h2,.font-display{font-family:var(--fontd)}

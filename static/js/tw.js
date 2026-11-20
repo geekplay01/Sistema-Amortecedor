@@ -95,16 +95,23 @@ window.PSDTW = (() => {
   const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const tema = () => { const C = window.Chart; if (!C) return;
     C.defaults.font.family = '"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif'; C.defaults.font.size = 12.5; C.defaults.color = cssv("--mut"); C.defaults.borderColor = cssv("--chart-grid");
+    C.defaults.scale.grid.color = cssv("--chart-grid"); C.defaults.plugins.legend.labels.color = cssv("--chart-legend");
     Object.assign(C.defaults.plugins.tooltip, { backgroundColor: cssv("--card"), titleColor: cssv("--tx"), bodyColor: cssv("--tx"), borderColor: cssv("--line"), borderWidth: 1, padding: 10, cornerRadius: 10, boxPadding: 4,
       titleFont: { family: cssv("--fontd"), weight: "600", size: 13 }, usePointStyle: true });
     C.defaults.plugins.legend.labels.usePointStyle = true; C.defaults.plugins.legend.labels.boxWidth = 8; C.defaults.maintainAspectRatio = false;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) C.defaults.animation = false; };
   const vivos = new Set();
-  const corDe = i => i % CORES.length === 0 ? (cssv("--chart-1") || CORES[0]) : CORES[i % CORES.length];      // a 1ª série clareia no tema escuro
+  /* cores do tema (etapa 20 · Q7): --chart-1..7 trocam no escuro; uma cor da paleta clara passada pela tela vira a equivalente do tema; "--var" lê o token */
+  const paleta = () => CORES.map((c, i) => cssv(`--chart-${i + 1}`) || c);
+  const corTema = c => { if (!c || typeof c !== "string") return c; if (c.startsWith("--")) return cssv(c); const i = CORES.indexOf(c.toUpperCase()); return i < 0 ? c : paleta()[i]; };
+  const corDe = i => paleta()[i % CORES.length];
   const pinta = (type, datasets) => (datasets || []).forEach((ds, i) => {          // só pinta o que o chamador não definiu (marcado em _auto); série pode ter o próprio tipo (gráfico misto)
-    ds._auto ??= { bg: ds.backgroundColor == null, bd: ds.borderColor == null }; const tp = ds.type || type, c = ds.cor || corDe(i), roda = tp === "doughnut" || tp === "pie";
-    if (ds._auto.bg) ds.backgroundColor = tp === "line" ? c + "22" : roda ? CORES : c;
-    if (ds._auto.bd) ds.borderColor = roda ? cssv("--card") : c; });
+    ds._auto ??= { bg: ds.backgroundColor == null, bd: ds.borderColor == null }; if (!("_bg0" in ds)) { ds._bg0 = ds.backgroundColor; ds._bd0 = ds.borderColor; }
+    const tp = ds.type || type, c = corTema(ds.cor) || corDe(i), roda = tp === "doughnut" || tp === "pie";
+    if (ds._auto.bg) ds.backgroundColor = tp === "line" ? c + "22" : roda ? paleta() : c;
+    else ds.backgroundColor = Array.isArray(ds._bg0) ? ds._bg0.map(corTema) : corTema(ds._bg0);      // cor pedida pela tela também acompanha o tema
+    if (ds._auto.bd) ds.borderColor = roda ? cssv("--card") : c;
+    else ds.borderColor = Array.isArray(ds._bd0) ? ds._bd0.map(corTema) : corTema(ds._bd0); });
   const grafico = (el, cfg) => {
     if (!window.Chart) { (el.tagName === "CANVAS" ? el.parentElement : el).innerHTML = notice("Gráfico indisponível: static/vendor/chart.umd.js não foi carregado.", "amber"); return null; }
     tema(); let cv = el;
