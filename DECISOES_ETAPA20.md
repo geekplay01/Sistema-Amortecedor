@@ -42,6 +42,10 @@ itens do controle, cobertura a partir disso, e ver o que é MP e o que é PA sem
 - [x] Passo 4 — tokens `--chart-1..7`, `--chart-grid`, `--chart-legend`, `--chart-track`; `PSDTW.grafico` traduz as cores da paleta clara. Commit a6b2aea.
 - [x] Passo 5 — `templates/_amortecedor.html` (SVG + keyframes `.psd-sa`); tela inicial e Dashboard contam só em andamento. Commit bd31765.
 - [x] Passo 6 — documentos (este arquivo, REGRAS_DE_NEGOCIO §3/§5/§6/§12, LEIA-ME, CLAUDE.md).
+- [x] Passo 7 — animação refeita a pedido: semi-estrutural em 3D (desenho técnico do usuário, sem as medidas) com a etiqueta FORCE GAS enrolada no
+      tubo. `<canvas>` em `static/js/amortecedor.js` (cilindro mapeado coluna a coluna, brilho holográfico só na etiqueta, olhal que mostra a face ao
+      girar); faixas e nome seguem em SVG. `PSDSA.pose(seg)` congela um instante para conferir. Corrigido também o contorno escuro que o `svg{stroke}`
+      global punha nas faixas.
 
 ## Para a próxima sincronização
 

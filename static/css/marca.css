@@ -235,18 +235,11 @@ tr:hover .psd-ed-btn,.psd-ed-btn:focus-visible{opacity:1}.psd-ed-btn:hover{backg
 .psd-tag button:hover{background:color-mix(in srgb,var(--b500) 20%,transparent);color:var(--tx)}
 /* Tela inicial (etapa 20 · Q8): amortecedor em SVG no lugar do vídeo — sem caixa cinza; tomba e gira no eixo como no vídeo (13 s) e termina em pé */
 .stage.stage-anim{background:none;border:0;box-shadow:none;overflow:visible}
-.psd-sa{display:block;width:100%;height:auto}
-.psd-sa .sa-preto{fill:#111318}
-[data-theme=dark] .psd-sa .sa-preto{stroke:#56658C;stroke-width:1.2}
+.psd-sa{position:relative;width:100%}
+.psd-sa>svg{display:block;width:100%;height:auto;stroke:none}
+.psd-sa>canvas{position:absolute;inset:0;width:100%;height:100%}
 .psd-sa .sa-nome.claro image{opacity:.95}.psd-sa .sa-nome.escuro{display:none}
 [data-theme=dark] .psd-sa .sa-nome.claro{display:none}[data-theme=dark] .psd-sa .sa-nome.escuro{display:inline}
-.psd-sa .sa-tomba{transform-box:view-box;transform-origin:460px 336px;animation:sa-tomba 13.1s cubic-bezier(.45,0,.55,1) infinite}
-.psd-sa .sa-gira{transform-box:view-box;transform-origin:460px 0;animation:sa-gira 13.1s linear infinite}
-.psd-sa .sa-brilho{animation:sa-brilho 13.1s linear infinite}
-@keyframes sa-tomba{0%{transform:rotate(-58deg)}13%{transform:rotate(-30deg)}26%{transform:rotate(42deg)}38%{transform:rotate(36deg)}50%{transform:rotate(-12deg)}63%{transform:rotate(-40deg)}76%,92%{transform:rotate(0)}100%{transform:rotate(-58deg)}}
-@keyframes sa-gira{0%{transform:scaleX(1)}9.5%{transform:scaleX(.08)}19%{transform:scaleX(-1)}28.5%{transform:scaleX(.08)}38%{transform:scaleX(1)}47.5%{transform:scaleX(.08)}57%{transform:scaleX(-1)}66.5%{transform:scaleX(.08)}76%,100%{transform:scaleX(1)}}
-@keyframes sa-brilho{0%,19%,38%,57%,76%{transform:translateX(0)}9.5%,28.5%,47.5%,66.5%{transform:translateX(30px)}100%{transform:translateX(0)}}
-@media (prefers-reduced-motion:reduce){.psd-sa :is(.sa-tomba,.sa-gira,.sa-brilho){animation:none}}
 /* Estoque (etapa 20 · Q6): PA × MP discreto — barra fina sob o número, PA na cor da marca e MP clara */
 .psd-pamp{display:block;width:56px;height:3px;margin-top:3px;border-radius:999px;background:color-mix(in srgb,var(--b500) 22%,transparent);overflow:hidden}
 .psd-pamp i{display:block;height:100%;background:color-mix(in srgb,var(--b500) 75%,transparent)}

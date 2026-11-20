@@ -186,7 +186,7 @@ ETAPA 20 — 20/11/2026 (decisões em DECISOES_ETAPA20.md, regras em REGRAS_DE_N
    Inmetro) e filtra com um clique. Sem filtro de montadora, sem «também DES/R-D» e sem marcação manual: só vale o servidor.
  - Estoque: vem de ESTOQUE_ANALISE_REPOSICAO, só itens do catálogo, total PRIVATE + FECT (PA + MP). A barra fina sob o número mostra PA × MP
    (passe o mouse para ver PA, MP, PRIVATE e FECT); em «Mais filtros», «Contar no estoque» troca para só PA ou só MP.
- - Gráficos no tema escuro com cores mais claras e grade discreta. Tela inicial com o amortecedor animado em código, sem a caixa cinza.
+ - Gráficos no tema escuro com cores mais claras e grade discreta. Tela inicial com o amortecedor animado em código, sem a caixa cinza: um semi-estrutural em 3D com a etiqueta FORCE GAS enrolada no tubo.
 
  DEPOIS DE ATUALIZAR PARA A ETAPA 20 (uma vez, no banco real)
  1. Sincronize uma vez: traz o estoque PRIVATE/FECT para a tela Estoque (até lá ela avisa que o estoque não veio) e grava os sub status de negociação, vendas e CIT.

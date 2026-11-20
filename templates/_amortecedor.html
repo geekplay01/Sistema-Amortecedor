@@ -1,37 +1,19 @@
-{# Animação da tela inicial em código (etapa 20 · Q8), no lugar do vídeo amortecedor.mp4: as faixas da marca, o nome PERFECT AUTOMOTIVE e o amortecedor
-   preto com o selo FORCE, que tomba e gira no próprio eixo (as peças laterais trocam de lado) e termina em pé — o mesmo roteiro do vídeo, 13 s em ciclo.
-   Sem caixa cinza: o fundo é o da página. Com «reduzir movimento» fica parado, em pé. Estilos em marca.css (.psd-sa). #}
-<svg class="psd-sa" viewBox="120 30 640 580" role="img" aria-label="Amortecedor PERFECT girando sobre as faixas da marca">
-  <defs>
-    <linearGradient id="sa-haste" x1="0" x2="1"><stop offset="0" stop-color="#9AA3B2"/><stop offset=".45" stop-color="#F4F6FA"/><stop offset="1" stop-color="#8A93A3"/></linearGradient>
-    <linearGradient id="sa-brilho" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-    <clipPath id="sa-corpo-clip"><rect x="432" y="232" width="56" height="240" rx="4"/></clipPath>
-  </defs>
-  <!-- faixas da marca (o «P» do logo): azul-claro, vermelho e o laranja -->
-  <g class="sa-faixas">
-    <path d="M300 192h44q10 0 6 10L212 538q-4 8-14 8h-34q-10 0-6-10L290 200q4-8 10-8z" fill="#64C4E9"/>
-    <path d="M378 192h138q10 0 6 10L398 538q-4 8-14 8H262q-10 0-6-10L368 200q4-8 10-8z" fill="#E72B3B"/>
-    <path d="M562 192h96q36 0 30 34l-26 112q-12 58-70 58H498q-10 0-6-10l60-186q4-8 10-8z" fill="#F6A019"/>
-  </g>
-  <!-- nome (sem as faixas do logo, que já estão ao fundo): azul no tema claro, branco no escuro -->
-  <svg class="sa-nome claro" x="128" y="48" width="600" height="80" viewBox="150 0 813 101" preserveAspectRatio="xMinYMid meet"><image href="{{ url_for('static', filename='img/logo-perfect.png') }}" width="963" height="101"/></svg>
-  <svg class="sa-nome escuro" x="128" y="48" width="600" height="80" viewBox="150 0 813 101" preserveAspectRatio="xMinYMid meet"><image href="{{ url_for('static', filename='img/logo-perfect-branca.png') }}" width="963" height="101"/></svg>
-  <!-- amortecedor: o grupo inteiro tomba (sa-tomba); as peças de um lado só (prato, suporte, orelha) giram com o eixo (sa-gira) -->
-  <g class="sa-tomba">
-    <rect class="sa-preto" x="449" y="98" width="14" height="10" rx="2"/>
-    <rect class="sa-preto" x="446" y="106" width="20" height="8" rx="2"/>
-    <rect x="447" y="112" width="18" height="124" rx="3" fill="url(#sa-haste)"/>
-    <g class="sa-gira"><path class="sa-preto" d="M380 280q-2-10 12-12l50-6h46q30 0 28 16l-6 14q-30-4-56 4l-34-6q-30-2-40-10z"/></g>
-    <rect class="sa-preto" x="432" y="232" width="56" height="240" rx="4"/>
-    <g clip-path="url(#sa-corpo-clip)"><rect class="sa-brilho" x="430" y="230" width="26" height="250" fill="url(#sa-brilho)"/></g>
-    <rect x="433" y="386" width="54" height="24" rx="2" fill="#0B1020"/>
-    <text x="460" y="403" text-anchor="middle" font-family="Barlow, 'Segoe UI', sans-serif" font-weight="700" font-size="14" letter-spacing="1.5" fill="#fff">FORCE</text>
-    <rect x="436" y="390" width="4" height="16" fill="#64C4E9"/><rect x="480" y="390" width="4" height="16" fill="#E72B3B"/>
-    <g class="sa-gira">
-      <path class="sa-preto" d="M486 352h18q8 0 8 8v30q0 8-8 8h-18z"/><circle cx="500" cy="378" r="5" fill="#C9CED8"/>
-      <path class="sa-preto" d="M426 462h66v104q0 6-6 6h-54q-6 0-6-6z"/>
-      <path class="sa-preto" d="M428 494l-34 6q-10 2-10 12v16q0 10 10 10h34z"/><circle cx="402" cy="518" r="6" fill="#C9CED8"/>
-      <rect x="438" y="470" width="44" height="6" rx="2" fill="#2A3142"/>
+{# Animação da tela inicial em código (etapa 20 · Q8, refeita no passo 7), no lugar do vídeo amortecedor.mp4. Ao fundo, em SVG: as faixas da marca e o nome
+   PERFECT AUTOMOTIVE. Por cima, num <canvas> (static/js/amortecedor.js): o amortecedor semi-estrutural em 3D com a etiqueta FORCE GAS enrolada no tubo,
+   que tomba, gira no próprio eixo e termina em pé — o roteiro do vídeo, 13,1 s em ciclo. Sem caixa cinza; com «reduzir movimento» fica parado, em pé.
+   Estilos em marca.css (.psd-sa). #}
+<div class="psd-sa" role="img" aria-label="Amortecedor semi-estrutural PERFECT com a etiqueta Force Gas, girando sobre as faixas da marca">
+  <svg viewBox="120 30 640 580" aria-hidden="true">
+    <!-- faixas da marca (o «P» do logo): azul-claro, vermelho e o laranja -->
+    <g class="sa-faixas">
+      <path d="M300 192h44q10 0 6 10L212 538q-4 8-14 8h-34q-10 0-6-10L290 200q4-8 10-8z" fill="#64C4E9"/>
+      <path d="M378 192h138q10 0 6 10L398 538q-4 8-14 8H262q-10 0-6-10L368 200q4-8 10-8z" fill="#E72B3B"/>
+      <path d="M562 192h96q36 0 30 34l-26 112q-12 58-70 58H498q-10 0-6-10l60-186q4-8 10-8z" fill="#F6A019"/>
     </g>
-  </g>
-</svg>
+    <!-- nome (sem as faixas do logo, que já estão ao fundo): azul no tema claro, branco no escuro -->
+    <svg class="sa-nome claro" x="128" y="48" width="600" height="80" viewBox="150 0 813 101" preserveAspectRatio="xMinYMid meet"><image href="{{ url_for('static', filename='img/logo-perfect.png') }}" width="963" height="101"/></svg>
+    <svg class="sa-nome escuro" x="128" y="48" width="600" height="80" viewBox="150 0 813 101" preserveAspectRatio="xMinYMid meet"><image href="{{ url_for('static', filename='img/logo-perfect-branca.png') }}" width="963" height="101"/></svg>
+  </svg>
+  <canvas aria-hidden="true" data-etiqueta="{{ url_for('static', filename='img/force-gas.png') }}"></canvas>
+</div>
+<script src="{{ url_for('static', filename='js/amortecedor.js') }}" defer></script>
