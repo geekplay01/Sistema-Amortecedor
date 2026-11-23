@@ -6,7 +6,8 @@
 
   if ($(".cards") && $("#empty")) {
     fetchJSON("/api/stats").then(s => {
-      document.querySelectorAll("[data-stat]").forEach(el => el.textContent = s[el.dataset.stat] ?? 0);
+      document.querySelectorAll("[data-stat]").forEach(el => { const v = s[el.dataset.stat] ?? 0; el.textContent = Number(v).toLocaleString("pt-BR");
+        const c = el.closest(".card"); if (c) c.classList.toggle("zero", !Number(v)); });          // cartão zerado fica discreto: o olho vai para o que tem número
       $("#empty").hidden = s.products > 0;
     }).catch(() => { const e = $("#empty"); e.hidden = false; e.textContent = "Não foi possível consultar o banco local. Verifique se o app.py está em execução."; });
   }

@@ -77,7 +77,7 @@
     const botaoEstagio = (v, t, n, l, cls = "") => `<button type="button" data-est="${esc(v)}" class="${cls}" aria-pressed="${estagio(F.get()) === v}"><span class="t">${esc(t)}</span><span class="n">${nf(l)}</span><span class="l">${cod(n)}</span></button>`;
     const desenharLinhas = () => {
       const atual = fc.linha;
-      $("#rlin").innerHTML = fc.familias.map(x => `<button type="button" data-lin="${esc(x.v)}" aria-pressed="${x.v === atual}"><span class="t">${esc(x.t)}</span><span class="n">${nf(x.l)}</span><span class="l">em andamento · ${cod(x.n)}</span></button>`).join("");
+      $("#rlin").innerHTML = fc.familias.map(x => `<button type="button" data-lin="${esc(x.v)}" aria-pressed="${x.v === atual}" title="${nf(x.l)} itens em andamento · ${cod(x.n)}"><span class="t">${esc(x.t)}</span><span class="n">${nf(x.l)}</span></button>`).join("");
     };
     const desenharEstagios = () => {
       const est = [...fc.esteira].sort((a, b) => STATUS_ORDEM.indexOf(a.v) - STATUS_ORDEM.indexOf(b.v)), rec = est.find(x => x.v === RECEBIDO);

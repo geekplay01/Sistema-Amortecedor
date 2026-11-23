@@ -160,6 +160,8 @@ dialog.psd-confirm .c-acts{display:flex;justify-content:flex-end;gap:8px;padding
 .badge.ok{color:var(--t-emerald-600)}.badge.warn{color:var(--t-amber-700);background:color-mix(in srgb,var(--pf-orange) 14%,transparent)}.badge.bad{color:var(--t-red-600)}
 .badge.new{background:var(--b500);color:#fff}
 .cards.compactc .card::before{background:linear-gradient(90deg,var(--pf-sky),var(--b500))}
+/* etapa 21 (revisão de design): cartão de atalho zerado recua — sem a faixa colorida e com o número apagado */
+.cards .card.zero{box-shadow:none}.cards .card.zero::before{opacity:0}.cards .card.zero .num{color:var(--mut)}.cards .card.zero b{color:var(--mut)}
 .card .num,.cards .num{font-family:var(--fontd)}
 details.sec summary{font-family:var(--fontd);font-size:15px}
 .syncchip{border-radius:999px}
@@ -168,6 +170,8 @@ details.sec summary{font-family:var(--fontd);font-size:15px}
 [data-theme="dark"] .homebody{background:radial-gradient(1000px 640px at 78% 42%,#1B2747,var(--bg) 70%)}
 .hero h1{font-family:var(--fontd);font-weight:700;letter-spacing:-.01em;color:var(--tx)}
 .hero .mini .num{font-family:var(--fontd);color:var(--tx)}
+/* etapa 21 (revisão de design): os quatro números da tela inicial em 2 × 2 — em linha eles quebravam 3 + 1 e o último ficava sozinho */
+.hero .mini{display:grid;grid-template-columns:repeat(2,max-content);gap:20px 48px}
 .quick input{min-height:2.75rem;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--tx);padding:10px 14px;font-size:16px}
 
 /* ---------- transição entre módulos (navegação do próprio navegador; o menu fica parado) ---------- */
@@ -270,9 +274,16 @@ tr:hover .psd-ed-btn,.psd-ed-btn:focus-visible{opacity:1}.psd-ed-btn:hover{backg
 .psd-sub .l{min-width:5.2em;text-align:right;font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums}
 .psd-sub button[aria-pressed=true]{background:var(--b600)!important;color:#fff}.psd-sub button[aria-pressed=true] .l{color:#DCE6FF}
 .psd-sub button.zero{opacity:.55}.psd-sub button.zero .v{font-weight:500}
-/* chave de linha (etapa 21): três opções lado a lado, mais baixas que a esteira; a escolhida em azul */
-.psd-linha{grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))}
-.psd-linha button{min-height:64px}
+/* chave de linha (etapa 21): seletor segmentado compacto — nome + itens em andamento numa pílula; códigos na dica. Fica acima de tudo sem
+   competir com os números da tela (antes eram três cartões altos que repetiam o cartão «Em desenvolvimento» logo abaixo) */
+.psd-linha{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:var(--shadow);max-width:100%}
+.psd-linha button{flex-direction:row;align-items:center;gap:10px;min-height:40px;padding:6px 8px 6px 14px!important;border:0!important;border-radius:10px;box-shadow:none;background:transparent!important}
+.psd-linha button:hover{background:var(--hover)!important}
+.psd-linha .t{font-family:inherit;font-size:13.5px;font-weight:600;line-height:1;letter-spacing:0;text-transform:none;color:var(--tx)}
+.psd-linha .n{font:700 12.5px/1 var(--fontd);min-width:2.2em;padding:5px 8px;border-radius:999px;text-align:center;background:color-mix(in srgb,var(--mut) 14%,transparent);color:var(--tx)}
+.psd-linha .l{display:none}
+.psd-linha button[aria-pressed=true]{background:var(--b600)!important}
+.psd-linha button[aria-pressed=true] .n{background:rgba(255,255,255,.18);color:#fff}
 .psd-sd{flex:none;width:8px;height:8px;border-radius:999px;background:var(--pf-orange)}.psd-sd.ok{background:var(--ok)}.psd-sd.no{background:var(--pf-red)}
 .psd-sublist{display:flex;min-width:22rem;max-width:30rem;flex-wrap:wrap;gap:4px}
 .psd-sublist span{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:color-mix(in srgb,var(--mut) 12%,transparent);font-size:11.5px;font-weight:600;color:var(--tx);white-space:nowrap}

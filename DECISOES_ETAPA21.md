@@ -46,6 +46,28 @@ validação aprovada, reprovada e pendente qualidade continuam no quadro; no DES
 - Conferido na cópia: DES 337 (338 − AMD0345 bloqueado), moto 1, pesada 28; R-D 259 / 239 códigos, pesada 12, 140 curtidos. A cópia é de antes da última
   sincronização: no banco real, depois de sincronizar, o R-D deve dar 260.
 
+## Revisão de design (/impeccable, 23/11/2026)
+
+Crítica no modo «Operate» (app de trabalho: leitura rápida, consistência). A skill no PC só tinha o SKILL.md (sem o launcher, a rubrica e o craft-floor):
+valeram os princípios do próprio SKILL.md. Telas vistas: inicial, Dashboard, DES, R-D, Estoque, Pedidos, Vendas, Configurações; claro, escuro e celular.
+
+Corrigido:
+- Dashboard: produtos, DES e R-D apareciam duas vezes com números diferentes (cartão 337 × destaque 864). Saíram dos cartões; a fileira de destaque vem
+  primeiro e mostra itens em andamento (o número da tela), com o total de códigos embaixo. Cartão zerado fica discreto.
+- «Pendente compras» do Dashboard (547) não batia com as telas (266 + 222): agora usa o mesmo universo (família e marca padrão) → 488.
+- Legenda dos gráficos: a bolinha crescia até o tamanho da fonte e cobria o texto (`boxHeight` 8).
+- DES/R-D: a chave de linha virou seletor segmentado compacto (antes, três cartões altos que repetiam o cartão de baixo).
+- Tela inicial: os 4 números em 2 × 2 (quebravam 3 + 1). Mais vendidos: descrição mais curta para o valor não ser cortado.
+- Estoque: esqueleto no lugar de «Calculando…».
+
+Conferido e sem problema: contraste no escuro (texto secundário ≈ 7:1), sem rolagem lateral no celular, animações de entrada curtas (0,18 s; a inicial 0,9 s).
+
+Fica como sugestão (não feito):
+- Vendas usa outra barra de filtros (Ano/Mês e «Exportar CSV») — trazer para o padrão da barra (`TW.pintarBarra`, «Baixar Excel»).
+- Estoque tem 11 colunas: a «Cobertura» só aparece rolando para o lado em telas menores que ~1600 px.
+- No celular, a faixa «vem de / alimenta» ocupa meia tela antes do conteúdo.
+- Registrar o design atual num DESIGN.md (comando `document` da skill), para as próximas revisões terem referência.
+
 ## Para a próxima sincronização
 
 - A FAMILIA é copiada do `extra` na migração; a sincronização seguinte grava direto e passa a trazer as linhas cuja FAMILIA é de amortecedor mesmo que a LINHA não seja.

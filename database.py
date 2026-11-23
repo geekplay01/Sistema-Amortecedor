@@ -50,8 +50,9 @@ def stats():
      "applications": "SELECT COUNT(*) FROM applications",
      "drawings": "SELECT COUNT(DISTINCT code) FROM drawing_links",
      "ship_pendente": "SELECT COUNT(*) FROM sample_shipments WHERE status='pendente_projeto'",
-     "pend_compras": f"SELECT COUNT(DISTINCT code||suggestion) FROM v_rd_flags WHERE pend_compras=1 AND code||'|'||suggestion IN (SELECT code||'|'||suggestion FROM rd_projects WHERE {rules.desc_sql()})",
-     "val_reprovada": f"SELECT COUNT(DISTINCT code||suggestion) FROM v_rd_flags WHERE val_reprovada=1 AND code||'|'||suggestion IN (SELECT code||'|'||suggestion FROM rd_projects WHERE {rules.desc_sql()})",
+     # mesmo universo das telas DES/R-D (família amortecedor e, no DES, a marca padrão): o cartão bate com o atalho «Pendente compras» das telas
+     **{k: f"SELECT COUNT(DISTINCT code||suggestion) FROM v_rd_flags WHERE {k}=1 AND code||'|'||suggestion IN (SELECT r.code||'|'||r.suggestion FROM rd_projects r WHERE {rules.desc_sql('r.description')}"
+           f" AND (r.suggestion<>'DESENVOLVIMENTO' OR {rules.marca_sql('DESENVOLVIMENTO') or '1=1'}))" for k in ("pend_compras", "val_reprovada")},
      "imports": "SELECT COUNT(*) FROM import_batches",
      "pendencies": "SELECT COUNT(*) FROM pendencies WHERE status='aberta'",
      "duplicates": "SELECT COUNT(*) FROM (SELECT 1 FROM codes WHERE coalesce(source_id,0) NOT IN (SELECT id FROM sources WHERE name LIKE 'CrossCatalogo%') GROUP BY coalesce(normalized_code,code), code_type HAVING COUNT(DISTINCT product_id)>1)",

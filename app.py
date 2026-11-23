@@ -49,12 +49,9 @@ PAGES = [
  ("configuracoes", "Configurações e backup", "settings", 5),
 ]
 HIDDEN = [("guia-visual", "Guia visual", "sparkles", 17)]          # telas fora do menu (abertas pelo endereço): guia do design da etapa 17
-CARDS = [  # chave, rótulo, destino, dica
- ("products", "Total de amortecedores", "produtos", "Produtos PERFECT cadastrados"),
+CARDS = [  # chave, rótulo, destino, dica — produtos, DES e R-D ficam só na fileira de destaque do Dashboard (etapa 21: antes apareciam duas vezes)
  ("oem_codes", "Códigos OEM relacionados", "pesquisa?code_type=oem", "Códigos OEM distintos"),
  ("applications", "Aplicações cadastradas", "aplicacoes", "Veículo, modelo, ano e eixo"),
- ("des_items", "DESENVOLVIMENTO", "desenvolvimento", "Itens em andamento (sem os já recebidos)"),
- ("rd_items", "REDESENVOLVIMENTO", "redesenvolvimento", "Itens em andamento (sem os já recebidos)"),
  ("ship_pendente", "Amostras a enviar", "envio?status=pendente_projeto", "Recebidas, aguardando o projeto para envio ao fornecedor"),
  ("pend_compras", "Pendente compras", "amostras?tab=pendentes", "Itens em desenvolvimento/redesenvolvimento aguardando compra de amostra"),
  ("val_reprovada", "Validação reprovada", "desenvolvimento?flag=val_reprovada", "Itens com validação reprovada (marcação de status)"),

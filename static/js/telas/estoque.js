@@ -61,7 +61,7 @@
     const aplicar = (patch, logo) => { if (patch) F.set(patch); pg = 1; clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 300); };
     TW.ligarBarra($("#eq"), { set: (k, v) => aplicar({ [k]: v }, true), busca: t => aplicar({ q: t }, true), limpar: () => { F.clear(); aplicar(null, true); }, mais: ab => { maisAberto = ab; } });
     root.addEventListener("click", e => { const p = e.target.closest("[data-p]"); if (p && !p.disabled) { pg = +p.dataset.p; carregar(); scrollTo(0, 0); } });
-    $("#et").innerHTML = '<p class="text-sm text-mute">Calculando vendas × estoque…</p>';
+    $("#ek").innerHTML = '<div class="skel h-24"></div>'.repeat(4); $("#et").innerHTML = TW.esqueleto(8);       // esqueleto no lugar dos cartões e da tabela enquanto calcula
     carregar().catch(fail);
   }
   PSD.tela("estoque", estoque);

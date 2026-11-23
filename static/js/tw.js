@@ -98,7 +98,8 @@ window.PSDTW = (() => {
     C.defaults.scale.grid.color = cssv("--chart-grid"); C.defaults.plugins.legend.labels.color = cssv("--chart-legend");
     Object.assign(C.defaults.plugins.tooltip, { backgroundColor: cssv("--card"), titleColor: cssv("--tx"), bodyColor: cssv("--tx"), borderColor: cssv("--line"), borderWidth: 1, padding: 10, cornerRadius: 10, boxPadding: 4,
       titleFont: { family: cssv("--fontd"), weight: "600", size: 13 }, usePointStyle: true });
-    C.defaults.plugins.legend.labels.usePointStyle = true; C.defaults.plugins.legend.labels.boxWidth = 8; C.defaults.maintainAspectRatio = false;
+    // bolinha da legenda do tamanho da caixa (8 px): sem boxHeight ela crescia até o tamanho da fonte e cobria o começo do texto
+    Object.assign(C.defaults.plugins.legend.labels, { usePointStyle: true, boxWidth: 8, boxHeight: 8, padding: 14 }); C.defaults.maintainAspectRatio = false;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) C.defaults.animation = false; };
   const vivos = new Set();
   /* cores do tema (etapa 20 · Q7): --chart-1..7 trocam no escuro; uma cor da paleta clara passada pela tela vira a equivalente do tema; "--var" lê o token */

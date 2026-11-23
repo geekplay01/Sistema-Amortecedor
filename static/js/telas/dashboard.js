@@ -35,12 +35,15 @@
       $("#dban").innerHTML = bn.join("");
     };
 
+    /* fileira de destaque primeiro; os cartões de atalho (page.html · section.cards) vêm logo abaixo dela. DES e R-D com o mesmo número que abre a tela
+       (itens em andamento, etapa 21) — antes mostravam o total de códigos de todos os estágios, diferente do cartão logo acima */
     const topo = () => {
-      const s = d.sales;
-      $("#dk").innerHTML = link("/produtos", kpi("Produtos no catálogo", nf(d.stats.products), "abrir Produtos", "blue"), "Abrir a lista de Produtos sem filtros")
-        + link("/desenvolvimento", kpi(DES, nf(d.totals[DES]), "itens distintos no servidor", "blue"), "Abrir Desenvolvimento sem filtros")
-        + link("/redesenvolvimento", kpi(RD, nf(d.totals[RD]), "itens distintos no servidor", "green"), "Abrir Redesenvolvimento sem filtros")
+      const s = d.sales, st = d.stats;
+      $("#dk").innerHTML = link("/produtos", kpi("Produtos no catálogo", nf(st.products), "amortecedores PERFECT cadastrados", "blue"), "Abrir a lista de Produtos sem filtros")
+        + link("/desenvolvimento", kpi("Em desenvolvimento", nf(st.des_items), `itens em andamento · ${nf(d.totals[DES])} códigos no total`, "blue"), "Abrir Desenvolvimento")
+        + link("/redesenvolvimento", kpi("Em redesenvolvimento", nf(st.rd_items), `itens em andamento · ${nf(d.totals[RD])} códigos no total`, "green"), "Abrir Redesenvolvimento")
         + kpi("Vendas · 12 meses", s.available ? brl0(s.total_value) : "–", s.available ? `${nf(s.total_qty)} peças${s.last_date ? " · até " + dmy(s.last_date) : ""}` : "aguardando o servidor", "slate");
+      const cs = document.querySelector("section.cards"); if (cs) $("#dk").after(cs);
     };
 
     const flagsCard = () => {
@@ -66,7 +69,7 @@
         card("Vendas · últimos 12 meses", d.sales.available ? '<div id="dg-sales" class="chart"></div>' : vazio("Vendas ainda não chegaram do servidor. Sincronize em Configurações.")),
         card("Mais vendidos · 12 meses", !d.sales.available ? vazio("Vendas ainda não chegaram do servidor.") : d.sales.top.length
           ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Peças", r: true }, { h: "Valor", r: true }], d.sales.top.map(t => [`<a href="/pesquisa?q=${encodeURIComponent(t.code)}" class="font-semibold text-blue-600" title="Abrir na Pesquisa">${esc(t.code)}</a>`,
-            `<span class="block max-w-[16rem] truncate" title="${esc(t.description || "")}">${esc(t.description || "–")}</span>`, nf(t.qty), brl0(t.value)]), { h: "max-h-[22rem]" })
+            `<span class="block max-w-[11rem] truncate" title="${esc(t.description || "")}">${esc(t.description || "–")}</span>`, nf(t.qty), brl0(t.value)]), { h: "max-h-[22rem]" })
           : vazio("Sem vendas no período.")),
         card("Estoque disponível", est.available ? `<div class="grid grid-cols-3 gap-2">${st(nf(est.qty), "peças disponíveis")}${st(nf(est.items), "códigos em estoque")}${st(nf(est.zero), "zerados")}</div>` : vazio("Estoque ainda não chegou do servidor.")),
         card("Sistema: FORCE GAS × FORCE OIL", `<div id="dg-sys" class="chart"></div><div class="mt-2 flex flex-wrap gap-2">${sys.filter(r => r.s !== "nd").map(r => `<a class="${botao}" href="/produtos?system=${r.s}">${LAB[r.s] || esc(r.s)} · ${nf(r.n)}</a>`).join("")}</div>`),
