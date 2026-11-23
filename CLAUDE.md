@@ -19,6 +19,7 @@ App Flask de uso interno (um usuário, um PC Windows) para amortecedores PERFECT
 - Uma tela por arquivo em `static/js/telas/<tela>.js`: lê o que precisa de `window.PSD` (núcleo `core.js`) e se registra com `PSD.tela(slug, desenhar)`. Tela nova = arquivo novo + entrada na lista de `templates/page.html`. Dashboard/Metas vêm de `pages_new.js`; Pedidos/Vendas/Garantia/FOB de `pages_exec.js`.
 - JS/CSS recebem `?v=<hora em que o app abriu>` (`app._asset_version`): reabrir o app basta para o navegador baixar a versão nova.
 - PowerShell 5.1 come as aspas de `python -c "..."`: escreva o script em arquivo e rode o arquivo.
+- **Mapa do código (graphify):** depois de cada mudança em `.py` ou `.js`, atualize o mapa antes de encerrar o turno: `$env:GRAPHIFY_QUERY_LOG_DISABLE='1'; & "$env:USERPROFILE\.graphify\Scripts\graphify.exe" update .` (local, sem IA; saída em `graphify-out/`, fora do Git). Para achar onde algo está ou o que depende de quê, consulte antes com `graphify.exe query "<termo>"`; leia o arquivo antes de editar.
 
 ## Servidor SQL (somente leitura)
 

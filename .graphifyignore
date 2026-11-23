@@ -1,0 +1,32 @@
+# graphify: o mapa do código nunca lê dados da empresa nem segredos.
+# (o .gitignore também vale; aqui ficam explícitos e somam o que não é código)
+
+# dados, backups, planilhas e segredos
+data/
+backups/
+bases_exemplo/
+*.db
+*.db-journal
+*.sqlite
+*.xlsx
+*.xls
+*.csv
+.env
+.env.*
+iniciar_log.txt
+*.log
+
+# ambiente e gerados
+.venv/
+__pycache__/
+graphify-out/
+.claude/
+.devcontainer/
+
+# arquivos de terceiros e mídia (não são código do app)
+static/vendor/
+static/fonts/
+static/icons/
+static/img/
+static/js/brasil_uf.js
+*.mp4

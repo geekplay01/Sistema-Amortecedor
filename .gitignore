@@ -26,3 +26,6 @@ iniciar_log.txt
 
 # configurações locais do Claude Code (caminhos desta máquina)
 .claude/
+
+# mapa do código gerado pelo graphify (refaz-se a qualquer hora)
+graphify-out/
