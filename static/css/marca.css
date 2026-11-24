@@ -241,6 +241,14 @@ main input[type=search]:not(.psd-search *){border-radius:999px!important;min-hei
 .psd-ed-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;color:var(--mut);opacity:.35;transition:opacity .15s,background .15s}
 tr:hover .psd-ed-btn,.psd-ed-btn:focus-visible{opacity:1}.psd-ed-btn:hover{background:var(--hover);color:var(--tx)}
 .psd-ed-in{width:14rem;height:30px;padding:0 9px;border:1px solid var(--b500);border-radius:8px;background:var(--card);color:var(--tx);font-size:13px;outline:0;box-shadow:0 0 0 3px color-mix(in srgb,var(--b500) 18%,transparent)}
+/* FOB: preço destacado em verde — o menor (aba FOB, ficha) ou o do fornecedor do item (DES/R-D); exceção registrada no DESIGN.md §3 (etapa 22) */
+.psd-fob-min{display:inline-block;padding:1px 7px;border-radius:6px;background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--t-emerald-700);font-weight:700;font-variant-numeric:tabular-nums}
+.psd-fobl{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:7.5rem}
+.psd-fobrd{display:grid;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:10px;margin:10px 0 14px}
+.psd-fobrd-c{display:flex;flex-direction:column;gap:3px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.psd-fobrd-c small{color:var(--mut);font-size:12px}.psd-fobrd-c b{font:700 20px/1.2 var(--fontd);color:var(--tx);font-variant-numeric:tabular-nums}
+.psd-fobrd-c.on{border-color:color-mix(in srgb,var(--ok) 55%,var(--line));background:color-mix(in srgb,var(--ok) 9%,var(--card))}.psd-fobrd-c.on b{color:var(--t-emerald-700)}
+.psd-fobrd-c.vazio b{color:var(--mut)}
 /* sugestões do app no lugar da lista nativa do <datalist> (etapa 22: a nativa segue a cor do Windows, não o tema) — PSDTW, fim de tw.js */
 .psd-sug{position:fixed;z-index:90;max-width:28rem;max-height:18rem;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--tx);box-shadow:0 12px 32px rgba(15,23,42,.16)}
 [data-theme=dark] .psd-sug{box-shadow:0 12px 32px rgba(0,0,0,.45)}

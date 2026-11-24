@@ -70,6 +70,7 @@
     dlg.innerHTML = `<div class="dh"><div><h2>${esc(d.code)} ${tag(lab)} ${other.map(tag).join(" ")}</h2><p>${esc(d.description || "")}</p></div><div><a class="btn ghost" href="/item/${encodeURIComponent(d.code)}">Página do item</a> <button class="btn ghost" data-close>Fechar</button></div></div>
       ${other.length ? `<div class="notice">Este código também consta em <b>${other.join(", ")}</b>.</div>` : ""}
       <div class="curline"><span class="cur up">▲ Curtiu ${d.curtiu || 0}</span><span class="cur down">▼ Não curtiu ${d.nao_curtiu || 0}</span></div>
+      ${d.fob ? `<h4>FOB</h4>${PSDTW.fobRD(d.fob, true)}` : ""}
       ${k === "rd" ? `<div class="vpanel" data-vc="${esc(d.code)}"><b>Validação</b> ${(d.validations || []).length ? d.validations.map(v => `<span class="vchip">enviada em ${dmy(v.sent_at)}${v.by_user ? " · " + esc(v.by_user) : ""} <a href="#" data-vundo="${v.id}">desfazer</a></span>`).join("") : '<span class="muted">nenhuma validação enviada registrada.</span>'}<button class="btn sm" data-vsend="${esc(d.code)}">Marcar validação enviada</button><small class="muted">A meta de Redesenvolvimento conta quando o status passar de PENDENTE CONFIRMAÇÃO para ITEM RECEBIDO.</small></div>` : ""}
       ${d.product ? "" : '<p class="muted">Ainda não está no catálogo.</p>'}
       ${subPanel(d.rows)}

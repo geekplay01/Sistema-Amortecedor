@@ -255,11 +255,11 @@ window.PSD_EXEC = ctx => {
     root.innerHTML = `<div class="flex flex-col gap-6"><div id="fup"></div><div id="fbody">${waiting("Carregando FOB…")}</div></div>`;
     const money = v => v == null ? "–" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const upload = () => { $("#fup").innerHTML = TW.card("Planilha FOB", `<label for="ffile" class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line px-6 py-6 text-center hover:bg-slate-500/10">
-        <span class="text-sm font-semibold text-ink">Clique para enviar a tabela FOB (TABELA-PRECO .xlsx)</span><span class="text-xs text-mute">Une pelo código do produto (coluna <b>PartNumber</b>); quem tem vários códigos de fornecedor fica com o <b>menor FOB</b>. Reenviar substitui a versão anterior. Só administrador.</span></label>
+        <span class="text-sm font-semibold text-ink">Clique para enviar a tabela FOB (TABELA-PRECO .xlsx)</span><span class="text-xs text-mute">Reenviar substitui a versão anterior. Só administrador.</span></label>
         <input id="ffile" type="file" accept=".xlsx,.xls,.csv" class="hidden"><div class="mt-4">${msg}</div>`);
       $("#ffile").onchange = async e => { const f = e.target.files[0]; if (!f) return; const fd = new FormData(); fd.append("file", f); msg = waiting(`Importando ${esc(f.name)}…`); upload();
         try { const r = await J("/api/fob/import", { method: "POST", body: fd });
-          msg = TW.notice(`FOB importado: <b>${nf(r.itens_fob)}</b> itens (de ${nf(r.linhas_fob)} linhas; ${nf(r.sem_partnumber)} sem PartNumber, ${nf(r.partnumber_repetido)} repetidos → menor FOB). <b>${nf(r.com_fob)}</b> produtos receberam FOB; ${nf(r.sem_fob)} ficaram sem; ${nf(r.fob_sem_produto)} itens do FOB não existem no catálogo.`, "blue"); upload(); load(); }
+          msg = TW.notice(`FOB importado: <b>${nf(r.itens_fob)}</b> itens (de ${nf(r.linhas_fob)} linhas; ${nf(r.codigo_como_chave || 0)} pelo próprio código AMD, ${nf(r.via_relativo || 0)} pelo item PERFECT relativo, ${nf(r.sem_partnumber)} sem código PERFECT, ${nf(r.partnumber_repetido)} repetidos juntados). <b>${nf(r.com_fob)}</b> produtos receberam FOB; ${nf(r.sem_fob)} ficaram sem; ${nf(r.fob_sem_produto)} itens do FOB não existem no catálogo.`, "blue"); upload(); load(); }
         catch (er) { msg = TW.notice(esc(er.message), "red"); upload(); } };
     };
     const load = async () => {
@@ -270,7 +270,11 @@ window.PSD_EXEC = ctx => {
         ${TW.kpi("Sem FOB", nf(S.sem_fob), "produtos sem preço na tabela", S.sem_fob ? "amber" : "green")}${TW.kpi("FOB médio", S.fob_medio == null ? "–" : "US$ " + money(S.fob_medio), `importado em ${dmy(S.carregado_em)} · ${nf(S.fob_sem_produto)} do FOB fora do catálogo`, "slate")}</div>
         ${TW.card("FOB por produto", `<div class="mb-4 flex flex-wrap items-center gap-3"><div class="min-w-[220px] flex-1">${TW.input("fq", "Buscar código, descrição ou código do fornecedor…")}</div>${TW.select("ff", [["", "Todos"], ["com", "Só com FOB"], ["sem", "Só sem FOB"]], st.filtro)}${TW.btn("fcsv", "Exportar página (CSV)")}</div>
           ${TW.table([{ h: "Código" }, { h: "Descrição", nw: false }, { h: "FOB mín. (US$)", r: 1 }, { h: "Melhor preço" }, { h: "E-WIN", r: 1 }, { h: "ZS", r: 1 }, { h: "XGM", r: 1 }, { h: "Cód. fornecedor" }],
-            d.rows.map(r => [`<b>${esc(r.perfect_code)}</b>`, esc(r.description || ""), r.fob == null ? TW.badge("sem FOB", "amber") : `<b>${money(r.fob)}</b>`, r.fob_fornecedor ? `${TW.badge(r.fob_fornecedor, FORN[r.fob_fornecedor] || "slate")} ${esc(r.fob_origem || "")} ${dmy(r.fob_data)}` : "–", money(r.fob_ewin), money(r.fob_zs), money(r.fob_xgm), esc(r.fob_cod_fornecedor || "–")]))}
+            d.rows.map(r => { const v = [r.fob_ewin, r.fob_zs, r.fob_xgm].filter(x => x != null), mn = v.length ? Math.min(...v) : null;
+              const cel = x => x == null ? "–" : Math.abs(x - mn) < 1e-9 ? `<span class="psd-fob-min" title="Melhor preço">${money(x)}</span>` : money(x);          // etapa 22 · Q6: o menor em verde (empate: os dois)
+              return [`<b>${esc(r.perfect_code)}</b>`, esc(r.description || ""), r.fob == null ? TW.badge("sem FOB", "amber") : `<b>${money(r.fob)}</b>`,
+                r.fob_fornecedor ? `${String(r.fob_fornecedor).split(" / ").map(f => TW.badge(f, FORN[f] || "slate")).join(" ")} ${esc(r.fob_origem || "")} ${r.fob_data ? dmy(r.fob_data) : ""}` : "–",
+                cel(r.fob_ewin), cel(r.fob_zs), cel(r.fob_xgm), esc(r.fob_cod_fornecedor || "–")]; }))}
           <div class="mt-3 flex items-center justify-between text-sm text-mute"><span>${nf(d.total)} produto(s) · página ${d.page} de ${pages}</span>${pages > 1 ? `<span class="flex gap-2">${TW.btn("fpv", "‹ Anterior")}${TW.btn("fnx", "Próxima ›")}</span>` : ""}</div>`)}</div>`;
       const fq = $("#fq"); fq.value = st.q; fq.oninput = debounce(e => { st.q = e.target.value.trim(); st.page = 1; load().then(() => { const x = $("#fq"); x.focus(); x.setSelectionRange(x.value.length, x.value.length); }); }, 350);
       $("#ff").onchange = e => { st.filtro = e.target.value; st.page = 1; load(); };

@@ -63,6 +63,22 @@ class Fob(unittest.TestCase):
         r = fob.set_index("codigo").loc["AMD0637"]
         self.assertEqual((r["fob"], r["fob_ewin"], r["fob_zs"], r["fob_xgm"], r["fob_fornecedor"]), (8.29, 8.35, 8.5, 8.29, "XGM"))
         self.assertEqual(r["fob_cod_fornecedor"], "AMD0637, 1BP36349AA")
+    def test_fornecedor_pelo_valor_empate_minimo_e_relativo(self):
+        """Etapa 22 · Q1/Q3/Q7/Q8/Q9: FOB e fornecedor pelo menor valor (a planilha dizia ZS); origem/data só se a planilha indica o mesmo fornecedor;
+        empate «ZS / XGM»; só «Mínimo» → fornecedor da planilha; 1BP sem PartNumber → relativo único do app, se o AMD não tiver linha própria."""
+        f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); f.close()
+        pd.DataFrame({"\xa0 Codigo\xa0": ["AMD0907", "AMDT1", "AMD0101", "1BP1", "1BP2", "1BP3"], "\xa0 Mínimo\xa0": [8.24, 6.0, 7.5572, 7.71, 5.0, 4.0],
+                      "\xa0 Melhor Preço\xa0": ["ZS = DES. 2026-11-03", "ZS = DES. 2026-11-03", "ZS = DES. 2022-02-04", "E-WIN = DES. 2026-11-03", "ZS = DES. 2026-11-03", "ZS = DES. 2026-11-03"],
+                      "\xa0 PartNumber": [None] * 6, "\xa0FOB EWIN": [None, 7.0, None, 7.71, None, None], "\xa0FOB ZS": [8.24, 6.0, None, None, 5.0, 4.0],
+                      "\xa0FOB XGM": [7.57, 6.0, None, None, None, None]}).to_excel(f.name, index=False)
+        rel = {"1BP1": "AMD87821", "1BP2": "AMD0907"}.get          # 1BP2 → AMD0907, que já tem linha própria: não entra; 1BP3 sem relativo: não entra
+        fob, rep = fob_merge.read_fob(f.name, rel); os.remove(f.name); x = fob.set_index("codigo")
+        self.assertEqual((rep["via_relativo"], rep["sem_partnumber"], rep["itens_fob"]), (1, 2, 4))
+        self.assertEqual(tuple(x.loc["AMD0907", ["fob", "fob_fornecedor", "fob_origem", "fob_data"]]), (7.57, "XGM", None, None))
+        self.assertEqual(tuple(x.loc["AMDT1", ["fob", "fob_fornecedor", "fob_origem"]]), (6.0, "ZS / XGM", "DES"))
+        self.assertEqual(tuple(x.loc["AMD0101", ["fob", "fob_fornecedor", "fob_data"]]), (7.5572, "ZS", "2022-02-04"))
+        self.assertEqual(tuple(x.loc["AMD87821", ["fob", "fob_fornecedor", "fob_cod_fornecedor"]]), (7.71, "E-WIN", "1BP1"))
+        import queries; q = queries.fob_quotes({"fob": 7.5572, "fob_fornecedor": "ZS"}); self.assertEqual([(y["fornecedor"], y["preco"], y["melhor"]) for y in q], [("ZS", 7.5572, True)])
 
 if __name__ == "__main__": unittest.main()
 
@@ -710,6 +726,30 @@ class UniversoDesRd(_TmpDB):
         self.assertEqual(sorted(x["code"] for x in rd.items("DESENVOLVIMENTO", {"all": 1})["rows"]), ["A2", "A4"])
         self.assertEqual(self.db.stats()["des_items"], 2)
         import goals; self.assertEqual(sorted(goals._meta("DESENVOLVIMENTO")), ["A1", "A2", "A3", "A4"])      # metas: o que foi recebido e validado continua contando
+
+    def test_fob_em_des_rd(self):
+        """Etapa 22 · Q12–Q21: FOB só nos status escolhidos; verde = FOB_FINAL do servidor do fornecedor do item (o menor, com «varia»; sem ele, a planilha);
+        «planilha» quando difere; branco = vigente (última compra) ou os outros fornecedores da planilha."""
+        import rd
+        self.db.init_db(); D, R = "DESENVOLVIMENTO", "REDESENVOLVIMENTO"
+        ff = lambda v: '{"FOB_FINAL": "%s"}' % v if v else None
+        self.sql("INSERT INTO rd_projects(code,suggestion,description,family,brand,status,supplier,extra) VALUES(?,?,'AMORTECEDOR','AMORTECEDOR','PERFECT',?,?,?)",
+                 [("D1", D, "PEDIDO CONFIRMADO", "ZS", ff("10,10")), ("D2", D, "EM COTAÇÃO", "ZS", ff("5,00")), ("D3", D, "FINALIZANDO CIT", "E-WIN", None),
+                  ("R1", R, "FINALIZANDO CIT", "XGM", ff("6,90")), ("R1", R, "FINALIZANDO CIT", "XGM", ff("7,20")), ("R2", R, "PENDENTE PARTNUMBER FORNECEDOR", "ZS", None),
+                  ("R3", R, "ITEM RECEBIDO", "ZS", ff("9,00"))])
+        self.sql("CREATE TABLE IF NOT EXISTS fob_prices(codigo TEXT PRIMARY KEY, fob REAL, fob_ewin REAL, fob_zs REAL, fob_xgm REAL, fob_fornecedor TEXT, fob_origem TEXT, fob_data TEXT, fob_cod_fornecedor TEXT, loaded_at TEXT)")
+        self.sql("INSERT INTO fob_prices(codigo,fob_ewin,fob_zs,fob_xgm) VALUES(?,?,?,?)", [("D1", 12.0, 11.6, None), ("D3", 8.0, 7.0, None), ("R1", 6.8, 8.7, None), ("R2", 9.0, 9.5, 8.8)])
+        self.sql("INSERT INTO ds_compras(pedido,supplier,code,order_date) VALUES(?,?,?,?)", [("1", "ZS", "R1", "2026-01-01"), ("2", "E-WIN", "R1", "2026-10-26")])
+        fd, fr = rd.fob_info(D, ["D1", "D2", "D3"]), rd.fob_info(R, ["R1", "R2", "R3"])
+        self.assertEqual(sorted(fd), ["D1", "D3"]); self.assertEqual(sorted(fr), ["R1", "R2"])           # EM COTAÇÃO e ITEM RECEBIDO fora
+        self.assertEqual({k: fd["D1"]["item"][k] for k in ("fornecedor", "preco", "fonte", "planilha")}, {"fornecedor": "ZS", "preco": 10.1, "fonte": "servidor", "planilha": 11.6})
+        self.assertEqual([(c["fornecedor"], c["preco"], c["rotulo"]) for c in fd["D1"]["comparar"]], [("E-WIN", 12.0, "outros")])
+        self.assertEqual((fd["D3"]["item"]["preco"], fd["D3"]["item"]["fonte"]), (8.0, "planilha"))       # sem FOB_FINAL: a planilha do fornecedor do item
+        self.assertEqual((fr["R1"]["item"]["preco"], fr["R1"]["item"]["varia"]), (6.9, [6.9, 7.2]))
+        self.assertEqual([(c["fornecedor"], c["preco"], c["rotulo"]) for c in fr["R1"]["comparar"]], [("E-WIN", 6.8, "vigente")])   # última compra = E-WIN
+        self.assertEqual((fr["R2"]["item"]["preco"], fr["R2"]["item"]["fonte"]), (9.5, "planilha"))
+        self.assertEqual([c["fornecedor"] for c in fr["R2"]["comparar"]], ["XGM", "E-WIN"])
+        self.assertEqual(rd.items(R, {"all": 1, "q": "R1"})["rows"][0]["fob"]["item"]["preco"], 6.9)
 
     def test_familia_do_servidor_marca_e_itens_por_linha(self):
         """Etapa 21: a FAMILIA decide a linha (amortecedor · moto · pesada), mesmo com LINHA «AMORTECEDOR»; DES padrão = marca PERFECT (ou vazia);

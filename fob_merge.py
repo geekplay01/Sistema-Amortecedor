@@ -7,10 +7,13 @@ Uso no sistema: POST /api/fob/import (grava products.fob + tabela fob_prices) ou
 A planilha FOB (TABELA-PRECO) traz: Linha · Codigo (código do item na planilha: AMD…, 1BP…) · Mínimo (menor FOB, USD) · Melhor Preço («ZS = DES. 2026-11-03»)
 · PartNumber (= código PERFECT relativo) · FOB EWIN / FOB ZS / FOB XGM («$ 7,25»). Regras (etapa 22):
   • chave = PartNumber (maiúsculo, sem espaços); PartNumber vazio e Codigo PERFECT (AMD…) → a chave é o próprio Codigo (é o item PERFECT na planilha).
-    Sem nenhum dos dois (ex.: 1BP… sem PartNumber) a linha não entra (contada em «sem_partnumber»).
-  • mesma chave em várias linhas (o item PERFECT e os códigos de outras marcas que apontam para ele) → JUNTA as linhas: cada fornecedor fica com o seu menor preço,
-    o FOB é o menor de todos e «Melhor Preço» (fornecedor, origem, data) vem da linha mais barata. Antes ficava só a linha mais barata e os outros fornecedores sumiam
+    Sem nenhum dos dois (ex.: 1BP… sem PartNumber): o código PERFECT relativo único que o app conhece (Brands), se esse AMD não tiver linha própria;
+    sem relativo a linha não entra (contada em «sem_partnumber»).
+  • mesma chave em várias linhas (o item PERFECT e os códigos de outras marcas que apontam para ele) → JUNTA as linhas: cada fornecedor fica com o seu menor preço
     (AMD0637: XGM e ZS estavam na linha «Codigo AMD0637» sem PartNumber).
+  • FOB = o MENOR VALOR entre E-WIN, ZS e XGM, e o fornecedor é o dono dele (empate: «ZS / XGM») — mesmo quando o «Mínimo»/«Melhor Preço» da planilha indica outro
+    (AMD0907: planilha «ZS 8,24», XGM 7,57 → FOB 7,57 XGM). Origem e data da planilha só quando ela indica esse mesmo fornecedor.
+    Sem preço por fornecedor vale o «Mínimo» com o fornecedor da planilha.
 O left join mantém TODOS os produtos: quem não tem FOB fica com FOB vazio (nunca some).
 """
 import re, sys, argparse
@@ -30,32 +33,68 @@ def money(v):
     try: return float(t)
     except ValueError: return None
 
-def read_fob(src):
-    """Lê a planilha FOB e devolve (DataFrame com uma linha por PartNumber, relatório)."""
+FORN = (("E-WIN", "fob_ewin"), ("ZS", "fob_zs"), ("XGM", "fob_xgm"))          # fornecedores com coluna própria na planilha
+
+def read_fob(src, relativo=None):
+    """Lê a planilha FOB e devolve (DataFrame com uma linha por código PERFECT, relatório).
+    relativo(código) → o código PERFECT relativo ÚNICO no app (Brands: base de marcas, cross e vínculo manual) ou None — usado nas linhas sem PartNumber
+    cujo Codigo não é AMD (1BP…), e só se o AMD não tiver linha própria na planilha (etapa 22 · Q3)."""
     raw = pd.read_csv(src, sep=None, engine="python", dtype=object) if str(src).lower().endswith((".csv", ".txt")) else pd.read_excel(src, dtype=object)
     by = {_canon(c): c for c in raw.columns}; need = lambda *n: next((by[_canon(x)] for x in n if _canon(x) in by), None)
     c = {"pn": need("PartNumber", "Part Number", "codigo_perfect"), "min": need("Mínimo", "Minimo", "FOB"), "best": need("Melhor Preço", "Melhor Preco"), "forn": need("Codigo", "Código"),
          "ewin": need("FOB EWIN", "FOB E-WIN"), "zs": need("FOB ZS"), "xgm": need("FOB XGM")}
     if not c["pn"]: raise ValueError("Coluna «PartNumber» (código do produto) não encontrada na planilha FOB. Colunas: " + ", ".join(map(str, raw.columns)))
-    s = lambda k: raw[c[k]] if c[k] else pd.Series([None] * len(raw))
+    s = lambda k: raw[c[k]] if c[k] else pd.Series([None] * len(raw), index=raw.index)
     nb = lambda x: x.str.replace(" ", " ", regex=False)
     txt = lambda k: nb(s(k).astype("object").where(s(k).notna(), "").astype(str)).str.strip().str.upper().replace({"NAN": "", "NONE": ""})
     pn, cod = txt("pn").str.replace(" ", "", regex=False), txt("forn")
-    pelo_codigo = pn.eq("") & cod.str.replace(" ", "", regex=False).str.startswith("AMD")      # o próprio item PERFECT na planilha, sem PartNumber
-    d = pd.DataFrame({"codigo": pn.where(~pelo_codigo, cod.str.replace(" ", "", regex=False)),
-                      "fob_ewin": s("ewin").map(money), "fob_zs": s("zs").map(money), "fob_xgm": s("xgm").map(money), "fob_cod_fornecedor": cod.where(cod.ne(""), None)})
-    d["fob"] = s("min").map(money); alt = d[["fob_ewin", "fob_zs", "fob_xgm"]].min(axis=1, skipna=True); d["fob"] = d["fob"].where(d["fob"].notna(), alt)
+    cod_k = cod.str.replace(" ", "", regex=False)
+    pelo_codigo = pn.eq("") & cod_k.str.startswith("AMD")      # o próprio item PERFECT na planilha, sem PartNumber
+    chave = pn.where(~pelo_codigo, cod_k).copy()
+    proprios = set(chave[chave.ne("")])                        # códigos PERFECT com linha própria (PartNumber ou Codigo AMD)
+    via_rel = pd.Series(False, index=raw.index)
+    if relativo:
+        for i in chave.index[chave.eq("") & cod_k.ne("")]:
+            r = relativo(cod_k[i])
+            if r and r not in proprios: chave[i] = r; via_rel[i] = True
+    d = pd.DataFrame({"codigo": chave, "fob_ewin": s("ewin").map(money), "fob_zs": s("zs").map(money), "fob_xgm": s("xgm").map(money),
+                      "fob_cod_fornecedor": cod.where(cod.ne(""), None), "minimo": s("min").map(money)})
     best = nb(s("best").astype("object").where(s("best").notna(), "").astype(str))
     m = best.str.extract(r"^\s*([A-Za-z\-]+)\s*=\s*([A-Za-z]+)\.?\s*(\d{4}-\d{2}-\d{2})?")
-    d["fob_fornecedor"] = m[0].str.upper(); d["fob_origem"] = m[1].str.upper(); d["fob_data"] = m[2]
+    d["pl_forn"] = m[0].str.upper(); d["pl_origem"] = m[1].str.upper(); d["pl_data"] = m[2]
     n0 = len(d); sem = d["codigo"].eq(""); d = d[~sem]
     dup = int(d["codigo"].duplicated().sum())
     juntar = lambda xs: ", ".join(dict.fromkeys(x for x in xs if isinstance(x, str) and x)) or None      # códigos da planilha que levam ao item, o mais barato primeiro
-    d = (d.sort_values(["codigo", "fob"], na_position="last")
+    d = (d.sort_values(["codigo", "minimo"], na_position="last")
           .groupby("codigo", sort=True).agg(fob_ewin=("fob_ewin", "min"), fob_zs=("fob_zs", "min"), fob_xgm=("fob_xgm", "min"), fob_cod_fornecedor=("fob_cod_fornecedor", juntar),
-                                            fob=("fob", "min"), fob_fornecedor=("fob_fornecedor", "first"), fob_origem=("fob_origem", "first"), fob_data=("fob_data", "first")).reset_index())
-    d["fob"] = d[["fob", "fob_ewin", "fob_zs", "fob_xgm"]].min(axis=1, skipna=True)      # o menor entre o «Mínimo» e o de cada fornecedor
-    return d, {"linhas_fob": n0, "sem_partnumber": int(sem.sum()), "codigo_como_chave": int(pelo_codigo.sum()), "partnumber_repetido": dup, "itens_fob": len(d)}
+                                            minimo=("minimo", "min"), pl_forn=("pl_forn", "first"), pl_origem=("pl_origem", "first"), pl_data=("pl_data", "first")).reset_index())
+    def melhor(r):
+        """etapa 22 · Q1/Q7/Q8/Q9: FOB = o menor valor entre os fornecedores e o fornecedor é o dono dele (empate: «ZS / XGM»). Origem e data da planilha só quando
+        ela indica esse mesmo fornecedor (senão seriam de outra cotação). Sem preço por fornecedor vale o «Mínimo» com o fornecedor que a planilha indica."""
+        vals = {n: r[col] for n, col in FORN if pd.notna(r[col])}
+        pf = r["pl_forn"] if isinstance(r["pl_forn"], str) else None
+        if not vals: return r["minimo"], pf, r["pl_origem"], r["pl_data"]
+        v = min(vals.values()); fs = [n for n, x in vals.items() if abs(x - v) < 1e-9]
+        igual = pf in fs
+        return v, " / ".join(fs), (r["pl_origem"] if igual else None), (r["pl_data"] if igual else None)
+    if len(d):
+        d[["fob", "fob_fornecedor", "fob_origem", "fob_data"]] = d.apply(lambda r: pd.Series(melhor(r)), axis=1)
+    else:
+        for k in ("fob", "fob_fornecedor", "fob_origem", "fob_data"): d[k] = None
+    d = d.drop(columns=["minimo", "pl_forn", "pl_origem", "pl_data"])
+    d["fob"] = pd.to_numeric(d["fob"], errors="coerce")
+    for k in ("fob_fornecedor", "fob_origem", "fob_data"): d[k] = d[k].astype(object).where(d[k].notna(), None)
+    return d, {"linhas_fob": n0, "sem_partnumber": int(sem.sum()), "codigo_como_chave": int(pelo_codigo.sum()), "via_relativo": int(via_rel.sum()),
+               "partnumber_repetido": dup, "itens_fob": len(d)}
+
+def relativos_do_app():
+    """código (normalizado) → código PERFECT relativo, só quando o app conhece exatamente um (Brands: cross, base de marcas, amostras e vínculo manual)."""
+    import brands
+    mapa = {i["key"]: i["perfect_codes"] for i in brands.universe() if i.get("perfect_codes")}
+    def rel(code):
+        cs = mapa.get(brands._k(code)) or []
+        return cs[0].upper() if len(cs) == 1 else None
+    return rel
 
 def merge_fob(products, fob, key="codigo"):
     """LEFT JOIN: todos os produtos + colunas FOB (casadas pelo código do produto, sem espaços/caixa). Devolve (DataFrame, relatório)."""
@@ -69,7 +108,7 @@ def merge_fob(products, fob, key="codigo"):
 def apply_to_db(path):
     """Importa a FOB para o banco: products.fob (menor FOB, USD) e a tabela fob_prices (por fornecedor). Reimportar substitui a versão anterior."""
     import database as db
-    fob, rep = read_fob(path); db.migrate(); c = db.conn()
+    db.migrate(); fob, rep = read_fob(path, relativos_do_app()); c = db.conn()
     try:
         prods = pd.read_sql_query("SELECT id, perfect_code FROM products", c)
         merged, rep2 = merge_fob(prods.rename(columns={"perfect_code": "codigo"}), fob)

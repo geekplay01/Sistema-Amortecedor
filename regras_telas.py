@@ -24,7 +24,10 @@ def _des_rd(c, tipo):
             "Item <b>bloqueado ou inativo no ERP</b> (ESTOQUE_ANALISE_REPOSICAO) sai das listas e contadores — por isso o número pode ficar um abaixo do sistema PERFECT. As metas não mudam.",
             "<b>Sub status</b>: só o que o servidor manda, por coluna; um valor composto («A / B») conta em cada parte. Validação aprovada, reprovada e pendente qualidade ficam sempre no quadro. "
             "Negociação e vendas" + (" e «Pendente controladoria» (o texto CONTROLADORIA em qualquer status)" if tipo == "des" else "") + " ficam em «Mais filtros».",
-            "<b>Curtidos</b> aparecem primeiro; desempate pelo status mais avançado. Nada é marcado à mão."]
+            "<b>Curtidos</b> aparecem primeiro; desempate pelo status mais avançado. Nada é marcado à mão.",
+            "<b>FOB</b> (só em " + ("PEDIDO CONFIRMADO e FINALIZANDO CIT" if tipo == "des" else "FINALIZANDO CIT e PENDENTE PARTNUMBER FORNECEDOR") + "): em verde o FOB do "
+            "fornecedor do item — o FOB_FINAL do servidor (o menor, se varia entre as aplicações); sem ele, o preço desse fornecedor na planilha FOB; «planilha» aparece quando "
+            "ela difere do servidor. Em branco, para comparar, o preço na planilha FOB do fornecedor da última compra do código (vigente) ou, sem compra, dos outros fornecedores."]
 
 
 def lista():
@@ -59,8 +62,11 @@ def lista():
             "Padrão da tela: tipos GARANTIA, GARANTIA AUTOMATICA, CRÉDITO GARANTIA e GARANTIA EM DEVOLUÇÃO, sem ocorrência cancelada, no ano atual (data de cadastro). Defeito agrupado sem o prefixo AM-xxx/O-xxx.",
             "<b>Índice por UF</b> = peças em garantia ÷ peças de amortecedor vendidas no estado no mesmo ano. «Mesmo período do ano anterior» = 1/jan até o dia do último cadastro filtrado.",
             "% procedente = peças procedentes ÷ (procedentes + improcedentes). O CNPJ do cliente não é guardado."]),
-        ("fob", "FOB (preços de compra)", ["Chave = PartNumber; sem PartNumber, o «Codigo» quando é código PERFECT (AMD…), porque a linha é o próprio item. "
-                                           "Item em várias linhas: os fornecedores se juntam (cada um com o seu menor preço) e o FOB é o menor de todos; «Melhor preço» vem da linha mais barata. "
+        ("fob", "FOB (preços de compra)", ["Chave = PartNumber; sem PartNumber, o «Codigo» quando é código PERFECT (AMD…), porque a linha é o próprio item; "
+                                           "1BP… sem PartNumber entra pelo item PERFECT relativo do Brands (só quando há um só e ele não tem linha própria).",
+                                           "Item em várias linhas: os fornecedores se juntam, cada um com o seu menor preço.",
+                                           "<b>FOB = o menor valor</b> entre E-WIN, ZS e XGM, e o «Melhor preço» é o fornecedor desse valor (empate: os dois), em verde — mesmo quando o "
+                                           "«Mínimo» da planilha indica outro. Origem e data só quando a planilha indica esse mesmo fornecedor. Sem preço por fornecedor vale o «Mínimo».",
                                            "Reenviar a tabela substitui a anterior."]),
         ("cobertura", "Cobertura de concorrentes", [
             "<b>Catálogo</b>: só itens do catálogo; referência pela regra dos concorrentes (CrossCatalogo; o servidor quando a planilha não tem o item); OEM fora. Curva ABC pelas vendas dos 12 meses fechados (A até 80%, B até 95%).",

@@ -95,6 +95,8 @@ def items(kind, f):
     for r in rows:
         for k in ("makes", "vehicles", "statuses", "suppliers"): r[k] = _j(r[k])
         r["subs"] = [{"k": k, "l": lab, "v": v} for k, _, lab in statuses.SUBS for v in dict.fromkeys(statuses.split_sub((r.pop("s_" + k) or "").replace(",", "/")))]
+    fi = fob_info(kind, [r["code"] for r in rows])          # etapa 22: FOB do fornecedor do item (verde) e de comparação (branco)
+    for r in rows: r["fob"] = fi.get(str(r["code"]).upper())
     return {"total": total, "linhas": t["l"] or 0, "rows": rows, "size": size, "kind": KINDS.get(kind, kind)}
 
 def _sub_counts(kind, st, f=None):
@@ -157,6 +159,64 @@ def _info(kind, code):
         for k, v in d.items(): out.setdefault(k, v)
     return out
 
+# ---------------- FOB no cadastro de DES/R-D (etapa 22 · Q12–Q21) ----------------
+FOB_STATUS = {"DESENVOLVIMENTO": ("PEDIDO CONFIRMADO", "FINALIZANDO CIT"), "REDESENVOLVIMENTO": ("FINALIZANDO CIT", "PENDENTE PARTNUMBER FORNECEDOR")}
+FOB_COL = {"E-WIN": "fob_ewin", "ZS": "fob_zs", "XGM": "fob_xgm"}
+
+def _forn(nome, longo=""):
+    """Fornecedor → E-WIN · ZS · XGM quando é um deles (nas compras pode vir a trading: vale o fabricante — CHANGJIN = E-WIN, ZHENGSHENG = ZS, XGM CORPORATION = XGM)."""
+    t = re.sub(r"\s", "", (nome or "").upper()); l = (longo or "").upper()
+    if t in ("E-WIN", "EWIN"): return "E-WIN"
+    if t in ("ZS", "XGM"): return t
+    if "CHANGJIN" in l: return "E-WIN"
+    if "ZHENGSHENG" in l: return "ZS"
+    if l.startswith("XGM"): return "XGM"
+    return (nome or "").strip().upper() or None
+
+def _num(v):
+    t = str(v or "").strip()
+    if not t or t.upper() == "N/A": return None
+    t = t.replace(".", "").replace(",", ".") if "," in t else t
+    try: return float(t)
+    except ValueError: return None
+
+def fob_info(kind, codes):
+    """{código: {item: {fornecedor, preco, fonte, planilha, varia}, comparar: [{fornecedor, preco, rotulo}]}} — só para os códigos com alguma aplicação nos status
+    de FOB_STATUS. Verde (item) = FOB_FINAL do servidor para o fornecedor do item (o menor, se varia entre aplicações); sem ele, o preço da planilha FOB desse
+    fornecedor. Branco (comparar) = planilha FOB: o fornecedor da última compra do código (vigente) quando é outro; senão os outros fornecedores com preço."""
+    import json
+    codes = sorted({str(c).upper() for c in codes if c}); sts = FOB_STATUS.get(kind)
+    if not codes or not sts: return {}
+    ph = ",".join("?" * len(codes))
+    elig = {}
+    for r in q(f"SELECT upper(code) c, supplier, extra FROM rd_projects WHERE suggestion=? AND upper(trim(coalesce(status,''))) IN ({','.join('?' * len(sts))}) AND upper(code) IN ({ph})", (kind, *sts, *codes)):
+        e = elig.setdefault(r["c"], {"forn": [], "ff": []})
+        if r["supplier"]: e["forn"].append(_forn(r["supplier"]))
+        try: x = _num(json.loads(r["extra"] or "{}").get("FOB_FINAL"))
+        except (ValueError, AttributeError): x = None
+        if x: e["ff"].append(x)
+    if not elig: return {}
+    try: pl = {r["c"]: r for r in q(f"SELECT upper(codigo) c, fob_ewin, fob_zs, fob_xgm FROM fob_prices WHERE upper(codigo) IN ({ph})", codes)}
+    except Exception: pl = {}
+    try:          # última compra do código (no SQLite, as colunas soltas vêm da linha do MAX); supplier_name só existe em bancos sincronizados depois da etapa 19
+        nome = "supplier_name" if any(r["name"] == "supplier_name" for r in q("PRAGMA table_info(ds_compras)")) else "NULL supplier_name"
+        ult = {r["c"]: r for r in q(f"SELECT upper(code) c, supplier, {nome}, MAX(order_date) d FROM ds_compras WHERE upper(code) IN ({ph}) GROUP BY upper(code)", codes)}
+    except Exception: ult = {}
+    out = {}
+    for c, e in elig.items():
+        forn = max(set(e["forn"]), key=e["forn"].count) if e["forn"] else None
+        precos = {n: pl[c][col] for n, col in FOB_COL.items() if c in pl and pl[c][col] is not None}
+        p_pl = precos.get(forn)
+        if e["ff"]:
+            v = min(e["ff"]); item = {"fornecedor": forn, "preco": v, "fonte": "servidor", "planilha": p_pl if p_pl is not None and abs(p_pl - v) >= 0.005 else None,
+                                       "varia": [min(e["ff"]), max(e["ff"])] if max(e["ff"]) - min(e["ff"]) >= 0.005 else None}
+        else: item = {"fornecedor": forn, "preco": p_pl, "fonte": "planilha" if p_pl is not None else None, "planilha": None, "varia": None}
+        u = ult.get(c); vig = _forn(u["supplier"], u["supplier_name"]) if u else None
+        if vig and vig != forn: comparar = [{"fornecedor": vig, "preco": precos.get(vig), "rotulo": "vigente"}]
+        else: comparar = [{"fornecedor": n, "preco": p, "rotulo": "outros"} for n, p in sorted(precos.items(), key=lambda x: x[1]) if n != forn]
+        out[c] = {"item": item, "comparar": comparar}
+    return out
+
 def flag_counts(kind, f=None):
     """Pendências por código no universo da tela (a view tem as três famílias; o universo escolhe — etapa 21)."""
     sums = ",".join(f"SUM({k}) {k}" for k in statuses.KEYS)
@@ -175,7 +235,8 @@ def detail(kind, code):
             "samples": q("SELECT id,sc_number,sample_code,supplier,stage FROM sample_orders WHERE perfect_code=? OR sample_code=?", (code, code)),
             "damping": q("SELECT id,test_date FROM damping_tests WHERE perfect_code=?", (code,)),
             "cross": _cross(pid, code), "info": _info(kind, code), "validations": __import__("goals").validations_of(code, kind),
-            "curtiu": max([r["curtiu"] or 0 for r in rows] or [0]), "nao_curtiu": max([r["nao_curtiu"] or 0 for r in rows] or [0])}
+            "curtiu": max([r["curtiu"] or 0 for r in rows] or [0]), "nao_curtiu": max([r["nao_curtiu"] or 0 for r in rows] or [0]),
+            "fob": fob_info(kind, [code]).get(str(code).upper())}
 
 def filter_lists(make=None):
     mk = [r["m"] for r in q("SELECT DISTINCT upper(trim(make)) m FROM (SELECT make FROM applications UNION ALL SELECT make FROM rd_projects) WHERE make IS NOT NULL AND trim(make)<>'' ORDER BY m")]

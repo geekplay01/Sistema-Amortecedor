@@ -50,6 +50,8 @@ menu suspenso); o azul-marinho fica só no menu lateral, que assim se separa da 
 
 **Significado fixo das cores** (não reutilize para outra coisa):
 - vermelho = ruptura, erro, vencida, reprovada · laranja = risco, aviso, pendente, atalho «forte» · verde = OK, atingido, aprovado, recebido
+  · **exceção (etapa 22): preço FOB destacado** (`.psd-fob-min`, `.psd-fobrd-c.on`) — o menor na ficha e na aba FOB; o do fornecedor do item em DES/R-D
+  (o de comparação fica neutro, «em branco»)
 - azul-marinho/`--b600` = selecionado, ação principal · azul-claro = destaque e séries de gráfico · cinza (`--mut`) = neutro, zerado, parado.
 - Bolinha de sub status (`.psd-sd`): laranja = pendente, verde = finalizado/aprovado, vermelho = reprovado.
 

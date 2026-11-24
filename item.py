@@ -96,7 +96,7 @@ def ficha(code):
             "garantia": gar,
             "desenhos": des,
             "inmetro": f.get("certificates", []),
-            "fob": f.get("fob_quotes", []),
+            "fob": f.get("fob_quotes") if pid else queries.fob_quotes(queries.fob_row(code)),          # etapa 22: item só de DES/R-D também mostra o FOB
             "brands": brands,
             "componentes": f.get("components", []),
             "pendencias": [x for x in f.get("pendencies", []) if x["status"] == "aberta"],

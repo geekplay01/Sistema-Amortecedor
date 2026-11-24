@@ -201,6 +201,25 @@ window.PSDTW = (() => {
   /* botão principal (navy) e secundário (discreto) do padrão novo */
   const botao = (rotulo, o = {}) => `<${o.href ? `a href="${o.href}"` : `button type="button"`} ${o.attrs || ""} class="psd-btn ${o.secundario ? "" : "prim"}">${o.icone ? ico(o.icone, "sm") : ""}${esc(rotulo)}</${o.href ? "a" : "button"}>`;
 
+  /* ---------- FOB em DES/R-D (etapa 22 · Q15–Q21) ----------
+     fobRD(info, cheio) — info = rd.fob_info: verde = fornecedor do item (FOB_FINAL do servidor; sem ele, a planilha FOB), com «planilha: x» quando difere e
+     «varia: a–b» entre aplicações; branco = vigente (fornecedor da última compra) ou outros fornecedores, da planilha. cheio = cartões do detalhe; senão célula da lista. */
+  const usd = v => "US$ " + nf(v, 2);
+  const fobRD = (f, cheio) => {
+    if (!f) return cheio ? "" : '<span class="text-mute">–</span>';
+    const it = f.item || {}, cmp = f.comparar || [], varia = it.varia ? `varia: ${nf(it.varia[0], 2)}–${nf(it.varia[1], 2)}` : "";
+    const fonte = it.fonte === "servidor" ? "FOB_FINAL do servidor" : it.fonte === "planilha" ? "planilha FOB" : "";
+    const semItem = `sem FOB ${it.fornecedor ? "de " + esc(it.fornecedor) : "do fornecedor"}`;
+    const rot = c => c.rotulo === "vigente" ? "vigente" : "outro";
+    if (!cheio) return `<div class="psd-fobl">${it.preco != null ? `<span class="psd-fob-min" title="${esc([`Fornecedor do item: ${it.fornecedor || "—"}`, fonte, varia].filter(Boolean).join(" · "))}">${nf(it.preco, 2)}</span>` : `<span class="text-xs text-mute">${semItem}</span>`}
+      <span class="text-xs text-mute">${esc(it.fornecedor || "")}${it.planilha != null ? ` · planilha ${nf(it.planilha, 2)}` : ""}</span>
+      ${cmp.map(c => `<span class="text-xs text-ink" title="${c.rotulo === "vigente" ? "Fornecedor da última compra (planilha FOB)" : "Outro fornecedor (planilha FOB)"}">${rot(c)} ${esc(c.fornecedor)} ${c.preco != null ? nf(c.preco, 2) : "sem FOB"}</span>`).join("")}</div>`;
+    return `<div class="psd-fobrd">
+      <div class="psd-fobrd-c on"><small>Fornecedor do item · ${esc(it.fornecedor || "—")}</small><b>${it.preco != null ? usd(it.preco) : semItem}</b><small>${[fonte, it.planilha != null ? `planilha: ${nf(it.planilha, 2)}` : "", varia].filter(Boolean).join(" · ")}</small></div>
+      ${cmp.map(c => `<div class="psd-fobrd-c"><small>${c.rotulo === "vigente" ? "Vigente (última compra)" : "Outro fornecedor"} · ${esc(c.fornecedor)}</small><b>${c.preco != null ? usd(c.preco) : "sem FOB"}</b><small>planilha FOB</small></div>`).join("")}
+      ${cmp.length ? "" : '<div class="psd-fobrd-c vazio"><small>Comparação</small><b>–</b><small>nenhum outro fornecedor com FOB na planilha</small></div>'}</div>`;
+  };
+
   /* ---------- sugestões do app no lugar da lista nativa (etapa 22) ----------
      O Chrome/Edge desenham a lista do <datalist> e o histórico dos campos de busca com a cor do WINDOWS, não com o tema do app: no modo claro com o
      Windows escuro as opções saíam escuras. Agora todo <input list="…"> mostra .psd-sug (cores do tema), lendo as <option> do próprio datalist — as
@@ -261,5 +280,5 @@ window.PSDTW = (() => {
   })();
 
   document.addEventListener("psd-theme", () => { tema(); vivos.forEach(g => { if (!g.canvas.isConnected) { vivos.delete(g); return; } pinta(g.config.type, g.data.datasets); g.update(); }); });
-  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, editarCodigos, enviar, carregando, esqueleto, grafico, CORES, barra, pintarBarra, ligarBarra, botao, ops, etiquetas };
+  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, editarCodigos, fobRD, enviar, carregando, esqueleto, grafico, CORES, barra, pintarBarra, ligarBarra, botao, ops, etiquetas };
 })();

@@ -106,10 +106,10 @@
       try {
         const d = await J(`/api/rd/${k}?` + qs), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(s).filter(x => x !== "ordem" && x !== "linha").length;
         $("#rmeta").innerHTML = `<b class="text-ink">${nf(d.linhas)}</b> item(ns) · ${cod(d.total)} em «${esc(nomeEstagio(estagio(s)))}» · ${esc(linNome(fc.linha))}${fc.marca !== "TODAS" ? ` · marca ${esc(fc.marca)}` : ""}${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}`;
-        const cols = [{ h: "Código" }, { h: "Curtidas" }, { h: "Status" }, { h: "Sub status", nw: false }, { h: "Aplic.", r: true }, { h: "Descrição" },
+        const cols = [{ h: "Código" }, { h: "Curtidas" }, { h: "Status" }, { h: "Sub status", nw: false }, { h: "Aplic.", r: true }, { h: "FOB (US$)" }, { h: "Descrição" },
           { h: "Montadora(s)" }, { h: "Veículo(s)" }, { h: "Fornecedor" }, { h: "Amostra" }, { h: "Catálogo" }, { h: "Desenho" }];
         $("#rt").innerHTML = TW.table(cols, d.rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="${k}" data-code="${esc(r.code)}">${esc(r.code)}</a>`,
-          curtidas(r), statusCell(r.statuses), subCell(r.subs), nf(r.n_rows), clip(r.description, "max-w-[18rem]"), clip(r.makes, "max-w-[10rem]"), clip(r.vehicles), clip(r.suppliers, "max-w-[8rem]"),
+          curtidas(r), statusCell(r.statuses), subCell(r.subs), nf(r.n_rows), TW.fobRD(r.fob), clip(r.description, "max-w-[18rem]"), clip(r.makes, "max-w-[10rem]"), clip(r.vehicles), clip(r.suppliers, "max-w-[8rem]"),
           r.sent ? `enviada ${TW.dmy(r.sent)}` : r.bought ? `comprada ${TW.dmy(r.bought)}` : '<span class="text-mute">–</span>', r.product_id ? lnk(r.product_id, "ficha") : '<span class="text-mute">–</span>', `<span data-dw="${esc(r.code)}"></span>`]),
           { h: "max-h-[65vh]" });
         dwFill($("#rt"));

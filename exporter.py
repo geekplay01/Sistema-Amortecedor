@@ -108,8 +108,14 @@ def _rd(kind):
         import statuses as S
         lines = Q.q(f"SELECT code,suggestion,description,make,vehicle,application_text,year_from,year_to,status,{','.join(c for _, c, _ in S.SUBS)},supplier,substr(sample_bought,1,10) b,substr(sample_sent,1,10) s,product_id FROM rd_projects WHERE suggestion=? ORDER BY code,make,vehicle", (kind,))
         sub = lambda r: " · ".join(f"{x['l']}: {x['v']}" for x in r["subs"])
-        return [("Itens", ["Código", "Descrição", "Montadoras", "Veículos", "Aplicações", "Status", "Sub status", "Fornecedores", "Amostra comprada", "Amostra enviada", "No catálogo"],
-                 [[r["code"], r["description"], r["makes"], r["vehicles"], r["n_rows"], r["statuses"], sub(r), r["suppliers"], r["bought"], r["sent"], "SIM" if r["product_id"] else ""] for r in its], [16, 36, 20, 30, 10, 28, 60, 18, 14, 14, 10]),
+        # etapa 22 · Q16c: FOB do fornecedor do item (FOB_FINAL do servidor; sem ele, a planilha FOB) e o de comparação (vigente ou outros, da planilha)
+        fi = lambda r: (r.get("fob") or {}).get("item") or {}
+        cmp_ = lambda r: " · ".join(f"{'vigente ' if c['rotulo'] == 'vigente' else ''}{c['fornecedor']} {c['preco'] if c['preco'] is not None else 'sem FOB'}" for c in (r.get("fob") or {}).get("comparar") or [])
+        return [("Itens", ["Código", "Descrição", "Montadoras", "Veículos", "Aplicações", "Status", "Sub status", "Fornecedores", "Amostra comprada", "Amostra enviada", "No catálogo",
+                           "FOB fornecedor do item (US$)", "Fornecedor do item", "Fonte do FOB", "FOB vigente / outros (planilha)"],
+                 [[r["code"], r["description"], r["makes"], r["vehicles"], r["n_rows"], r["statuses"], sub(r), r["suppliers"], r["bought"], r["sent"], "SIM" if r["product_id"] else "",
+                   fi(r).get("preco"), fi(r).get("fornecedor"), {"servidor": "FOB_FINAL do servidor", "planilha": "planilha FOB"}.get(fi(r).get("fonte"), ""), cmp_(r)] for r in its],
+                 [16, 36, 20, 30, 10, 28, 60, 18, 14, 14, 10, 14, 14, 20, 30]),
                 ("Linhas (todas)", ["Código", "Tipo", "Descrição", "Montadora", "Veículo", "Aplicação", "Ano inicial", "Ano final", "Status", *[f"Sub status {l.lower()}" for _, _, l in S.SUBS], "Fornecedor", "Amostra comprada", "Amostra enviada"],
                  [[l["code"], l["suggestion"], l["description"], l["make"], l["vehicle"], l["application_text"], l["year_from"], l["year_to"], l["status"], *[l[c] for _, c, _ in S.SUBS], l["supplier"], l["b"], l["s"]] for l in lines],
                  [16, 8, 34, 16, 18, 40, 10, 10, 24, *[24] * len(S.SUBS), 12, 14, 14])], len(its)

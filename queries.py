@@ -83,8 +83,15 @@ def fob_quotes(d):
     """Cotações FOB do item (E-WIN / ZS / XGM), da mais barata para a mais cara; a(s) de menor preço leva(m) melhor=True (destaque «Melhor Preço» na ficha)."""
     if not d: return []
     qs = sorted(({"fornecedor": n, "preco": d.get(k)} for n, k in (("E-WIN", "fob_ewin"), ("ZS", "fob_zs"), ("XGM", "fob_xgm")) if d.get(k) is not None), key=lambda x: x["preco"])
-    for x in qs: x["melhor"] = bool(qs) and x["preco"] == qs[0]["preco"]
+    if not qs and d.get("fob") is not None:          # etapa 22 · Q9: só o «Mínimo» da planilha (sem preço por fornecedor) — mostra com o fornecedor que ela indica
+        qs = [{"fornecedor": d.get("fob_fornecedor") or "—", "preco": d["fob"]}]
+    for x in qs: x["melhor"] = bool(qs) and abs(x["preco"] - qs[0]["preco"]) < 1e-9
     return qs
+
+def fob_row(code):
+    """Linha da tabela FOB do código (qualquer código: catálogo, DES ou R-D) ou None."""
+    try: return q1("SELECT fob, fob_ewin, fob_zs, fob_xgm, fob_fornecedor, fob_origem, fob_data, fob_cod_fornecedor FROM fob_prices WHERE upper(trim(codigo))=upper(trim(?))", (code,))
+    except Exception: return None
 
 def products(f):
     w, p = _where(f); sw = " AND ".join(w) or "1=1"
@@ -124,8 +131,7 @@ def ficha(pid):
     p["applications"] = P("SELECT a.*,s.name source FROM applications a LEFT JOIN sources s ON s.id=a.source_id WHERE a.product_id=? ORDER BY a.make,a.model,a.year_from")
     p["pair"] = P("""SELECT p2.id,p2.perfect_code,'esquerdo' lado FROM side_pairs sp JOIN products p2 ON p2.id=sp.left_product_id WHERE sp.right_product_id=?
                      UNION ALL SELECT p2.id,p2.perfect_code,'direito' FROM side_pairs sp JOIN products p2 ON p2.id=sp.right_product_id WHERE sp.left_product_id=?""", 2)
-    try: p["fob_detail"] = q1("SELECT fob, fob_ewin, fob_zs, fob_xgm, fob_fornecedor, fob_origem, fob_data, fob_cod_fornecedor FROM fob_prices WHERE upper(trim(codigo))=upper(trim(?))", (p["perfect_code"],))
-    except Exception: p["fob_detail"] = None
+    p["fob_detail"] = fob_row(p["perfect_code"])
     p["fob_quotes"] = fob_quotes(p["fob_detail"])
     p["box"] = q1("SELECT * FROM packaging_boxes WHERE code=?", (p["package_code"],)) if p.get("package_code") else None
     p["components"] = P("SELECT component_code,component_desc,seq,qty,date_from,date_to FROM product_components WHERE product_id=? ORDER BY seq")
