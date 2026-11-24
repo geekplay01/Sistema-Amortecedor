@@ -12,7 +12,7 @@
   const primario = "rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700";
   const mini = "rounded-lg border border-line bg-card px-2.5 py-1 text-xs font-semibold text-ink hover:bg-slate-500/10";
   const chip = (attrs, label, on, n) => `<button type="button" ${attrs} aria-pressed="${on}" class="psd-chip">${label}${n != null ? `<span class="n">${nf(n)}</span>` : ""}</button>`;      // etapa 19: mesmo visual da barra de filtros
-  const rotulo = t => `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">${t}</span>`;
+  const rotulo = t => `<span class="mr-1 psd-rot">${t}</span>`;
   const aba = (href, label, on) => `<a href="${href}" data-aba class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline ${on ? "border-blue-500 text-blue-600" : "border-transparent text-mute hover:text-ink"}">${label}</a>`;
   const pager = (pg, pages) => { const b = (p, dis, l) => `<button type="button" data-p="${p}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${dis ? "disabled" : ""}>${l}</button>`;
     return pages > 1 ? `${b(pg - 1, pg < 2, "‹")} Página ${pg} de ${pages} ${b(pg + 1, pg >= pages, "›")}` : ""; };
@@ -22,7 +22,7 @@
   const usavel = x => { if (x.kind !== "conflito" || !x.product_id || !["package_code", "family", "ean"].includes(x.field)) return null;
     const m = /^Valor atual «(.*?)» × importado «(.*?)»/.exec(x.description || ""); return m ? [m[1], m[2]] : null; };
   const descricao = t => { const m = /^Valor atual «(.*?)» × importado «(.*?)» \(fonte (.*?)\)/.exec(t || "");
-    return m ? `No banco <b class="text-ink">${esc(m[1])}</b> × na planilha <b class="text-ink">${esc(m[2])}</b> <span class="text-mute">· ${esc(m[3])} · nada foi sobrescrito</span>` : esc(t || ""); };
+    return m ? `No banco <b class="text-ink">${esc(m[1])}</b> × na planilha <b class="text-ink">${esc(m[2])}</b> <span class="text-mute">(${esc(m[3])}), nada foi sobrescrito</span>` : esc(t || ""); };
 
   function pendencias() {
     const F = TW.filtros("pendencias", ["tab", "q", "status", "kind", "field"]); let pg = 1, d = null, timer;
@@ -53,7 +53,7 @@
       const s = F.get(), n = ["q", "kind", "field"].filter(k => s[k]).length + (st() !== "aberta" ? 1 : 0);
       $("#pdl").href = "/api/export/pendencias.xlsx?" + qs(api());
       const ok = $("#pm").dataset.ok; delete $("#pm").dataset.ok;          // aviso do último «Usar o da planilha» (some na próxima atualização)
-      $("#pm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> pendência(s)${n ? ` · ${n} filtro(s) ativo(s)` : ""}${ok ? ` · <span class="font-semibold text-emerald-600">${esc(ok)}</span>` : ""}`;
+      $("#pm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> pendência(s)${n ? `, ${n} filtro(s) ativo(s)` : ""}${ok ? `, <span class="font-semibold text-emerald-600">${esc(ok)}</span>` : ""}`;
       $("#pt").innerHTML = TW.table([{ h: "Produto" }, { h: "Tipo" }, { h: "Campo" }, { h: "Descrição", nw: false }, { h: "Desde" }, { h: "Status" }, { h: "" }],
         d.rows.map(x => [
           x.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${x.product_id}">${esc(x.perfect_code)}</a>` : '<span class="text-mute">–</span>',
@@ -87,7 +87,7 @@
     $("#pbody").innerHTML = `<div class="text-sm text-mute"><b class="text-ink">${nf(r.length)}</b> código(s) em mais de um produto</div>`
       + TW.table([{ h: "Tipo de código" }, { h: "Código" }, { h: "Produtos", nw: false }, { h: "Qtd.", r: true }],
         r.map(x => [esc(x.code_type), `<a class="font-semibold text-blue-600" href="/pesquisa?code=${encodeURIComponent(x.code)}">${esc(x.code)}</a>`,
-          String(x.products || "").split(",").map(c => `<a class="text-blue-600" href="/pesquisa?q=${encodeURIComponent(c)}">${esc(c)}</a>`).join(" · "), nf(x.n)]), { h: "max-h-[65vh]" });
+          String(x.products || "").split(",").map(c => `<a class="text-blue-600" href="/pesquisa?q=${encodeURIComponent(c)}">${esc(c)}</a>`).join(", "), nf(x.n)]), { h: "max-h-[65vh]" });
   }
   PSD.tela("pendencias", pendencias);
 })();

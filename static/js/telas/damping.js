@@ -24,7 +24,7 @@
       <section class="grid gap-4 rounded-2xl border border-line bg-card p-5 shadow-sm lg:grid-cols-5">
         <div class="lg:col-span-3"><h3 class="m-0 text-base font-semibold text-ink">Regra de damping force</h3>${regra}</div>
         <div class="flex flex-col items-start justify-center gap-2 lg:col-span-2">
-          ${names.length ? `<span class="text-sm text-mute">Fonte: <b class="text-ink">${esc(R.source || "—")}</b> · ${nf(pontos)} ponto(s) em ${names.map(n => "<b class=\"text-ink\">" + esc(n) + "</b>").join(", ")}</span>` : ""}
+          ${names.length ? `<span class="text-sm text-mute">Fonte: <b class="text-ink">${esc(R.source || "—")}</b>, ${nf(pontos)} ponto(s) em ${names.map(n => "<b class=\"text-ink\">" + esc(n) + "</b>").join(", ")}</span>` : ""}
           <label class="${names.length ? botao : primario} cursor-pointer">${names.length ? "Atualizar regra (planilha)" : "Carregar a planilha da regra"}<input type="file" id="dm-rf" accept=".xlsx" hidden></label>
           <span id="dm-rmsg" class="hidden text-sm" role="status"></span>
         </div>
@@ -85,13 +85,13 @@
     const topo = () => { const c = cnt || {}, r = FL.get().res || "";
       $("#dm-k").innerHTML = kpi("Ensaios salvos", nf(c.all), FL.get().q ? "com a busca atual" : "todos os registrados", "blue") + kpi("Aprovados", nf(c.APPROVED), "todos os pontos na faixa", "green")
         + kpi("Reprovados", nf(c.DISAPPROVED), "ao menos um ponto fora da faixa", c.DISAPPROVED ? "red" : "slate") + kpi("Incompletos", nf(c.INCOMPLETO), "falta FOUND ou DRAWING em algum ponto", c.INCOMPLETO ? "amber" : "slate");
-      $("#dm-q").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>` + [["Aprovados", "APPROVED"], ["Reprovados", "DISAPPROVED"], ["Incompletos", "INCOMPLETO"]].map(([l, v]) => chip(`data-r="${v}"`, l, r === v, c[v])).join(""); };
+      $("#dm-q").innerHTML = `<span class="mr-1 psd-rot">Atalhos</span>` + [["Aprovados", "APPROVED"], ["Reprovados", "DISAPPROVED"], ["Incompletos", "INCOMPLETO"]].map(([l, v]) => chip(`data-r="${v}"`, l, r === v, c[v])).join(""); };
     const codigo = t => t.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${t.product_id}">${esc(t.perfect_code)}</a>` : esc(t.perfect_code || "–");
-    const acoes = t => `<span class="inline-flex gap-1"><button type="button" class="${botao} py-1" data-op="${t.id}">Abrir</button><a class="${botao} py-1" href="/api/damping/tests/${t.id}/export.xlsx">Excel</a><button type="button" class="${botao} py-1" data-rm="${t.id}" data-n="${esc([t.perfect_code, t.label, dmy(t.test_date)].filter(x => x && x !== "–").join(" · "))}">Excluir</button></span>`;
+    const acoes = t => `<span class="inline-flex gap-1"><button type="button" class="${botao} py-1" data-op="${t.id}">Abrir</button><a class="${botao} py-1" href="/api/damping/tests/${t.id}/export.xlsx">Excel</a><button type="button" class="${botao} py-1" data-rm="${t.id}" data-n="${esc([t.perfect_code, t.label, dmy(t.test_date)].filter(x => x && x !== "–").join(", "))}">Excluir</button></span>`;
     const lista = async () => { try {
       const f = FL.get(), d = await J("/api/damping/tests?" + qs(f)); cnt = d.counts; topo();
       $("#dm-xl").href = "/api/export/damping.xlsx?" + new URLSearchParams(f);
-      $("#dm-meta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> ensaio(s)${Object.keys(f).length ? ` · ${Object.keys(f).length} filtro(s) ativo(s)` : ""}`;
+      $("#dm-meta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> ensaio(s)${Object.keys(f).length ? `, ${Object.keys(f).length} filtro(s) ativo(s)` : ""}`;
       $("#dm-l").innerHTML = d.rows.length || Object.keys(f).length
         ? TW.table([{ h: "Código" }, { h: "Identificação", nw: false }, { h: "Data" }, { h: "Pontos medidos", r: true }, { h: "Resultado" }, { h: "" }],
             d.rows.map(t => [codigo(t), esc(t.label || ""), dmy(t.test_date), `${nf(t.points_filled)} / ${nf(t.points_total)}`, selo(t.overall), acoes(t)]), { h: "max-h-[55vh]" })
@@ -108,7 +108,7 @@
     preencher({}); lista();
 
     function tabela(n) {
-      const th = (h, r) => `<th class="whitespace-nowrap px-2 py-2.5 text-xs font-semibold uppercase tracking-wide text-mute ${r ? "text-right" : "text-left"}">${h}</th>`;
+      const th = (h, r) => `<th class="whitespace-nowrap px-2 py-2.5 psd-rot ${r ? "text-right" : "text-left"}">${h}</th>`;
       const ent = cls => `<input class="${cls} w-20 rounded-lg border border-line bg-card px-2 py-1 text-right text-sm text-ink outline-none focus:border-blue-500" inputmode="decimal">`;
       return `<div><h4 class="mb-2 mt-0 text-sm font-semibold text-ink">Tabela ${esc(n)} <span class="font-normal text-mute">· forças em N</span></h4><div class="overflow-x-auto rounded-xl border border-line"><table class="w-full border-collapse text-sm">
         <thead><tr class="border-b border-line">${th("Tol.", 1)}${th("VM/S", 1)}${th("Drawing", 1)}${th("Mín", 1)}${th("Máx", 1)}${th("Found", 1)}${th("Resultado")}</tr></thead>

@@ -50,16 +50,17 @@ PAGES = [
 ]
 HIDDEN = [("guia-visual", "Guia visual", "sparkles", 17)]          # telas fora do menu (abertas pelo endereço): guia do design da etapa 17
 CARDS = [  # chave, rótulo, destino, dica — produtos, DES e R-D ficam só na fileira de destaque do Dashboard (etapa 21: antes apareciam duas vezes)
+ # etapa 23 · Q5: lista em duas colunas — primeiro o que pede ação, depois os cadastros; os zerados vão para o fim (app.js)
+ ("pend_compras", "Pendente compras", "amostras?tab=pendentes", "Itens aguardando compra de amostra"),
+ ("equivalences_pending", "Equivalências a validar", "anomalias?tab=sugestoes", "Sugestões aguardando decisão"),
+ ("ship_pendente", "Amostras a enviar", "envio?status=pendente_projeto", "Recebidas, aguardando o projeto"),
+ ("duplicates", "Possíveis duplicidades", "pendencias?tab=dup", "Mesmo código em produtos diferentes"),
+ ("pendencies", "Pendências técnicas", "pendencias", "Dados ausentes ou inconsistentes"),
+ ("val_reprovada", "Validação reprovada", "desenvolvimento?flag=val_reprovada", "Itens com validação reprovada"),
  ("oem_codes", "Códigos OEM relacionados", "pesquisa?code_type=oem", "Códigos OEM distintos"),
  ("applications", "Aplicações cadastradas", "aplicacoes", "Veículo, modelo, ano e eixo"),
- ("ship_pendente", "Amostras a enviar", "envio?status=pendente_projeto", "Recebidas, aguardando o projeto para envio ao fornecedor"),
- ("pend_compras", "Pendente compras", "amostras?tab=pendentes", "Itens em desenvolvimento/redesenvolvimento aguardando compra de amostra"),
- ("val_reprovada", "Validação reprovada", "desenvolvimento?flag=val_reprovada", "Itens com validação reprovada (marcação de status)"),
- ("drawings", "Códigos com desenho", "desenhos", "Desenho vigente cadastrado (todas as revisões ficam guardadas)"),
+ ("drawings", "Códigos com desenho", "desenhos", "Desenho vigente cadastrado"),
  ("imports", "Bases importadas", "fontes", "Planilhas já importadas"),
- ("pendencies", "Pendências técnicas", "pendencias", "Dados ausentes ou inconsistentes"),
- ("duplicates", "Possíveis duplicidades", "pendencias?tab=dup", "Mesmo código em produtos diferentes"),
- ("equivalences_pending", "Equivalências a validar", "anomalias?tab=sugestoes", "Sugestões aguardando decisão"),
 ]
 
 PRIMARY = ["metas", "pedidos-aberto", "vendas", "estoque", "garantia"]     # menu fixo da sidebar (Metas & Validação · Pedidos em Aberto · Vendas (Curva A) · Estoque · Garantia)

@@ -9,7 +9,7 @@
   const SDL = { direito: "LD", esquerdo: "LE", ambos: "LD/LE" };
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
   const botao = "rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10";
-  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
+  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` ${nf(n)}` : ""}</button>`;
   const selectF = (name, rotulo, opts, cur) => `<select name="${name}" class="${campo} max-w-[13rem]" title="${esc(rotulo)}"><option value="">${esc(rotulo)}</option>${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur ?? "") ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
   const usd = v => "US$ " + Number(v || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
   const pager = (pg, pages) => pages > 1 ? `<button type="button" data-p="${pg - 1}" class="${botao}" ${pg < 2 ? "disabled" : ""}>‹</button> Página ${pg} de ${pages} <button type="button" data-p="${pg + 1}" class="${botao}" ${pg >= pages ? "disabled" : ""}>›</button>` : "";
@@ -30,7 +30,7 @@
     </div>`;
     const meta = async () => data || (data = await J("/api/samples?" + qs(filtrosDa())));     // etapas e fornecedores (formulário) mesmo vindo da aba de sugestões
 
-    const desenharAbas = () => { const a = aba(), b = (k, l, n) => `<button type="button" data-tab="${k}" aria-pressed="${a === k}" class="rounded-lg border px-4 py-2 text-sm font-semibold ${a === k ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${l}${n != null ? ` · ${nf(n)}` : ""}</button>`;
+    const desenharAbas = () => { const a = aba(), b = (k, l, n) => `<button type="button" data-tab="${k}" aria-pressed="${a === k}" class="rounded-lg border px-4 py-2 text-sm font-semibold ${a === k ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${l}${n != null ? ` ${nf(n)}` : ""}</button>`;
       $("#atab").innerHTML = b("pendentes", "Sugestões de compra", nPend) + b("pedidos", "Pedidos de amostra", data && aba() === "pedidos" ? data.totals.n : null); };
     /* barra (etapa 19 · Q6): Sugestões = busca; Pedidos = Fornecedor, Mês e Lado à vista + atalhos «Para enviar» e «Pendente fornecedor» */
     const SIDEL = { direito: "Direito (LD)", esquerdo: "Esquerdo (LE)", ambos: "Ambos (LD/LE)" }, FLAGL = { enviar: "Para enviar", pendente_fornecedor: "Pendente fornecedor" };
@@ -53,7 +53,7 @@
       }
     };
     const metaLinha = (total, rotulo) => { const n = Object.keys(filtrosDa()).length;
-      $("#ameta").innerHTML = `<b class="text-ink">${nf(total)}</b> ${rotulo}${n ? ` · ${n} filtro(s) ativo(s)` : ""}`; };
+      $("#ameta").innerHTML = `<b class="text-ink">${nf(total)}</b> ${rotulo}${n ? `, ${n} filtro(s) ativo(s)` : ""}`; };
 
     // ---------- Sugestões de compra ----------
     const carregarPendentes = async () => {
@@ -65,7 +65,7 @@
       $("#abody").innerHTML = TW.table([{ h: "Código" }, { h: "Descrição / veículos", nw: false }, { h: "Status", nw: false }, { h: "Referência cruzada (abre a consulta)", nw: false }, { h: "Menor preço", nw: false }, { h: "" }], d.rows.map((r, i) => {
         const k = r.suggestion === "DESENVOLVIMENTO" ? "des" : "rd", refs = topRefs(r.cross);
         const cr = r.cross.slice(0, 6).map(c => `<a class="mb-1 mr-1 inline-flex items-center gap-1 rounded-full bg-slate-500/15 px-2 py-0.5 text-xs text-ink hover:bg-slate-500/20" target="_blank" rel="noopener" href="${mlUrl(c.brand, c.code)}" title="Abrir a consulta no Mercado Livre, do menor preço"><b>${esc(c.brand || "")}</b> ${esc(c.code)} ↗</a>`).join("") +
-          (r.cross.length > 6 ? `<span class="text-xs text-mute" title="${esc(r.cross.slice(6).map(c => (c.brand || "") + " " + c.code).join(" · "))}">+${r.cross.length - 6}</span>` : "");
+          (r.cross.length > 6 ? `<span class="text-xs text-mute" title="${esc(r.cross.slice(6).map(c => (c.brand || "") + " " + c.code).join(", "))}">+${r.cross.length - 6}</span>` : "");
         return [`<a href="#" class="font-semibold text-blue-600" data-rd="${k}" data-code="${esc(r.code)}">${esc(r.code)}</a><div class="mt-1">${badge(k === "des" ? "DES" : "R-D", k === "des" ? "blue" : "green")}</div>`,
           `<span class="block max-w-[22rem] truncate" title="${esc(r.description || "")}">${esc(r.description || "")}</span><span class="block max-w-[22rem] truncate text-xs text-mute" title="${esc(r.vehicles || "")}">${esc(r.vehicles || "")}</span>`,
           `<span class="text-xs">${esc(r.statuses || "–")}</span>${r.pend_compras ? `<div class="mt-1">${badge("pendente compras", "amber")}</div>` : ""}${r.state === "cotacao" ? `<div class="mt-1">${badge("em cotação", "blue")}</div>` : ""}`,
@@ -77,7 +77,7 @@
       const r = rows[i], refs = topRefs(r.cross), cell = $("#pc-" + i), lk = refs[0] ? mlUrl(refs[0].brand, refs[0].code) : null; btn.disabled = true; cell.innerHTML = '<span class="text-mute">buscando…</span>';
       try {
         const d = await post("/api/prices/search", { refs: refs.map(x => ({ brand: x.brand, code: x.code })), limit: 3, strict: true }); r._best = d.best;
-        cell.innerHTML = d.best ? `<a class="font-semibold text-blue-600" href="${esc(d.best.url || lk)}" target="_blank" rel="noopener" title="${esc(d.best.title)}">${brl(d.best.price)} ↗</a>${d.best.pair ? " " + badge("par/kit", "amber") : ""}<span class="block text-xs text-mute">${esc(d.best.ref || "")} · ${esc(d.best.source)}${d.best.seller ? " · " + esc(d.best.seller) : ""}</span>${link(d.refs[0].links.mercado_livre, "ver consulta ↗")}`
+        cell.innerHTML = d.best ? `<a class="font-semibold text-blue-600" href="${esc(d.best.url || lk)}" target="_blank" rel="noopener" title="${esc(d.best.title)}">${brl(d.best.price)} ↗</a>${d.best.pair ? " " + badge("par/kit", "amber") : ""}<span class="block text-xs text-mute">${esc(d.best.ref || "")}, ${esc(d.best.source)}${d.best.seller ? ", " + esc(d.best.seller) : ""}</span>${link(d.refs[0].links.mercado_livre, "ver consulta ↗")}`
           : `<span class="block text-mute">sem resposta automática</span>${link(d.refs[0].links.mercado_livre, "abrir consulta no Mercado Livre ↗")}`;
       } catch (e) { cell.innerHTML = `<span class="block text-mute">busca indisponível</span>${lk ? link(lk, "abrir consulta ↗") : ""}`; }
       btn.disabled = false; btn.textContent = "Buscar de novo";
@@ -86,13 +86,13 @@
     // ---------- Pedidos de amostra (kanban) ----------
     const cartao = (r, i, n) => {
       const ch = r.quotes.find(q => q.chosen && q.price != null), mut = t => `<div class="text-xs text-mute">${t}</div>`;
-      const det = [r.ship_code ? esc(r.ship_code) : "", r.credit_note && r.credit_note !== "-" ? "Credit note " + esc(r.credit_note) : "", r.net_weight != null ? "Líq. " + nf(r.net_weight, 2) + " kg" : "", r.gross_weight != null ? "Bruto " + nf(r.gross_weight, 2) + " kg" : ""].filter(Boolean).join(" · ");
-      const envio = r.ship_status ? `<a href="/envio?q=${encodeURIComponent(r.perfect_code || "")}&status=todos" title="Envio de amostra">${badge({ pendente_projeto: "Pendente projeto", enviada: "Enviada" + (r.ship_ex ? " · " + r.ship_ex : ""), finalizada: "Envio finalizado" }[r.ship_status] || r.ship_status, r.ship_status === "enviada" ? "green" : r.ship_status === "pendente_projeto" ? "amber" : "slate")}</a>` : "";
+      const det = [r.ship_code ? esc(r.ship_code) : "", r.credit_note && r.credit_note !== "-" ? "Credit note " + esc(r.credit_note) : "", r.net_weight != null ? "Líq. " + nf(r.net_weight, 2) + " kg" : "", r.gross_weight != null ? "Bruto " + nf(r.gross_weight, 2) + " kg" : ""].filter(Boolean).join(", ");
+      const envio = r.ship_status ? `<a href="/envio?q=${encodeURIComponent(r.perfect_code || "")}&status=todos" title="Envio de amostra">${badge({ pendente_projeto: "Pendente projeto", enviada: "Enviada" + (r.ship_ex ? ` (${r.ship_ex})` : ""), finalizada: "Envio finalizado" }[r.ship_status] || r.ship_status, r.ship_status === "enviada" ? "green" : r.ship_status === "pendente_projeto" ? "amber" : "slate")}</a>` : "";
       return `<div class="flex flex-col gap-1 rounded-xl border border-line bg-card p-3 text-sm shadow-sm">
         <div class="flex items-start justify-between gap-2"><b>${r.product_id ? `<a href="#" class="text-blue-600" data-ficha="${r.product_id}">${esc(r.perfect_code)}</a>` : esc(r.perfect_code || "(sem código)")}</b><span class="text-xs text-mute">${esc(r.sc_number ? "SC " + r.sc_number : "")}</span></div>
-        ${r.application ? `<div>${esc(r.application)}</div>` : ""}${mut([r.sample_code, r.supplier, r.month].filter(Boolean).map(esc).join(" · "))}
+        ${r.application ? `<div>${esc(r.application)}</div>` : ""}${mut([r.sample_code, r.supplier, r.month].filter(Boolean).map(esc).join(", "))}
         ${ch || r.quotes.length > 1 ? `<div>${ch ? `<b>${brl(ch.price)}</b>` : ""}${r.quotes.length > 1 ? ` <span class="text-xs text-mute">(${r.quotes.length} cotações)</span>` : ""}</div>` : ""}
-        ${r.best_price != null || r.price_usd != null ? mut(`${r.best_price != null ? `Melhor preço <b class="text-ink">${brl(r.best_price)}</b>` : ""}${r.price_usd != null ? ` · <b class="text-ink">${usd(r.price_usd)}</b>` : ""}`) : ""}${det ? mut(det) : ""}
+        ${r.best_price != null || r.price_usd != null ? mut(`${r.best_price != null ? `Melhor preço <b class="text-ink">${brl(r.best_price)}</b>` : ""}${r.price_usd != null ? `, <b class="text-ink">${usd(r.price_usd)}</b>` : ""}`) : ""}${det ? mut(det) : ""}
         ${r.quotes.some(x => x.link) ? `<div class="flex flex-wrap gap-2">${r.quotes.filter(x => x.link).map((x, k) => /^https?:/i.test(x.link) ? link(x.link, `link ${k + 1} ↗`) : `<span class="text-xs text-mute">${esc(x.link)}</span>`).join("")}</div>` : ""}
         <div class="flex flex-wrap items-center gap-1">${r.side ? badge(SDL[r.side], "slate") : ""}${r.to_send ? badge("Enviar", "amber") : ""}${r.pending_supplier ? badge("Pendente fornecedor", "red") : ""}${r.tracking && r.tracking !== "-" ? badge(r.tracking, "slate") : ""}${envio}${r.perfect_code ? `<span data-dw="${esc(r.perfect_code)}" data-dwk="projeto" data-chip="1"></span>` : ""}</div>
         <div class="mt-1 flex items-center justify-between gap-1"><button type="button" class="${botao} px-2" data-mv="${r.id}" data-d="-1" ${i === 0 ? "disabled" : ""} title="Etapa anterior">◀</button><button type="button" class="${botao}" data-ed="${r.id}">Editar</button><button type="button" class="${botao} px-2" data-mv="${r.id}" data-d="1" ${i === n - 1 ? "disabled" : ""} title="Próxima etapa">▶</button></div></div>`;
@@ -125,7 +125,7 @@
       const bp = e.target.closest("[data-bp]"), np = e.target.closest("[data-np]"), mv = e.target.closest("[data-mv]"), ed = e.target.closest("[data-ed]");
       if (bp) menorPreco(+bp.dataset.bp, bp);
       if (np) { const r = rows[+np.dataset.np], q = r._best ? [{ price: r._best.price, link: r._best.url, chosen: 1 }] : [{ price: "", link: "", chosen: 1 }];
-        form({ autoSearch: false, stage: "cotacao", perfect_code: r.code, quotes: q, notes: r.cross.length ? "Referência cruzada: " + r.cross.slice(0, 8).map(c => (c.brand || "") + " " + c.code).join(" · ") : "" }); }
+        form({ autoSearch: false, stage: "cotacao", perfect_code: r.code, quotes: q, notes: r.cross.length ? "Referência cruzada: " + r.cross.slice(0, 8).map(c => (c.brand || "") + " " + c.code).join(", ") : "" }); }
       if (mv) { const r = data.rows.find(x => x.id == mv.dataset.mv), ks = data.stages.map(s => s[0]); try { await post("/api/samples", { ...r, stage: ks[ks.indexOf(r.stage) + +mv.dataset.d] }); carregar(); } catch (er) { PSDTW.erro(er); } }
       if (ed) form(data.rows.find(x => x.id == ed.dataset.ed));
     });
@@ -181,7 +181,7 @@
       $("#sform").onsubmit = async e => { e.preventDefault(); const v = Object.fromEntries(new FormData(e.target));
         const body = { ...v, id: o.id, to_send: !!v.to_send, pending_supplier: !!v.pending_supplier, quotes: $$(".qrow", dlg).map(r => ({ price: $(".qp", r).value, link: $(".ql", r).value, chosen: $("input[type=radio]", r).checked })) };
         try { await post("/api/samples", body); PSDTW.toast(`Pedido de amostra ${v.perfect_code || v.sample_code || ""} ${o.id ? "atualizado" : "incluído"}.`); dlg.close(); data = null; nPend = null; if (aba() === "pedidos") desenharFiltros(); carregar(); } catch (er) { PSDTW.erro(er); } };
-      const del = $("#del"); if (del) del.onclick = async () => { const nome = [o.perfect_code || o.sample_code, o.supplier, o.sc_number && "SC " + o.sc_number].filter(Boolean).join(" · ");
+      const del = $("#del"); if (del) del.onclick = async () => { const nome = [o.perfect_code || o.sample_code, o.supplier, o.sc_number && "SC " + o.sc_number].filter(Boolean).join(", ");
         if (!await PSDTW.confirmar({ titulo: "Excluir este pedido de amostra?", texto: nome, nota: "Não dá para desfazer: o pedido e as cotações saem do banco.", botao: "Excluir", perigo: true })) return;
         try { await J("/api/samples/" + o.id, { method: "DELETE" }); PSDTW.toast(`Pedido de amostra ${nome} excluído.`); dlg.close(); data = null; carregar(); } catch (er) { PSDTW.erro(er); } };
       dlg.showModal();

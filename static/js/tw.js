@@ -11,15 +11,16 @@ window.PSDTW = (() => {
   /* ícone do arquivo único (static/img/icones.svg; lista em tools/icones.py): ico("amortecedor"), ico("ship", "lg") */
   const ico = (n, cls = "") => `<svg class="psd-ico ${cls}" aria-hidden="true"><use href="${window.PSD_ICONES || "/static/img/icones.svg"}#i-${n}"/></svg>`;
   const stripes = () => '<span class="psd-stripes" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
-  /* KPI: rótulo, número grande em Barlow e a linha de baixo na cor do significado (blue · green = OK · amber = risco · red = ruptura/erro · slate = neutro · sky) */
+  /* KPI: rótulo, número grande em Barlow e a linha de apoio. Etapa 23: os KPIs vizinhos formam uma faixa única (marca.css); só alerta muda a cor do
+     número (red = ruptura/erro, amber = risco; blue, green, slate e sky ficam neutros); na linha de apoio, cada « · » vira uma linha (uma informação por linha) */
   const kpi = (label, value, sub = "", accent = "blue", icone = "") => `<div class="psd-kpi acc-${accent}"><div class="kpi-top"><span class="kpi-label">${label}</span>${icone ? `<span class="text-mute">${ico(icone)}</span>` : ""}</div>
-    <div class="kpi-val">${value}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ""}</div>`;
+    <div class="kpi-val">${value}</div>${sub ? `<div class="kpi-sub">${String(sub).replace(/ · (?![^<]*>)/g, "<br>")}</div>` : ""}</div>`;
   const card = (title, body, right = "", cls = "") => `<section class="rounded-2xl border border-line bg-card p-5 shadow-sm ${cls}"><div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h3 class="m-0 text-base font-semibold text-ink">${title}</h3>${right}</div>${body}</section>`;
   const notice = (t, tone = "blue") => `<div class="rounded-xl border px-4 py-3 text-sm ${{ blue: "border-blue-500/30 bg-blue-500/10 text-ink", amber: "border-amber-500/40 bg-amber-500/10 text-ink", red: "border-red-500/40 bg-red-500/10 text-ink" }[tone]}">${t}</div>`;
   const empty = t => `<div class="rounded-2xl border border-dashed border-line bg-card px-6 py-12 text-center text-sm text-mute">${t}</div>`;
   /* tabela minimalista: fundo do card, bordas sutis, hover nas linhas e rolagem vertical INTERNA (cabeçalho fixo) */
   const table = (cols, rows, o = {}) => `<div class="${o.h || "max-h-[60vh]"} overflow-y-auto overflow-x-auto rounded-xl border border-line bg-card"><table class="psd-tbl w-full border-collapse text-sm">
-    <thead class="sticky top-0 z-10 bg-thead"><tr class="border-b border-line">${cols.map(c => `<th class="whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-mute ${c.r ? "text-right" : "text-left"}">${c.h}</th>`).join("")}</tr></thead>
+    <thead class="sticky top-0 z-10 bg-thead"><tr class="border-b border-line">${cols.map(c => `<th class="psd-rot whitespace-nowrap px-4 py-2.5 ${c.r ? "text-right" : "text-left"}">${c.h}</th>`).join("")}</tr></thead>
     <tbody class="divide-y divide-line">${rows.length ? rows.map(r => `<tr>${r.map((v, i) => `<td class="px-4 py-2 text-ink ${cols[i].r ? "text-right tabular-nums" : ""} ${cols[i].nw === false ? "" : "whitespace-nowrap"}">${v}</td>`).join("")}</tr>`).join("") : `<tr><td class="px-4 py-10 text-center text-mute" colspan="${cols.length}">Nada encontrado com estes filtros.</td></tr>`}</tbody></table></div>`;
   const input = (id, ph, cls = "") => `<input id="${id}" type="search" placeholder="${ph}" class="w-full rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500 ${cls}">`;
   const select = (id, opts, cur = "", cls = "") => `<select id="${id}" class="rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500 ${cls}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
@@ -74,7 +75,7 @@ window.PSDTW = (() => {
   const enviar = (url, fd, arquivos = []) => new Promise((res, rej) => {
     const kb = n => n > 1048576 ? nf(n / 1048576, 1) + " MB" : nf(Math.max(1, n / 1024)) + " KB", tot = arquivos.reduce((a, f) => a + (f.size || 0), 0) || 1, mostra = arquivos.slice(0, 8);
     const t = arquivos.length ? toast(`<div class="mt-2 flex flex-col gap-2">${mostra.map((f, i) => `<div><div class="flex justify-between gap-3 text-xs"><span class="truncate">${esc(f.name)}</span><span class="text-mute" data-pp="${i}">${kb(f.size || 0)}</span></div><div class="mt-1 h-1.5 rounded-full bg-thead"><div class="h-1.5 rounded-full bg-blue-500" data-pb="${i}" style="width:0%"></div></div></div>`).join("")}${arquivos.length > 8 ? `<div class="text-xs text-mute">+ ${arquivos.length - 8} arquivo(s)</div>` : ""}</div>`,
-      { tom: "info", titulo: `Enviando ${arquivos.length} arquivo(s) · ${kb(tot)}`, fixo: true, html: true }) : null;
+      { tom: "info", titulo: `Enviando ${arquivos.length} arquivo(s), ${kb(tot)}`, fixo: true, html: true }) : null;
     const xhr = new XMLHttpRequest(); xhr.open("POST", url);
     xhr.upload.onprogress = e => { if (!t || !e.lengthComputable) return; let acc = 0; const sent = e.loaded / e.total * tot;
       mostra.forEach((f, i) => { const p = Math.max(0, Math.min(1, (sent - acc) / (f.size || 1))); acc += f.size || 0; const b = t.querySelector(`[data-pb="${i}"]`); if (b) b.style.width = Math.round(100 * p) + "%"; if (p >= 1) { const s = t.querySelector(`[data-pp="${i}"]`); if (s) s.textContent = "✔ enviado"; } }); };
@@ -211,12 +212,12 @@ window.PSDTW = (() => {
     const fonte = it.fonte === "servidor" ? "FOB_FINAL do servidor" : it.fonte === "planilha" ? "planilha FOB" : "";
     const semItem = `sem FOB ${it.fornecedor ? "de " + esc(it.fornecedor) : "do fornecedor"}`;
     const rot = c => c.rotulo === "vigente" ? "vigente" : "outro";
-    if (!cheio) return `<div class="psd-fobl">${it.preco != null ? `<span class="psd-fob-min" title="${esc([`Fornecedor do item: ${it.fornecedor || "—"}`, fonte, varia].filter(Boolean).join(" · "))}">${nf(it.preco, 2)}</span>` : `<span class="text-xs text-mute">${semItem}</span>`}
-      <span class="text-xs text-mute">${esc(it.fornecedor || "")}${it.planilha != null ? ` · planilha ${nf(it.planilha, 2)}` : ""}</span>
+    if (!cheio) return `<div class="psd-fobl">${it.preco != null ? `<span class="psd-fob-min" title="${esc([`Fornecedor do item: ${it.fornecedor || "—"}`, fonte, varia].filter(Boolean).join(", "))}">${nf(it.preco, 2)}</span>` : `<span class="text-xs text-mute">${semItem}</span>`}
+      <span class="text-xs text-mute">${esc(it.fornecedor || "")}${it.planilha != null ? `, planilha ${nf(it.planilha, 2)}` : ""}</span>
       ${cmp.map(c => `<span class="text-xs text-ink" title="${c.rotulo === "vigente" ? "Fornecedor da última compra (planilha FOB)" : "Outro fornecedor (planilha FOB)"}">${rot(c)} ${esc(c.fornecedor)} ${c.preco != null ? nf(c.preco, 2) : "sem FOB"}</span>`).join("")}</div>`;
     return `<div class="psd-fobrd">
-      <div class="psd-fobrd-c on"><small>Fornecedor do item · ${esc(it.fornecedor || "—")}</small><b>${it.preco != null ? usd(it.preco) : semItem}</b><small>${[fonte, it.planilha != null ? `planilha: ${nf(it.planilha, 2)}` : "", varia].filter(Boolean).join(" · ")}</small></div>
-      ${cmp.map(c => `<div class="psd-fobrd-c"><small>${c.rotulo === "vigente" ? "Vigente (última compra)" : "Outro fornecedor"} · ${esc(c.fornecedor)}</small><b>${c.preco != null ? usd(c.preco) : "sem FOB"}</b><small>planilha FOB</small></div>`).join("")}
+      <div class="psd-fobrd-c on"><small>Fornecedor do item, ${esc(it.fornecedor || "—")}</small><b>${it.preco != null ? usd(it.preco) : semItem}</b><small>${[fonte, it.planilha != null ? `planilha: ${nf(it.planilha, 2)}` : "", varia].filter(Boolean).join(", ")}</small></div>
+      ${cmp.map(c => `<div class="psd-fobrd-c"><small>${c.rotulo === "vigente" ? "Vigente (última compra)" : "Outro fornecedor"}, ${esc(c.fornecedor)}</small><b>${c.preco != null ? usd(c.preco) : "sem FOB"}</b><small>planilha FOB</small></div>`).join("")}
       ${cmp.length ? "" : '<div class="psd-fobrd-c vazio"><small>Comparação</small><b>–</b><small>nenhum outro fornecedor com FOB na planilha</small></div>'}</div>`;
   };
 

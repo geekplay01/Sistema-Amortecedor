@@ -26,9 +26,9 @@
     const avisos = r => { try { const k = Object.keys(JSON.parse(r.warnings || "{}")); return k.length ? `<span class="text-mute" title="${esc(r.warnings)}">${k.length} aviso(s)</span>` : "–"; } catch (e) { return "–"; } };
     const draw = async () => {
       let st, rn; try { [st, rn] = await Promise.all([J("/api/pipeline/status"), J("/api/pipeline/runs")]); } catch (e) { host.innerHTML = notice(esc(e.message), "red"); return; }
-      const item = (l, v) => `<div class="rounded-xl border border-line px-4 py-3"><div class="text-xs font-semibold uppercase tracking-wide text-mute">${l}</div><div class="mt-1 text-sm font-semibold text-ink">${v}</div></div>`;
+      const item = (l, v) => `<div class="rounded-xl border border-line px-4 py-3"><div class="psd-rot">${l}</div><div class="mt-1 text-sm font-semibold text-ink">${v}</div></div>`;
       const drv = st.drivers.length ? st.drivers.map(d => badge(d, "green")).join(" ") : badge("nenhum (rode o iniciar.bat novamente)", "amber");
-      host.innerHTML = card(`Servidor SQL · ${esc(st.host)}`,
+      host.innerHTML = card(`Servidor SQL: ${esc(st.host)}`,
         `<div class="grid grid-cols-2 gap-3 lg:grid-cols-3">${item("Credenciais (.env)", st.configured ? "✔ preenchidas" : "✖ faltam usuário/senha")}${item("Drivers", drv)}${item("Última sincronização", st.last_ok_at ? quando(st.last_ok_at) : "nunca")}
           ${item("Itens no servidor", nf(st.items))}${item("Sincronizações feitas", nf(st.runs))}${item("Agendamento", "diário (DEV_SYNC_HOURS)")}</div>
         ${st.last_status === "erro" ? `<div class="mt-3">${notice(`<b>Última tentativa falhou:</b> ${esc(st.last_error || "")}`, "red")}</div>` : ""}
@@ -53,7 +53,7 @@
     const put = (u, b) => J(u, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) });
     const nav = b => `<button type="button" data-s="${b[0]}" aria-current="${b[0] === cur}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold ${b[0] === cur ? "bg-blue-500/10 text-blue-600" : "text-ink hover:bg-slate-500/10"}"><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${b[2]}"/></svg>${b[1]}</button>`;
     root.innerHTML = `<div class="flex flex-col gap-5 lg:flex-row lg:items-start">
-      <nav id="snav" class="flex flex-wrap gap-1 rounded-2xl border border-line bg-card p-2 shadow-sm lg:w-60 lg:shrink-0 lg:flex-col">${SECT.map(nav).join("")}${admin ? `<div class="w-full px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-mute">Administração</div>${ADM.map(nav).join("")}` : ""}</nav>
+      <nav id="snav" class="flex flex-wrap gap-1 rounded-2xl border border-line bg-card p-2 shadow-sm lg:w-60 lg:shrink-0 lg:flex-col">${SECT.map(nav).join("")}${admin ? `<div class="w-full px-3 pb-1 pt-3 psd-rot">Administração</div>${ADM.map(nav).join("")}` : ""}</nav>
       <div id="spane" class="flex min-w-0 flex-1 flex-col gap-5"></div></div>`;
     const msg = (id, t, err) => { const m = $("#" + id); if (m) { m.textContent = t; m.className = "text-sm font-semibold " + (err ? "text-red-600" : "text-emerald-600"); } };
     const avatar = u => u.avatar ? `<img src="/avatar/${u.id}?t=${Date.now()}" alt="Foto de ${esc(u.username)}" class="h-full w-full object-cover">` : esc((u.username || "?").slice(0, 1).toUpperCase());
@@ -62,7 +62,7 @@
     const PANES = {
       perfil: () => !user ? semLogin : card("Meu perfil", `<div class="flex flex-wrap items-center gap-4"><div id="av" class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-blue-600 text-2xl font-bold text-white">${avatar(user)}</div>
           <div class="flex flex-col gap-1"><div class="flex flex-wrap items-center gap-2 text-lg font-semibold text-ink">${esc(user.username)} ${badge(user.role === "admin" ? "Administrador" : "Usuário", user.role === "admin" ? "violet" : "slate")}</div>
-            <div class="text-sm text-mute">Conta criada em ${TW.dmy(user.created_at)} · último acesso ${user.last_login ? quando(user.last_login) : "—"}</div>
+            <div class="text-sm text-mute">Conta criada em ${TW.dmy(user.created_at)}, último acesso ${user.last_login ? quando(user.last_login) : "—"}</div>
             <div class="mt-1 flex flex-wrap items-center gap-2"><label class="${botao} py-1.5 text-xs">Escolher foto<input type="file" id="avf" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>${user.avatar ? `<button type="button" class="${botao} py-1.5 text-xs" id="avd">Remover foto</button>` : ""}${aviso("avm")}</div></div></div>`)
         + card("Nome de usuário", sub("É o nome usado para entrar. Por segurança, confirme com a senha atual.") + `<form id="fu" class="grid gap-4 sm:grid-cols-2">${rot("Novo usuário", inp("username", `value="${esc(user.username)}" minlength="3" required autocomplete="username"`))}${rot("Senha atual", inp("password", 'type="password" required autocomplete="current-password"'))}${acoes(`<button class="${primario}" type="submit">Salvar usuário</button>`, "fum")}</form>`),
       seguranca: () => !user ? semLogin : card("Alterar senha", sub("Use ao menos 8 caracteres. A senha é guardada com hash: nem o administrador consegue lê-la.") + `<form id="fp" class="grid gap-4 sm:grid-cols-2">${rot("Senha atual", inp("old", 'type="password" required autocomplete="current-password"'), "", "sm:col-span-2")}
@@ -93,9 +93,9 @@
             <li><b>DESENVOLVIMENTO</b> (sempre): status chegou a <b>ITEM RECEBIDO</b> no ano <u>e</u> tem a validação do usuário. <b>Itens recebidos</b> (opção): REDESENVOLVIMENTO = foi de <b>PENDENTE CONFIRMAÇÃO</b> a <b>ITEM RECEBIDO</b> no ano <u>e</u> tem a validação do usuário.</li><li>Cada código conta uma vez por ano.</li></ul>`); },
       servidor: () => '<div id="srvpanel" class="flex flex-col"></div>',
       backups: async () => { const d = await J("/api/backups");
-        return card("Backups", sub(`Banco local: <code>${esc(d.db)}</code> · ${nf(d.size / 1048576, 2)} MB. Antes de cada atualização aplicada e de cada restauração o sistema cria um backup automático.`)
+        return card("Backups", sub(`Banco local: <code>${esc(d.db)}</code>, ${nf(d.size / 1048576, 2)} MB. Antes de cada atualização aplicada e de cada restauração o sistema cria um backup automático.`)
             + `<div class="flex flex-wrap items-center gap-2"><button type="button" class="${primario}" id="bk">Criar backup agora</button><a class="${botao}" href="/api/export/configuracoes.xlsx">⬇ Excel (lista)</a>${aviso("bkm")}</div>`)
-          + card(`Backups guardados · ${nf(d.backups.length)}`, d.backups.length ? TW.table([{ h: "Arquivo" }, { h: "Data" }, { h: "Tamanho", r: true }, { h: "" }],
+          + card(`Backups guardados (${nf(d.backups.length)})`, d.backups.length ? TW.table([{ h: "Arquivo" }, { h: "Data" }, { h: "Tamanho", r: true }, { h: "" }],
               d.backups.map(b => [esc(b.name), esc(b.date), nf(b.size / 1048576, 2) + " MB", `<span class="flex gap-1"><a class="${mini}" href="/api/backups/${encodeURIComponent(b.name)}">Baixar</a><button type="button" class="${mini}" data-rs="${esc(b.name)}">Restaurar</button></span>`]), { h: "max-h-[55vh]" }) : empty("Nenhum backup ainda.")); }
     };
     const wire = {

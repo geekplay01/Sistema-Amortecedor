@@ -44,7 +44,7 @@
     </nav>{% endif %}
     {% if cur[0]=='dashboard' %}
     <div id="empty" class="notice" hidden>Nenhum dado cadastrado ainda. Importe uma base na página <a href="/importacao">Importação de Excel</a> para preencher estes indicadores.</div>
-    <section class="cards compactc">
+    <section class="cards compactc psd-atl" aria-label="Atalhos">
       {% for k,l,to,h in cards %}<a class="card" href="/{{ to }}"><span class="num" data-stat="{{ k }}">–</span><b>{{ l }}</b><small>{{ h }}</small></a>{% endfor %}
     </section>
     <div id="panel" data-page="dashboard"></div>

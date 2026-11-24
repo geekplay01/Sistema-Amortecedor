@@ -26,7 +26,7 @@
     const desenharBarra = () => {
       const s = F.get();
       $("#mbar").innerHTML = `<label class="flex items-center gap-2 text-sm text-mute">Ano <select name="year" class="${campo}">${d.years.map(y => `<option ${y === d.year ? "selected" : ""}>${y}</option>`).join("")}</select></label>
-        <span class="ml-2 mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Tipo</span>
+        <span class="ml-2 mr-1 psd-rot">Tipo</span>
         ${chip("data-tipo-todos", "Todos", !s.tipo)}${chip('data-tg="tipo" data-v="des"', DES, s.tipo === "des")}${chip('data-tg="tipo" data-v="rd"', RD, s.tipo === "rd")}
         
         ${Object.keys(s).length ? `<button type="button" id="mclr" class="ml-auto rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10">Limpar filtros</button>` : ""}`;
@@ -40,7 +40,7 @@
       const kp = ks.map(k => kpi(k, nf(v[k]), g[k] ? `meta ${nf(g[k].target)} · ${pct(g[k].pct)} atingido` : "", k === DES ? "green" : "slate"));
       if (ks.length > 1) kp.unshift(kpi("Total de validações", nf(v.total), `${nf(v.linhas?.do_usuario_e_linha)} linhas de ${nf(v.linhas?.lidas)} lidas`, "blue"));
       $("#mx").innerHTML = `<section class="flex flex-col gap-4">
-        <div><h3 class="m-0 text-lg font-semibold text-ink">Validações ${u} · ${d.year}</h3></div>
+        <div><h3 class="m-0 text-lg font-semibold text-ink">Validações ${u} em ${d.year}</h3></div>
         <div class="grid grid-cols-1 gap-4 ${kp.length > 2 ? "md:grid-cols-3" : "md:grid-cols-2"}">${kp.join("")}</div>
         ${warn.length ? notice(warn.map(esc).join("<br>"), "amber") : ""}
         ${card("Validações por mês", '<div id="mxc" class="chart"></div>')}</section>`;
@@ -52,18 +52,18 @@
       const ks = tipos(), u = esc(d.validacoes?.filtro?.USER_VALID || "ITALOC"), st = (n, l) => `<div class="rounded-xl bg-slate-500/10 px-3 py-2 text-center"><div class="text-xl font-bold tabular-nums text-ink">${n}</div><div class="text-xs text-mute">${l}</div></div>`;
       $("#mg").innerHTML = ks.map(k => {
         const g = d.goals[k], p = g.parts;
-        const base = d.basis === "validacao" && k === RD ? `Validações ${u} no ano: <b class="text-ink">${nf(p.validacoes)}</b> · já em ITEM RECEBIDO (contam): <b class="text-ink">${nf(p.recebidas)}</b> · aguardando: <b class="text-ink">${nf(p.aguardando)}</b>${p.validacoes_sem_data ? ` · ${nf(p.validacoes_sem_data)} sem data de aprovação` : ""}. A lista está abaixo.`
-          : k === RD ? `Recebidos e validados no ano: <b class="text-ink">${nf(p.recebidos_validados)}</b>${p.recebidos_sem_validacao ? ` · <b class="text-ink">${nf(p.recebidos_sem_validacao)}</b> recebido(s) sem validação de usuário não contam.` : ""}`
-          : `Pedido confirmado → item recebido no ano: <b class="text-ink">${nf(p.recebidos)}</b>${p.sem_pedido_confirmado ? ` · <b class="text-ink">${nf(p.sem_pedido_confirmado)}</b> recebido(s) sem passar por PEDIDO CONFIRMADO não contam` : ""} (data de recebimento do servidor).`;
+        const base = d.basis === "validacao" && k === RD ? `Validações ${u} no ano: <b class="text-ink">${nf(p.validacoes)}</b>, já em ITEM RECEBIDO (contam): <b class="text-ink">${nf(p.recebidas)}</b>, aguardando: <b class="text-ink">${nf(p.aguardando)}</b>${p.validacoes_sem_data ? `, ${nf(p.validacoes_sem_data)} sem data de aprovação` : ""}. A lista está abaixo.`
+          : k === RD ? `Recebidos e validados no ano: <b class="text-ink">${nf(p.recebidos_validados)}</b>${p.recebidos_sem_validacao ? `, <b class="text-ink">${nf(p.recebidos_sem_validacao)}</b> recebido(s) sem validação de usuário não contam.` : ""}`
+          : `Pedido confirmado → item recebido no ano: <b class="text-ink">${nf(p.recebidos)}</b>${p.sem_pedido_confirmado ? `, <b class="text-ink">${nf(p.sem_pedido_confirmado)}</b> recebido(s) sem passar por PEDIDO CONFIRMADO não contam` : ""} (data de recebimento do servidor).`;
         return card(`${k} ${g.reached ? badge("meta atingida", "green") : ""}`, `<div id="gg-${SLUG[k]}" class="chart"></div>
           <div class="mt-3 grid grid-cols-4 gap-2">${st(nf(g.target), "meta " + d.year)}${st(nf(g.done), "realizado")}${st(nf(g.missing), "faltam")}${st(pct(g.pct), "da meta")}</div>
-          <div class="mt-3 flex flex-col gap-1.5 text-sm text-mute"><p class="m-0">${g.prior_aplica === false ? `Contado pelo servidor: <b class="text-ink">${nf(g.tracked)}</b> (sem itens de montadora)` : `Rastreado pelo sistema: <b class="text-ink">${nf(g.tracked)}</b> + já realizado antes do rastreio: <b class="text-ink">${nf(g.prior_done)}</b>`}${g.note ? ` · <i>${esc(g.note)}</i>` : ""}</p>
+          <div class="mt-3 flex flex-col gap-1.5 text-sm text-mute"><p class="m-0">${g.prior_aplica === false ? `Contado pelo servidor: <b class="text-ink">${nf(g.tracked)}</b> (sem itens de montadora)` : `Rastreado pelo sistema: <b class="text-ink">${nf(g.tracked)}</b> + já realizado antes do rastreio: <b class="text-ink">${nf(g.prior_done)}</b>`}${g.note ? `, <i>${esc(g.note)}</i>` : ""}</p>
           <p class="m-0">${base}</p></div>`,
           `<button type="button" data-edit="${k}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10">Editar meta</button>`, g.reached ? "ring-1 ring-emerald-500/50" : "");
       }).join("");
       ks.forEach(k => PSDCharts.gauge($("#gg-" + SLUG[k]), { value: d.goals[k].done, target: d.goals[k].target, title: "", subtitle: `realizado × meta ${d.goals[k].target}` }));
       $("#mevo").innerHTML = d.basis === "validacao" ? "" : card("Evolução mensal — itens recebidos", '<div id="mevoc" class="chart"></div>');
-      if (d.basis !== "validacao") PSDCharts.bars($("#mevoc"), { x: d.goals[DES].series.main.map(m => m.month), series: ks.map(k => ({ name: k + (k === DES ? " · item recebido" : " · recebido e validado"), y: d.goals[k].series.main.map(m => m.n), color: COR[k] })), height: 250, labels: true });
+      if (d.basis !== "validacao") PSDCharts.bars($("#mevoc"), { x: d.goals[DES].series.main.map(m => m.month), series: ks.map(k => ({ name: k + (k === DES ? ": item recebido" : ": recebido e validado"), y: d.goals[k].series.main.map(m => m.n), color: COR[k] })), height: 250, labels: true });
     };
 
     // itens que chegaram a ITEM RECEBIDO no ano (já filtrados por tipo na API) + filtro «conta?» local
@@ -72,8 +72,8 @@
     const desenharRd = () => {
       if (!rv || !tipos().includes(RD)) { $("#mrd").innerHTML = ""; return; }
       const s = F.get().rdv || "todas", c = rv.counts, ok = r => s === "contam" ? r.counts : s === "aguardando" ? !r.counts : s === "todas" ? true : r.flags.includes(s), rows = rv.rows.filter(ok);
-      const chips = Object.entries(RDF).filter(([k]) => k === "todas" || c[k] || s === k).map(([k, l]) => chip(`data-rdv="${k}"`, `${l} · ${nf(c[k])}`, s === k)).join("");
-      $("#mrd").innerHTML = card(`Validações ${RD} · ${d.year}`, `<div class="mb-3 flex flex-wrap gap-2">${chips}</div>`
+      const chips = Object.entries(RDF).filter(([k]) => k === "todas" || c[k] || s === k).map(([k, l]) => chip(`data-rdv="${k}"`, `${l} ${nf(c[k])}`, s === k)).join("");
+      $("#mrd").innerHTML = card(`Validações ${RD} em ${d.year}`, `<div class="mb-3 flex flex-wrap gap-2">${chips}</div>`
         + (rows.length ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Validado em" }, { h: "Status atual" }, { h: "Controle de status", nw: false }, { h: "Recebido em" }, { h: "Conta?" }],
             rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="rd" data-code="${esc(r.code)}">${esc(r.code)}</a>`, r.description ? `<span class="block max-w-[18rem] truncate" title="${esc(r.description)}">${esc(r.description)}</span>` : "–",
               dmy(r.valid_at), r.status ? badge(r.status, r.counts ? "green" : "slate") : "–", `<div class="flex min-w-[10rem] flex-wrap gap-1">${PSD.flagChips(r.flags)}</div>`,

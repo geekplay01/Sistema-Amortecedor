@@ -54,23 +54,28 @@ menu suspenso); o azul-marinho fica só no menu lateral, que assim se separa da 
   (o de comparação fica neutro, «em branco»)
 - azul-marinho/`--b600` = selecionado, ação principal · azul-claro = destaque e séries de gráfico · cinza (`--mut`) = neutro, zerado, parado.
 - Bolinha de sub status (`.psd-sd`): laranja = pendente, verde = finalizado/aprovado, vermelho = reprovado.
+- **Faixa inclinada do logo (etapa 23 · Q7)** — `--inc` (paralelogramo) em azul-claro `--pf-sky`: o **único** destaque de marca dentro das telas. Marca só
+  o que está selecionado: estágio (`.psd-est`), item atual do menu (`.nav-item.is-cur`), opção do seletor de linha (`.psd-linha`) e do segmentado (`.psd-seg`).
+  Não usar como enfeite em outro lugar.
 
 Selo/etiqueta: `PSDTW.badge(texto, tom)` com tons `blue · green · amber · red · violet · slate`. Fundo com `color-mix(... 12–15%, transparent)` do tom e texto no tom.
 
 ## 4. Tipografia
 
-- **Barlow** (500/600/700, `static/fonts`, OFL) = `--fontd`: títulos, números grandes, rótulos em caixa-alta, cabeçalho de tabela.
+- **Barlow** (500/600/700, `static/fonts`, OFL) = `--fontd`: títulos, números grandes, rótulos, cabeçalho de tabela.
 - **Segoe UI** (sistema): texto corrido, tabelas, formulários.
 - Escala: título da tela 28 px/700 · título de cartão 16 px/600 · número de KPI 30 px/700 (encolhe até 22 px em cartão estreito; nunca quebra no meio) · número de estágio 24 px/700 · texto 14 px ·
-  tabela 14 px · rótulo (caixa-alta, `letter-spacing .08–.1em`) 11–12 px/600 · mínimo 11 px.
+  tabela 14 px · rótulo 13 px/600 Barlow **em caixa normal** (`.psd-rot`; etapa 23 · Q2 — nada de caixa-alta espaçada) · mínimo 11 px.
 - Números sempre `font-variant-numeric: tabular-nums`; formatação `PSDTW.nf` (pt-BR), dinheiro `brl0`/`brl`, data `dmy` (dd/mm/aaaa).
 
 ## 5. Espaço, forma e densidade
 
 - Grade de 4 px. Entre blocos da tela: 20 px (`gap-5`); dentro de cartão: 16–20 px.
 - Densidade «compacta confortável»: linha de tabela 36 px; campo 40 px com texto 16 px; botão 40 px (32 px na versão pequena).
-- Raios: KPI e cartão 16 px · menus/painéis 14 px · botão 10 px · pílula/busca/chip 999 px.
-- Sombra só `--shadow` (discreta). Menu suspenso e diálogo têm sombra própria; nada de brilho, desfoque decorativo ou gradiente em componente.
+- Raios: cartão 16 px · faixa de números, estágios e lista de atalhos 12 px · menus/painéis 14 px · botão 10 px · pílula/busca/chip 999 px.
+- Sombra só `--shadow` (discreta). Menu suspenso e diálogo têm sombra própria; nada de brilho, desfoque decorativo ou gradiente em componente
+  (etapa 23 · Q6: a barra de prazo é laranja lisa e o avatar do escuro é `--b600`; só a tela inicial tem fundo em degradê, por ser a vitrine).
+- Hover muda o fundo ou a borda; nada «pula» (`translateY`) ao passar o mouse.
 - Ícones: `static/img/icones.svg` via `PSDTW.ico(nome, "sm"|""|"lg")` (18 px padrão, 16 px `sm`). Traço, sem preenchimento. Sem emoji como ícone
   (exceção histórica: ▲ ▼ das curtidas).
 
@@ -83,11 +88,16 @@ Menu lateral azul-marinho · barra do topo (título do app, sincronização, tem
 · faixa «vem de / alimenta» (`.relbar`) · conteúdo da tela em `#panel` (um arquivo por tela em `static/js/telas/`).
 
 ### 6.2 Números
-- **KPI** `PSDTW.kpi(rótulo, valor, sub, tom, ícone)` → `.psd-kpi` com faixa inferior de 3 px no tom (`blue · green · red · amber · slate · sky`).
-  Fileira de 4 (`grid-cols-2 lg:grid-cols-4`). Rótulo diz *o que* é; `sub` diz o recorte («itens em andamento · 337 códigos»).
-- **Estágios** `.psd-est`: botões que filtram, número grande + linha de apoio; `soma` (agregado) e `fim` (fim do ciclo, faixa verde).
+- **KPI** `PSDTW.kpi(rótulo, valor, sub, tom, ícone)` → `.psd-kpi`. **Etapa 23 · Q4:** KPIs vizinhos formam **uma faixa só** (o contêiner que só tem
+  KPIs vira uma superfície com divisórias finas — `marca.css`, sem classe extra na tela); sem linha colorida embaixo. O tom só muda a cor do número
+  quando é alerta: `red` (ruptura/erro) e `amber` (risco); `blue · green · slate · sky` ficam neutros. Fileira de 4 (`grid-cols-2 lg:grid-cols-4`).
+  Rótulo diz *o que* é; `sub` diz o recorte — cada « · » do `sub` vira uma linha (uma informação por linha).
+- **Estágios** `.psd-est`: uma faixa de botões que filtram (número grande + linha de apoio); o escolhido leva a faixa inclinada (§3); `fim` (fim do
+  ciclo) com o número em verde. No DES/R-D os estágios **são** a fileira de números (não há KPI repetindo o estágio). A linha de apoio mostra os
+  códigos só quando diferem dos itens.
 - **Seletor segmentado** `.psd-linha` (escolha excludente com contagem em pílula) e `.psd-seg` (dentro da barra de filtros).
-- **Cartões de atalho do Dashboard** `.cards .card` (servidor, `app.CARDS`): zerado ganha `.zero` e recua.
+- **Atalhos do Dashboard** `.cards.psd-atl` (servidor, `app.CARDS`): **lista em duas colunas** (número, nome, descrição curta), primeiro o que pede
+  ação, depois os cadastros; zerado ganha `.zero`, recua e vai para o fim (`app.js`).
 
 ### 6.3 Barra de filtros — padrão único
 `PSDTW.pintarBarra(el, {busca, principais, mais, atalhos, etiquetas, acoes, aberto})` + `PSDTW.ligarBarra(el, handlers)`.
@@ -98,9 +108,9 @@ Menu lateral azul-marinho · barra do topo (título do app, sincronização, tem
 - Estado em `PSDTW.filtros(tela, chaves)` (URL + lembrado). Contagem de cada opção = linhas da lista ao escolher (ignora o próprio filtro).
 
 ### 6.4 Listas e tabelas
-`PSDTW.table(colunas, linhas, {h})`: cabeçalho fixo em Barlow caixa-alta, zebra, hover, altura máxima com rolagem interna (`max-h-[65vh]`).
+`PSDTW.table(colunas, linhas, {h})`: cabeçalho fixo em Barlow 13 px, caixa normal, zebra, hover, altura máxima com rolagem interna (`max-h-[65vh]`).
 Código do item é link (ficha ou detalhe). Texto longo: `truncate` com `title`. Paginação centralizada (‹ Página n de N ›). Linha de resumo acima da
-tabela: `<b>N</b> item(ns) · k filtro(s) ativo(s)`.
+tabela: `<b>N</b> item(ns), k filtro(s) ativo(s)`.
 
 ### 6.4b Campos com sugestão e célula editável
 - **Sugestões ao digitar**: use `<input list="id">` + `<datalist id="id">` e preencha o datalist; o `tw.js` troca a lista nativa (que segue a cor
@@ -131,8 +141,12 @@ repinta. Verde só para «atingido».
 ## 8. Texto na interface
 
 - Português, frases curtas, sem ponto final em rótulo e botão. Verbo no começo do botão: «Baixar Excel», «Editar meta», «Abrir lista».
+- **Sem «·» emendando informações** (etapa 23 · Q3): uma informação por linha ou vírgula numa lista («1.870.034 peças, até 01/11/2026»); título com
+  recorte usa «em», «de» ou dois-pontos («Vendas em 12 meses», «Funil de DESENVOLVIMENTO»). O «·» só fica na numeração de etapas («1 · Em produção»)
+  e no título da aba do navegador.
 - Aspas angulares «» para nomes de filtro, status e telas citados no texto.
-- Status e sub status do servidor aparecem **como o servidor manda** (caixa-alta); rótulos do app em caixa normal (a caixa-alta dos rótulos vem do CSS).
+- Status e sub status do servidor aparecem **como o servidor manda** (caixa-alta) na lista, nas etiquetas e nos filtros; rótulos do app em caixa
+  normal. Exceção: o nome do estágio no botão da faixa de estágios vai em caixa normal com siglas («Finalizando CIT»).
 - Unidades explícitas: «itens» = linhas do servidor, «códigos» = códigos distintos, «peças», «meses», «d» (dias).
 - Erro diz o que aconteceu e o que fazer; nunca mostrar exceção crua sem contexto.
 
@@ -152,6 +166,8 @@ repinta. Verde só para «atingido».
 - Cor fixa (hex) em componente novo; verde para qualquer coisa que não seja «OK».
 - Cartões grandes para escolha simples (use seletor segmentado); mais de uma ação principal por bloco.
 - Fonte abaixo de 11 px, emoji como ícone, gradiente/brilho decorativo.
+- Sinais de design genérico (etapa 23, skill `frontend-design`): caixas iguais para tudo, rótulo em CAIXA ALTA espaçada, informações emendadas com «·»,
+  número repetido em dois blocos, cartão que «pula» no hover, enfeite de marca fora do que está selecionado.
 
 ## 11. Pendências de design conhecidas
 

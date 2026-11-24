@@ -25,7 +25,7 @@
     if (!r.ok) return msg(d.error, true);
     if (!d.rows_total) { $("#imp-map").hidden = true; return msg("Esta planilha está vazia.", true); }
     const cols = Object.keys(d.mapping), mapped = cols.filter(c => d.mapping[c]).length;
-    msg(`${d.rows_total} linhas · cabeçalho na linha ${d.header_row + 1} · ${mapped} de ${cols.length} colunas mapeadas automaticamente.`);
+    msg(`${d.rows_total} linhas, cabeçalho na linha ${d.header_row + 1}, ${mapped} de ${cols.length} colunas mapeadas automaticamente.`);
     const opts = sel => `<option value="">(ignorar)</option>` + d.fields.map(f => `<option ${f === sel ? "selected" : ""}>${f}</option>`).join("");
     $("#imp-map-tbl").innerHTML = "<tr><th>Coluna da planilha</th><th>Campo</th><th>Exemplo</th></tr>" + cols.map(c =>
       `<tr class="${d.mapping[c] ? "" : "unmapped"}"><td>${esc(c)}</td><td><select data-col="${esc(c)}">${opts(d.mapping[c])}</select></td><td>${esc((d.sample[0] || {})[c])}</td></tr>`).join("");

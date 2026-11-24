@@ -18,7 +18,7 @@
   async function ladosPage() {
     const F = TW.filtros("lados", CHAVES); let pg = 1, timer, LV = {}, st = null;
     root.innerHTML = `<div class="flex flex-col gap-5">
-      <p class="m-0 text-xs font-semibold uppercase tracking-wide text-mute">Outro eixo · ordem de busca, do mais confiável ao menos</p>
+      <p class="m-0 psd-rot">Outro eixo: ordem de busca, do mais confiável ao menos</p>
       <div id="lleg" class="flex flex-wrap gap-1.5"></div>
       <div id="lk" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
       <div id="lf"></div>
@@ -65,14 +65,14 @@
 
     // célula de candidato do outro eixo: nível pela cor, lado, par dele; código fora do catálogo leva à lista DES/R-D
     const cand = x => {
-      const tip = (LV[x.level] || x.level) + (x.app ? ` · ${x.app}` : "") + (x.status ? ` · status ${x.status}` : "") + (x.pair ? ` · par: ${x.pair.code}` : "");
+      const tip = (LV[x.level] || x.level) + (x.app ? `, ${x.app}` : "") + (x.status ? `, status ${x.status}` : "") + (x.pair ? `, par: ${x.pair.code}` : "");
       const corpo = `${esc(x.code)} <span class="font-normal">${SDL[x.side] || ""}</span>${x.level === "provavel" ? "?" : ""}${x.pair ? ` <span class="font-normal">+${esc(x.pair.code)} ${SDL[x.pair.side] || ""}</span>` : ""}`;
       const cls = `mb-1 mr-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${{ violet: "bg-violet-500/15 text-violet-600", green: "bg-emerald-500/15 text-emerald-600", blue: "bg-blue-500/15 text-blue-600", amber: "bg-amber-500/20 text-amber-700", slate: "bg-slate-500/15 text-slate-600" }[NIVEL[x.level]]}`;
       return x.id ? `<a href="#" data-ficha="${x.id}" class="${cls}" title="${esc(tip)}">${corpo}</a>`
         : `<a href="/${x.kind === "REDESENVOLVIMENTO" ? "redesenvolvimento" : "desenvolvimento"}?q=${encodeURIComponent(x.code)}" class="${cls}" title="${esc(tip)}">${corpo} <span class="font-normal">${x.kind === "REDESENVOLVIMENTO" ? "R-D" : "DES"}</span></a>`;
     };
-    const outroEixo = (lst, aplica) => !aplica ? nada() : lst.length ? lst.slice(0, 3).map(cand).join("") + (lst.length > 3 ? `<span class="text-xs text-mute" title="${esc(lst.slice(3).map(x => x.code).join(" · "))}">+${lst.length - 3}</span>` : "") : nada("não encontrado");
-    const conjunto = i => (i.kit || []).length > 1 ? `<span class="inline-flex flex-wrap items-center gap-1">${i.kit.map((k, n) => `${n ? '<span class="text-mute">+</span>' : ""}<span class="rounded-lg px-1.5 py-0.5 text-xs font-semibold ${k.axle === "dianteiro" ? "bg-blue-500/15 text-blue-600" : "bg-slate-500/15 text-slate-600"}" title="${esc(k.axle + (k.src ? " · " + (LV[k.src] || k.src) : ""))}">${esc(k.code)} <span class="font-normal">${SDL[k.side] || ""}${k.qty === 2 ? " ×2" : ""}</span></span>`).join("")}</span>` : nada();
+    const outroEixo = (lst, aplica) => !aplica ? nada() : lst.length ? lst.slice(0, 3).map(cand).join("") + (lst.length > 3 ? `<span class="text-xs text-mute" title="${esc(lst.slice(3).map(x => x.code).join(", "))}">+${lst.length - 3}</span>` : "") : nada("não encontrado");
+    const conjunto = i => (i.kit || []).length > 1 ? `<span class="inline-flex flex-wrap items-center gap-1">${i.kit.map((k, n) => `${n ? '<span class="text-mute">+</span>' : ""}<span class="rounded-lg px-1.5 py-0.5 text-xs font-semibold ${k.axle === "dianteiro" ? "bg-blue-500/15 text-blue-600" : "bg-slate-500/15 text-slate-600"}" title="${esc(k.axle + (k.src ? ", " + (LV[k.src] || k.src) : ""))}">${esc(k.code)} <span class="font-normal">${SDL[k.side] || ""}${k.qty === 2 ? " ×2" : ""}</span></span>`).join("")}</span>` : nada();
     const veiculos = i => { const v = i.vehicles.length ? i.vehicles : (i.server_apps || []); if (!v.length) return nada();
       return `<span class="block max-w-[18rem] truncate" title="${esc([...i.vehicles, ...(i.server_apps || []).map(a => "servidor: " + a)].join("\n"))}">${esc(v.slice(0, 2).join(" | "))}${v.length > 2 ? ` <span class="text-xs text-mute">+${v.length - 2}</span>` : ""}</span>`; };
     const par = i => i.pair ? `<a href="#" data-ficha="${i.pair.id}" class="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-600" title="${esc(i.pair_how || "")}">${esc(i.pair.code)} <span class="font-normal">${SDL[i.pair.side] || ""}</span></a>`
@@ -85,7 +85,7 @@
         const d = await J("/api/sides?" + qs({ ...f, page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(f).filter(k => k !== "escopo").length;
         const novo = !st || JSON.stringify(st) !== JSON.stringify(d.stats); LV = d.levels || {}; st = d.stats;
         desenharTopo(); desenharFiltros();
-        $("#lmeta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns)${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}`;
+        $("#lmeta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns)${ativos ? `, ${ativos} filtro(s) ativo(s)` : ""}`;
         $("#lt").innerHTML = TW.table([{ h: "Código" }, { h: "Descrição", nw: false }, { h: "Eixo" }, { h: "Lado" }, { h: "Par (outro lado)" }, { h: "Traseiro (mesma aplicação)", nw: false }, { h: "Dianteiro (mesma aplicação)", nw: false },
           { h: "Possuímos?" }, { h: "Conjunto do veículo", nw: false }, { h: "Veículos", nw: false }], d.rows.map(i => [
           `<a href="#" class="font-semibold text-blue-600" data-ficha="${i.id}">${esc(i.code)}</a>${window.psdCode ? " " + psdCode(i.code, "↗") : ""}${i.status !== "ativo" ? " " + badge(i.status === "inativo" ? "inativo" : "em breve", i.status === "inativo" ? "red" : "amber") : ""}`,

@@ -8,6 +8,7 @@
     fetchJSON("/api/stats").then(s => {
       document.querySelectorAll("[data-stat]").forEach(el => { const v = s[el.dataset.stat] ?? 0; el.textContent = Number(v).toLocaleString("pt-BR");
         const c = el.closest(".card"); if (c) c.classList.toggle("zero", !Number(v)); });          // cartão zerado fica discreto: o olho vai para o que tem número
+      document.querySelectorAll(".cards.psd-atl .card.zero").forEach(c => c.parentNode.append(c));          // etapa 23 · Q5: zerados no fim da lista
       $("#empty").hidden = s.products > 0;
     }).catch(() => { const e = $("#empty"); e.hidden = false; e.textContent = "Não foi possível consultar o banco local. Verifique se o app.py está em execução."; });
   }
@@ -97,7 +98,7 @@ document.addEventListener("click", e => { if (e.target.closest("#themebtn")) psd
     last = st; const cls = st.running ? "run" : !st.configured ? "off" : st.last_status === "erro" ? "err" : st.last_ok_at ? "ok" : "off";
     chip.className = "syncchip " + cls;
     txt.textContent = st.running ? "Sincronizando…" : !st.configured ? "Servidor não configurado" : st.last_ok_at ? "Atualizado " + fmt(st.last_ok_at) : "Nunca sincronizado";
-    pop.innerHTML = `<b>Servidor SQL ${esc(st.host)}</b><p>${st.last_ok_at ? "Última sincronização: <b>" + fmt(st.last_ok_at) + "</b> · " + (st.items || 0).toLocaleString("pt-BR") + " itens" : "Ainda não houve sincronização."}</p>`
+    pop.innerHTML = `<b>Servidor SQL ${esc(st.host)}</b><p>${st.last_ok_at ? "Última sincronização: <b>" + fmt(st.last_ok_at) + "</b>, " + (st.items || 0).toLocaleString("pt-BR") + " itens" : "Ainda não houve sincronização."}</p>`
       + (!st.configured ? "<p class='syncerr'>Preencha <code>DEV_DB_USER</code> e <code>DEV_DB_PASSWORD</code> no arquivo <code>.env</code> e reinicie.</p>" : "")
       + (st.last_status === "erro" && st.last_error ? `<p class="syncerr">${esc(st.last_error)}</p>` : "")
       + `<button class="btn sm" id="syncnow" ${st.running || !st.configured ? "disabled" : ""}>${st.running ? "Sincronizando…" : "Sincronizar agora"}</button> <a class="btn ghost sm" href="/configuracoes">Detalhes</a>`;

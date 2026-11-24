@@ -12,7 +12,7 @@
   const primario = "rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white no-underline hover:bg-blue-700";
   const mini = "rounded-lg border border-line bg-card px-2.5 py-1 text-xs font-semibold text-ink hover:bg-slate-500/10";
   const ABAS = [["familia", "Família: catálogo × Inmetro"], ["ean", "EAN divergente"], ["pesoean", "Peso e EAN × BI03"], ["protheus", "Pendente cadastro Protheus"], ["cross", "Cross × servidor"], ["repetidos", "Concorrentes repetidos"], ["corrigido", "Cross corrigido no app"], ["sugestoes", "Sugestões de equivalência"]];
-  const aba = (t, label, on, n) => `<a href="/anomalias?tab=${t}" data-aba="${t}" class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline ${on ? "border-blue-500 text-blue-600" : "border-transparent text-mute hover:text-ink"}">${label}${n != null ? ` · ${nf(n)}` : ""}</a>`;
+  const aba = (t, label, on, n) => `<a href="/anomalias?tab=${t}" data-aba="${t}" class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline ${on ? "border-blue-500 text-blue-600" : "border-transparent text-mute hover:text-ink"}">${label}${n != null ? ` ${nf(n)}` : ""}</a>`;
   const ficha = (id, code) => `<a href="#" class="font-semibold text-blue-600" data-ficha="${id}">${esc(code)}</a>`;
   function anomalias() {
     const pedida = new URLSearchParams(location.search).get("tab"), tab = ABAS.some(([t]) => t === pedida) ? pedida : "familia";
@@ -42,10 +42,10 @@
       let d; const s = F.get(), q = s.q || "";
       try { d = await J("/api/anomalies?" + qs({ ...s, tab })); } catch (e) { $("#at").innerHTML = notice(esc(e.message), "red"); return; }
       abas(d.counts); $("#ax").href = "/api/anomalies/export.xlsx" + (q ? "?" + qs({ q }) : "");
-      if (d.atalhos) $("#aq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Atalhos</span>`
+      if (d.atalhos) $("#aq").innerHTML = `<span class="mr-1 psd-rot">Atalhos</span>`
         + Object.entries(d.atalhos.tipo).map(([v, n]) => chip("tipo", v, v, n)).join("") + Object.entries(d.atalhos.status).sort((a, b) => b[1] - a[1]).map(([v, n]) => chip("status", v, v, n)).join("");
       const ok = $("#am").dataset.ok; delete $("#am").dataset.ok;
-      $("#am").innerHTML = `<b class="text-ink">${nf(d.rows.length)}</b> ${META[tab]}${q ? " · com a busca" : ""}${ok ? ` · <span class="font-semibold text-emerald-600">${esc(ok)}</span>` : ""}`;
+      $("#am").innerHTML = `<b class="text-ink">${nf(d.rows.length)}</b> ${META[tab]}${q ? ", com a busca" : ""}${ok ? `, <span class="font-semibold text-emerald-600">${esc(ok)}</span>` : ""}`;
       if (!d.rows.length) { $("#at").innerHTML = empty(q ? "Nada encontrado com esta busca." : tab === "corrigido" ? "Nenhuma correção feita na Cobertura de concorrentes." : tab === "protheus" || tab === "pesoean" ? "Nada aqui. Se o BI03 ainda não foi carregado, carregue a planilha «003(dd-mm).xls» em Atualização de dados." : "Nenhuma anomalia: tudo confere."); return; }
       if (tab === "pesoean") { $("#at").innerHTML = TW.table([{ h: "Código PERFECT" }, { h: "Descrição" }, { h: "Campo" }, { h: "No CatalogoAMD", r: true }, { h: "No BI03 (vale este)", r: true }],
         d.rows.map(r => [ficha(r.product_id, r.perfect_code), desc(r), esc(r.campo), `<span class="tabular-nums">${valor(r.catalogo)}</span>`, `<b class="tabular-nums text-blue-600">${valor(r.bi03)}</b>`]), { h: "max-h-[65vh]" }); return; }
@@ -61,10 +61,10 @@
         d.rows.map(r => [codigo(r.code), badge(r.tipo === "REDESENVOLVIMENTO" ? "R-D" : "DES", r.tipo === "REDESENVOLVIMENTO" ? "green" : "blue"), esc(r.status || "–"), esc(r.supplier || "–"),
           `<span class="block min-w-[14rem] max-w-[28rem] text-xs">${esc(r.application || "–")}</span>`, badge("Pendente cadastro Protheus", "amber")]), { h: "max-h-[65vh]" }); return; }
       $("#at").innerHTML = tab === "familia"
-        ? TW.table([{ h: "Código PERFECT" }, { h: "Descrição" }, { h: "Família no catálogo" }, { h: "Família no Inmetro" }, { h: "Certificados (nº · fornecedor)", nw: false }],
+        ? TW.table([{ h: "Código PERFECT" }, { h: "Descrição" }, { h: "Família no catálogo" }, { h: "Família no Inmetro" }, { h: "Certificados (nº, fornecedor)", nw: false }],
             d.rows.map(r => [ficha(r.product_id, r.perfect_code), `<span class="block max-w-[18rem] truncate" title="${esc(r.description || "")}">${esc(r.description || "–")}</span>`, badge(r.family, "blue"),
               r.inmetro_families.map(f => badge(f, f === (r.family || "").toUpperCase() ? "slate" : "amber")).join(" ") + (r.mixed ? ` <span class="text-xs text-mute">(fornecedores com famílias diferentes)</span>` : ""),
-              `<span class="block min-w-[16rem] text-xs text-mute">${r.certificates.map(c => `${esc(c.number || "–")} · ${esc(c.supplier || "–")} · <b class="${c.family === (r.family || "").toUpperCase() ? "text-mute" : "text-amber-700"}">${esc(c.family)}</b>`).join("<br>")}</span>`]), { h: "max-h-[65vh]" })
+              `<span class="block min-w-[16rem] text-xs text-mute">${r.certificates.map(c => `${esc(c.number || "–")}, ${esc(c.supplier || "–")}, <b class="${c.family === (r.family || "").toUpperCase() ? "text-mute" : "text-amber-700"}">${esc(c.family)}</b>`).join("<br>")}</span>`]), { h: "max-h-[65vh]" })
         : TW.table([{ h: "Código PERFECT" }, { h: "Descrição" }, { h: "EAN no catálogo" }, { h: "EAN na planilha" }, { h: "Fonte" }, { h: "" }],
             d.rows.map(r => [ficha(r.product_id, r.perfect_code), `<span class="block max-w-[18rem] truncate" title="${esc(r.description || "")}">${esc(r.description || "–")}</span>`, `<b class="tabular-nums">${esc(r.current || "–")}</b>`, `<b class="tabular-nums text-amber-700">${esc(r.imported || "–")}</b>`, esc(r.source || "–"),
               `<span class="flex gap-1"><button type="button" class="${mini}" data-ap="${r.id}">Usar o da planilha</button><button type="button" class="${mini}" data-keep="${r.id}">Manter o do catálogo</button></span>`]), { h: "max-h-[65vh]" });

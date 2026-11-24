@@ -25,7 +25,7 @@
           res.results.map(r => { const c = r.counts || {};
             return [`<b>${esc(r.file)}</b>`, esc(r.label || "–"), r.status === "ok" ? nf(r.rows) : badge(r.status, r.status === "erro" ? "red" : "amber"),
               cel(c.new), cel(c.updated), cel(c.present), cel(c.unmatched), `<span class="block min-w-[16rem] text-xs text-mute">${(r.messages || []).slice(0, 3).map(esc).join("<br>")}</span>`]; }), { h: "max-h-[55vh]" })
-        + (applied ? notice(`✔ Atualização aplicada. Backup criado: <code>${esc(res.backup || "—")}</code>${res.equivalences ? " · equivalências recalculadas" : ""}. <a class="text-blue-600" href="/fontes">Ver histórico</a> · <a class="text-blue-600" href="/dashboard">Ver dashboard</a>`)
+        + (applied ? notice(`✔ Atualização aplicada. Backup criado: <code>${esc(res.backup || "—")}</code>${res.equivalences ? ", equivalências recalculadas" : ""}. <a class="text-blue-600" href="/fontes">Ver histórico</a>, <a class="text-blue-600" href="/dashboard">Ver dashboard</a>`)
           : todo ? `<div><button type="button" id="uf-apply" class="${primario}">Aplicar atualização (${nf(t.new)} novos, ${nf(t.updated)} atualizados)</button></div>`
           : notice("O banco já está em dia com estas planilhas: nada a inserir."));
       const ap = $("#uf-apply"); if (ap) ap.onclick = async () => { ap.disabled = true; msg("Aplicando… (backup + gravação)");

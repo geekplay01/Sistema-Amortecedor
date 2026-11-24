@@ -29,7 +29,7 @@ window.PSDCharts = (() => {
     const v = o.value || 0, tgt = o.target || 0, ok = tgt && v >= tgt, pct = tgt ? Math.round(1000 * v / tgt) / 10 : 0;
     el.classList.add("ch"); el.style.position = "relative";
     el.innerHTML = `${o.title ? `<div class="text-center font-display text-sm font-semibold text-ink">${esc(o.title)}</div>` : ""}${o.subtitle ? `<div class="truncate text-center text-xs text-mute">${esc(o.subtitle)}</div>` : ""}
-      <div class="relative" style="height:170px"><div data-g></div><div class="pointer-events-none absolute inset-x-0 text-center" style="bottom:14px"><div class="font-display text-3xl font-bold text-ink">${nf(v)}</div><div class="text-xs text-mute">${tgt ? `de ${nf(tgt)} · ${nf(pct)}%` : "sem meta"}</div></div></div>`;
+      <div class="relative" style="height:170px"><div data-g></div><div class="pointer-events-none absolute inset-x-0 text-center" style="bottom:14px"><div class="font-display text-3xl font-bold text-ink">${nf(v)}</div><div class="text-xs text-mute">${tgt ? `de ${nf(tgt)} (${nf(pct)}%)` : "sem meta"}</div></div></div>`;
     return Promise.resolve(window.PSDTW.grafico(el.querySelector("[data-g]"), { type: "doughnut", altura: 170, titulo: o.title || "Meta",
       data: { labels: ["Realizado", "Falta"], datasets: [{ data: [Math.min(v, tgt || v), Math.max((tgt || 0) - v, 0)], backgroundColor: [ok ? "#0E9F6E" : "#2F4A8C", "--chart-track"], borderWidth: 0 }] },          // cores trocadas pelo tema em PSDTW.grafico
       options: { rotation: -90, circumference: 180, cutout: "74%", plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${nf(c.parsed)}` } } } } })); };

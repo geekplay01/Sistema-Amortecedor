@@ -35,7 +35,7 @@
 
     const historico = () => {
       const st = F.get().status || "todas", b = h.batches.filter(x => st === "todas" || x.status === st);
-      $("#fh").innerHTML = card("Histórico de importações", `<div class="mb-3 flex flex-wrap items-center gap-2">${CH.map(([v, l]) => chip(`data-st="${v}"`, l, st === v, h.counts[v] || 0)).join("")}<span class="text-xs text-mute">últimas ${nf(h.counts.todas)} · mais recentes primeiro</span></div>`
+      $("#fh").innerHTML = card("Histórico de importações", `<div class="mb-3 flex flex-wrap items-center gap-2">${CH.map(([v, l]) => chip(`data-st="${v}"`, l, st === v, h.counts[v] || 0)).join("")}<span class="text-xs text-mute">últimas ${nf(h.counts.todas)}, mais recentes primeiro</span></div>`
         + (h.counts.todas ? TW.table([{ h: "#", r: true }, { h: "Quando" }, { h: "Arquivo" }, { h: "Aba" }, { h: "Tipo de dado" }, { h: "Linhas lidas", r: true }, { h: "Novos", r: true }, { h: "Atualizados", r: true }, { h: "Conflitos", r: true }, { h: "Erros", r: true }, { h: "Status" }],
             b.map(x => [x.id, quando(x.imported_at), `<span class="block max-w-[20rem] truncate" title="${esc(x.filename || "")}">${esc(x.filename || "–")}</span>`, esc(x.sheet || "–"), esc(x.category || "–"),
               nf(x.rows_read), nf(x.rows_new), nf(x.rows_updated), alerta(x.rows_conflict, "text-amber-700"), alerta(x.rows_error, "text-red-600"), badge(...(STL[x.status] || [x.status, "amber"]))]), { h: "max-h-[55vh]" })

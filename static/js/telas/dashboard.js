@@ -9,11 +9,11 @@
   const chip = (attrs, label, on) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}</button>`;
   const botao = "rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink no-underline hover:bg-slate-500/10";
   const vazio = t => `<p class="m-0 py-6 text-center text-sm text-mute">${t}</p>`;
-  const link = (href, html, title) => `<a href="${href}" title="${esc(title)}" class="block rounded-2xl no-underline hover:shadow-lg">${html}</a>`;
+  const link = (href, html, title) => `<a href="${href}" title="${esc(title)}" class="block no-underline">${html}</a>`;
   /* barras horizontais clicáveis: rótulo · barra proporcional · número (cada linha é um link para a lista filtrada) */
   const barras = (rows, cor) => {
     const max = Math.max(1, ...rows.map(r => r.n)), tot = rows.reduce((a, r) => a + r.n, 0) || 1;
-    return `<div class="flex flex-col gap-0.5">${rows.map(r => `<a href="${r.href}" title="${esc(r.l)}: ${nf(r.n)} (${nf(100 * r.n / tot, 1)}%) · clique para abrir a lista" class="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm no-underline hover:bg-slate-500/10">
+    return `<div class="flex flex-col gap-0.5">${rows.map(r => `<a href="${r.href}" title="${esc(r.l)}: ${nf(r.n)} (${nf(100 * r.n / tot, 1)}%), clique para abrir a lista" class="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm no-underline hover:bg-slate-500/10">
       <span class="w-32 shrink-0 truncate text-ink sm:w-48">${esc(r.l)}</span>
       <span class="h-2.5 flex-1 rounded-full bg-slate-500/15"><span class="block h-2.5 rounded-full" style="width:${Math.max(2, 100 * r.n / max).toFixed(1)}%;background:${cor}"></span></span>
       <span class="w-14 shrink-0 text-right font-semibold tabular-nums text-ink">${nf(r.n)}</span></a>`).join("")}</div>`;
@@ -42,7 +42,7 @@
       $("#dk").innerHTML = link("/produtos", kpi("Produtos no catálogo", nf(st.products), "amortecedores PERFECT cadastrados", "blue"), "Abrir a lista de Produtos sem filtros")
         + link("/desenvolvimento", kpi("Em desenvolvimento", nf(st.des_items), `itens em andamento · ${nf(d.totals[DES])} códigos no total`, "blue"), "Abrir Desenvolvimento")
         + link("/redesenvolvimento", kpi("Em redesenvolvimento", nf(st.rd_items), `itens em andamento · ${nf(d.totals[RD])} códigos no total`, "green"), "Abrir Redesenvolvimento")
-        + kpi("Vendas · 12 meses", s.available ? brl0(s.total_value) : "–", s.available ? `${nf(s.total_qty)} peças${s.last_date ? " · até " + dmy(s.last_date) : ""}` : "aguardando o servidor", "slate");
+        + kpi("Vendas em 12 meses", s.available ? brl0(s.total_value) : "–", s.available ? `${nf(s.total_qty)} peças${s.last_date ? " · até " + dmy(s.last_date) : ""}` : "aguardando o servidor", "slate");
       const cs = document.querySelector("section.cards"); if (cs) $("#dk").after(cs);
     };
 
@@ -55,7 +55,7 @@
 
     const corpo = () => {
       const g = d.goals.goals, tr = d.tracking, vb = d.goals.basis === "validacao", u = esc(d.goals.validacoes?.filtro?.USER_VALID || "ITALOC"), y = d.goals.year;
-      const funil = k => card(`Funil · ${k}`, d.funnel[k].length
+      const funil = k => card(`Funil de ${k}`, d.funnel[k].length
         ? barras(d.funnel[k].map(r => ({ l: r.status, n: r.n, href: `/${SLUG[k]}?status=${encodeURIComponent(r.status)}` })), COR[k])
         : vazio("Sem itens ainda. Sincronize com o servidor."), `<a class="${botao}" href="/${SLUG[k]}">Abrir lista</a>`);
       const est = d.stock, st = (n, l) => `<div class="rounded-xl bg-slate-500/10 px-3 py-3 text-center"><div class="text-2xl font-bold tabular-nums text-ink">${n}</div><div class="text-xs text-mute">${l}</div></div>`;
@@ -66,20 +66,20 @@
         card("Evolução mensal das metas", '<div id="dg-evo" class="chart"></div>'),
         funil(DES), funil(RD),
         `<div id="dfl" class="xl:col-span-2"></div>`,
-        card("Vendas · últimos 12 meses", d.sales.available ? '<div id="dg-sales" class="chart"></div>' : vazio("Vendas ainda não chegaram do servidor. Sincronize em Configurações.")),
-        card("Mais vendidos · 12 meses", !d.sales.available ? vazio("Vendas ainda não chegaram do servidor.") : d.sales.top.length
+        card("Vendas nos últimos 12 meses", d.sales.available ? '<div id="dg-sales" class="chart"></div>' : vazio("Vendas ainda não chegaram do servidor. Sincronize em Configurações.")),
+        card("Mais vendidos em 12 meses", !d.sales.available ? vazio("Vendas ainda não chegaram do servidor.") : d.sales.top.length
           ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Peças", r: true }, { h: "Valor", r: true }], d.sales.top.map(t => [`<a href="/pesquisa?q=${encodeURIComponent(t.code)}" class="font-semibold text-blue-600" title="Abrir na Pesquisa">${esc(t.code)}</a>`,
             `<span class="block max-w-[11rem] truncate" title="${esc(t.description || "")}">${esc(t.description || "–")}</span>`, nf(t.qty), brl0(t.value)]), { h: "max-h-[22rem]" })
           : vazio("Sem vendas no período.")),
         card("Estoque disponível", est.available ? `<div class="grid grid-cols-3 gap-2">${st(nf(est.qty), "peças disponíveis")}${st(nf(est.items), "códigos em estoque")}${st(nf(est.zero), "zerados")}</div>` : vazio("Estoque ainda não chegou do servidor.")),
-        card("Sistema: FORCE GAS × FORCE OIL", `<div id="dg-sys" class="chart"></div><div class="mt-2 flex flex-wrap gap-2">${sys.filter(r => r.s !== "nd").map(r => `<a class="${botao}" href="/produtos?system=${r.s}">${LAB[r.s] || esc(r.s)} · ${nf(r.n)}</a>`).join("")}</div>`),
+        card("Sistema: FORCE GAS × FORCE OIL", `<div id="dg-sys" class="chart"></div><div class="mt-2 flex flex-wrap gap-2">${sys.filter(r => r.s !== "nd").map(r => `<a class="${botao}" href="/produtos?system=${r.s}">${LAB[r.s] || esc(r.s)} ${nf(r.n)}</a>`).join("")}</div>`),
       ].join("");
       flagsCard();
       const gg = (id, k, sub) => PSDCharts.gauge($(id), { value: g[k].done, target: g[k].target, title: k, subtitle: sub });
-      gg("#dg-des", DES, vb ? `meta ${g[DES].target} · validações ${u} em ${y}` : `meta ${g[DES].target} · item recebido em ${y}`);
-      gg("#dg-rd", RD, vb ? `meta ${g[RD].target} · validações ${u} em ${y}` : `meta ${g[RD].target} · recebido e validado (${u})`);
+      gg("#dg-des", DES, vb ? `meta ${g[DES].target}, validações ${u} em ${y}` : `meta ${g[DES].target}, item recebido em ${y}`);
+      gg("#dg-rd", RD, vb ? `meta ${g[RD].target}, validações ${u} em ${y}` : `meta ${g[RD].target}, recebido e validado (${u})`);
       const bs = vb ? `validações ${u}` : "item recebido";
-      PSDCharts.line($("#dg-evo"), { x: g[DES].series.main.map(m => m.month), series: [DES, RD].map(k => ({ name: `${k} · ${bs}`, y: g[k].series.main.map(m => m.n), color: COR[k] })), height: 260 });
+      PSDCharts.line($("#dg-evo"), { x: g[DES].series.main.map(m => m.month), series: [DES, RD].map(k => ({ name: `${k}: ${bs}`, y: g[k].series.main.map(m => m.n), color: COR[k] })), height: 260 });
       if (d.sales.available) PSDCharts.bars($("#dg-sales"), { x: d.sales.months.map(m => m.month), series: [{ name: "Peças vendidas", y: d.sales.months.map(m => m.qty), color: "#2f6bff" }], height: 250 });
       PSDCharts.donut($("#dg-sys"), { labels: sys.map(r => LAB[r.s] || r.s), values: sys.map(r => r.n), colors: ["#2f6bff", "#10b981", "#94a3b8"] });
     };

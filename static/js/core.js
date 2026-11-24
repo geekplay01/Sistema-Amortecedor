@@ -65,13 +65,13 @@
   const subPanel = rows => { const g = new Map();
     rows.forEach(r => (r.subs || []).forEach(x => { const m = g.get(x.l) || new Map(); m.set(x.v, (m.get(x.v) || 0) + 1); g.set(x.l, m); }));
     return `<div class="fpanel"><h4>Sub status do servidor</h4>${g.size ? `<div class="fgrid2">${[...g].map(([l, m]) => `<div class="fgroup"><h5>${esc(l)}</h5>${[...m].map(([v, n]) => `<div>${esc(v)} <small class="muted">· ${n} de ${rows.length} aplicaç${rows.length === 1 ? "ão" : "ões"}</small></div>`).join("")}</div>`).join("")}</div>` : '<p class="muted">Nenhum sub status no servidor.</p>'}</div>`; };
-  const subsTxt = r => [...new Set((r.subs || []).map(x => x.v))].join(" · ");
+  const subsTxt = r => [...new Set((r.subs || []).map(x => x.v))].join(", ");
   const rdOpen = async (k, code) => { try { const d = await J(`/api/rd/${k}/item/` + encodeURIComponent(code)); const lab = k === "des" ? "DESENVOLVIMENTO" : "REDESENVOLVIMENTO", other = d.other.map(o => o.suggestion);
     dlg.innerHTML = `<div class="dh"><div><h2>${esc(d.code)} ${tag(lab)} ${other.map(tag).join(" ")}</h2><p>${esc(d.description || "")}</p></div><div><a class="btn ghost" href="/item/${encodeURIComponent(d.code)}">Página do item</a> <button class="btn ghost" data-close>Fechar</button></div></div>
       ${other.length ? `<div class="notice">Este código também consta em <b>${other.join(", ")}</b>.</div>` : ""}
       <div class="curline"><span class="cur up">▲ Curtiu ${d.curtiu || 0}</span><span class="cur down">▼ Não curtiu ${d.nao_curtiu || 0}</span></div>
       ${d.fob ? `<h4>FOB</h4>${PSDTW.fobRD(d.fob, true)}` : ""}
-      ${k === "rd" ? `<div class="vpanel" data-vc="${esc(d.code)}"><b>Validação</b> ${(d.validations || []).length ? d.validations.map(v => `<span class="vchip">enviada em ${dmy(v.sent_at)}${v.by_user ? " · " + esc(v.by_user) : ""} <a href="#" data-vundo="${v.id}">desfazer</a></span>`).join("") : '<span class="muted">nenhuma validação enviada registrada.</span>'}<button class="btn sm" data-vsend="${esc(d.code)}">Marcar validação enviada</button><small class="muted">A meta de Redesenvolvimento conta quando o status passar de PENDENTE CONFIRMAÇÃO para ITEM RECEBIDO.</small></div>` : ""}
+      ${k === "rd" ? `<div class="vpanel" data-vc="${esc(d.code)}"><b>Validação</b> ${(d.validations || []).length ? d.validations.map(v => `<span class="vchip">enviada em ${dmy(v.sent_at)}${v.by_user ? " por " + esc(v.by_user) : ""} <a href="#" data-vundo="${v.id}">desfazer</a></span>`).join("") : '<span class="muted">nenhuma validação enviada registrada.</span>'}<button class="btn sm" data-vsend="${esc(d.code)}">Marcar validação enviada</button><small class="muted">A meta de Redesenvolvimento conta quando o status passar de PENDENTE CONFIRMAÇÃO para ITEM RECEBIDO.</small></div>` : ""}
       ${d.product ? "" : '<p class="muted">Ainda não está no catálogo.</p>'}
       ${subPanel(d.rows)}
       ${d.cross && d.cross.length ? `<div class="xref"><b>Referência cruzada:</b> ${xchips(d.cross)}</div>` : ""}
@@ -79,7 +79,7 @@
       ${d.product ? "" : `<div data-dwblock="${esc(d.code)}"></div>`}
       ${d.info && Object.keys(d.info).length ? `<details class="sec"><summary><b>Todas as informações do servidor</b> <span class="badge">${Object.keys(d.info).length}</span></summary><div class="infogrid">${Object.entries(d.info).map(([k, v]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}</div></details>` : ""}
       <h4>Aplicações (${d.rows.length})</h4>` + T(["Montadora", "Veículo", "Aplicação", "Anos", "Status", "Sub status", "Fornecedor", "Amostra comprada", "Amostra enviada"], d.rows.map(r => `<tr><td>${esc(r.make || "")}</td><td>${esc(r.vehicle || "")}</td><td>${esc(r.application_text || "")}</td><td>${yr(r)}</td><td>${esc(r.status || "")}</td><td>${esc(subsTxt(r))}</td><td>${esc(r.supplier || "")}</td><td>${r.bought || ""}</td><td>${r.sent || ""}</td></tr>`)) +
-      `<h4>Compras de amostra ligadas (${d.samples.length})</h4>` + (d.samples.length ? d.samples.map(x => `SC ${esc(x.sc_number || "–")} · ${esc(x.sample_code || "")} · ${esc(x.supplier || "")} · ${esc(x.stage)}`).join("<br>") + ` <a href="/amostras?q=${encodeURIComponent(d.code)}">abrir em Compra de amostras</a>` : '<p class="muted">Nenhuma.</p>') +
+      `<h4>Compras de amostra ligadas (${d.samples.length})</h4>` + (d.samples.length ? d.samples.map(x => `SC ${esc(x.sc_number || "–")}, ${esc(x.sample_code || "")}, ${esc(x.supplier || "")}, ${esc(x.stage)}`).join("<br>") + ` <a href="/amostras?q=${encodeURIComponent(d.code)}">abrir em Compra de amostras</a>` : '<p class="muted">Nenhuma.</p>') +
       `<h4>Ensaios de damping force (${d.damping.length})</h4>` + (d.damping.length ? `<a href="/damping">ver em Damping force</a>` : '<p class="muted">Nenhum.</p>'); dlg.showModal(); dwBlocks(dlg); } catch (e) { PSDTW.erro(e); } };
   dlg.addEventListener("click", async e => {   // validação enviada (REDESENVOLVIMENTO)
     const s = e.target.closest("[data-vsend]"), u = e.target.closest("[data-vundo]"); if (!s && !u) return; e.preventDefault();
@@ -99,7 +99,7 @@
       const code = el.dataset.dwblock, kind = el.dataset.dwkind || "desenho", lab = KL[kind]; if (!code) continue;
       try {
         const d = await J(`/api/drawings/code/${encodeURIComponent(code)}?kind=${kind}`);
-        el.innerHTML = `<div class="dwb ${kind}"><div class="dwb-h"><b>${lab}</b> <span class="rev">${esc(d.label)}</span> <span class="muted">vigente${d.n_revisions > 1 ? ` · ${d.n_revisions - 1} revisão(ões) anterior(es) guardada(s)` : ""}</span> <a href="/desenhos?kind=${kind}&open=${encodeURIComponent(code)}" class="dwb-l">Ver histórico e arquivos</a></div>
+        el.innerHTML = `<div class="dwb ${kind}"><div class="dwb-h"><b>${lab}</b> <span class="rev">${esc(d.label)}</span> <span class="muted">vigente${d.n_revisions > 1 ? `, ${d.n_revisions - 1} revisão(ões) anterior(es) guardada(s)` : ""}</span> <a href="/desenhos?kind=${kind}&open=${encodeURIComponent(code)}" class="dwb-l">Ver histórico e arquivos</a></div>
           <div class="dwb-r">${d.current.map(f => `<a class="dwt" href="/api/drawings/file/${f.id}" target="_blank" rel="noopener" title="${esc(f.filename)}"><span class="dwt-i">${dwTile(f.id, f.ext)}</span><small>${esc(f.filename)}</small></a>`).join("")}</div></div>`;
       } catch (e) { el.innerHTML = `<div class="dwb none ${kind}"><b>${lab}</b> <span class="muted">${kind === "projeto" ? "Nenhum projeto PERFECT anexado para este código." : "Nenhum desenho cadastrado para este código."}</span> <a href="/desenhos?kind=${kind}" class="dwb-l">Anexar em Desenhos</a></div>`; }
     }
@@ -110,7 +110,7 @@
       const g = els.filter(e => (e.dataset.dwk || "desenho") === kind); if (!g.length) continue;
       try {
         const m = await J(`/api/drawings/lookup?kind=${kind}&codes=` + encodeURIComponent([...new Set(g.map(e => e.dataset.dw))].join(",")));
-        g.forEach(e => { const x = m[e.dataset.dw], chip = e.dataset.chip; e.innerHTML = x ? `<a href="/desenhos?kind=${kind}&open=${encodeURIComponent(e.dataset.dw)}" class="rev ${kind === "projeto" ? "prj" : ""}" title="${KL[kind]} · ${x.revs} revisão(ões) guardada(s)">${chip ? KL[kind] + " " : ""}${esc(x.label)}</a>` : (chip ? "" : '<span class="muted">–</span>'); });
+        g.forEach(e => { const x = m[e.dataset.dw], chip = e.dataset.chip; e.innerHTML = x ? `<a href="/desenhos?kind=${kind}&open=${encodeURIComponent(e.dataset.dw)}" class="rev ${kind === "projeto" ? "prj" : ""}" title="${KL[kind]}, ${x.revs} revisão(ões) guardada(s)">${chip ? KL[kind] + " " : ""}${esc(x.label)}</a>` : (chip ? "" : '<span class="muted">–</span>'); });
       } catch (e) { /* informativo */ }
     }
   }

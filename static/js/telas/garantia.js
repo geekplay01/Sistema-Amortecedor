@@ -50,7 +50,7 @@
       <div id="gtip" class="pointer-events-none absolute z-20 hidden max-w-[17rem] rounded-xl border border-line bg-card px-3 py-2 text-xs text-ink shadow-lg"></div></div>
       <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-mute">${leg}</div>`;
   }
-  const dica = (r, u) => `<div class="mb-1 font-display text-sm font-semibold">${UFN[u] || u}</div>` + (r ? `<div>Índice de garantia: <b>${pct(r.indice)}</b></div><div>${nf(r.pecas)} peças em garantia · ${r.vendidas ? nf(r.vendidas) + " vendidas" : "sem venda no período"}</div>
+  const dica = (r, u) => `<div class="mb-1 font-display text-sm font-semibold">${UFN[u] || u}</div>` + (r ? `<div>Índice de garantia: <b>${pct(r.indice)}</b></div><div>${nf(r.pecas)} peças em garantia, ${r.vendidas ? nf(r.vendidas) + " vendidas" : "sem venda no período"}</div>
     ${r.top.length ? `<div class="mt-1.5 border-t border-line pt-1.5">Mais garantia: <b>${esc(r.top[0].codigo)}</b> (${nf(r.top[0].pecas)} pç)${r.descricao ? `<div class="truncate text-mute">${esc(r.descricao)}</div>` : ""}</div>` : ""}` : '<div class="text-mute">Sem garantia no período.</div>');
 
   function regioes(d) {
@@ -62,7 +62,7 @@
     return `<div class="flex flex-col gap-3">${rows.map(r => { const top = r.ufs.slice().sort((a, b) => (b.indice ?? -1) - (a.indice ?? -1))[0];
       return `<div><div class="flex items-baseline justify-between gap-2 text-sm"><span class="font-semibold text-ink">${B.regioes[r.g]}</span><span class="tabular-nums text-ink"><b>${pct(r.indice)}</b> <span class="text-xs text-mute">${nf(r.pecas)} pç</span></span></div>
         <div class="mt-1 h-2 rounded-full bg-slate-500/10"><div class="h-2 rounded-full" style="width:${Math.max(3, 100 * (r.indice || 0) / mx)}%;background:var(--pf-red)"></div></div>
-        ${top ? `<div class="mt-1 text-xs text-mute">maior índice: <button type="button" data-uf="${top.uf}" class="font-semibold text-blue-600">${top.uf}</button> ${pct(top.indice)}${top.top[0] ? ` · mais garantia ${esc(top.top[0].codigo)}` : ""}</div>` : ""}</div>`; }).join("")}</div>`;
+        ${top ? `<div class="mt-1 text-xs text-mute">maior índice: <button type="button" data-uf="${top.uf}" class="font-semibold text-blue-600">${top.uf}</button> ${pct(top.indice)}${top.top[0] ? `, mais garantia ${esc(top.top[0].codigo)}` : ""}</div>` : ""}</div>`; }).join("")}</div>`;
   }
 
   async function garantia() {
@@ -118,7 +118,7 @@
       svg.addEventListener("keydown", e => { const p = e.target.closest("[data-uf]"); if (p && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); p.dispatchEvent(new MouseEvent("click", { bubbles: true })); } });
       const sel = s.uf ? por[s.uf] : null;
       $("#greg").innerHTML = card(sel ? UFN[s.uf] || s.uf : "Regiões", sel ? `<div class="flex flex-col gap-3 text-sm"><div class="grid grid-cols-2 gap-3">${kpi("Índice", pct(sel.indice), sel.vendidas ? nf(sel.vendidas) + " vendidas" : "sem venda", "red")}${kpi("Peças", nf(sel.pecas), nf(sel.ocorrencias) + " ocorrências", "slate")}</div>
-          <div class="text-xs font-semibold uppercase tracking-wide text-mute">Amortecedores com mais garantia</div>${TW.table([{ h: "Código" }, { h: "Peças", r: true }], sel.top.map(t => [itemLink(t.codigo), nf(t.pecas)]), { h: "" })}</div>`
+          <div class="psd-rot">Amortecedores com mais garantia</div>${TW.table([{ h: "Código" }, { h: "Peças", r: true }], sel.top.map(t => [itemLink(t.codigo), nf(t.pecas)]), { h: "" })}</div>`
         : regioes(d) || empty("Sem dados."), s.uf ? `<button type="button" data-uf="${s.uf}" class="${botao} py-1 text-xs">Todos os estados</button>` : `<span class="text-xs text-mute">índice = peças em garantia ÷ vendidas</span>`);
     };
 
@@ -153,13 +153,13 @@
     const desenhar = () => {
       const s = F.get(), k = d.kpis, a = d.anterior, c = d.counts;
       const ref = a ? `vs ${a.ano}${a.ate ? " até " + a.ate.split("-").reverse().join("/") : ""}` : "";
-      const sub = (cur, ant, pp, extra) => [a ? `${delta(cur, ant, pp)} <span class="text-mute">${ref}</span>` : "", extra].filter(Boolean).join(" · ");
+      const sub = (cur, ant, pp, extra) => [a ? `${delta(cur, ant, pp)} <span class="text-mute">${ref}</span>` : "", extra].filter(Boolean).join(", ");
       $("#gk").innerHTML = kpi("Peças em garantia", nf(k.pecas), sub(k.pecas, a && a.pecas, false, a ? "" : `${nf(k.codigos)} códigos`), "red", "shield-check")
         + kpi("Valor c/ IPI", brl0(k.valor), sub(k.valor, a && a.valor, false), "amber")
         + kpi("Ocorrências", nf(k.ocorrencias), sub(k.ocorrencias, a && a.ocorrencias, false, a ? "" : "autorizações distintas"), "blue")
         + kpi("Procedentes", k.pct_procedente == null ? "–" : nf(k.pct_procedente, 1) + "%", a ? sub(k.pct_procedente, a.pct_procedente, true) : `${nf(k.proc)} procedentes · ${nf(k.improc)} improcedentes`, "slate");
       desenharBarra();
-      $("#gm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns) de ocorrência · servidor, cadastros de ${TW.dmy(d.meta.de)} a ${TW.dmy(d.meta.ate)}`;
+      $("#gm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns) de ocorrência, servidor, cadastros de ${TW.dmy(d.meta.de)} a ${TW.dmy(d.meta.ate)}`;
       desenharMapa(); desenharMes(); desenharPareto();
       $("#gcod").innerHTML = card("Amortecedores com mais garantia", TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Peças", r: true }, { h: "% das peças", r: true }, { h: "Valor", r: true }, { h: "Defeitos", r: true }, { h: "" }],
         d.codigos.map(r => [itemLink(r.codigo), r.descricao ? `<span class="block max-w-[22rem] truncate" title="${esc(r.descricao)}">${esc(r.descricao)}</span>` : meio, nf(r.pecas), pct(100 * r.pecas / (k.pecas || 1), 1), brl0(r.valor), nf(r.defeitos),
@@ -171,7 +171,7 @@
           d.fornecedores.map(r => [r.fornecedor ? `<button type="button" data-k="fornecedor" data-v="${esc(r.fornecedor)}" data-tg class="font-semibold text-blue-600">${esc(r.fornecedor)}</button>` : '<span class="text-mute">não informado</span>', nf(r.codigos), nf(r.pecas), brl0(r.valor), pct(r.pct_procedente, 1)]), { h: "max-h-[24rem]" }));
       $("#gl").innerHTML = card("Itens de ocorrência", TW.table([{ h: "Data" }, { h: "Autorização" }, { h: "Tipo" }, { h: "Status" }, { h: "UF" }, { h: "Cliente" }, { h: "Código" }, { h: "Qtd", r: true }, { h: "Valor", r: true }, { h: "Defeito", nw: false }, { h: "Lote" }, { h: "Fabricação" }, { h: "Fornecedor" }, { h: "Procedência" }],
         d.rows.map(r => [TW.dmy(r.data_cadastro), esc(r.autorizacao || "–"), esc((r.tipo || "–").toLowerCase()), `<span title="${esc("Item: " + (r.status_item || "–").toLowerCase())}">${esc((r.status || "–").toLowerCase())}</span>`, esc(r.uf || "–"),
-          `<span class="block max-w-[14rem] truncate" title="${esc(r.cliente || "")}">${esc(r.cliente || "–")}</span>`, itemLink(r.codigo), nf(r.qtd), brl0(r.valor), `<span class="block min-w-[14rem] text-xs">${esc((r.defeito_cod ? r.defeito_cod + " · " : "") + (r.defeito || ""))}</span>`,
+          `<span class="block max-w-[14rem] truncate" title="${esc(r.cliente || "")}">${esc(r.cliente || "–")}</span>`, itemLink(r.codigo), nf(r.qtd), brl0(r.valor), `<span class="block min-w-[14rem] text-xs">${esc((r.defeito_cod ? r.defeito_cod + ": " : "") + (r.defeito || ""))}</span>`,
           esc(r.lote || "–") + (r.lote_validade === "VENCIDO" ? " " + badge("vencido", "amber") : "") + (r.erro_lote ? " " + badge("erro lote", "amber") : ""), TW.dmy(r.data_fabricacao), esc(r.fornecedor || "–"),
           r.procedencia ? badge((PROC[r.procedencia] || [r.procedencia])[0], (PROC[r.procedencia] || [0, "slate"])[1]) : meio]), { h: "max-h-[60vh]" }));
       $("#gp").innerHTML = pager(pg, Math.max(1, Math.ceil(d.total / d.size)));

@@ -34,7 +34,7 @@
         return `<div role="button" tabindex="0" data-sup="${esc(k)}" aria-pressed="${on}" class="cursor-pointer rounded-2xl border bg-card p-4 shadow-sm ${on ? "border-blue-500" : "border-line hover:bg-slate-500/10"}">
           <div class="flex items-center justify-between gap-2"><b class="text-ink">${esc(x.supplier || "Sem fornecedor")}</b>${x.ex ? `<span class="flex items-center gap-1"><code class="text-xs text-mute">${esc(x.ex)}</code><button type="button" data-ex="${esc(x.supplier)}" class="rounded px-1 text-mute hover:text-ink" title="Editar o EX">✎</button></span>` : ""}</div>
           <div class="mt-3 flex flex-wrap gap-1.5">${badge(nf(x.pendente_projeto) + " pendente projeto", x.pendente_projeto ? "amber" : "slate")}${badge(nf(x.enviada) + " enviada" + (x.enviada === 1 ? "" : "s"), x.enviada ? "green" : "slate")}${badge(nf(x.finalizada) + " finalizada" + (x.finalizada === 1 ? "" : "s"), "slate")}</div></div>`; }).join("");
-      $("#eq").innerHTML = `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">Status</span>` + [["abertos", "Em aberto", s.pendente_projeto + s.enviada], ["pendente_projeto", "Pendente projeto", s.pendente_projeto, true], ["enviada", "Amostra enviada", s.enviada], ["finalizada", "Finalizadas", s.finalizada], ["todos", "Todos", s.pendente_projeto + s.enviada + s.finalizada]]
+      $("#eq").innerHTML = `<span class="mr-1 psd-rot">Status</span>` + [["abertos", "Em aberto", s.pendente_projeto + s.enviada], ["pendente_projeto", "Pendente projeto", s.pendente_projeto, true], ["enviada", "Amostra enviada", s.enviada], ["finalizada", "Finalizadas", s.finalizada], ["todos", "Todos", s.pendente_projeto + s.enviada + s.finalizada]]
         .map(([k, l, n, forte]) => chip(`data-st="${k}"`, l, st === k, n, forte)).join(""); };
     const selecionados = () => $$(".esel:checked", root).map(c => +c.value);
     const barra = () => { const n = selecionados().length, b = $("#ebar"); b.classList.toggle("hidden", !n); b.classList.toggle("flex", !!n);
@@ -47,7 +47,7 @@
         const d = await J("/api/shipments?" + qs({ ...f, status: status(), page: pg })), pages = Math.max(1, Math.ceil(d.total / d.size)), novo = !sums; sums = d.summary; rows = d.rows;
         desenharTopo(); if (novo) desenharFiltros();
         const n = Object.keys(f).filter(k => !(k === "status" && f[k] === "abertos")).length;
-        $("#emeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> envio(s)${n ? ` · ${n} filtro(s) ativo(s)` : ""}</span>
+        $("#emeta").innerHTML = `<span><b class="text-ink">${nf(d.total)}</b> envio(s)${n ? `, ${n} filtro(s) ativo(s)` : ""}</span>
           <a class="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700" href="/api/export/envio.xlsx?${new URLSearchParams({ ...f, status: status() })}">${PSDTW.ico("download", "sm")} Baixar Excel</a>`;
         $("#et").innerHTML = TW.table([{ h: '<input type="checkbox" class="eall" title="Selecionar a página">' }, { h: "Código" }, { h: "Aplicação", nw: false }, { h: "Lado" }, { h: "Fornecedor" }, { h: "EX" }, { h: "SC" }, { h: "Recebida" }, { h: "Status" }, { h: "Enviada em" }, { h: "Rastreio" }, { h: "Projeto PERFECT" }, { h: "" }], d.rows.map(r => {
           const code = r.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${r.product_id}">${esc(r.perfect_code)}</a>` : r.rd ? `<a href="#" class="font-semibold text-blue-600" data-rd="${r.rd}" data-code="${esc(r.perfect_code)}">${esc(r.perfect_code)}</a>` : `<b>${esc(r.perfect_code)}</b>`;
@@ -76,7 +76,7 @@
         <label>Rastreio<input id="etr" value="${esc(r.tracking || "")}"></label><label>Observações<input id="eno" value="${esc(r.notes || "")}"></label></div>${r.ex_code ? `<p class="muted">EX atual: <code>${esc(r.ex_code)}</code></p>` : ""}<p id="dmsg" class="imp-msg"></p>
         <div class="acts"><button class="btn" id="dok">Salvar</button><button class="btn ghost" id="ddel">Excluir</button><button class="btn ghost" data-close>Cancelar</button></div>`;
       $("#dok").onclick = async () => { try { await put("/api/shipments/" + r.id, { status: val("es"), supplier: val("ef2"), sc_number: val("esc"), application: val("eap"), side: val("esd"), bought_at: val("ebo"), received_at: val("ere"), shipped_at: val("esh"), tracking: val("etr"), notes: val("eno") }); dlg.close(); carregar(); } catch (er) { $("#dmsg").textContent = er.message; } };
-      $("#ddel").onclick = async () => { const nome = [r.perfect_code, r.supplier, r.sc_number && "SC " + r.sc_number].filter(Boolean).join(" · ");
+      $("#ddel").onclick = async () => { const nome = [r.perfect_code, r.supplier, r.sc_number && "SC " + r.sc_number].filter(Boolean).join(", ");
         if (!await PSDTW.confirmar({ titulo: "Excluir este envio?", texto: nome, nota: "Não dá para desfazer: o envio sai do controle (a amostra e o desenvolvimento continuam).", botao: "Excluir", perigo: true })) return;
         try { await J("/api/shipments/" + r.id, { method: "DELETE" }); PSDTW.toast(`Envio ${nome} excluído.`); dlg.close(); carregar(); } catch (er) { PSDTW.erro(er); } }; dlg.showModal(); };
 

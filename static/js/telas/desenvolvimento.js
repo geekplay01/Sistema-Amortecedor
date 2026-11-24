@@ -25,10 +25,9 @@
     const F = TW.filtros(slug, CHAVES); let pg = 1, fc = null, timer;
     root.innerHTML = `<div class="flex flex-col gap-5">
       <section aria-label="Linha"><div id="rlin" class="psd-est psd-linha" role="group" aria-label="Linha do produto"></div></section>
-      <div id="rk" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
-      <section aria-label="Estágios"><div class="mb-2 text-xs font-semibold uppercase tracking-wide text-mute">Estágio</div><div id="rest" class="psd-est"></div></section>
+      <section aria-label="Estágios"><div id="rest" class="psd-est"></div></section>
       <div id="rbar"></div>
-      <section aria-label="Sub status do servidor"><div class="mb-2 flex flex-wrap items-baseline justify-between gap-2"><span class="text-xs font-semibold uppercase tracking-wide text-mute">Sub status do servidor</span><span id="rsubt" class="text-xs text-mute"></span></div><div id="rsub" class="psd-subs"></div></section>
+      <section aria-label="Sub status do servidor"><div class="mb-2 flex flex-wrap items-baseline justify-between gap-2"><span class="psd-rot">Sub status do servidor</span></div><div id="rsub" class="psd-subs"></div></section>
       <div id="rmeta" class="text-sm text-mute"></div>
       <div id="rt"></div><div id="rp" class="flex items-center justify-center gap-3 text-sm text-mute"></div>
     </div>`;
@@ -43,7 +42,7 @@
     const CURT = { sim: "Curtidos ▲", sem: "Sem curtida", nao: "Com «não curtiu» ▼" }, CAT = { sim: "Já no catálogo", nao: "Fora do catálogo" }, AMO = { comprada: "Comprada", enviada: "Enviada", nenhuma: "Sem amostra" }, ORD = { status: "Status mais avançado", codigo: "Código" };
     const NOMES = { status: "Estágio", sub: "Sub status", flag: "Pendência", supplier: "Fornecedor", curtiu: "Curtidas", marca: "Marca", negociacao: "Negociação", vendas: "Vendas", controladoria: "Controladoria", catalog: "Catálogo", sample: "Amostra", ordem: "Ordem", q: "Busca" };
     const subVal = (kk, f) => { const g = fc.subs.find(x => x.key === kk) || { values: [] }, x = g.values.find(y => (y.f || y.v) === f); return x ? x.v : f.replace(/^@/, ""); };
-    const subNome = v => { const [kk, ...r] = v.split(":"), g = (fc.subs.find(x => x.key === kk) || {}).label || kk; return `${g} · ${subVal(kk, r.join(":"))}`; };
+    const subNome = v => { const [kk, ...r] = v.split(":"), g = (fc.subs.find(x => x.key === kk) || {}).label || kk; return `${g}: ${subVal(kk, r.join(":"))}`; };
     const linNome = v => (fc.familias.find(x => x.v === v) || { t: v }).t;
     const marcaNome = v => v === "todas" ? "Todas as marcas" : v;
     let maisAberto = false;
@@ -72,32 +71,28 @@
         acoes: TW.botao("Baixar Excel", { href: `/api/export/${slug}.xlsx?${api(s)}`, icone: "download" })
       });
     };
-    /* contagem principal = itens (linhas do servidor, como o sistema PERFECT); embaixo, os códigos distintos */
+    /* contagem principal = itens (linhas do servidor, como o sistema PERFECT); embaixo, os códigos distintos — etapa 23 · Q3: só quando diferem dos itens */
     const cod = n => `${nf(n)} código${n === 1 ? "" : "s"}`;
-    const botaoEstagio = (v, t, n, l, cls = "") => `<button type="button" data-est="${esc(v)}" class="${cls}" aria-pressed="${estagio(F.get()) === v}"><span class="t">${esc(t)}</span><span class="n">${nf(l)}</span><span class="l">${cod(n)}</span></button>`;
+    /* etapa 23 · Q2: o nome do estágio no botão em caixa normal («Em cotação»), como os outros rótulos; siglas ficam em maiúsculas. Na lista e nos
+       filtros o status continua como o servidor manda */
+    const frase = s => { const t = String(s || "").toLowerCase().replace(/\b(cit|pn|oem|erp)\b/g, m => m.toUpperCase()); return t.charAt(0).toUpperCase() + t.slice(1); };
+    const apoio = (n, l, extra = "") => [extra, n !== l ? cod(n) : (extra ? "" : "itens")].filter(Boolean).join(", ");
+    const botaoEstagio = (v, t, n, l, cls = "", extra = "") => `<button type="button" data-est="${esc(v)}" class="${cls}" aria-pressed="${estagio(F.get()) === v}" title="${nf(l)} item(ns), ${cod(n)}"><span class="t">${esc(t)}</span><span class="n">${nf(l)}</span><span class="l">${apoio(n, l, extra)}</span></button>`;
     const desenharLinhas = () => {
       const atual = fc.linha;
-      $("#rlin").innerHTML = fc.familias.map(x => `<button type="button" data-lin="${esc(x.v)}" aria-pressed="${x.v === atual}" title="${nf(x.l)} itens em andamento · ${cod(x.n)}"><span class="t">${esc(x.t)}</span><span class="n">${nf(x.l)}</span></button>`).join("");
+      $("#rlin").innerHTML = fc.familias.map(x => `<button type="button" data-lin="${esc(x.v)}" aria-pressed="${x.v === atual}" title="${nf(x.l)} itens em andamento, ${cod(x.n)}"><span class="t">${esc(x.t)}</span><span class="n">${nf(x.l)}</span></button>`).join("");
     };
     const desenharEstagios = () => {
       const est = [...fc.esteira].sort((a, b) => STATUS_ORDEM.indexOf(a.v) - STATUS_ORDEM.indexOf(b.v)), rec = est.find(x => x.v === RECEBIDO);
       $("#rest").innerHTML = botaoEstagio(ANDAMENTO, "Em andamento", fc.andamento.n, fc.andamento.l, "soma") +
-        est.filter(x => x.v !== RECEBIDO).map(x => botaoEstagio(x.v, x.v, x.n, x.l)).join("") +
-        (rec ? botaoEstagio(RECEBIDO, "Item recebido", rec.n, rec.l, "fim") : "") + botaoEstagio(TODOS, "Todos", fc.total, fc.lines);
+        est.filter(x => x.v !== RECEBIDO).map(x => botaoEstagio(x.v, frase(x.v), x.n, x.l)).join("") +
+        (rec ? botaoEstagio(RECEBIDO, "Item recebido", rec.n, rec.l, "fim", "fim do ciclo") : "") + botaoEstagio(TODOS, "Todos", fc.total, fc.lines);
     };
     const desenharSubs = () => {
       const s = F.get(), grupos = fc.subs.filter(g => g.values.length && !MAIS_SUBS.includes(g.key));
-      $("#rsubt").textContent = `contagem em «${nomeEstagio(estagio(s))}» · itens (códigos) · clique para filtrar · negociação e vendas em «Mais filtros»`;
       $("#rsub").innerHTML = grupos.length ? grupos.map(g => `<div class="psd-sub"><h4>${esc(g.label)}</h4>${g.values.map(x => { const v = `${g.key}:${x.f || x.v}`, on = s.sub === v;
-        return `<button type="button" data-sub="${esc(v)}" aria-pressed="${on}" ${!x.l && !on ? 'class="zero"' : ""} title="${nf(x.l)} item(ns) · ${cod(x.n)}"><i class="psd-sd ${tom(x.v)}"></i><span class="v">${esc(x.v)}</span><span class="n">${nf(x.l)}</span><span class="l">${nf(x.n)} cód.</span></button>`; }).join("")}</div>`).join("")
+        return `<button type="button" data-sub="${esc(v)}" aria-pressed="${on}" ${!x.l && !on ? 'class="zero"' : ""} title="${nf(x.l)} item(ns), ${cod(x.n)}"><i class="psd-sd ${tom(x.v)}"></i><span class="v">${esc(x.v)}</span><span class="n">${nf(x.l)}</span><span class="l">${nf(x.n)} cód.</span></button>`; }).join("")}</div>`).join("")
         : `<div class="text-sm text-mute">Nenhum sub status neste estágio.</div>`;
-    };
-    const desenharKpis = () => {
-      const rec = fc.esteira.find(x => x.v === RECEBIDO) || { n: 0, l: 0 }, a = fc.andamento;
-      $("#rk").innerHTML = kpi(k === "des" ? "Em desenvolvimento" : "Em redesenvolvimento", nf(a.l), `itens em andamento · ${cod(a.n)}`, "blue") +
-        kpi("Curtidos ▲", nf(a.curtidos_l), a.l ? `${nf(100 * a.curtidos_l / a.l, 0)}% dos itens em andamento` : "", "green") +
-        kpi("Pendente compras", nf(fc.flags.pend_compras || 0), "códigos · atalho na barra de filtros", "amber") +
-        kpi("Item recebido", nf(rec.l), `${cod(rec.n)} · fim do ciclo`, "slate");
     };
 
     const carregar = async () => {
@@ -105,7 +100,7 @@
       $("#rt").innerHTML = `<div class="rounded-2xl border border-line bg-card px-5 py-8 text-sm text-mute">Carregando…</div>`;
       try {
         const d = await J(`/api/rd/${k}?` + qs), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(s).filter(x => x !== "ordem" && x !== "linha").length;
-        $("#rmeta").innerHTML = `<b class="text-ink">${nf(d.linhas)}</b> item(ns) · ${cod(d.total)} em «${esc(nomeEstagio(estagio(s)))}» · ${esc(linNome(fc.linha))}${fc.marca !== "TODAS" ? ` · marca ${esc(fc.marca)}` : ""}${ativos ? ` · ${ativos} filtro(s) ativo(s)` : ""}`;
+        $("#rmeta").innerHTML = `<b class="text-ink">${nf(d.linhas)}</b> item(ns)${d.total !== d.linhas ? ` (${cod(d.total)})` : ""} em «${esc(nomeEstagio(estagio(s)))}», ${esc(linNome(fc.linha))}${fc.marca !== "TODAS" ? `, marca ${esc(fc.marca)}` : ""}${ativos ? `, ${ativos} filtro(s) ativo(s)` : ""}`;
         const cols = [{ h: "Código" }, { h: "Curtidas" }, { h: "Status" }, { h: "Sub status", nw: false }, { h: "Aplic.", r: true }, { h: "FOB (US$)" }, { h: "Descrição" },
           { h: "Montadora(s)" }, { h: "Veículo(s)" }, { h: "Fornecedor" }, { h: "Amostra" }, { h: "Catálogo" }, { h: "Desenho" }];
         $("#rt").innerHTML = TW.table(cols, d.rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="${k}" data-code="${esc(r.code)}">${esc(r.code)}</a>`,
@@ -131,7 +126,7 @@
     $("#rsub").addEventListener("click", e => { const b = e.target.closest("[data-sub]"); if (!b) return; const v = b.dataset.sub; aplicar({ sub: F.get().sub === v ? "" : v }, true); });
     $("#rp").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; carregar(); scrollTo(0, 0); } });
 
-    const facetas = async () => { const s = F.get(), st = estagio(s); fc = await J(`/api/rd/${k}/facets?` + new URLSearchParams({ status: st === TODOS ? "" : st, linha: s.linha || "", marca: s.marca || "" })); desenharKpis(); };
+    const facetas = async () => { const s = F.get(), st = estagio(s); fc = await J(`/api/rd/${k}/facets?` + new URLSearchParams({ status: st === TODOS ? "" : st, linha: s.linha || "", marca: s.marca || "" })); };          // etapa 23 · Q4: sem a fileira de KPIs (repetia os estágios; «Curtidos» e «Pendente compras» são atalhos da barra)
     facetas().then(() => aplicar(null, true)).catch(fail);
   }
   PSD.tela("desenvolvimento", () => rdPage("des"));

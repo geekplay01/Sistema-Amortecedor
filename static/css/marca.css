@@ -39,6 +39,8 @@
   /* no escuro as cores da marca clareiam para ler sobre o card (#141A28) sem perder o tom */
   --chart-1:#8EA8F0;--chart-2:#7DD3F5;--chart-3:#F8B547;--chart-4:#F47B86;--chart-5:#3DD6A0;--chart-6:#B39CFA;--chart-7:#A5B1C6;
 }
+/* etapa 23 · Q7: a faixa inclinada do logo (paralelogramo) — o único destaque de marca nas telas: marca o que está selecionado */
+:root{--inc:polygon(0 0,100% 0,45% 100%,0 100%)}
 html,body{background:var(--bg);color:var(--tx)}
 h1,h2,h3,.ptitle,.dh h2,.font-display{font-family:var(--fontd)}
 :where(main,.top) a{color:var(--t-blue-600)}
@@ -61,13 +63,13 @@ h1,h2,h3,.ptitle,.dh h2,.font-display{font-family:var(--fontd)}
 .nav-brand .nav-sub{display:flex;align-items:center;gap:10px;font:600 11px/1 var(--fontd);letter-spacing:.32em;color:#AEB9D6}
 .nav-search{width:100%;border-radius:10px;border:1px solid rgb(255 255 255/.12);background:rgb(255 255 255/.06);padding:8px 12px;font-size:14px;color:#fff;outline:none}
 .nav-search::placeholder{color:#8F9BBD}.nav-search:focus{border-color:var(--pf-sky)}
-.nav-title{padding:12px 8px 4px;font:600 11px/1.2 var(--fontd);letter-spacing:.14em;text-transform:uppercase;color:#8F9BBD}
+.nav-title{padding:12px 8px 4px;font:600 12.5px/1.2 var(--fontd);color:#9AA6C6}
 button.nav-title{display:flex;width:100%;align-items:center;justify-content:space-between;background:none;border:0;cursor:pointer}
 button.nav-title:hover{color:#DCE3F5}
 .nav-item{position:relative;display:flex;align-items:center;gap:12px;border-radius:10px;padding:8px 12px;font-size:13.5px;color:var(--navy-tx);text-decoration:none;transition:background-color .15s,color .15s}
 .nav-item:hover{background:var(--navy-2);color:#fff}
 .nav-item.is-cur{background:var(--navy-3);color:#fff;font-weight:600}
-.nav-item.is-cur::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:var(--pf-sky)}
+.nav-item.is-cur::before{content:"";position:absolute;left:-12px;top:6px;bottom:6px;width:8px;background:var(--pf-sky);clip-path:var(--inc)}
 .nav-item.big{padding:9px 12px;font-size:14px;font-weight:500}
 .nav-ibox{display:flex;width:32px;height:32px;flex-shrink:0;align-items:center;justify-content:center;border-radius:9px;background:rgb(255 255 255/.07)}
 .nav-item.is-cur .nav-ibox{background:var(--pf-sky);color:var(--navy)}
@@ -90,12 +92,11 @@ main .ptitle{font:700 28px/1.15 var(--fontd);letter-spacing:-.01em;color:var(--t
 main .bg-card.border{box-shadow:var(--shadow)}
 .psd-kpi{position:relative;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:var(--card);padding:18px 20px 16px;box-shadow:var(--shadow);container-type:inline-size}
 .psd-kpi .kpi-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.psd-kpi .kpi-label{font:600 12px/1.3 var(--fontd);letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.psd-kpi .kpi-label{font:600 13px/1.3 var(--fontd);color:var(--mut)}
 .psd-kpi .kpi-val{margin-top:10px;font:700 30px/1 var(--fontd);font-size:clamp(22px,14cqi,30px);color:var(--tx);overflow-wrap:normal;word-break:keep-all;font-variant-numeric:tabular-nums}          /* etapa 22: o número encolhe no cartão estreito em vez de quebrar no meio («R$ 25.467.64|8»); só quebra no espaço */
 .psd-kpi .kpi-sub{margin-top:8px;font-size:13.5px;color:var(--mut)}
-.psd-kpi::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--kpi-acc,var(--b500))}
-.psd-kpi.acc-green{--kpi-acc:var(--ok)}.psd-kpi.acc-red{--kpi-acc:var(--pf-red)}.psd-kpi.acc-amber{--kpi-acc:var(--pf-orange)}.psd-kpi.acc-slate{--kpi-acc:var(--line)}.psd-kpi.acc-sky{--kpi-acc:var(--pf-sky)}
-.psd-tbl thead th{background:var(--thead)!important;color:var(--mut);font-family:var(--fontd);font-size:12px;letter-spacing:.06em}
+.psd-kpi.acc-red .kpi-val{color:var(--t-red-600)}.psd-kpi.acc-amber .kpi-val{color:var(--t-amber-700)}          /* etapa 23: sem a linha colorida embaixo; só alerta muda a cor do número */
+.psd-tbl thead th{background:var(--thead)!important;color:var(--mut);font-family:var(--fontd);font-size:13px;letter-spacing:0}
 .psd-tbl tbody tr:nth-child(even){background:var(--zebra)}
 .psd-tbl tbody tr:hover{background:var(--hover)}
 .psd-tbl td{height:36px}
@@ -147,7 +148,7 @@ dialog.psd-confirm .c-acts{display:flex;justify-content:flex-end;gap:8px;padding
    onde ele era FUNDO com texto branco, volta o azul da marca */
 [data-theme="dark"]{--cobalt:#8FA9EE;--sh2:0 2px 4px rgb(0 0 0/.35),0 14px 32px -12px rgb(0 0 0/.6)}
 [data-theme="dark"] .relchip.here{background:var(--b600);border-color:var(--b600)}
-[data-theme="dark"] .uavatar,[data-theme="dark"] .avatar-lg{background:linear-gradient(135deg,var(--b600),#6D4FD8)}
+[data-theme="dark"] .uavatar,[data-theme="dark"] .avatar-lg{background:var(--b600)}
 .btn,[data-theme] .btn{display:inline-flex;align-items:center;gap:8px;background:var(--b600);border:1px solid var(--b600);color:#fff;border-radius:10px;box-shadow:none;font:600 14px/1.2 var(--font);padding:9px 16px;min-height:40px;text-decoration:none;filter:none;transform:none}
 .btn:hover,[data-theme] .btn:hover{background:var(--b700);border-color:var(--b700);filter:none;transform:none;box-shadow:none}
 .btn.ghost,[data-theme] .btn.ghost{background:var(--card);color:var(--tx);border:1px solid var(--line)}
@@ -167,7 +168,6 @@ dialog.psd-confirm .c-acts{display:flex;justify-content:flex-end;gap:8px;padding
 .tbl tbody tr:nth-child(even) td{background:var(--zebra)}
 .badge.ok{color:var(--t-emerald-600)}.badge.warn{color:var(--t-amber-700);background:color-mix(in srgb,var(--pf-orange) 14%,transparent)}.badge.bad{color:var(--t-red-600)}
 .badge.new{background:var(--b500);color:#fff}
-.cards.compactc .card::before{background:linear-gradient(90deg,var(--pf-sky),var(--b500))}
 /* etapa 21 (revisão de design): cartão de atalho zerado recua — sem a faixa colorida e com o número apagado */
 .cards .card.zero{box-shadow:none}.cards .card.zero::before{opacity:0}.cards .card.zero .num{color:var(--mut)}.cards .card.zero b{color:var(--mut)}
 .card .num,.cards .num{font-family:var(--fontd)}
@@ -218,11 +218,13 @@ a.psd-btn{text-decoration:none}.psd-btn.prim .psd-ico{color:#fff}
 .psd-seg button{height:32px;padding:0 13px!important;border-radius:999px;font-size:13px;font-weight:600;color:var(--mut)}
 .psd-seg button:hover{color:var(--tx)}
 .psd-seg.sm{height:32px;padding:2px}.psd-seg.sm button{height:26px;padding:0 11px!important;font-size:12px}
-.psd-seg button[aria-pressed=true]{background:var(--navy)!important;color:#fff}
+.psd-seg button{position:relative;overflow:hidden}
+.psd-seg button[aria-pressed=true]{background:var(--navy)!important;color:#fff;padding-left:19px!important}
+.psd-seg button[aria-pressed=true]::before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--pf-sky);clip-path:var(--inc)}
 [data-theme=dark] .psd-seg button[aria-pressed=true]{background:var(--b600)!important}
 .psd-mais{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:14px 22px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
 .psd-mais-g.largo{grid-column:1/-1}
-.psd-mais-g .t{margin-bottom:6px;font:600 11px/1.2 var(--fontd);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.psd-mais-g .t{margin-bottom:6px;font:600 13px/1.25 var(--fontd);color:var(--mut)}
 .psd-chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px!important;border:1px solid var(--line)!important;border-radius:999px;font-size:12px;font-weight:600;color:var(--tx)}
 .psd-chip:hover{background:var(--hover)!important}.psd-chip .n{color:var(--mut);font-weight:500}
 .psd-chip[aria-pressed=true]{background:var(--b600)!important;border-color:var(--b600)!important;color:#fff}.psd-chip[aria-pressed=true] .n{color:#DCE6FF}
@@ -233,9 +235,9 @@ main input[type=search]:not(.psd-search *){border-radius:999px!important;min-hei
 .psd-dot.ok{background:#22C55E}.psd-dot.atrasar{background:var(--pf-orange)}.psd-dot.vencida{background:var(--pf-red)}.psd-dot.parado{background:#94A3B8}
 #pvn .psd-dot{width:9px;height:9px;margin:0 3px 0 8px}
 .psd-pvt th,.psd-pvt td{padding:9px 14px;white-space:nowrap;text-align:left}.psd-pvt th.text-right,.psd-pvt td.text-right{text-align:right}
-.psd-pvt th{font-family:var(--fontd);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
-.psd-pvbar{display:block;width:120px;height:7px;border-radius:999px;background:color-mix(in srgb,var(--pf-red) 10%,var(--thead));overflow:hidden}
-.psd-pvbar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--pf-red),var(--pf-orange))}
+.psd-pvt th{font-family:var(--fontd);font-size:13px;font-weight:600;color:var(--mut)}
+.psd-pvbar{display:block;width:120px;height:7px;border-radius:999px;background:var(--thead);overflow:hidden}
+.psd-pvbar i{display:block;height:100%;border-radius:999px;background:var(--pf-orange)}
 /* célula editável (Cobertura · «Nosso código», etapa 19 · Q7) */
 .psd-ed{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}.psd-ed.nw{flex-wrap:nowrap;white-space:nowrap}
 .psd-ed-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;color:var(--mut);opacity:.35;transition:opacity .15s,background .15s}
@@ -256,9 +258,9 @@ tr:hover .psd-ed-btn,.psd-ed-btn:focus-visible{opacity:1}.psd-ed-btn:hover{backg
 .psd-sug-o b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 .psd-sug-o span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);font-size:12px}
 .psd-sug-o:hover,.psd-sug-o.on{background:var(--hover)}.psd-sug-o.on{box-shadow:inset 3px 0 var(--b500)}
-.psd-opt-g{padding:10px 10px 4px;font:600 11px/1.2 var(--fontd);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.psd-opt-g{padding:10px 10px 4px;font:600 13px/1.25 var(--fontd);color:var(--mut)}
 .psd-atalhos{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-.psd-atalhos .t{margin-right:4px;font:600 11px/1.2 var(--fontd);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.psd-atalhos .t{margin-right:4px;font:600 13px/1.25 var(--fontd);color:var(--mut)}
 .psd-chip.forte{border-color:var(--pf-orange)!important;background:color-mix(in srgb,var(--pf-orange) 10%,transparent)!important}
 .psd-chip.forte[aria-pressed=true]{background:var(--b600)!important;border-color:var(--b600)!important}
 .psd-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
@@ -277,19 +279,19 @@ tr:hover .psd-ed-btn,.psd-ed-btn:focus-visible{opacity:1}.psd-ed-btn:hover{backg
 .psd-pamp i{display:block;height:100%;background:color-mix(in srgb,var(--b500) 75%,transparent)}
 .psd-pamp.lg{display:inline-block;width:64px;margin:0 8px 0 0;vertical-align:middle}
 /* DES / R-D (etapa 20 · Q4): esteira dos estágios (sem setas; clicar filtra) e quadro dos sub status do servidor */
-.psd-est{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:8px}
-.psd-est button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:78px;padding:11px 14px!important;border:1px solid var(--line)!important;border-radius:14px;background:var(--card)!important;text-align:left;box-shadow:var(--shadow);transition:border-color .15s,background .15s}
-.psd-est button:hover{border-color:color-mix(in srgb,var(--b500) 55%,var(--line))!important}
-.psd-est .t{font:600 11px/1.25 var(--fontd);letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.psd-est{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:0;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+.psd-est button{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:84px;padding:13px 16px 12px!important;border:0!important;border-radius:0;background:transparent!important;text-align:left;box-shadow:-1px 0 0 var(--line),0 -1px 0 var(--line);transition:background .15s}
+.psd-est button:hover{background:var(--hover)!important}
+.psd-est .t{font:600 13px/1.25 var(--fontd);color:var(--mut)}
 .psd-est .n{font:700 24px/1.1 var(--fontd);color:var(--tx);font-variant-numeric:tabular-nums}
 .psd-est .l{font-size:12px;color:var(--mut)}
-.psd-est button.soma{background:color-mix(in srgb,var(--b500) 7%,var(--card))!important}
-.psd-est button.fim{box-shadow:inset 0 -3px 0 var(--ok),var(--shadow)}
-.psd-est button[aria-pressed=true]{border-color:var(--b600)!important;background:var(--b600)!important}
-.psd-est button[aria-pressed=true] :is(.t,.n,.l){color:#fff}
+.psd-est button.fim .n{color:var(--t-emerald-600)}
+.psd-est button[aria-pressed=true]{background:color-mix(in srgb,var(--b500) 9%,var(--card))!important}
+.psd-est button[aria-pressed=true] .t{color:var(--tx)}
+.psd-est button[aria-pressed=true]::before{content:"";position:absolute;left:0;top:0;bottom:0;width:9px;background:var(--pf-sky);clip-path:var(--inc)}
 .psd-subs{display:grid;grid-template-columns:repeat(auto-fill,minmax(18rem,1fr));gap:10px}
 .psd-sub{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:10px 8px 8px}
-.psd-sub h4{margin:0 8px 6px;font:600 11px/1.2 var(--fontd);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.psd-sub h4{margin:0 8px 6px;font:600 13px/1.25 var(--fontd);color:var(--mut)}
 .psd-sub button{display:flex;width:100%;align-items:center;gap:8px;padding:6px 8px!important;border-radius:9px;text-align:left;font-size:12.5px;color:var(--tx)}
 .psd-sub button:hover{background:var(--hover)!important}
 .psd-sub .v{flex:1;min-width:0;font-weight:600}
@@ -305,11 +307,35 @@ tr:hover .psd-ed-btn,.psd-ed-btn:focus-visible{opacity:1}.psd-ed-btn:hover{backg
 .psd-linha .t{font-family:inherit;font-size:13.5px;font-weight:600;line-height:1;letter-spacing:0;text-transform:none;color:var(--tx)}
 .psd-linha .n{font:700 12.5px/1 var(--fontd);min-width:2.2em;padding:5px 8px;border-radius:999px;text-align:center;background:color-mix(in srgb,var(--mut) 14%,transparent);color:var(--tx)}
 .psd-linha .l{display:none}
-.psd-linha button[aria-pressed=true]{background:var(--b600)!important}
+.psd-linha button{position:relative;overflow:hidden}
+.psd-linha button[aria-pressed=true]{background:var(--b600)!important;padding-left:20px!important}
+.psd-linha button[aria-pressed=true]::before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--pf-sky);clip-path:var(--inc)}
+.psd-linha button[aria-pressed=true] .t{color:#fff}
 .psd-linha button[aria-pressed=true] .n{background:rgba(255,255,255,.18);color:#fff}
 .psd-sd{flex:none;width:8px;height:8px;border-radius:999px;background:var(--pf-orange)}.psd-sd.ok{background:var(--ok)}.psd-sd.no{background:var(--pf-red)}
 .psd-sublist{display:flex;min-width:22rem;max-width:30rem;flex-wrap:wrap;gap:4px}
 .psd-sublist span{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:color-mix(in srgb,var(--mut) 12%,transparent);font-size:11.5px;font-weight:600;color:var(--tx);white-space:nowrap}
+
+/* ---------- etapa 23 (revisão de design, maquete aprovada em 24/11/2026) ----------
+   Q2 rótulo em caixa normal (.psd-rot) · Q4 números numa faixa única, divididos por linhas finas (o contêiner dos KPIs vira uma superfície só)
+   · Q5 atalhos do Dashboard em lista de duas colunas · Q6 sem degradê, sem «pulo» no hover */
+.psd-rot{font:600 13px/1.3 var(--fontd);color:var(--mut);letter-spacing:0;text-transform:none}
+:is(.tbl th,.ng-h,.fg h5,.fgroup h5,.set-nav small,.relside small,.flowx .st small){text-transform:none!important;letter-spacing:0!important;font-family:var(--fontd);font-size:13px!important;font-weight:600}
+div:has(>.psd-kpi,>a>.psd-kpi):not(:has(>:not(.psd-kpi,a))){gap:0;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+div:has(>.psd-kpi,>a>.psd-kpi):not(:has(>:not(.psd-kpi,a)))>:is(.psd-kpi,a){border:0;border-radius:0;box-shadow:-1px 0 0 var(--line),0 -1px 0 var(--line)}
+div:has(>.psd-kpi,>a>.psd-kpi):not(:has(>:not(.psd-kpi,a)))>a>.psd-kpi{border:0;border-radius:0;box-shadow:none;height:100%;background:transparent}
+div:has(>.psd-kpi,>a>.psd-kpi):not(:has(>:not(.psd-kpi,a)))>a:hover{background:var(--hover)}
+.card:hover{transform:none}
+.cards.psd-atl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;padding:4px 0;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.cards.psd-atl .card{display:grid;grid-template-columns:4.5rem 1fr;gap:2px 14px;align-items:baseline;padding:10px 18px!important;border:0;border-radius:0;background:transparent;box-shadow:0 -1px 0 var(--line);overflow:visible}
+.cards.psd-atl .card::before{content:none}
+.cards.psd-atl .card:nth-child(-n+2){box-shadow:none}
+.cards.psd-atl .card:hover{background:var(--hover);box-shadow:0 -1px 0 var(--line)}
+.cards.psd-atl .card .num{grid-row:1/3;font:700 21px/1.1 var(--fontd)!important;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+.cards.psd-atl .card b{font-size:13.5px;font-weight:600;color:var(--t-blue-600)}
+.cards.psd-atl .card small{grid-column:2;font-size:12px!important;color:var(--mut)}
+.cards.psd-atl .card.zero .num,.cards.psd-atl .card.zero b{color:var(--mut);font-weight:600}
+@media (max-width:768px){.cards.psd-atl{grid-template-columns:1fr}.cards.psd-atl .card:nth-child(2){box-shadow:0 -1px 0 var(--line)}}
 
 /* ---------- mapa do Brasil (tela Garantia, etapa 18): estados clicáveis, rótulos que não roubam o clique, amostras da legenda ---------- */
 .psd-mapa path{cursor:pointer;outline:none;transition:opacity .15s}

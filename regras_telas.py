@@ -20,7 +20,9 @@ def _des_rd(c, tipo):
             "<b>Chave de linha</b>: a FAMILIA do servidor — Amortecedor (padrão), Amortecedor de moto ou Linha pesada. É o que o sistema PERFECT usa.",
             "<b>Itens</b> = linhas do servidor (cada ID), como o sistema PERFECT conta; a lista agrupa por <b>código</b> (um código pode ter várias aplicações) e mostra os dois números.",
             marca,
-            "Abre <b>em andamento</b>: o que ainda não é ITEM RECEBIDO. Os estágios trocam o recorte; «Todos» tira o filtro.",
+            "Abre <b>em andamento</b>: o que ainda não é ITEM RECEBIDO. Os estágios trocam o recorte; «Todos» tira o filtro. Cada estágio mostra os itens e, "
+            "quando diferem, os códigos; o quadro de sub status conta dentro do estágio escolhido e clicar num sub status filtra a lista.",
+            "«Curtidos» e «Pendente compras» ficam nos atalhos da barra de filtros.",
             "Item <b>bloqueado ou inativo no ERP</b> (ESTOQUE_ANALISE_REPOSICAO) sai das listas e contadores — por isso o número pode ficar um abaixo do sistema PERFECT. As metas não mudam.",
             "<b>Sub status</b>: só o que o servidor manda, por coluna; um valor composto («A / B») conta em cada parte. Validação aprovada, reprovada e pendente qualidade ficam sempre no quadro. "
             "Negociação e vendas" + (" e «Pendente controladoria» (o texto CONTROLADORIA em qualquer status)" if tipo == "des" else "") + " ficam em «Mais filtros».",

@@ -28,9 +28,9 @@
       $("#bg").innerHTML = lista.map(b => { const on = b.brand === cur, det = [["Catálogo", b.catalog], ["DES", b.des], ["R-D", b.rd], ["Base", b.base], ["Pend. compras", b.pend_compras]].filter(x => x[1]);
         return `<button type="button" data-b="${b.brand}" aria-pressed="${on}" class="relative overflow-hidden rounded-2xl border bg-card p-4 text-left shadow-sm ${on ? "border-blue-500 ring-2 ring-blue-500/40" : "border-line hover:bg-slate-500/10"}">
           <span class="absolute inset-x-0 top-0 h-1" style="background:${BC[b.brand]}"></span>
-          <div class="text-xs font-semibold uppercase tracking-wide text-mute">${esc(nome(b.brand))}</div>
+          <div class="psd-rot">${esc(nome(b.brand))}</div>
           <div class="mt-2 text-2xl font-bold leading-none tabular-nums text-ink">${nf(c[b.brand])}</div>
-          <div class="mt-1 text-xs text-mute">${filtrado() ? `com os filtros · de ${nf(b.total)}` : esc(b.rule)}</div>
+          <div class="mt-1 text-xs text-mute">${filtrado() ? `com os filtros, de ${nf(b.total)}` : esc(b.rule)}</div>
           ${det.length ? `<div class="mt-2 flex flex-wrap gap-1">${det.map(([l, n]) => `<span class="rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-mute">${l} ${nf(n)}</span>`).join("")}</div>` : ""}</button>`; }).join("");
     };
     /* barra (etapa 19 · Q6): a marca é escolhida nos cartões; Onde está e Controle à vista (listas com contagem) */
@@ -48,7 +48,7 @@
     };
     const tabela = () => {
       const s = F.get(), cur = marca(), n = ["q", "scope", "flag"].filter(k => s[k]).length;
-      $("#bm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns) ${esc(nome(cur))}${d.fora_base ? ` · inclui <b class="text-amber-700">${nf(d.fora_base)}</b> PN Ford fora da base (não contam no cartão)` : ""}${n ? ` · ${n} filtro(s) ativo(s)` : ""}`;
+      $("#bm").innerHTML = `<b class="text-ink">${nf(d.total)}</b> item(ns) ${esc(nome(cur))}${d.fora_base ? `, inclui <b class="text-amber-700">${nf(d.fora_base)}</b> PN Ford fora da base (não contam no cartão)` : ""}${n ? `, ${n} filtro(s) ativo(s)` : ""}`;
       $("#bt").innerHTML = TW.table([{ h: "Código" }, { h: "Código PERFECT" }, { h: "Descrição" }, { h: "Veículo / aplicação" }, { h: "Onde está" }, { h: "Controle de status", nw: false }, { h: "Desenho" }, { h: "Amostras", r: true }],
         d.rows.map(i => [
           i.catalog && i.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${i.product_id}">${esc(i.code)}</a>` : i.des || i.rd ? `<a href="#" class="font-semibold text-blue-600" data-rd="${i.des ? "des" : "rd"}" data-code="${esc(i.code)}">${esc(i.code)}</a>` : `<b class="text-ink">${esc(i.code)}</b>`,

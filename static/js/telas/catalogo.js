@@ -9,16 +9,16 @@
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
   const botao = "rounded-lg border border-line bg-card px-3.5 py-2 text-sm font-semibold text-ink hover:bg-slate-500/10";
   const primario = "rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700";
-  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` · ${nf(n)}` : ""}</button>`;
+  const chip = (attrs, label, on, n, forte = false) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : forte ? "border-amber-500 bg-amber-500/10 text-ink hover:bg-amber-500/20" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}${n != null ? ` ${nf(n)}` : ""}</button>`;
   const selectF = (name, rotulo, opts, cur, cls = "max-w-[13rem]") => `<select name="${name}" class="${campo} ${cls}" title="${esc(rotulo)}"><option value="">${esc(rotulo)}</option>${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur ?? "") ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
   const textoF = (name, ph, cur, cls = "") => `<input name="${name}" type="search" value="${esc(cur || "")}" placeholder="${esc(ph)}" class="${campo} ${cls}">`;
-  const rotulo = t => `<span class="mr-1 text-xs font-semibold uppercase tracking-wide text-mute">${t}</span>`;
+  const rotulo = t => `<span class="mr-1 psd-rot">${t}</span>`;
   const ficha = (id, code) => `<a href="#" class="font-semibold text-blue-600" data-ficha="${id}">${esc(code)}</a>`;
   const meio = '<span class="text-mute">–</span>';
   const pager = (pg, pages) => { const b = (p, dis, l) => `<button type="button" data-p="${p}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${dis ? "disabled" : ""}>${l}</button>`;
     return pages > 1 ? `${b(pg - 1, pg < 2, "‹")} Página ${pg} de ${pages} ${b(pg + 1, pg >= pages, "›")}` : ""; };
   const metaLinha = (total, nome, F, pg, xlsx) => { const n = Object.keys(F.get()).filter(k => k !== "tab").length;
-    return `<span><b class="text-ink">${nf(total)}</b> ${nome}${n ? ` · ${n} filtro(s) ativo(s)` : ""}</span>${xlsx ? `<a class="${primario}" href="${xlsx}">⬇ Baixar Excel</a>` : ""}`; };
+    return `<span><b class="text-ink">${nf(total)}</b> ${nome}${n ? `, ${n} filtro(s) ativo(s)` : ""}</span>${xlsx ? `<a class="${primario}" href="${xlsx}">⬇ Baixar Excel</a>` : ""}`; };
 
   // ================= Aplicações =================
   const EIXO = { dianteiro: "Dianteiro", traseiro: "Traseiro" }, LADO = { direito: "Direito", esquerdo: "Esquerdo", ambos: "Ambos" };
@@ -75,7 +75,7 @@
   // ================= Comparação =================
   const LINHAS = [["Descrição", p => p.description], ["Grupo", p => p.catalog_group], ["Família", p => p.family], ["Sistema", p => SYS[p.system_type]],
     ["Lmin (mm)", p => p.dimensions?.lmin_mm], ["Lmax (mm)", p => p.dimensions?.lmax_mm], ["Curso (mm)", p => p.dimensions?.stroke_mm], ["Ø haste (mm)", p => p.dimensions?.rod_diameter_mm], ["Corpo (mm)", p => p.dimensions?.body_length_mm], ["Ø tubo (mm)", p => p.dimensions?.tube_diameter_mm],
-    ["Fixação superior", p => p.dimensions?.upper_mount], ["Fixação inferior", p => p.dimensions?.lower_mount], ["Peso (kg)", p => p.weight_kg], ["EAN", p => p.ean], ["Caixa", p => [p.package_code, p.box?.raw_dims].filter(Boolean).join(" · ")],
+    ["Fixação superior", p => p.dimensions?.upper_mount], ["Fixação inferior", p => p.dimensions?.lower_mount], ["Peso (kg)", p => p.weight_kg], ["EAN", p => p.ean], ["Caixa", p => [p.package_code, p.box?.raw_dims].filter(Boolean).join(", ")],
     ["Códigos OEM", p => p.codes.filter(c => c.code_type === "oem").map(c => c.code).join(", ")], ["Códigos de fornecedor", p => [...new Set(p.codes.filter(c => c.code_type === "fornecedor").map(c => c.code))].join(", ")],
     ["Aplicações", p => p.applications.length ? p.applications.length + ": " + p.applications.slice(0, 4).map(a => [a.make, a.model, yr(a)].filter(Boolean).join(" ")).join("; ") : ""],
     ["Nº Inmetro", p => [...new Set(p.certificates.map(c => c.inmetro_number).filter(Boolean))].join(", ")],
@@ -103,7 +103,7 @@
       const vis = linhas.filter(r => !so || r.dif);
       $("#cout").innerHTML = (ps.length > 1 ? notice(difs.length ? `<b>${nf(difs.length)} campo(s) diferem:</b> ${difs.map(esc).join(", ")}. «—» = sem dado.` : "Nenhuma diferença nos campos comparados.", difs.length ? "amber" : "blue") : notice("Adicione mais um produto para ver as diferenças.", "blue"))
         + `<div class="mt-3 overflow-x-auto rounded-xl border border-line bg-card"><table class="w-full border-collapse text-sm"><thead><tr class="border-b border-line"><th class="sticky left-0 z-10 bg-card px-4 py-3"></th>${ps.map(p => `<th class="min-w-[12rem] px-4 py-3 text-left align-top">${ficha(p.id, p.perfect_code)}<span class="mt-1 block text-xs font-normal text-mute">${esc(p.description || "")}</span></th>`).join("")}</tr></thead>
-          <tbody class="divide-y divide-line">${vis.length ? vis.map(r => `<tr class="${r.dif ? "bg-amber-500/10" : ""}"><th class="sticky left-0 z-10 whitespace-nowrap bg-card px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-mute">${r.dif ? "● " : ""}${r.l}</th>${r.v.map(x => `<td class="px-4 py-2.5 align-top text-ink">${esc(x) || meio}</td>`).join("")}</tr>`).join("")
+          <tbody class="divide-y divide-line">${vis.length ? vis.map(r => `<tr class="${r.dif ? "bg-amber-500/10" : ""}"><th class="sticky left-0 z-10 whitespace-nowrap bg-card px-4 py-2.5 text-left psd-rot">${r.dif ? "● " : ""}${r.l}</th>${r.v.map(x => `<td class="px-4 py-2.5 align-top text-ink">${esc(x) || meio}</td>`).join("")}</tr>`).join("")
             : `<tr><td class="px-4 py-10 text-center text-mute" colspan="${ps.length + 1}">Nenhuma diferença para mostrar.</td></tr>`}</tbody></table></div>`;
     };
     const carregar = async () => { try { const l = ids(); ps = l.length ? await J("/api/compare?ids=" + l.join(",")) : []; desenhar(); } catch (e) { $("#cout").innerHTML = notice(esc(e.message), "red"); } };
@@ -162,7 +162,7 @@
       <div class="flex flex-wrap items-center gap-2"><b class="text-base">${ficha(e.product_a, e.a_code)} <span class="text-mute">×</span> ${ficha(e.product_b, e.b_code)}</b>${badge("Confiança " + e.confidence, CF[e.confidence])}${badge(ST[e.status]?.[0] || e.status, ST[e.status]?.[1])}
         <a class="ml-auto text-sm font-semibold text-blue-600" href="/comparacao?ids=${e.product_a},${e.product_b}">Comparar lado a lado →</a></div>
       <div class="mt-3 flex items-center gap-3"><div class="h-2 flex-1 rounded-full bg-slate-500/15"><div class="h-2 rounded-full ${{ Alta: "bg-emerald-500", "Média": "bg-amber-500" }[e.confidence] || "bg-red-500"}" title="Cor = confiança (diferença crítica, como lados opostos, rebaixa a confiança mesmo com pontuação alta)" style="width:${Math.max(0, Math.min(100, e.score))}%"></div></div><span class="text-sm font-semibold tabular-nums text-ink">${nf(e.score)}%</span></div>
-      <p class="mb-0 mt-2 text-xs text-mute">${esc(e.a_desc || "")} · ${esc(e.b_desc || "")}</p>
+      <p class="mb-0 mt-2 text-xs text-mute">${esc(e.a_desc || "")}, ${esc(e.b_desc || "")}</p>
       <div class="mt-2 flex flex-wrap gap-1">${e.criteria.map(x => badge(x, "green")).join(" ")}${e.differences.map(x => badge(x, "red")).join(" ")}${e.missing.map(x => badge(x, "amber")).join(" ")}</div>
       <div class="mt-3 flex flex-wrap items-center gap-2"><span class="text-xs text-mute">Fontes: ${esc(e.sources || "–")}</span><span class="ml-auto inline-flex overflow-hidden rounded-lg border border-line">${[["pendente", "Pendente"], ["aprovada", "Aprovar"], ["rejeitada", "Rejeitar"]].map(([s, l]) =>
         `<button type="button" data-eq="${e.id}" data-s="${s}" aria-pressed="${e.status === s}" class="px-3 py-1.5 text-sm font-semibold ${e.status === s ? "bg-blue-600 text-white" : "bg-card text-ink hover:bg-slate-500/10"}">${l}</button>`).join("")}</span></div></article>`;

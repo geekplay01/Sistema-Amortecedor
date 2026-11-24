@@ -213,3 +213,13 @@ ETAPA 22 — 24/11/2026 (decisões em DECISOES_ETAPA22.md, regras em REGRAS_DE_N
 
  DEPOIS DE ATUALIZAR PARA A ETAPA 22 (uma vez, no banco real)
  1. Reenvie a tabela FOB (a mesma planilha serve): só assim os preços que faltavam entram no banco.
+
+ETAPA 23 — 24/11/2026 (decisões em DECISOES_ETAPA23.md, regras de visual no DESIGN.md)
+ - Revisão de design para tirar a «cara de IA» (skill frontend-design):
+   - rótulos em letra normal, não mais em CAIXA ALTA;
+   - números do topo das telas numa faixa só;
+   - Desenvolvimento e Redesenvolvimento sem os cartões que repetiam os estágios;
+   - atalhos do Dashboard em lista, com os zerados no fim;
+   - sem degradês, e textos sem o «·» emendando informações.
+ - O que está selecionado (estágio, item do menu, opção do seletor) leva a faixa inclinada azul-claro do logo.
+ - Feche e abra o app (iniciar.bat) para carregar o visual novo.
