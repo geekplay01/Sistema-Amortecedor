@@ -116,6 +116,8 @@ tabela: `<b>N</b> item(ns), k filtro(s) ativo(s)`.
 - **Sugestões ao digitar**: use `<input list="id">` + `<datalist id="id">` e preencha o datalist; o `tw.js` troca a lista nativa (que segue a cor
   do Windows, não o tema) pela `.psd-sug` do app — ↑/↓ marcam, Enter usa a marcada, Esc fecha. Não desenhe lista de sugestão própria na tela.
 - Campos de busca ficam sem o histórico do navegador (`autocomplete=off`, posto pelo `tw.js` ao focar).
+- **Busca rápida da tela inicial** (`#quick-results`, `app.js`): mesmo visual da `.psd-sug` (fundo do cartão, cores do tema, ↑/↓/Enter/Esc), selos
+  como no Brands (Catálogo azul, DESENVOLVIMENTO violeta, REDESENVOLVIMENTO verde); só a resposta da última busca é desenhada (etapa 23).
 - **Célula editável** (`.psd-ed` + lápis `.psd-ed-btn`, `PSDTW.editarCodigos`): Cobertura («Nosso código») e Brands («Código PERFECT»). Enter salva,
   Esc cancela, aviso com «Desfazer»; o que foi mudado no app ganha selo laranja («corrigido», «vinculado no app»). `.psd-ed.nw` não quebra linha.
 
@@ -135,6 +137,7 @@ repinta. Verde só para «atingido».
 ## 7. Movimento
 
 - Entrada da tela 0,18 s (fade + 4 px); troca de tela por View Transition (o menu fica parado); toasts 0,2 s; hover 0,15 s.
+- Botão de tema (etapa 23): o ícone que entra gira e cresce em 0,35 s (sol gira, lua balança); as cores da página trocam na hora.
 - Nada de animação em número ou tabela. A única animação longa é a da tela inicial (13 s em ciclo, pausa fora da tela).
 - `prefers-reduced-motion: reduce` desliga tudo (`marca.css`, fim do arquivo); a animação inicial fica parada, em pé.
 

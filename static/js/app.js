@@ -37,13 +37,26 @@
     if (burger) burger.addEventListener("click", () => set(!side.classList.contains("open"))); if (scrim) scrim.addEventListener("click", () => set(false));
     document.addEventListener("keydown", e => { if (e.key === "Escape") set(false); }); if (side) side.addEventListener("click", e => { if (e.target.closest("a[data-nav]")) set(false); }); }
   const q = $("#quick"), list = $("#quick-results");
-  if (q) { let timer;
+  if (q) { let timer, seq = 0, sel = -1;
+    /* etapa 23: só a resposta da última busca é desenhada; ↑/↓ marcam, Enter abre a marcada, Esc fecha (como as sugestões .psd-sug) */
+    const itens = () => [...list.querySelectorAll("a")];
+    const marcar = i => { const a = itens(); sel = a.length ? (i + a.length) % a.length : -1; a.forEach((x, k) => x.classList.toggle("on", k === sel)); if (a[sel]) a[sel].scrollIntoView({ block: "nearest" }); };
     q.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(async () => {
-      if (q.value.trim().length < 2) { list.innerHTML = ""; return; }
+      const meu = ++seq;
+      if (q.value.trim().length < 2) { list.innerHTML = ""; sel = -1; return; }
       const r = await fetchJSON("/api/quick-search?q=" + encodeURIComponent(q.value));
-      list.innerHTML = r.length ? r.map(p => `<li><a href="${esc(p.url)}"><span class="tag ${p.kind === "Catálogo" ? "cat" : p.kind.replace("-", "")}">${esc(p.kind)}</span> <b>${esc(p.code)}</b> ${esc(p.text || "")}</a></li>`).join("")
-                                : "<li>Nenhum resultado no catálogo nem em DES / R-D.</li>";
+      if (meu !== seq) return;
+      sel = -1;
+      list.innerHTML = r.length ? r.map(p => `<li><a href="${esc(p.url)}"><span class="tag ${p.kind === "Catálogo" ? "cat" : p.kind.replace("-", "")}">${esc(p.kind)}</span><b>${esc(p.code)}</b><span class="d">${esc(p.text || "")}</span></a></li>`).join("")
+                                : '<li class="vazio">Nenhum resultado no catálogo nem em DES / R-D.</li>';
     }, 250); });
+    q.addEventListener("keydown", e => {
+      const a = itens();
+      if (e.key === "ArrowDown" && a.length) { e.preventDefault(); marcar(sel + 1); }
+      else if (e.key === "ArrowUp" && a.length) { e.preventDefault(); marcar(sel - 1); }
+      else if (e.key === "Enter" && a[sel]) { e.preventDefault(); location.href = a[sel].href; }
+      else if (e.key === "Escape" && list.innerHTML) { e.preventDefault(); seq++; list.innerHTML = ""; sel = -1; }
+    });
   }
 })();
 
@@ -85,7 +98,8 @@ window.psdTheme = {
   set(t) { document.documentElement.setAttribute("data-theme", t); try { localStorage.setItem("psd-theme", t); } catch (e) { } document.dispatchEvent(new CustomEvent("psd-theme", { detail: t })); },
   toggle() { this.set(this.get() === "dark" ? "light" : "dark"); }
 };
-document.addEventListener("click", e => { if (e.target.closest("#themebtn")) psdTheme.toggle(); });
+document.addEventListener("click", e => { const b = e.target.closest("#themebtn"); if (!b) return; psdTheme.toggle();
+  b.classList.remove("gira"); void b.offsetWidth; b.classList.add("gira"); b.addEventListener("animationend", () => b.classList.remove("gira"), { once: true }); });   // etapa 23: o ícone que entra gira (marca.css)
 
 
 // ---- chip de sincronização (topo direito): data da última sincronização com o servidor SQL ----

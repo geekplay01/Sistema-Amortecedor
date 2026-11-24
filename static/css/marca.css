@@ -337,6 +337,26 @@ div:has(>.psd-kpi,>a>.psd-kpi):not(:has(>:not(.psd-kpi,a)))>a:hover{background:v
 .cards.psd-atl .card.zero .num,.cards.psd-atl .card.zero b{color:var(--mut);font-weight:600}
 @media (max-width:768px){.cards.psd-atl{grid-template-columns:1fr}.cards.psd-atl .card:nth-child(2){box-shadow:0 -1px 0 var(--line)}}
 
+/* etapa 23 · tela inicial: sugestões da busca rápida no tema (antes: fundo azul-marinho do menu nos dois temas, texto escuro sobre escuro no claro).
+   Mesmo visual da .psd-sug; selos como no Brands: Catálogo azul, DESENVOLVIMENTO violeta, REDESENVOLVIMENTO verde */
+.results{max-width:520px;max-height:300px;overflow:auto;margin:6px 0 20px;padding:6px;list-style:none;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--tx);box-shadow:0 12px 32px rgba(15,23,42,.16)}
+[data-theme=dark] .results{box-shadow:0 12px 32px rgba(0,0,0,.45)}
+.results li{padding:0;border:0}.results li:hover{background:none}
+.results li.vazio{padding:8px 10px;color:var(--mut);font-size:13px}
+.results a{display:flex;align-items:baseline;gap:8px;padding:7px 10px;border-radius:9px;font-size:13px;color:var(--tx);text-decoration:none}
+.results a:hover,.results a.on{background:var(--hover)}.results a.on{box-shadow:inset 3px 0 var(--b500)}
+.results a b{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.results a .d{min-width:0;color:var(--mut);font-size:12.5px}
+.results .tag{flex:none;align-self:center;padding:1px 7px;border-radius:7px;font-size:10.5px;font-weight:700;letter-spacing:0;color:var(--t-blue-600);background:color-mix(in srgb,var(--b500) 12%,transparent);border:0}
+.results .tag.DESENVOLVIMENTO{color:var(--t-violet-600);background:color-mix(in srgb,var(--t-violet-600) 12%,transparent)}
+.results .tag.REDESENVOLVIMENTO{color:var(--t-emerald-600);background:color-mix(in srgb,var(--t-emerald-600) 12%,transparent)}
+/* etapa 23: ao trocar o tema, o ícone que entra gira e cresce (sol gira, lua balança), 0,35 s; «reduzir movimento» desliga (fim do arquivo) */
+.themebtn svg{transform-origin:50% 50%}
+@keyframes psd-tema-sol{from{transform:rotate(-120deg) scale(.3);opacity:0}to{transform:none;opacity:1}}
+@keyframes psd-tema-lua{0%{transform:rotate(45deg) scale(.3);opacity:0}60%{transform:rotate(-14deg) scale(1.08);opacity:1}100%{transform:none;opacity:1}}
+.themebtn.gira .i-sun{animation:psd-tema-sol .35s cubic-bezier(.2,.8,.2,1)}
+.themebtn.gira .i-moon{animation:psd-tema-lua .35s cubic-bezier(.2,.8,.2,1)}
+
 /* ---------- mapa do Brasil (tela Garantia, etapa 18): estados clicáveis, rótulos que não roubam o clique, amostras da legenda ---------- */
 .psd-mapa path{cursor:pointer;outline:none;transition:opacity .15s}
 .psd-mapa path:hover,.psd-mapa path:focus-visible{opacity:.78}

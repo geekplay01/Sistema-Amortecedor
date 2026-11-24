@@ -33,3 +33,13 @@ Pedido: «quero uma skill para melhorar o design do projeto, para tirar a cara d
 - [x] `marca.css`: rótulos, faixa de KPIs, estágios, atalhos, faixa inclinada, sem degradê. `tw.js`: KPI e cabeçalho de tabela. Telas: 25 arquivos sem «·» em texto de tela.
 - [x] Desenvolvimento/Redesenvolvimento sem a fileira de KPIs; Dashboard com a lista de atalhos (`app.CARDS` reordenado; zerados no fim por `app.js`).
 - [x] Conferido na cópia (porta 5055): 27 telas sem erro de JavaScript e sem rótulo em caixa alta; Dashboard, Desenvolvimento (clique no estágio filtra e marca), Pedidos em Aberto e Vendas no claro e no escuro. Suíte 4/4 verde; graphify atualizado.
+
+## Ajuste (24/11/2026) — busca rápida da tela inicial e ícone de tema
+
+| # | Pergunta | Decisão |
+|---|---|---|
+| Q1 | Lista de sugestões da tela inicial (azul-marinho do menu nos dois temas; texto escuro sobre escuro no claro) | Mesmo visual da `.psd-sug`, no tema; selos como no Brands |
+| Q2 | Teclado | ↑/↓ marcam, Enter abre, Esc fecha; só a resposta da última busca é desenhada |
+| Q3 | Animação do ícone de tema | O ícone que entra gira e cresce, 0,35 s; só o ícone; «reduzir movimento» desliga |
+
+- [x] Conferido na cópia: lista branca no claro e `#141A28` no escuro, ↓↓ marca o 2º item; ícone anima nos dois sentidos (`psd-tema-sol` / `psd-tema-lua`).
