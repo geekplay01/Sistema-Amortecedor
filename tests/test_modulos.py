@@ -750,6 +750,11 @@ class UniversoDesRd(_TmpDB):
         self.assertEqual((fr["R2"]["item"]["preco"], fr["R2"]["item"]["fonte"]), (9.5, "planilha"))
         self.assertEqual([c["fornecedor"] for c in fr["R2"]["comparar"]], ["XGM", "E-WIN"])
         self.assertEqual(rd.items(R, {"all": 1, "q": "R1"})["rows"][0]["fob"]["item"]["preco"], 6.9)
+        import fob_merge                                                     # aba FOB (3ª rodada Q3): sem busca só o catálogo; com busca, também os itens só de DES/R-D
+        self.assertEqual(fob_merge.listing()["total"], 0)
+        self.assertEqual(sorted((r["perfect_code"], r["des"], r["rd"]) for r in fob_merge.listing("amortecedor")["rows"]),
+                         [("D1", True, False), ("D3", True, False), ("R1", False, True), ("R2", False, True)])
+        self.assertEqual((fob_merge.listing("R1", "com")["total"], fob_merge.listing("R1", "sem")["total"]), (0, 1))
 
     def test_familia_do_servidor_marca_e_itens_por_linha(self):
         """Etapa 21: a FAMILIA decide a linha (amortecedor · moto · pesada), mesmo com LINHA «AMORTECEDOR»; DES padrão = marca PERFECT (ou vazia);

@@ -262,24 +262,36 @@ window.PSD_EXEC = ctx => {
           msg = TW.notice(`FOB importado: <b>${nf(r.itens_fob)}</b> itens (de ${nf(r.linhas_fob)} linhas; ${nf(r.codigo_como_chave || 0)} pelo próprio código AMD, ${nf(r.via_relativo || 0)} pelo item PERFECT relativo, ${nf(r.sem_partnumber)} sem código PERFECT, ${nf(r.partnumber_repetido)} repetidos juntados). <b>${nf(r.com_fob)}</b> produtos receberam FOB; ${nf(r.sem_fob)} ficaram sem; ${nf(r.fob_sem_produto)} itens do FOB não existem no catálogo.`, "blue"); upload(); load(); }
         catch (er) { msg = TW.notice(esc(er.message), "red"); upload(); } };
     };
+    // etapa 22 · 3ª rodada: só a resposta da ÚLTIMA busca é desenhada (as antigas chegavam depois e tomavam o lugar), e a barra de busca é desenhada uma vez
+    // só — a resposta troca os cartões e a tabela, não o que está sendo digitado.
+    let seq = 0, casca = false;
     const load = async () => {
-      try { d = await J("/api/fob?" + new URLSearchParams({ q: st.q, filtro: st.filtro, page: st.page, size: 100 }).toString()); } catch (e) { return fail(e); }
-      if (!d.available) { $("#fbody").innerHTML = TW.empty("Nenhuma tabela FOB importada ainda. Envie a planilha acima."); return; }
+      const meu = ++seq; if (casca) $("#ftab").style.opacity = .5;
+      let r; try { r = await J("/api/fob?" + new URLSearchParams({ q: st.q, filtro: st.filtro, page: st.page, size: 100 }).toString()); } catch (e) { if (meu === seq) { if (casca) $("#ftab").style.opacity = 1; fail(e); } return; }
+      if (meu !== seq) return;
+      d = r;
+      if (!d.available) { casca = false; $("#fbody").innerHTML = TW.empty("Nenhuma tabela FOB importada ainda. Envie a planilha acima."); return; }
+      if (!casca) {
+        $("#fbody").innerHTML = `<div class="flex flex-col gap-6"><div id="fkpi" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"></div>
+          ${TW.card("FOB por produto", `<div class="mb-4 flex flex-wrap items-center gap-3"><div class="min-w-[220px] flex-1">${TW.input("fq", "Buscar código, descrição ou código do fornecedor…")}</div>${TW.select("ff", [["", "Todos"], ["com", "Só com FOB"], ["sem", "Só sem FOB"]], st.filtro)}${TW.btn("fcsv", "Exportar página (CSV)")}</div><div id="ftab"></div>`)}</div>`;
+        const fq = $("#fq"); fq.value = st.q; fq.oninput = debounce(e => { st.q = e.target.value.trim(); st.page = 1; load(); }, 300);
+        $("#ff").onchange = e => { st.filtro = e.target.value; st.page = 1; load(); };
+        $("#fcsv").onclick = () => TW.csv(TW.nome("FOB (preços de compra)"), ["codigo", "descricao", "fob", "fob_ewin", "fob_zs", "fob_xgm", "melhor_fornecedor", "origem", "data", "cod_fornecedor", "fora_do_catalogo"], d.rows.map(r => [r.perfect_code, r.description, r.fob, r.fob_ewin, r.fob_zs, r.fob_xgm, r.fob_fornecedor, r.fob_origem, r.fob_data, r.fob_cod_fornecedor, [r.des && "DES", r.rd && "R-D"].filter(Boolean).join(" / ")]));
+        casca = true;
+      }
       const S = d.summary, pages = Math.max(1, Math.ceil(d.total / d.size));
-      $("#fbody").innerHTML = `<div class="flex flex-col gap-6"><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi("Produtos do catálogo", nf(S.catalogo), `${nf(S.itens_fob)} itens na tabela FOB`, "blue")}${TW.kpi("Com FOB", nf(S.com_fob), `${nf(S.catalogo ? 100 * S.com_fob / S.catalogo : 0, 0)}% do catálogo`, "green")}
-        ${TW.kpi("Sem FOB", nf(S.sem_fob), "produtos sem preço na tabela", S.sem_fob ? "amber" : "green")}${TW.kpi("FOB médio", S.fob_medio == null ? "–" : "US$ " + money(S.fob_medio), `importado em ${dmy(S.carregado_em)} · ${nf(S.fob_sem_produto)} do FOB fora do catálogo`, "slate")}</div>
-        ${TW.card("FOB por produto", `<div class="mb-4 flex flex-wrap items-center gap-3"><div class="min-w-[220px] flex-1">${TW.input("fq", "Buscar código, descrição ou código do fornecedor…")}</div>${TW.select("ff", [["", "Todos"], ["com", "Só com FOB"], ["sem", "Só sem FOB"]], st.filtro)}${TW.btn("fcsv", "Exportar página (CSV)")}</div>
-          ${TW.table([{ h: "Código" }, { h: "Descrição", nw: false }, { h: "FOB mín. (US$)", r: 1 }, { h: "Melhor preço" }, { h: "E-WIN", r: 1 }, { h: "ZS", r: 1 }, { h: "XGM", r: 1 }, { h: "Cód. fornecedor" }],
+      $("#fkpi").innerHTML = `${TW.kpi("Produtos do catálogo", nf(S.catalogo), `${nf(S.itens_fob)} itens na tabela FOB`, "blue")}${TW.kpi("Com FOB", nf(S.com_fob), `${nf(S.catalogo ? 100 * S.com_fob / S.catalogo : 0, 0)}% do catálogo`, "green")}
+        ${TW.kpi("Sem FOB", nf(S.sem_fob), "produtos sem preço na tabela", S.sem_fob ? "amber" : "green")}${TW.kpi("FOB médio", S.fob_medio == null ? "–" : "US$ " + money(S.fob_medio), `importado em ${dmy(S.carregado_em)} · ${nf(S.fob_sem_produto)} do FOB fora do catálogo`, "slate")}`;
+      const tab = $("#ftab"); tab.style.opacity = 1;
+      tab.innerHTML = `${TW.table([{ h: "Código" }, { h: "Descrição", nw: false }, { h: "FOB mín. (US$)", r: 1 }, { h: "Melhor preço" }, { h: "E-WIN", r: 1 }, { h: "ZS", r: 1 }, { h: "XGM", r: 1 }, { h: "Cód. fornecedor" }],
             d.rows.map(r => { const v = [r.fob_ewin, r.fob_zs, r.fob_xgm].filter(x => x != null), mn = v.length ? Math.min(...v) : null;
               const cel = x => x == null ? "–" : Math.abs(x - mn) < 1e-9 ? `<span class="psd-fob-min" title="Melhor preço">${money(x)}</span>` : money(x);          // etapa 22 · Q6: o menor em verde (empate: os dois)
-              return [`<b>${esc(r.perfect_code)}</b>`, esc(r.description || ""), r.fob == null ? TW.badge("sem FOB", "amber") : `<b>${money(r.fob)}</b>`,
+              const fora = [r.des && TW.badge("DES", "violet"), r.rd && TW.badge("R-D", "green")].filter(Boolean).join(" ");   // item só de DES/R-D (fora do catálogo), achado pela busca
+              return [`<b>${esc(r.perfect_code)}</b>${fora ? " " + fora : ""}`, esc(r.description || ""), r.fob == null ? TW.badge("sem FOB", "amber") : `<b>${money(r.fob)}</b>`,
                 r.fob_fornecedor ? `${String(r.fob_fornecedor).split(" / ").map(f => TW.badge(f, FORN[f] || "slate")).join(" ")} ${esc(r.fob_origem || "")} ${r.fob_data ? dmy(r.fob_data) : ""}` : "–",
                 cel(r.fob_ewin), cel(r.fob_zs), cel(r.fob_xgm), esc(r.fob_cod_fornecedor || "–")]; }))}
-          <div class="mt-3 flex items-center justify-between text-sm text-mute"><span>${nf(d.total)} produto(s) · página ${d.page} de ${pages}</span>${pages > 1 ? `<span class="flex gap-2">${TW.btn("fpv", "‹ Anterior")}${TW.btn("fnx", "Próxima ›")}</span>` : ""}</div>`)}</div>`;
-      const fq = $("#fq"); fq.value = st.q; fq.oninput = debounce(e => { st.q = e.target.value.trim(); st.page = 1; load().then(() => { const x = $("#fq"); x.focus(); x.setSelectionRange(x.value.length, x.value.length); }); }, 350);
-      $("#ff").onchange = e => { st.filtro = e.target.value; st.page = 1; load(); };
+          <div class="mt-3 flex items-center justify-between text-sm text-mute"><span>${nf(d.total)} produto(s) · página ${d.page} de ${pages}</span>${pages > 1 ? `<span class="flex gap-2">${TW.btn("fpv", "‹ Anterior")}${TW.btn("fnx", "Próxima ›")}</span>` : ""}</div>`;
       if (pages > 1) { $("#fpv").disabled = d.page <= 1; $("#fnx").disabled = d.page >= pages; $("#fpv").onclick = () => { st.page--; load(); }; $("#fnx").onclick = () => { st.page++; load(); }; }
-      $("#fcsv").onclick = () => TW.csv(TW.nome("FOB (preços de compra)"), ["codigo", "descricao", "fob", "fob_ewin", "fob_zs", "fob_xgm", "melhor_fornecedor", "origem", "data", "cod_fornecedor"], d.rows.map(r => [r.perfect_code, r.description, r.fob, r.fob_ewin, r.fob_zs, r.fob_xgm, r.fob_fornecedor, r.fob_origem, r.fob_data, r.fob_cod_fornecedor]));
     };
     upload(); load();
   }

@@ -56,6 +56,7 @@ def read_fob(src, relativo=None):
     if relativo:
         for i in chave.index[chave.eq("") & cod_k.ne("")]:
             r = relativo(cod_k[i])
+            r = str(r or '').strip().upper()
             if r and r not in proprios: chave[i] = r; via_rel[i] = True
     d = pd.DataFrame({"codigo": chave, "fob_ewin": s("ewin").map(money), "fob_zs": s("zs").map(money), "fob_xgm": s("xgm").map(money),
                       "fob_cod_fornecedor": cod.where(cod.ne(""), None), "minimo": s("min").map(money)})
@@ -122,22 +123,33 @@ def apply_to_db(path):
     return {**rep, **rep2}
 
 def listing(q=None, filtro="", page=1, size=100):
-    """Tela FOB: produtos do CATÁLOGO com o FOB importado (US$). filtro: '' todos · 'com' só com FOB · 'sem' só sem FOB."""
+    """Tela FOB: produtos do CATÁLOGO com o FOB importado (US$). filtro: '' todos · 'com' só com FOB · 'sem' só sem FOB.
+    Com busca, entram também os itens da tabela FOB que só existem em DES/R-D (fora do catálogo), com des/rd marcados (etapa 22 · 3ª rodada Q3).
+    fob_prices.codigo é gravado em maiúsculo e sem espaços (read_fob), então o join usa a chave primária (antes: upper(trim()) dos dois lados, ≈ 1,8 s)."""
+    import kinds
     from queries import q as Q, q1
     try: meta = q1("SELECT COUNT(*) n, MAX(loaded_at) at FROM fob_prices")
     except Exception: return {"available": False}
     if not meta or not meta["n"]: return {"available": False}
-    w, p = ["p.catalog_position IS NOT NULL"], {}
-    if filtro == "com": w.append("f.fob IS NOT NULL")
-    elif filtro == "sem": w.append("f.fob IS NULL")
-    for i, t in enumerate((q or "").split()): w.append(f"(p.perfect_code LIKE :t{i} OR p.description LIKE :t{i} OR f.fob_cod_fornecedor LIKE :t{i})"); p[f"t{i}"] = f"%{t}%"
-    size = max(10, min(int(size or 100), 500)); page = max(1, int(page or 1)); W = " AND ".join(w)
-    base = "FROM products p LEFT JOIN fob_prices f ON upper(trim(f.codigo))=upper(trim(p.perfect_code)) WHERE " + W
-    tot = q1("SELECT COUNT(*) n " + base, p)["n"]
-    rows = Q("SELECT p.id, p.perfect_code, p.description, f.fob, f.fob_ewin, f.fob_zs, f.fob_xgm, f.fob_fornecedor, f.fob_origem, f.fob_data, f.fob_cod_fornecedor " + base + f" ORDER BY (f.fob IS NULL), p.catalog_position LIMIT {size} OFFSET {(page - 1) * size}", p)
-    k = q1("SELECT COUNT(*) n, SUM(f.fob IS NOT NULL) c, AVG(f.fob) m FROM products p LEFT JOIN fob_prices f ON upper(trim(f.codigo))=upper(trim(p.perfect_code)) WHERE p.catalog_position IS NOT NULL")
+    J = "LEFT JOIN fob_prices f ON f.codigo=upper(trim(p.perfect_code))"
+    F = "f.fob, f.fob_ewin, f.fob_zs, f.fob_xgm, f.fob_fornecedor, f.fob_origem, f.fob_data, f.fob_cod_fornecedor"
+    termos = (q or "").split(); p = {f"t{i}": f"%{x}%" for i, x in enumerate(termos)}
+    filtro_sql = {"com": ["f.fob IS NOT NULL"], "sem": ["f.fob IS NULL"]}.get(filtro, [])
+    w = ["p.catalog_position IS NOT NULL", *filtro_sql, *(f"(p.perfect_code LIKE :t{i} OR p.description LIKE :t{i} OR f.fob_cod_fornecedor LIKE :t{i})" for i in range(len(termos)))]
+    sql = f"SELECT p.id, p.perfect_code, p.description, {F}, p.catalog_position pos, 0 des, 0 rd FROM products p {J} WHERE " + " AND ".join(w)
+    if termos:
+        p.update(kd=kinds.SLUG["des"], kr=kinds.SLUG["rd"])
+        we = ["f.codigo NOT IN (SELECT upper(trim(perfect_code)) FROM products WHERE catalog_position IS NOT NULL)", *filtro_sql,
+              *(f"(f.codigo LIKE :t{i} OR r.descr LIKE :t{i} OR f.fob_cod_fornecedor LIKE :t{i})" for i in range(len(termos)))]
+        sql += (f" UNION ALL SELECT NULL, f.codigo, r.descr, {F}, NULL, r.des, r.rd FROM fob_prices f JOIN (SELECT upper(trim(code)) c, MAX(description) descr,"
+                " MAX(suggestion=:kd) des, MAX(suggestion=:kr) rd FROM rd_projects GROUP BY 1) r ON r.c=f.codigo WHERE " + " AND ".join(we))
+    size = max(10, min(int(size or 100), 500)); page = max(1, int(page or 1))
+    tot = q1(f"SELECT COUNT(*) n FROM ({sql})", p)["n"]
+    rows = Q(f"SELECT * FROM ({sql}) ORDER BY (fob IS NULL), (pos IS NULL), pos, perfect_code LIMIT {size} OFFSET {(page - 1) * size}", p)
+    for r in rows: r["des"], r["rd"] = bool(r["des"]), bool(r["rd"]); r.pop("pos", None)
+    k = q1(f"SELECT COUNT(*) n, SUM(f.fob IS NOT NULL) c, AVG(f.fob) m FROM products p {J} WHERE p.catalog_position IS NOT NULL")
     return {"available": True, "total": tot, "page": page, "size": size, "rows": rows, "summary": {"catalogo": k["n"], "com_fob": int(k["c"] or 0), "sem_fob": k["n"] - int(k["c"] or 0), "fob_medio": round(k["m"], 2) if k["m"] else None,
-            "itens_fob": meta["n"], "carregado_em": meta["at"], "fob_sem_produto": q1("SELECT COUNT(*) n FROM fob_prices f WHERE NOT EXISTS(SELECT 1 FROM products p WHERE upper(trim(p.perfect_code))=upper(trim(f.codigo)))")["n"]}}
+            "itens_fob": meta["n"], "carregado_em": meta["at"], "fob_sem_produto": q1("SELECT COUNT(*) n FROM fob_prices WHERE codigo NOT IN (SELECT upper(trim(perfect_code)) FROM products)")["n"]}}
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Left join: produtos x FOB"); ap.add_argument("produtos"); ap.add_argument("fob"); ap.add_argument("-o", "--saida", default="produtos_com_fob.xlsx"); ap.add_argument("--chave", default="codigo")

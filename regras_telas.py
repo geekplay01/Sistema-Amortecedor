@@ -67,6 +67,8 @@ def lista():
                                            "Item em várias linhas: os fornecedores se juntam, cada um com o seu menor preço.",
                                            "<b>FOB = o menor valor</b> entre E-WIN, ZS e XGM, e o «Melhor preço» é o fornecedor desse valor (empate: os dois), em verde — mesmo quando o "
                                            "«Mínimo» da planilha indica outro. Origem e data só quando a planilha indica esse mesmo fornecedor. Sem preço por fornecedor vale o «Mínimo».",
+                                           "A lista mostra os produtos do catálogo. A busca acha também os itens da tabela FOB que só existem em DES/R-D, "
+                                           "marcados «DES» e/ou «R-D»; códigos da planilha que não são PERFECT nem DES/R-D não aparecem.",
                                            "Reenviar a tabela substitui a anterior."]),
         ("cobertura", "Cobertura de concorrentes", [
             "<b>Catálogo</b>: só itens do catálogo; referência pela regra dos concorrentes (CrossCatalogo; o servidor quando a planilha não tem o item); OEM fora. Curva ABC pelas vendas dos 12 meses fechados (A até 80%, B até 95%).",

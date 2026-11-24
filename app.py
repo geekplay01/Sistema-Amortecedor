@@ -93,14 +93,25 @@ def inject():
 @app.get("/api/regras-telas")
 def api_regras_telas(): return jsonify(regras_telas.lista())          # etapa 21: os textos de regra das telas ficam em Configurações › Regras das telas
 
-_cnt = {"t": 0, "v": {}}
+_memo = {}
+def _ate_o_banco_mudar(nome, f, *chave):
+    """Etapa 22: guarda o resultado até o banco mudar (qualquer gravação: sincronização, importação ou edição no app) ou o dia virar.
+    Antes o menu recalculava a cada 20 s e o Dashboard a cada abertura (≈ 0,6 s e 1,6 s no banco real)."""
+    import datetime
+    k = (db.versao(), datetime.date.today(), *chave); m = _memo.get((nome, *chave))
+    if m and m[0] == k: return m[1]
+    v = f(); _memo[(nome, *chave)] = (k, v); return v
+
+def _menu_counts():
+    return _ate_o_banco_mudar("menu", lambda: {"envio": queries.q1("SELECT COUNT(*) n FROM sample_shipments WHERE status='pendente_projeto'")["n"], "amostras": purchases.pending({})["summary"]["total"],
+                                               "pendencias": queries.q1("SELECT COUNT(*) n FROM pendencies WHERE status='aberta'")["n"]})
 @app.get("/api/menu/counts")
-def api_menu_counts():
-    import time
-    if time.time() - _cnt["t"] > 20:   # contadores do menu (cache curto)
-        _cnt["v"] = {"envio": queries.q1("SELECT COUNT(*) n FROM sample_shipments WHERE status='pendente_projeto'")["n"], "amostras": purchases.pending({})["summary"]["total"],
-                     "pendencias": queries.q1("SELECT COUNT(*) n FROM pendencies WHERE status='aberta'")["n"]}; _cnt["t"] = time.time()
-    return jsonify(_cnt["v"])
+def api_menu_counts(): return jsonify(_menu_counts())
+
+def _aquecer():
+    """Calcula menu e Dashboard antes de alguém abrir (ao iniciar o app e ao fim de cada sincronização): a 1ª abertura já sai do cache."""
+    try: _menu_counts(); _dashboard()
+    except Exception: pass
 
 @app.get("/favicon.ico")
 def favicon():
@@ -251,7 +262,7 @@ def api_brand_items(brand): return jsonify(brands.items(brand.upper(), request.a
 def api_brand_link():
     """Etapa 22: liga um item de outra marca aos códigos PERFECT relativos (conjunto completo; vazio = sem relação). Body: code, codigos. → {anterior, codigos}"""
     d = request.get_json(force=True) or {}
-    try: return jsonify(brands.vincular(d.get("code"), d.get("codigos") or [], auth.current_user()))
+    try: return jsonify(brands.vincular(d.get("code"), d.get("codigos") or [], (auth.current_user() or {}).get("username")))
     except ValueError as e: return jsonify(error=str(e)), 400
 @app.post("/api/brands/vinculo/desfazer")
 def api_brand_link_undo():
@@ -344,7 +355,7 @@ def api_cobertura_cross():
     de/para (troca um código) ou codigos (conjunto completo). → {anterior, codigos} — «anterior» serve para o «Desfazer»."""
     import cobertura
     d = request.get_json(force=True) or {}
-    try: return jsonify(cobertura.corrigir(d.get("concorrente"), d.get("referencia") or "", d.get("de"), d.get("para"), d.get("codigos"), auth.current_user()))
+    try: return jsonify(cobertura.corrigir(d.get("concorrente"), d.get("referencia") or "", d.get("de"), d.get("para"), d.get("codigos"), (auth.current_user() or {}).get("username")))
     except ValueError as e: return jsonify(error=str(e)), 400
 @app.post("/api/cobertura/cross/desfazer")
 def api_cobertura_cross_undo():
@@ -512,7 +523,7 @@ def vendor_plotly():
 
 # ---- Servidor SQL: sincronização, status e histórico ----
 def _after_sync(result):
-    try: shipments.sync(); goals.ensure(); _cnt["t"] = 0
+    try: shipments.sync(); goals.ensure(); _aquecer()
     except Exception: pass
 @app.get("/api/pipeline/status")
 def api_pipe_status(): return jsonify(data_pipeline.status())
@@ -549,7 +560,7 @@ def api_settings_set():
         except (TypeError, ValueError): v = 0
         if not 30 <= v <= 720: return jsonify(error="Meta de lead time inválida (use de 30 a 720 dias; padrão 180 = 6 meses)."), 400
         rules.set_setting("leadtime_meta_dias", str(v), u)
-    db.rebuild_flags_view(); _cnt["t"] = 0
+    db.rebuild_flags_view(); _memo.clear()
     return jsonify(only_description=rules.only_desc(), goal_valid_user=rules.valid_user(), goal_basis=rules.goal_basis(), leadtime_meta_dias=__import__("leadtime").meta_dias())
 
 # ---- Metas e validações ----
@@ -578,14 +589,19 @@ def api_val_send():
 def api_val_undo(vid): goals.undo_validation(vid); return jsonify(ok=True)
 
 # ---- Dashboard, vendas e estoque ----
+def _dashboard(y=""):
+    def calc():
+        funnel, fl, tot = {}, {}, {}
+        for k in (kinds.DES, kinds.RD):       # cada barra do funil = itens distintos no status = total da lista DES/R-D com ?status= (test_24)
+            fc = rd.facets(k); rank = data_pipeline.STATUS_RANK
+            funnel[k] = sorted([{"status": r["v"], "n": r["n"]} for r in fc["status"]], key=lambda r: rank.get(r["status"], -1)); fl[k] = fc["flags"]; tot[k] = fc["total"]
+        return dict(stats=db.stats(), goals=goals.progress(y or None), funnel=funnel, flags=fl, totals=tot, sales=analytics.sales_summary(), stock=analytics.stock_summary(),
+                    system=queries.q("SELECT coalesce(system_type,'nd') s, COUNT(*) n FROM products GROUP BY 1"))
+    return _ate_o_banco_mudar("dashboard", calc, y or "")
 @app.get("/api/dashboard")
 def api_dashboard():
-    y = request.args.get("year"); funnel, fl, tot = {}, {}, {}
-    for k in (kinds.DES, kinds.RD):       # cada barra do funil = itens distintos no status = total da lista DES/R-D com ?status= (test_24)
-        fc = rd.facets(k); rank = data_pipeline.STATUS_RANK
-        funnel[k] = sorted([{"status": r["v"], "n": r["n"]} for r in fc["status"]], key=lambda r: rank.get(r["status"], -1)); fl[k] = fc["flags"]; tot[k] = fc["total"]
-    return jsonify(stats=db.stats(), goals=goals.progress(y), tracking=goals.tracking_info(), funnel=funnel, flags=fl, totals=tot, sales=analytics.sales_summary(), stock=analytics.stock_summary(), pipeline=data_pipeline.status(),
-                   groups=statuses.public(), system=queries.q("SELECT coalesce(system_type,'nd') s, COUNT(*) n FROM products GROUP BY 1"))
+    # pipeline (sincronização em curso) e rastreio são lidos na hora: mudam sem gravar no banco
+    return jsonify(**_dashboard(request.args.get("year") or ""), tracking=goals.tracking_info(), pipeline=data_pipeline.status(), groups=statuses.public())
 @app.get("/api/analytics/sales")
 def api_sales(): return jsonify(analytics.sales_summary(int(request.args.get("months") or 12), int(request.args.get("top") or 10)))
 
@@ -674,4 +690,5 @@ def api_price_save():
 
 if __name__ == "__main__":
     if os.environ.get("PSD_SCHEDULER", "on") != "off": data_pipeline.start_scheduler(on_done=_after_sync)      # sincronização diária automática (DEV_SYNC_HOURS, padrão 24)
+    import threading; threading.Thread(target=_aquecer, daemon=True).start()
     app.run(host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", 5000)), debug=False)

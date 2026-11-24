@@ -259,6 +259,17 @@ class Fluxo(unittest.TestCase):
             ana = A.app.test_client(); self.assertEqual(ana.post("/login", data={"username": "ana", "password": "senha-ana-123"}).status_code, 302)
             for m, u in (("get", "/api/admin/users"), ("get", "/api/settings"), ("put", "/api/goals"), ("post", "/api/backups")): self.assertEqual(getattr(ana, m)(u, json={}).status_code, 403, u)   # usuário comum não administra
             self.assertEqual(c2.put("/api/settings", json={"goal_valid_user": "italoc"}).json["goal_valid_user"], "ITALOC")
+            # com login ligado, «por» grava o NOME do usuário (antes ia o dicionário do usuário → erro 500 e nada salvo: vínculo do Brands e «Nosso código» da Cobertura)
+            con = sqlite3.connect(DB)
+            try: pc = con.execute("SELECT perfect_code FROM products WHERE catalog_position IS NOT NULL AND upper(perfect_code) LIKE 'AMD%' ORDER BY id LIMIT 1").fetchone()[0]
+            finally: con.close()
+            it = c2.get("/api/brands/MOTORCRAFT/items?all=1").json["rows"][0]
+            r = c2.post("/api/brands/vinculo", json={"code": it["code"], "codigos": [pc]}); self.assertEqual(r.status_code, 200, r.get_data(as_text=True)[:200])
+            r2 = c2.post("/api/cobertura/cross", json={"concorrente": "MONROE", "referencia": "T10-LOGIN", "codigos": [pc]}); self.assertEqual(r2.status_code, 200, r2.get_data(as_text=True)[:200])
+            con = sqlite3.connect(DB)
+            try: self.assertEqual([x[0] for x in con.execute("SELECT por FROM brand_links UNION ALL SELECT por FROM cross_correcoes WHERE ref_key='T10LOGIN'")], ["novo.adm", "novo.adm"])
+            finally: con.close()
+            c2.post("/api/brands/vinculo/desfazer", json={"code": it["code"], "anterior": None}); c2.post("/api/cobertura/cross/desfazer", json={"concorrente": "MONROE", "referencia": "T10-LOGIN", "anterior": None})
             aid = next(u["id"] for u in c2.get("/api/admin/users").json["users"] if u["username"] == "ana"); self.assertTrue(c2.delete(f"/api/admin/users/{aid}").json["ok"])
             self.assertEqual(c2.get("/logout").status_code, 302); self.assertEqual(c2.get("/api/dashboard").status_code, 401)
             self.assertEqual(c2.get("/favicon.ico").status_code, 200)
@@ -729,6 +740,20 @@ class Fluxo(unittest.TestCase):
         C.post("/api/brands/vinculo/desfazer", json={"code": it["code"], "anterior": r["anterior"]})
         x = next(i for i in C.get("/api/brands/MOTORCRAFT/items?all=1").json["rows"] if i["code"] == it["code"])
         self.assertEqual((x["perfect_codes"], x["vinculo_manual"]), (it["perfect_codes"], False))
+
+    def test_37_menu_e_dashboard_guardados_ate_o_banco_mudar(self):
+        """Etapa 22: menu e Dashboard reaproveitam o cálculo enquanto o banco não muda; qualquer gravação refaz (sem esperar tempo nenhum)."""
+        m0, d0 = C.get("/api/menu/counts").json["pendencias"], C.get("/api/dashboard").json["stats"]["pendencies"]
+        self.assertEqual(C.get("/api/menu/counts").json["pendencias"], m0)
+        con = sqlite3.connect(DB)
+        try: con.execute("INSERT INTO pendencies(kind, description) VALUES('teste', 'T37')"); con.commit()
+        finally: con.close()
+        try: self.assertEqual((C.get("/api/menu/counts").json["pendencias"], C.get("/api/dashboard").json["stats"]["pendencies"]), (m0 + 1, d0 + 1))
+        finally:
+            con = sqlite3.connect(DB)
+            try: con.execute("DELETE FROM pendencies WHERE description='T37'"); con.commit()
+            finally: con.close()
+        self.assertEqual(C.get("/api/menu/counts").json["pendencias"], m0)
 
     def test_30_nome_do_arquivo_e_filtros_limpos(self):
         """Etapa 17 · Q8/Q16/Q26: arquivo «PerfectAmortecedores - <tela do menu> - dd-mm.xlsx», sem filtros no nome (eles ficam na aba «Filtros aplicados»);

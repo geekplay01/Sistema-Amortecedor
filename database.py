@@ -24,6 +24,11 @@ CREATE TABLE IF NOT EXISTS equivalence_suggestions(id INTEGER PRIMARY KEY, produ
   score REAL, confidence TEXT, criteria TEXT, differences TEXT, missing TEXT, sources TEXT, status TEXT DEFAULT 'pendente' CHECK(status IN ('pendente','aprovada','rejeitada')), updated_at TEXT);
 """
 
+def versao():
+    """Muda a cada gravação no banco (data e tamanho do arquivo; sem WAL, todo commit grava no próprio arquivo). Chave de cache do Dashboard e do menu (etapa 22)."""
+    try: s = os.stat(DB_PATH); return (s.st_mtime_ns, s.st_size)
+    except OSError: return None
+
 def conn():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     c = sqlite3.connect(DB_PATH); c.row_factory = sqlite3.Row

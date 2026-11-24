@@ -56,6 +56,20 @@ fornecedor do R-D (237 de 240 em FINALIZANDO CIT).
 | Q20 | FOB_FINAL varia entre aplicações | O menor, com «varia: a–b» |
 | Q21 | R-D sem FOB_FINAL | Só o branco e «sem FOB do fornecedor» |
 
+## Terceira rodada (grill, 24/11/2026) — lentidão, erro ao salvar no Brands e busca do FOB
+
+Relato: «na hora que preencho o código em Brands ele dá erro e não sobe, e em FOB pesquiso um item e não dá retorno», e lentidão.
+Fatos: (a) com login ligado, `app.py` passava o usuário inteiro (dicionário) como «por» para `brands.vincular` e `cobertura.corrigir` → «Error binding parameter 5:
+type 'dict'» — os testes e a prévia rodavam sem login; (b) cada busca do FOB levava ≈ 1,8 s (join com `upper(trim())` dos dois lados, sem índice) e a resposta de uma
+busca antiga chegava depois e tomava o lugar da certa (digitado «AMD0907», tabela de «AMD0»); (c) Dashboard ≈ 1,6 s e contadores do menu ≈ 0,6 s a cada abertura.
+
+| # | Pergunta | Decisão |
+|---|---|---|
+| Q1 | Erro ao salvar | «por» grava o nome do usuário; o teste de login (`test_10`) cobre Brands e Cobertura |
+| Q2 | Busca do FOB | Só a última resposta é desenhada; a caixa de busca não é redesenhada; join pela chave primária (`fob_prices.codigo` já é maiúsculo e sem espaços) |
+| Q3 | Itens só de DES/R-D na aba FOB (muda a Q17) | Com busca, entram com os selos «DES»/«R-D»; sem busca, só o catálogo |
+| Q4 | Onde está a lentidão | FOB e Dashboard: Dashboard e menu guardados até o banco mudar, calculados ao abrir o app e ao fim da sincronização |
+
 ## Checkpoints
 
 - [x] FOB: `fob_merge.read_fob` + teste `test_codigo_perfect_sem_partnumber_e_fornecedores_juntos` (AMD0637 → 8,29 XGM; E-WIN 8,35; ZS 8,50).
@@ -72,3 +86,7 @@ fornecedor do R-D (237 de 240 em FINALIZANDO CIT).
 - [x] App real (instância só de leitura, porta 5056, sem login nem agendador): 25 telas no claro e no escuro sem erro de JavaScript nem aviso vermelho.
       FOB em DES/R-D: DES PEDIDO CONFIRMADO 62/62 com verde do servidor · FINALIZANDO CIT 11/11 · R-D FINALIZANDO CIT 212 de 214 (193 com comparação, 39 vigente) ·
       PENDENTE PARTNUMBER 11 de 30 com verde.
+- [x] 3ª rodada: «por» com o nome do usuário (Brands e Cobertura, `test_10` com login); aba FOB com sequência de buscas, casca fixa e join pela chave
+      (1,8 s → 0,03–0,07 s no banco real), busca com itens só de DES/R-D (`test_fob_em_des_rd`); Dashboard e menu por `database.versao` (`test_37`): no banco real
+      Dashboard 67 ms na 1ª abertura (aquecido ao iniciar), menu 10 ms. Suíte 4/4 verde. Conferido no app real só de leitura: «AMD0907» digitado rápido fica certo,
+      AMD5491 aparece com DES e R-D.
