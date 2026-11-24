@@ -713,6 +713,23 @@ class Fluxo(unittest.TestCase):
         cat = [x for x in C.get("/api/cobertura?q=T34-CAT").json["rows"] if x["referencia"] == "T34-CAT"]; self.assertEqual([x["codigo"] for x in cat], [pc])
         self.assertEqual({x["cofap"]: x for x in C.get("/api/cobertura?tab=cofap&q=T34").json["rows"]}["T34NAO2"]["situacao"], "nao")
 
+    def test_36_vincular_item_perfect_em_brands(self):
+        """Etapa 22: o lápis do «Código PERFECT» em Brands grava o conjunto (vale sobre a base), marca «vinculado no app», a busca acha pelo novo código
+        e o «Desfazer» volta ao que era. Código PERFECT ou inexistente não entra."""
+        rows = C.get("/api/brands/MOTORCRAFT/items?all=1").json["rows"]; it = rows[0]
+        con = sqlite3.connect(DB)
+        try: outro = next(r[0] for r in con.execute("SELECT perfect_code FROM products WHERE catalog_position IS NOT NULL AND upper(perfect_code) LIKE 'AMD%' ORDER BY id DESC") if r[0].upper() not in it["perfect_codes"])
+        finally: con.close()
+        self.assertEqual(C.post("/api/brands/vinculo", json={"code": it["code"], "codigos": ["AMD99999"]}).status_code, 400)
+        self.assertEqual(C.post("/api/brands/vinculo", json={"code": outro, "codigos": [outro]}).status_code, 400)
+        r = C.post("/api/brands/vinculo", json={"code": it["code"], "codigos": [outro]}).json
+        self.assertEqual((r["codigos"], r["anterior"]), ([outro.upper()], None))
+        x = next(i for i in C.get("/api/brands/MOTORCRAFT/items?all=1&q=" + outro).json["rows"] if i["code"] == it["code"])
+        self.assertEqual((x["perfect_codes"], x["vinculo_manual"], x["perfect_codes_base"]), ([outro.upper()], True, it["perfect_codes"]))
+        C.post("/api/brands/vinculo/desfazer", json={"code": it["code"], "anterior": r["anterior"]})
+        x = next(i for i in C.get("/api/brands/MOTORCRAFT/items?all=1").json["rows"] if i["code"] == it["code"])
+        self.assertEqual((x["perfect_codes"], x["vinculo_manual"]), (it["perfect_codes"], False))
+
     def test_30_nome_do_arquivo_e_filtros_limpos(self):
         """Etapa 17 · Q8/Q16/Q26: arquivo «PerfectAmortecedores - <tela do menu> - dd-mm.xlsx», sem filtros no nome (eles ficam na aba «Filtros aplicados»);
         nenhuma tela guarda filtros da última visita; posição no catálogo fora da interface."""

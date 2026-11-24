@@ -37,6 +37,50 @@ def _perfect_index():
     for r in q("SELECT s.sample_code c, s.perfect_code pc FROM sample_orders s WHERE s.sample_code IS NOT NULL AND s.perfect_code IS NOT NULL"): add(r["c"], r["pc"])
     return idx
 
+# ---------------- vínculo manual com o item PERFECT relativo (etapa 22, como o «Nosso código» da Cobertura) ----------------
+LINK_TABLE = """CREATE TABLE IF NOT EXISTS brand_links(key TEXT PRIMARY KEY, code TEXT, codigos TEXT, antes TEXT, por TEXT, em TEXT DEFAULT CURRENT_TIMESTAMP)"""
+def _link_ensure():
+    c = db.conn()
+    try: c.execute(LINK_TABLE); c.commit()
+    finally: c.close()
+def vinculos_map():
+    """{código normalizado: {code, codigos: [...], antes: [...], por, em}} — o conjunto de códigos PERFECT do item (vazio = sem relação)."""
+    try: rows = q("SELECT * FROM brand_links")
+    except Exception: return {}
+    sp = lambda t: [x for x in (t or "").split(",") if x]
+    return {r["key"]: {**r, "codigos": sp(r["codigos"]), "antes": sp(r["antes"])} for r in rows}
+
+def vincular(code, codigos, por=None):
+    """Grava o conjunto completo de códigos PERFECT relativos de um item de outra marca. Vale sobre a base (cross, base de marcas, amostras).
+    → {"anterior": vínculo que existia (ou None), "codigos": novo conjunto} — «anterior» serve para o «Desfazer»."""
+    import cobertura
+    k = _k(code)
+    if not k: raise ValueError("Informe o código.")
+    if k.startswith("AMD"): raise ValueError(f"{k} já é um código PERFECT.")
+    it = next((i for i in universe() if i["key"] == k), None)
+    if it is None: raise ValueError(f"{k} não está em Brands.")
+    novo = sorted({cobertura._k(c) for c in (codigos or []) if cobertura._k(c)})
+    for c in novo:
+        err = cobertura._valido(c)
+        if err: raise ValueError(err)
+    _link_ensure(); ant = vinculos_map().get(k)
+    c = db.conn()
+    try:
+        c.execute("""INSERT INTO brand_links(key, code, codigos, antes, por) VALUES(?,?,?,?,?)
+                     ON CONFLICT(key) DO UPDATE SET codigos=excluded.codigos, code=excluded.code, por=excluded.por, em=CURRENT_TIMESTAMP""",
+                  (k, it["code"], ",".join(novo), ",".join(ant["antes"] if ant else it["perfect_codes"]), por)); c.commit()
+    finally: c.close()
+    return {"anterior": ({x: ant[x] for x in ("codigos", "antes", "por")} if ant else None), "codigos": novo}
+
+def desvincular(code, anterior=None):
+    """Volta ao que era antes do último vínculo: sem vínculo anterior apaga a linha (vale de novo a base)."""
+    _link_ensure(); k = _k(code); c = db.conn()
+    try:
+        if anterior: c.execute("UPDATE brand_links SET codigos=?, antes=?, em=CURRENT_TIMESTAMP WHERE key=?", (",".join(anterior.get("codigos") or []), ",".join(anterior.get("antes") or []), k))
+        else: c.execute("DELETE FROM brand_links WHERE key=?", (k,))
+        c.commit()
+    finally: c.close()
+
 def universe():
     """Todos os itens conhecidos (catálogo, DES, R-D, base Motorcraft, pedidos de amostra), 1 por código."""
     motor = _motor(); items = {}
@@ -57,13 +101,14 @@ def universe():
         it["vehicle"] = it["vehicle"] or " · ".join(x for x in (b["vehicle"], b["application"], b["years"]) if x) or None; it["perfect_code"] = b["perfect_code"]
     for s in q("SELECT perfect_code,COUNT(*) n FROM sample_orders WHERE perfect_code IS NOT NULL GROUP BY perfect_code"):
         it = get(s["perfect_code"]); it["samples"] += s["n"]
-    pidx = _perfect_index(); pc_of_pid = {r["id"]: r["perfect_code"] for r in q("SELECT id,perfect_code FROM products")}
+    pidx = _perfect_index(); pc_of_pid = {r["id"]: r["perfect_code"] for r in q("SELECT id,perfect_code FROM products")}; man = vinculos_map()
     for k, it in items.items():
         found = set(pidx.get(k, ()))
         if it["product_id"] and pc_of_pid.get(it["product_id"]) and _k(pc_of_pid[it["product_id"]]) != k: found.add(pc_of_pid[it["product_id"]].upper())
         if it.get("perfect_code"): found.add(str(it["perfect_code"]).upper())
         if it["brand"] == "PERFECT": found.discard(it["code"].upper())
-        it["perfect_codes"] = sorted(found)
+        it["perfect_codes"] = sorted(found); it["vinculo_manual"] = k in man
+        if k in man: it["perfect_codes_base"] = it["perfect_codes"]; it["perfect_codes"] = man[k]["codigos"]      # etapa 22: o vínculo feito na tela vale sobre a base
     fl = {}
     for v in q("SELECT code,suggestion,pend_validacao,val_reprovada,pend_desenho_forn,pend_compras FROM v_rd_flags"):
         fl.setdefault(_k(v["code"]), set()).update(k for k in ("pend_validacao", "val_reprovada", "pend_desenho_forn", "pend_compras") if v[k])

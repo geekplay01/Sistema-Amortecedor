@@ -59,7 +59,9 @@ def lista():
             "Padrão da tela: tipos GARANTIA, GARANTIA AUTOMATICA, CRÉDITO GARANTIA e GARANTIA EM DEVOLUÇÃO, sem ocorrência cancelada, no ano atual (data de cadastro). Defeito agrupado sem o prefixo AM-xxx/O-xxx.",
             "<b>Índice por UF</b> = peças em garantia ÷ peças de amortecedor vendidas no estado no mesmo ano. «Mesmo período do ano anterior» = 1/jan até o dia do último cadastro filtrado.",
             "% procedente = peças procedentes ÷ (procedentes + improcedentes). O CNPJ do cliente não é guardado."]),
-        ("fob", "FOB (preços de compra)", ["Chave = PartNumber; código repetido fica com o menor FOB; o menor entre E-WIN, ZS e XGM é o «Melhor preço». Reenviar a tabela substitui a anterior."]),
+        ("fob", "FOB (preços de compra)", ["Chave = PartNumber; sem PartNumber, o «Codigo» quando é código PERFECT (AMD…), porque a linha é o próprio item. "
+                                           "Item em várias linhas: os fornecedores se juntam (cada um com o seu menor preço) e o FOB é o menor de todos; «Melhor preço» vem da linha mais barata. "
+                                           "Reenviar a tabela substitui a anterior."]),
         ("cobertura", "Cobertura de concorrentes", [
             "<b>Catálogo</b>: só itens do catálogo; referência pela regra dos concorrentes (CrossCatalogo; o servidor quando a planilha não tem o item); OEM fora. Curva ABC pelas vendas dos 12 meses fechados (A até 80%, B até 95%).",
             "<b>Desenvolvimento</b>: DES em andamento (sem ITEM RECEBIDO, sem cancelado, não bloqueado, só código AMD). Frota da Fraga pelo veículo e anos da aplicação (o mesmo veículo × ano conta uma vez); sem casamento, COFAP × Fraga e depois a FROTA do servidor. Lançamento = início de produção a partir de 2024.",
@@ -81,7 +83,9 @@ def lista():
             "Cada número dos atalhos = linhas da lista ao clicar."]),
         ("brands", "Brands", [
             "Itens agrupados pelo código: <b>AMD…</b> = PERFECT · <b>1BP…</b> = BPROAUTO · <b>somente números</b> = MOTRIO · itens da base ItensMotorcraft (PN Ford e a mesma família de código) = MOTORCRAFT.",
-            "Reúne catálogo, desenvolvimento, redesenvolvimento, base de marcas e pedidos de amostra."]),
+            "Reúne catálogo, desenvolvimento, redesenvolvimento, base de marcas e pedidos de amostra.",
+            "<b>Código PERFECT</b>: vem do cross, da base de marcas e das amostras. O lápis da célula vincula manualmente o item PERFECT relativo "
+            "(um ou mais códigos AMD… do catálogo ou de DES/R-D; vazio = sem relação); o vínculo vale sobre a base, aparece como «vinculado no app» e tem «Desfazer»."]),
         ("desenvolvimento", "Desenvolvimento", _des_rd(c, "des")),
         ("redesenvolvimento", "Redesenvolvimento", _des_rd(c, "rd")),
         ("amostras", "Compra de amostras", [

@@ -3,7 +3,9 @@
    (brands.items · counts; cada grupo ignora o próprio filtro e respeita os outros; test_24). Filtros na URL e lembrados (PSDTW.filtros); o Excel segue os filtros. */
 (function () {
   const { $, esc, J, qs, root, fail, FLG, flagChips, dwFill } = PSD;
-  const TW = window.PSDTW, { nf, badge, notice } = TW;
+  const TW = window.PSDTW, { nf, badge, notice, ico } = TW;
+  /* «Código PERFECT» editável na célula (etapa 22, como o «Nosso código» da Cobertura): o lápis abre o campo; Enter salva o conjunto, Esc cancela, aviso com «Desfazer» */
+  const editavel = (code, lista, inner) => `<span class="psd-ed nw" data-code="${esc(code)}" data-lista="${esc(lista)}">${inner}<button type="button" class="psd-ed-btn" data-editar title="Vincular o item PERFECT relativo" aria-label="Vincular o item PERFECT relativo">${ico("pencil", "sm")}</button></span>`;
   const BC = { PERFECT: "#d4372c", BPROAUTO: "#2f7de1", MOTRIO: "#f2c12e", MOTORCRAFT: "#7c8cff", OUTROS: "#7b8794" }, NOME = { OUTROS: "Sem marca" };
   const ONDE = [["catalog", "No catálogo"], ["des", "Em DES"], ["rd", "Em R-D"], ["base", "Na base Motorcraft"]];
   const CTRL = ["pend_compras", "pend_validacao", "val_reprovada", "pend_desenho_forn"];
@@ -50,7 +52,8 @@
       $("#bt").innerHTML = TW.table([{ h: "Código" }, { h: "Código PERFECT" }, { h: "Descrição" }, { h: "Veículo / aplicação" }, { h: "Onde está" }, { h: "Controle de status", nw: false }, { h: "Desenho" }, { h: "Amostras", r: true }],
         d.rows.map(i => [
           i.catalog && i.product_id ? `<a href="#" class="font-semibold text-blue-600" data-ficha="${i.product_id}">${esc(i.code)}</a>` : i.des || i.rd ? `<a href="#" class="font-semibold text-blue-600" data-rd="${i.des ? "des" : "rd"}" data-code="${esc(i.code)}">${esc(i.code)}</a>` : `<b class="text-ink">${esc(i.code)}</b>`,
-          (i.perfect_codes || []).length ? i.perfect_codes.map(c => `<a class="font-semibold text-blue-600" href="/pesquisa?q=${encodeURIComponent(c)}">${esc(c)}</a>`).join(" ") : `<span class="text-mute">${i.brand === "PERFECT" ? "é o próprio" : "sem relação"}</span>`,
+          (() => { const pcs = i.perfect_codes || [], txt = pcs.length ? pcs.map(c => `<a class="font-semibold text-blue-600" href="/pesquisa?q=${encodeURIComponent(c)}">${esc(c)}</a>`).join(" ") : `<span class="text-mute">${i.brand === "PERFECT" ? "é o próprio" : "sem relação"}</span>`;
+            return i.brand === "PERFECT" ? txt : editavel(i.code, pcs.join(", "), txt + (i.vinculo_manual ? ` ${badge("vinculado no app", "amber")}` : "")); })(),
           i.description ? `<span class="block max-w-[18rem] truncate" title="${esc(i.description)}">${esc(i.description)}</span>` : meio,
           i.vehicle ? `<span class="block max-w-[18rem] truncate" title="${esc(i.vehicle)}">${esc(i.vehicle)}</span>` : meio,
           [i.catalog && badge("Catálogo", "blue"), i.des && badge("DES", "violet"), i.rd && badge("R-D", "green"), i.base && badge("Base Motorcraft", "slate"), i.fora_base && badge("PN Ford fora da base", "amber")].filter(Boolean).join(" ") || meio,
@@ -68,6 +71,13 @@
 
     TW.ligarBarra($("#bq"), { set: (k, v) => aplicar({ [k]: v }, true), busca: t => aplicar({ q: t }, true), limpar: () => aplicar({ q: "", scope: "", flag: "" }, true) });
     $("#bg").addEventListener("click", e => { const b = e.target.closest("[data-b]"); if (b) aplicar({ b: b.dataset.b === "PERFECT" ? "" : b.dataset.b }, true); });
+    const post = (u, b) => J(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
+    $("#bt").addEventListener("click", e => { const ed = e.target.closest("[data-editar]"); if (!ed) return; const box = ed.closest(".psd-ed"), code = box.dataset.code;
+      TW.editarCodigos(box, { lista: true, valor: box.dataset.lista, rotulo: "Código PERFECT relativo", ph: "AMD…, AMD… (vazio = sem relação)", salvar: async novo => {
+        const r = await post("/api/brands/vinculo", { code, codigos: novo.split(/[,;\s]+/).filter(Boolean) });
+        const t = TW.toast(`<b>${esc(code)}</b> → ${esc(r.codigos.join(", ") || "sem relação")}. Vale no app sobre a base. <button type="button" data-undo class="psd-link">Desfazer</button>`, { html: true, titulo: "Item PERFECT vinculado", ms: 9000 });
+        t.querySelector("[data-undo]").onclick = async () => { await post("/api/brands/vinculo/desfazer", { code, anterior: r.anterior }); t.remove(); TW.toast("Vínculo desfeito."); carregar(); };
+        carregar(); } }); });
     $("#bp").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; carregar(); scrollTo(0, 0); } });
     (async () => { S = await J("/api/brands"); await carregar(); })().catch(fail);
   }

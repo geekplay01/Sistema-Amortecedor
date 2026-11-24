@@ -30,7 +30,7 @@
       <div id="cbk" class="grid grid-cols-2 gap-4 lg:grid-cols-4">${'<div class="skel h-24"></div>'.repeat(4)}</div>
       <div id="cbx"></div>
       <div id="cbq"></div>
-      <div id="cbm" class="text-sm text-mute"></div><datalist id="cbdl"></datalist><div id="cbt">${TW.esqueleto(8)}</div><div id="cbp" class="flex items-center justify-center gap-3 text-sm text-mute"></div></div>`;
+      <div id="cbm" class="text-sm text-mute"></div><div id="cbt">${TW.esqueleto(8)}</div><div id="cbp" class="flex items-center justify-center gap-3 text-sm text-mute"></div></div>`;
     /* barra (etapa 19 · Q6), por aba: Catálogo = Concorrente, Curva, Linha · Desenvolvimento = Curva, Origem, Lançamento · COFAP = Situação, Curva, Classificação */
     const PH = { catalogo: "Concorrente, referência, nosso código, aplicação…", desenvolvimento: "Código, veículo, concorrente, fornecedor…", cofap: "Código COFAP, nosso código ou veículo…" };
     const barra = (d, principais, atalhos, nomes, val) => { const s = F.get();
@@ -123,27 +123,14 @@
     const aplicar = patch => { if (patch) F.set(patch); pg = 1; carregar(); };
     // edição do «Nosso código» na célula
     const editar = box => {
-      const lista = box.hasAttribute("data-lista"), antes = box.innerHTML, val = lista ? box.dataset.lista : box.dataset.de;
-      box.innerHTML = `<input class="psd-ed-in" list="cbdl" value="${esc(val || "")}" placeholder="${lista ? "AMD…, AMD… (vazio = sem ligação)" : "Código PERFECT (vazio = tirar)"}" aria-label="Nosso código">`;
-      const inp = box.querySelector("input"); inp.focus(); inp.select(); let feito = false;
-      const sugerir = async () => { const t = inp.value.split(/[,;\s]+/).pop(); if (t.length < 3) return; const d = await J("/api/samples/codes?q=" + encodeURIComponent(t)).catch(() => ({ rows: [] }));
-        $("#cbdl").innerHTML = d.rows.map(r => `<option value="${esc(lista ? inp.value.replace(/[^,;\s]*$/, "") + r.perfect_code : r.perfect_code)}">${esc(r.description || "")}</option>`).join(""); };
-      const cancelar = () => { if (!feito) { feito = true; box.innerHTML = antes; } };
-      const salvar = async () => {
-        if (feito) return; feito = true; const novo = inp.value.trim().toUpperCase();
-        if (novo === String(val || "").toUpperCase()) { box.innerHTML = antes; return; }
+      const lista = box.hasAttribute("data-lista"), val = lista ? box.dataset.lista : box.dataset.de;
+      TW.editarCodigos(box, { lista, valor: val, rotulo: "Nosso código", ph: lista ? "AMD…, AMD… (vazio = sem ligação)" : "Código PERFECT (vazio = tirar)", salvar: async novo => {
         const corpo = { concorrente: box.dataset.conc, referencia: box.dataset.ref, ...(lista ? { codigos: novo.split(/[,;\s]+/).filter(Boolean) } : { de: val, para: novo }) };
-        try {
-          const r = await J("/api/cobertura/cross", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
-          const t = TW.toast(`<b>${esc(corpo.concorrente)} ${esc(corpo.referencia)}</b> → ${esc(r.codigos.join(", ") || "sem ligação")}. Vale no app e aparece em Anomalias para levar ao CrossCatalogo. <button type="button" data-undo class="psd-link">Desfazer</button>`, { html: true, titulo: "Nosso código corrigido", ms: 9000 });
-          t.querySelector("[data-undo]").onclick = async () => { await J("/api/cobertura/cross/desfazer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ concorrente: corpo.concorrente, referencia: corpo.referencia, anterior: r.anterior }) });
-            t.remove(); TW.toast("Correção desfeita."); carregar(); };
-          carregar();
-        } catch (er) { box.innerHTML = antes; TW.erro(er); }
-      };
-      inp.addEventListener("input", sugerir);
-      inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); salvar(); } if (e.key === "Escape") { e.preventDefault(); cancelar(); } });
-      inp.addEventListener("blur", () => setTimeout(cancelar, 150));          // sair do campo sem Enter = cancelar
+        const r = await J("/api/cobertura/cross", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
+        const t = TW.toast(`<b>${esc(corpo.concorrente)} ${esc(corpo.referencia)}</b> → ${esc(r.codigos.join(", ") || "sem ligação")}. Vale no app e aparece em Anomalias para levar ao CrossCatalogo. <button type="button" data-undo class="psd-link">Desfazer</button>`, { html: true, titulo: "Nosso código corrigido", ms: 9000 });
+        t.querySelector("[data-undo]").onclick = async () => { await J("/api/cobertura/cross/desfazer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ concorrente: corpo.concorrente, referencia: corpo.referencia, anterior: r.anterior }) });
+          t.remove(); TW.toast("Correção desfeita."); carregar(); };
+        carregar(); } });
     };
     root.onclick = e => { const ed = e.target.closest("[data-editar]"); if (ed) { editar(ed.closest(".psd-ed")); return; }
       const b = e.target.closest("[data-tg]"); if (b) { F.toggle(b.dataset.tg, b.dataset.v); pg = 1; carregar(); }          // onclick (não addEventListener): trocar de aba não acumula ouvintes

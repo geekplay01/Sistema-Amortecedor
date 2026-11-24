@@ -85,6 +85,28 @@ window.PSDTW = (() => {
     xhr.send(fd);
   });
   const erro = e => toast(e && e.message ? e.message : String(e), { tom: "erro", titulo: "Não deu certo" });          // erro no canto (substitui a caixa «alert» do navegador)
+  /* ---------- código PERFECT editável na própria célula (Cobertura · «Nosso código», etapa 19 · Q7; Brands · «Código PERFECT», etapa 22) ----------
+     editarCodigos(box, { lista, valor, ph, rotulo, salvar: async novo => … }) troca o conteúdo da célula por um campo com sugestões de códigos PERFECT.
+     Enter chama salvar(texto em maiúsculas) — erro volta a célula e mostra o aviso; Esc ou sair do campo cancela; sem mudança não salva. */
+  const editarCodigos = (box, o = {}) => {
+    const antes = box.innerHTML, val = String(o.valor || "");
+    let dl = document.getElementById("psd-codigos-dl");
+    if (!dl) { dl = Object.assign(document.createElement("datalist"), { id: "psd-codigos-dl" }); document.body.appendChild(dl); }
+    box.innerHTML = `<input class="psd-ed-in" list="psd-codigos-dl" value="${esc(val)}" placeholder="${esc(o.ph || "")}" aria-label="${esc(o.rotulo || "Código PERFECT")}">`;
+    const inp = box.querySelector("input"); inp.focus(); inp.select(); let feito = false;
+    const sugerir = async () => { const t = inp.value.split(/[,;\s]+/).pop(); if (t.length < 3) return;
+      const d = await fetch("/api/samples/codes?q=" + encodeURIComponent(t)).then(r => r.json()).catch(() => ({ rows: [] }));
+      dl.innerHTML = (d.rows || []).map(r => `<option value="${esc(o.lista ? inp.value.replace(/[^,;\s]*$/, "") + r.perfect_code : r.perfect_code)}">${esc(r.description || "")}</option>`).join(""); };
+    const cancelar = () => { if (!feito) { feito = true; box.innerHTML = antes; } };
+    const salvar = async () => {
+      if (feito) return; feito = true; const novo = inp.value.trim().toUpperCase();
+      if (novo === val.toUpperCase()) { box.innerHTML = antes; return; }
+      try { await o.salvar(novo); } catch (er) { box.innerHTML = antes; erro(er); }
+    };
+    inp.addEventListener("input", sugerir);
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); salvar(); } if (e.key === "Escape") { e.preventDefault(); cancelar(); } });
+    inp.addEventListener("blur", () => setTimeout(cancelar, 150));          // sair do campo sem Enter = cancelar
+  };
   /* ---------- carregamento: faixas da marca + texto, ou esqueleto no lugar de KPIs/tabela ---------- */
   const carregando = (t = "Carregando…") => `<div class="psd-load rounded-2xl border border-line bg-card px-5 py-8">${stripes()}<span>${esc(t)}</span></div>`;
   const esqueleto = (linhas = 6, kpis = 0) => (kpis ? `<div class="grid grid-cols-2 gap-4 lg:grid-cols-4">${'<div class="skel h-24"></div>'.repeat(kpis)}</div>` : "")
@@ -179,6 +201,65 @@ window.PSDTW = (() => {
   /* botão principal (navy) e secundário (discreto) do padrão novo */
   const botao = (rotulo, o = {}) => `<${o.href ? `a href="${o.href}"` : `button type="button"`} ${o.attrs || ""} class="psd-btn ${o.secundario ? "" : "prim"}">${o.icone ? ico(o.icone, "sm") : ""}${esc(rotulo)}</${o.href ? "a" : "button"}>`;
 
+  /* ---------- sugestões do app no lugar da lista nativa (etapa 22) ----------
+     O Chrome/Edge desenham a lista do <datalist> e o histórico dos campos de busca com a cor do WINDOWS, não com o tema do app: no modo claro com o
+     Windows escuro as opções saíam escuras. Agora todo <input list="…"> mostra .psd-sug (cores do tema), lendo as <option> do próprio datalist — as
+     telas continuam só preenchendo o datalist. ↑/↓ escolhem, Enter usa a opção marcada (sem marcar, o Enter segue para a tela), Esc fecha.
+     Campos de busca ficam sem o histórico do navegador (autocomplete=off). */
+  (() => {
+    let s = null, escolhendo = false;
+    const fechar = () => { if (!s) return; s.obs.disconnect(); s.box.remove(); s.inp.setAttribute("aria-expanded", "false"); s.inp.removeAttribute("aria-activedescendant"); s = null; };
+    const opcoes = () => [...s.dl.querySelectorAll("option")].map(o => ({ v: o.value, l: o.textContent.trim() !== o.value ? o.textContent.trim() : "" })).filter(o => o.v);
+    const posicionar = () => {
+      const r = s.inp.getBoundingClientRect(), b = s.box; b.style.minWidth = Math.max(r.width, 224) + "px"; b.style.left = r.left + "px"; b.style.top = r.bottom + 4 + "px";
+      const a = b.getBoundingClientRect(), dx = a.left - r.left, dy = a.top - (r.bottom + 4);          // dentro de um <dialog> com transform o «fixed» é relativo a ele: corrige
+      let top = r.bottom + 4 - dy; if (a.height && r.bottom + 4 + a.height > innerHeight - 8 && r.top - a.height - 4 > 8) top = r.top - a.height - 4 - dy;
+      b.style.left = Math.min(r.left, innerWidth - a.width - 8) - dx + "px"; b.style.top = top + "px";
+    };
+    const pintar = () => {
+      if (!s) return; const t = s.inp.value.trim().toUpperCase();
+      const ops = opcoes().filter(o => (o.v + " " + o.l).toUpperCase().includes(t)).slice(0, 60);
+      s.ops = ops;
+      if (!ops.length || (ops.length === 1 && ops[0].v.toUpperCase() === t)) { s.box.hidden = true; s.inp.setAttribute("aria-expanded", "false"); return; }
+      if (s.idx >= ops.length) s.idx = -1;
+      s.box.innerHTML = ops.map((o, i) => `<div role="option" id="psd-sug-${i}" aria-selected="${i === s.idx}" class="psd-sug-o${i === s.idx ? " on" : ""}" data-i="${i}"><b>${esc(o.v)}</b>${o.l ? `<span>${esc(o.l)}</span>` : ""}</div>`).join("");
+      s.box.hidden = false; s.inp.setAttribute("aria-expanded", "true");
+      if (s.idx >= 0) { s.inp.setAttribute("aria-activedescendant", "psd-sug-" + s.idx); s.box.children[s.idx].scrollIntoView({ block: "nearest" }); } else s.inp.removeAttribute("aria-activedescendant");
+      posicionar();
+    };
+    const escolher = i => {
+      const inp = s.inp, v = s.ops[i].v; fechar(); inp.value = v; escolhendo = true;
+      try { inp.dispatchEvent(new Event("input", { bubbles: true })); inp.dispatchEvent(new Event("change", { bubbles: true })); } finally { escolhendo = false; }
+      inp.focus();
+    };
+    const abrir = inp => {
+      if (s && s.inp === inp) return; fechar();
+      if (inp.hasAttribute("list")) { inp.dataset.psdList = inp.getAttribute("list"); inp.removeAttribute("list"); }          // sem «list», o navegador não abre a lista dele
+      const dl = document.getElementById(inp.dataset.psdList); if (!dl) return;
+      inp.setAttribute("autocomplete", "off"); inp.setAttribute("role", "combobox"); inp.setAttribute("aria-autocomplete", "list"); inp.setAttribute("aria-controls", "psd-sug");
+      const box = Object.assign(document.createElement("div"), { id: "psd-sug", className: "psd-sug", hidden: true }); box.setAttribute("role", "listbox");
+      (inp.closest("dialog") || document.body).appendChild(box);
+      box.addEventListener("mousedown", e => { const o = e.target.closest("[data-i]"); e.preventDefault(); if (o) escolher(+o.dataset.i); });
+      s = { inp, dl, box, idx: -1, ops: [], obs: new MutationObserver(() => pintar()) }; s.obs.observe(dl, { childList: true, subtree: true, characterData: true });
+      pintar();
+    };
+    document.addEventListener("focusin", e => { const t = e.target; if (!(t instanceof HTMLInputElement)) return;
+      if (t.hasAttribute("list") || t.dataset.psdList) abrir(t);
+      else if (t.type === "search" || t.closest(".psd-search") || t.id === "navsearch") t.setAttribute("autocomplete", "off"); });
+    document.addEventListener("focusout", e => { if (s && e.target === s.inp) setTimeout(() => { if (s && document.activeElement !== s.inp) fechar(); }, 120); });
+    document.addEventListener("input", e => { const t = e.target; if (escolhendo || !(t instanceof HTMLInputElement) || !t.dataset.psdList) return;
+      if (!s || s.inp !== t) abrir(t); else { s.idx = -1; pintar(); } });
+    document.addEventListener("keydown", e => {          // captura: vem antes dos ouvintes do próprio campo (Enter da edição na célula, por exemplo)
+      if (!s || e.target !== s.inp) return; const aberto = !s.box.hidden, n = s.ops.length;
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && n) { e.preventDefault(); if (!aberto) { pintar(); return; } s.idx = e.key === "ArrowDown" ? (s.idx + 1) % n : (s.idx <= 0 ? n - 1 : s.idx - 1); pintar(); }
+      else if (e.key === "Enter" && aberto && s.idx >= 0) { e.preventDefault(); e.stopPropagation(); escolher(s.idx); }
+      else if (e.key === "Escape" && aberto) { e.preventDefault(); e.stopPropagation(); s.box.hidden = true; s.inp.setAttribute("aria-expanded", "false"); }
+    }, true);
+    window.addEventListener("scroll", e => { if (!s || s.box.hidden || s.box.contains(e.target)) return;          // a lista acompanha a rolagem (a tabela rola ao focar o campo)
+      const r = s.inp.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) s.box.hidden = true; else posicionar(); }, true);
+    window.addEventListener("resize", fechar);
+  })();
+
   document.addEventListener("psd-theme", () => { tema(); vivos.forEach(g => { if (!g.canvas.isConnected) { vivos.delete(g); return; } pinta(g.config.type, g.data.datasets); g.update(); }); });
-  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, enviar, carregando, esqueleto, grafico, CORES, barra, pintarBarra, ligarBarra, botao, ops, etiquetas };
+  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, editarCodigos, enviar, carregando, esqueleto, grafico, CORES, barra, pintarBarra, ligarBarra, botao, ops, etiquetas };
 })();

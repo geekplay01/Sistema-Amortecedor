@@ -200,3 +200,13 @@ ETAPA 21 — 20/11/2026 (decisões em DECISOES_ETAPA21.md, regras em REGRAS_DE_N
 
  DEPOIS DE ATUALIZAR PARA A ETAPA 21 (uma vez, no banco real)
  1. Sincronize uma vez: grava a FAMILIA de cada linha (a chave de linha e a moto dependem dela) e traz as linhas de amortecedor cuja LINHA é outra.
+
+ETAPA 22 — 24/11/2026 (decisões em DECISOES_ETAPA22.md, regras em REGRAS_DE_NEGOCIO.md)
+ - Brands: o lápis na coluna «Código PERFECT» vincula à mão o item PERFECT relativo (como o «Nosso código» da Cobertura), com «Desfazer».
+ - FOB: a linha em que o próprio código AMD aparece sem PartNumber agora entra, e um item em várias linhas junta os preços de todos os
+   fornecedores (o AMD0637 passa a mostrar XGM 8,29 e ZS 8,50).
+ - As sugestões ao digitar (códigos PERFECT) são do app e seguem o tema; antes vinham do navegador na cor do Windows.
+ - Modo escuro reformulado: fundo neutro em camadas, menu azul-marinho, códigos e números em azul claro legível.
+
+ DEPOIS DE ATUALIZAR PARA A ETAPA 22 (uma vez, no banco real)
+ 1. Reenvie a tabela FOB (a mesma planilha serve): só assim os preços que faltavam entram no banco.

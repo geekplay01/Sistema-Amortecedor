@@ -247,6 +247,15 @@ def api_pend_buy(): return jsonify(purchases.pending(request.args.to_dict()))
 def api_brands(): return jsonify(brands.summary())
 @app.get("/api/brands/<brand>/items")
 def api_brand_items(brand): return jsonify(brands.items(brand.upper(), request.args.to_dict()))
+@app.post("/api/brands/vinculo")
+def api_brand_link():
+    """Etapa 22: liga um item de outra marca aos códigos PERFECT relativos (conjunto completo; vazio = sem relação). Body: code, codigos. → {anterior, codigos}"""
+    d = request.get_json(force=True) or {}
+    try: return jsonify(brands.vincular(d.get("code"), d.get("codigos") or [], auth.current_user()))
+    except ValueError as e: return jsonify(error=str(e)), 400
+@app.post("/api/brands/vinculo/desfazer")
+def api_brand_link_undo():
+    d = request.get_json(force=True) or {}; brands.desvincular(d.get("code"), d.get("anterior")); return jsonify(ok=True)
 
 # ---- Desenhos: qualquer formato; nome do arquivo => código + revisão; cadastros mostram só a revisão vigente ----
 @app.get("/api/drawings")

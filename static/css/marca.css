@@ -23,17 +23,20 @@
   /* paleta dos gráficos (etapa 20 · Q7): mesma ordem de PSDTW.CORES — azul da marca, azul-claro, laranja, vermelho, verde, violeta, cinza */
   --chart-1:#2F4A8C;--chart-2:#64C4E9;--chart-3:#F6A019;--chart-4:#E72B3B;--chart-5:#0E9F6E;--chart-6:#8B5CF6;--chart-7:#94A3B8;
 }
-/* ---------- tokens: tema escuro ---------- */
+/* ---------- tokens: tema escuro (etapa 22: reformulado) ----------
+   Superfícies neutras (tinta, pouco saturadas) em degraus que clareiam com a elevação: página → barra → cartão → cabeçalho/hover → menu suspenso.
+   O azul-marinho da marca fica no menu lateral, que agora se separa da página. Azul de TEXTO (links, códigos, números) é claro (≥ 7:1 sobre o cartão);
+   o azul de FUNDO (botão principal, selecionado) é o da marca com texto branco (≈ 5,8:1). */
 [data-theme="dark"]{
-  --navy:#111A33;--navy-2:#1B2747;--navy-3:#24335C;--navy-tx:#C3CCE2;
-  --bg:#0E1424;--bar:#131B30;--side:var(--navy);--card:#161F35;--line:#26324F;--tx:#E6EAF3;--mut:#9BA6BE;--thead:#1C2742;--zebra:#19223A;--hover:#1F2A47;
-  --blue:#8EA4E0;--accent:#64C4E9;--focus:#64C4E9;--shadow:0 1px 2px rgb(0 0 0/.3);
-  --b400:#8EA4E0;--b500:#4D69B8;--b600:#3B57A6;--b700:#2E4688;
+  --navy:#16204A;--navy-2:#1E2A58;--navy-3:#283769;--navy-tx:#C8D0E6;
+  --bg:#0C111C;--bar:#0F1522;--side:var(--navy);--card:#141A28;--line:#252E42;--tx:#E8EBF2;--mut:#9AA4B8;--thead:#192132;--zebra:#161D2B;--hover:#1D2638;
+  --blue:#9DB4F2;--accent:#64C4E9;--focus:#64C4E9;--shadow:0 1px 2px rgb(0 0 0/.35),0 4px 14px -6px rgb(0 0 0/.45);
+  --b400:#9DB4F2;--b500:#6C8BE0;--b600:#3E5FC2;--b700:#3352AE;
   --t-blue-400:#B7C6F0;--t-blue-500:#9DB4F2;--t-blue-600:#9DB4F2;--t-blue-700:#C3D0F5;
   --t-red-500:#FF8F99;--t-red-600:#FF8F99;--t-amber-500:#FFC266;--t-amber-700:#FFC266;
   --t-emerald-500:#4ADE9A;--t-emerald-600:#4ADE9A;--t-emerald-700:#6EE7B7;--t-violet-500:#C4B5FD;--t-violet-600:#C4B5FD;
-  --ok:#34D399;--chart-grid:#1F2A44;--chart-track:#26324F;--chart-legend:#C3CCE2;
-  /* no escuro as cores da marca clareiam para ler sobre o card (#161F35) sem perder o tom */
+  --ok:#34D399;--chart-grid:#1F2738;--chart-track:#252E42;--chart-legend:#C3CAD9;
+  /* no escuro as cores da marca clareiam para ler sobre o card (#141A28) sem perder o tom */
   --chart-1:#8EA8F0;--chart-2:#7DD3F5;--chart-3:#F8B547;--chart-4:#F47B86;--chart-5:#3DD6A0;--chart-6:#B39CFA;--chart-7:#A5B1C6;
 }
 html,body{background:var(--bg);color:var(--tx)}
@@ -85,10 +88,10 @@ main .ptitle{font:700 28px/1.15 var(--fontd);letter-spacing:-.01em;color:var(--t
 
 /* ---------- cartões, KPIs e tabelas ---------- */
 main .bg-card.border{box-shadow:var(--shadow)}
-.psd-kpi{position:relative;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:var(--card);padding:18px 20px 16px;box-shadow:var(--shadow)}
+.psd-kpi{position:relative;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:var(--card);padding:18px 20px 16px;box-shadow:var(--shadow);container-type:inline-size}
 .psd-kpi .kpi-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .psd-kpi .kpi-label{font:600 12px/1.3 var(--fontd);letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
-.psd-kpi .kpi-val{margin-top:10px;font:700 30px/1 var(--fontd);color:var(--tx);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.psd-kpi .kpi-val{margin-top:10px;font:700 30px/1 var(--fontd);font-size:clamp(22px,14cqi,30px);color:var(--tx);overflow-wrap:normal;word-break:keep-all;font-variant-numeric:tabular-nums}          /* etapa 22: o número encolhe no cartão estreito em vez de quebrar no meio («R$ 25.467.64|8»); só quebra no espaço */
 .psd-kpi .kpi-sub{margin-top:8px;font-size:13.5px;color:var(--mut)}
 .psd-kpi::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--kpi-acc,var(--b500))}
 .psd-kpi.acc-green{--kpi-acc:var(--ok)}.psd-kpi.acc-red{--kpi-acc:var(--pf-red)}.psd-kpi.acc-amber{--kpi-acc:var(--pf-orange)}.psd-kpi.acc-slate{--kpi-acc:var(--line)}.psd-kpi.acc-sky{--kpi-acc:var(--pf-sky)}
@@ -140,6 +143,11 @@ dialog.psd-confirm .c-acts{display:flex;justify-content:flex-end;gap:8px;padding
 
 /* ---------- componentes antigos (diálogos de amostra/envio/desenho, detalhe de DES/R-D, cartões do Dashboard, tela inicial) na mesma marca ---------- */
 :root,[data-theme]{--cobalt:var(--b500);--emerald:var(--ok);--lead:var(--navy);--r:16px;--sh:var(--shadow);--sh2:0 8px 24px rgb(27 34 56/.12)}
+/* escuro (etapa 22): o «cobalt» dos estilos antigos é cor de TEXTO (códigos .pcx, números dos cartões, links, etiquetas) → azul claro legível;
+   onde ele era FUNDO com texto branco, volta o azul da marca */
+[data-theme="dark"]{--cobalt:#8FA9EE;--sh2:0 2px 4px rgb(0 0 0/.35),0 14px 32px -12px rgb(0 0 0/.6)}
+[data-theme="dark"] .relchip.here{background:var(--b600);border-color:var(--b600)}
+[data-theme="dark"] .uavatar,[data-theme="dark"] .avatar-lg{background:linear-gradient(135deg,var(--b600),#6D4FD8)}
 .btn,[data-theme] .btn{display:inline-flex;align-items:center;gap:8px;background:var(--b600);border:1px solid var(--b600);color:#fff;border-radius:10px;box-shadow:none;font:600 14px/1.2 var(--font);padding:9px 16px;min-height:40px;text-decoration:none;filter:none;transform:none}
 .btn:hover,[data-theme] .btn:hover{background:var(--b700);border-color:var(--b700);filter:none;transform:none;box-shadow:none}
 .btn.ghost,[data-theme] .btn.ghost{background:var(--card);color:var(--tx);border:1px solid var(--line)}
@@ -167,7 +175,7 @@ details.sec summary{font-family:var(--fontd);font-size:15px}
 .syncchip{border-radius:999px}
 /* tela inicial (home.html) */
 .homebody{background:radial-gradient(1000px 640px at 78% 42%,color-mix(in srgb,var(--pf-sky) 22%,var(--bg)),var(--bg) 70%)}
-[data-theme="dark"] .homebody{background:radial-gradient(1000px 640px at 78% 42%,#1B2747,var(--bg) 70%)}
+[data-theme="dark"] .homebody{background:radial-gradient(1000px 640px at 78% 42%,#18213B,var(--bg) 70%)}
 .hero h1{font-family:var(--fontd);font-weight:700;letter-spacing:-.01em;color:var(--tx)}
 .hero .mini .num{font-family:var(--fontd);color:var(--tx)}
 /* etapa 21 (revisão de design): os quatro números da tela inicial em 2 × 2 — em linha eles quebravam 3 + 1 e o último ficava sozinho */
@@ -229,10 +237,17 @@ main input[type=search]:not(.psd-search *){border-radius:999px!important;min-hei
 .psd-pvbar{display:block;width:120px;height:7px;border-radius:999px;background:color-mix(in srgb,var(--pf-red) 10%,var(--thead));overflow:hidden}
 .psd-pvbar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--pf-red),var(--pf-orange))}
 /* célula editável (Cobertura · «Nosso código», etapa 19 · Q7) */
-.psd-ed{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.psd-ed{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}.psd-ed.nw{flex-wrap:nowrap;white-space:nowrap}
 .psd-ed-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;color:var(--mut);opacity:.35;transition:opacity .15s,background .15s}
 tr:hover .psd-ed-btn,.psd-ed-btn:focus-visible{opacity:1}.psd-ed-btn:hover{background:var(--hover);color:var(--tx)}
 .psd-ed-in{width:14rem;height:30px;padding:0 9px;border:1px solid var(--b500);border-radius:8px;background:var(--card);color:var(--tx);font-size:13px;outline:0;box-shadow:0 0 0 3px color-mix(in srgb,var(--b500) 18%,transparent)}
+/* sugestões do app no lugar da lista nativa do <datalist> (etapa 22: a nativa segue a cor do Windows, não o tema) — PSDTW, fim de tw.js */
+.psd-sug{position:fixed;z-index:90;max-width:28rem;max-height:18rem;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--tx);box-shadow:0 12px 32px rgba(15,23,42,.16)}
+[data-theme=dark] .psd-sug{box-shadow:0 12px 32px rgba(0,0,0,.45)}
+.psd-sug-o{display:flex;align-items:baseline;gap:10px;min-height:32px;padding:6px 10px;border-radius:9px;font-size:13px;cursor:pointer}
+.psd-sug-o b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.psd-sug-o span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);font-size:12px}
+.psd-sug-o:hover,.psd-sug-o.on{background:var(--hover)}.psd-sug-o.on{box-shadow:inset 3px 0 var(--b500)}
 .psd-opt-g{padding:10px 10px 4px;font:600 11px/1.2 var(--fontd);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
 .psd-atalhos{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .psd-atalhos .t{margin-right:4px;font:600 11px/1.2 var(--fontd);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}

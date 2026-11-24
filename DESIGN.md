@@ -29,15 +29,20 @@ Paleta do logo (as quatro faixas inclinadas): azul-marinho `#202D56` · vermelho
 
 | Token | Claro | Escuro | Uso |
 |---|---|---|---|
-| `--bg` | `#F4F6FA` | `#0E1424` | fundo da página |
-| `--card` | `#FFFFFF` | `#161F35` | cartões, tabelas, menus |
-| `--bar` | `#FFFFFF` | `#131B30` | barra do topo |
-| `--line` | `#DCE2EC` | `#26324F` | bordas (1 px) |
-| `--tx` | `#1B2238` | `#E6EAF3` | texto |
-| `--mut` | `#5A6378` | `#9BA6BE` | texto secundário, rótulos (≈ 7:1 no escuro) |
-| `--thead` / `--zebra` / `--hover` | `#EEF2F8` / `#F8FAFD` / `#EEF3FB` | `#1C2742` / `#19223A` / `#1F2A47` | tabela e hover |
-| `--navy` | `#202D56` | `#111A33` | menu lateral (azul-marinho nos dois temas) |
-| `--b500` / `--b600` / `--b700` | `#2F4A8C` / `#202D56` / `#162042` | `#4D69B8` / `#3B57A6` / `#2E4688` | ação principal, selecionado, foco de marca |
+| `--bg` | `#F4F6FA` | `#0C111C` | fundo da página |
+| `--card` | `#FFFFFF` | `#141A28` | cartões, tabelas, menus |
+| `--bar` | `#FFFFFF` | `#0F1522` | barra do topo |
+| `--line` | `#DCE2EC` | `#252E42` | bordas (1 px) |
+| `--tx` | `#1B2238` | `#E8EBF2` | texto |
+| `--mut` | `#5A6378` | `#9AA4B8` | texto secundário, rótulos (≈ 7:1 no escuro) |
+| `--thead` / `--zebra` / `--hover` | `#EEF2F8` / `#F8FAFD` / `#EEF3FB` | `#192132` / `#161D2B` / `#1D2638` | tabela e hover |
+| `--navy` | `#202D56` | `#16204A` | menu lateral (azul-marinho nos dois temas) |
+| `--b500` / `--b600` / `--b700` | `#2F4A8C` / `#202D56` / `#162042` | `#6C8BE0` / `#3E5FC2` / `#3352AE` | ação principal, selecionado, foco de marca |
+| `--cobalt` | = `--b500` | `#8FA9EE` | azul de **texto** dos estilos antigos (códigos `.pcx`, números dos cartões, links) |
+
+**Tema escuro (etapa 22):** superfícies neutras e pouco saturadas, em degraus que clareiam com a elevação (página → barra → cartão → cabeçalho/hover →
+menu suspenso); o azul-marinho fica só no menu lateral, que assim se separa da página. Azul usado como **texto** é claro (`--cobalt`, `--t-blue-*`,
+≥ 7:1 sobre o cartão); azul usado como **fundo** com texto branco é o da marca (`--b600`, ≈ 5,8:1). Nunca use `--b500` como cor de texto no escuro.
 | `--pf-sky` | `#64C4E9` | igual | destaque, item atual do menu, gráficos |
 | `--focus` | `#2F8FCB` | `#64C4E9` | anel de foco |
 | `--ok` | `#0E9F6E` | `#34D399` | só «OK / atingido / recebido» |
@@ -54,7 +59,7 @@ Selo/etiqueta: `PSDTW.badge(texto, tom)` com tons `blue · green · amber · red
 
 - **Barlow** (500/600/700, `static/fonts`, OFL) = `--fontd`: títulos, números grandes, rótulos em caixa-alta, cabeçalho de tabela.
 - **Segoe UI** (sistema): texto corrido, tabelas, formulários.
-- Escala: título da tela 28 px/700 · título de cartão 16 px/600 · número de KPI 30 px/700 · número de estágio 24 px/700 · texto 14 px ·
+- Escala: título da tela 28 px/700 · título de cartão 16 px/600 · número de KPI 30 px/700 (encolhe até 22 px em cartão estreito; nunca quebra no meio) · número de estágio 24 px/700 · texto 14 px ·
   tabela 14 px · rótulo (caixa-alta, `letter-spacing .08–.1em`) 11–12 px/600 · mínimo 11 px.
 - Números sempre `font-variant-numeric: tabular-nums`; formatação `PSDTW.nf` (pt-BR), dinheiro `brl0`/`brl`, data `dmy` (dd/mm/aaaa).
 
@@ -94,6 +99,13 @@ Menu lateral azul-marinho · barra do topo (título do app, sincronização, tem
 `PSDTW.table(colunas, linhas, {h})`: cabeçalho fixo em Barlow caixa-alta, zebra, hover, altura máxima com rolagem interna (`max-h-[65vh]`).
 Código do item é link (ficha ou detalhe). Texto longo: `truncate` com `title`. Paginação centralizada (‹ Página n de N ›). Linha de resumo acima da
 tabela: `<b>N</b> item(ns) · k filtro(s) ativo(s)`.
+
+### 6.4b Campos com sugestão e célula editável
+- **Sugestões ao digitar**: use `<input list="id">` + `<datalist id="id">` e preencha o datalist; o `tw.js` troca a lista nativa (que segue a cor
+  do Windows, não o tema) pela `.psd-sug` do app — ↑/↓ marcam, Enter usa a marcada, Esc fecha. Não desenhe lista de sugestão própria na tela.
+- Campos de busca ficam sem o histórico do navegador (`autocomplete=off`, posto pelo `tw.js` ao focar).
+- **Célula editável** (`.psd-ed` + lápis `.psd-ed-btn`, `PSDTW.editarCodigos`): Cobertura («Nosso código») e Brands («Código PERFECT»). Enter salva,
+  Esc cancela, aviso com «Desfazer»; o que foi mudado no app ganha selo laranja («corrigido», «vinculado no app»). `.psd-ed.nw` não quebra linha.
 
 ### 6.5 Retorno e estados
 - Carregando: `PSDTW.esqueleto(linhas, kpis)` no lugar do conteúdo (preferir a texto «Carregando…»); `carregando()` para blocos pequenos.

@@ -51,6 +51,18 @@ class Fob(unittest.TestCase):
         prod = pd.DataFrame({"codigo": ["amd1", "AMD2", "AMD9"], "descricao": ["a", "b", "c"]}); out, r2 = fob_merge.merge_fob(prod, fob)
         self.assertEqual(len(out), 3); self.assertEqual(out["fob"].tolist()[:2], [5.0, 9.0]); self.assertTrue(pd.isna(out["fob"].iloc[2])); self.assertEqual((r2["com_fob"], r2["sem_fob"]), (2, 1))
         self.assertEqual(out.loc[0, "fob_fornecedor"], "ZS"); self.assertEqual(out.loc[0, "fob_origem"], "NEG"); self.assertEqual(out.loc[0, "fob_data"], "2026-11-03")
+        a1 = fob.set_index("codigo").loc["AMD1"]; self.assertEqual((a1["fob_ewin"], a1["fob_zs"]), (7.25, 5.0))          # etapa 22: repetido junta os fornecedores
+    def test_codigo_perfect_sem_partnumber_e_fornecedores_juntos(self):
+        """Etapa 22 (AMD0637): a linha «Codigo AMD0637» sem PartNumber é o próprio item e traz XGM/ZS; a linha 1BP… → AMD0637 traz o EWIN. Os três ficam."""
+        f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); f.close()
+        pd.DataFrame({"\xa0 Codigo\xa0": ["1BP36349AA", "AMD0637", "1BP99"], "\xa0 Mínimo\xa0": [8.35, 8.29, 4.0],
+                      "\xa0 Melhor Preço\xa0": ["E-WIN = DES. 2026-11-03", "XGM = DES. 2026-11-03", "ZS = DES. 2026-11-03"], "\xa0 PartNumber": ["AMD0637", None, None],
+                      "\xa0FOB EWIN": [8.35, 8.35, None], "\xa0FOB ZS": [None, 8.5, 4.0], "\xa0FOB XGM": [None, 8.29, None]}).to_excel(f.name, index=False)
+        fob, rep = fob_merge.read_fob(f.name); os.remove(f.name)
+        self.assertEqual((rep["sem_partnumber"], rep["codigo_como_chave"], rep["itens_fob"]), (1, 1, 1))      # 1BP99 sem PartNumber não entra
+        r = fob.set_index("codigo").loc["AMD0637"]
+        self.assertEqual((r["fob"], r["fob_ewin"], r["fob_zs"], r["fob_xgm"], r["fob_fornecedor"]), (8.29, 8.35, 8.5, 8.29, "XGM"))
+        self.assertEqual(r["fob_cod_fornecedor"], "AMD0637, 1BP36349AA")
 
 if __name__ == "__main__": unittest.main()
 

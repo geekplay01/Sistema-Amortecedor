@@ -4,9 +4,14 @@ Uso (linha de comando, sem tocar no banco):
     python fob_merge.py PRODUTOS.xlsx fob.xlsx -o produtos_com_fob.xlsx
 Uso no sistema: POST /api/fob/import (grava products.fob + tabela fob_prices) ou fob_merge.apply_to_db(caminho).
 
-A planilha FOB (TABELA-PRECO) traz: Linha · Codigo (código do FORNECEDOR) · Mínimo (menor FOB, USD) · Melhor Preço («ZS = DES. 2026-11-03») · PartNumber (= código PERFECT, a CHAVE)
-· FOB EWIN / FOB ZS / FOB XGM («$ 7,25»). Regras: chave = PartNumber (maiúsculo, sem espaços); linhas sem PartNumber não entram (contadas); PartNumber repetido (vários códigos de
-fornecedor para o mesmo item) fica com o MENOR FOB. O left join mantém TODOS os produtos: quem não tem FOB fica com FOB vazio (nunca some).
+A planilha FOB (TABELA-PRECO) traz: Linha · Codigo (código do item na planilha: AMD…, 1BP…) · Mínimo (menor FOB, USD) · Melhor Preço («ZS = DES. 2026-11-03»)
+· PartNumber (= código PERFECT relativo) · FOB EWIN / FOB ZS / FOB XGM («$ 7,25»). Regras (etapa 22):
+  • chave = PartNumber (maiúsculo, sem espaços); PartNumber vazio e Codigo PERFECT (AMD…) → a chave é o próprio Codigo (é o item PERFECT na planilha).
+    Sem nenhum dos dois (ex.: 1BP… sem PartNumber) a linha não entra (contada em «sem_partnumber»).
+  • mesma chave em várias linhas (o item PERFECT e os códigos de outras marcas que apontam para ele) → JUNTA as linhas: cada fornecedor fica com o seu menor preço,
+    o FOB é o menor de todos e «Melhor Preço» (fornecedor, origem, data) vem da linha mais barata. Antes ficava só a linha mais barata e os outros fornecedores sumiam
+    (AMD0637: XGM e ZS estavam na linha «Codigo AMD0637» sem PartNumber).
+O left join mantém TODOS os produtos: quem não tem FOB fica com FOB vazio (nunca some).
 """
 import re, sys, argparse
 import pandas as pd
@@ -33,16 +38,24 @@ def read_fob(src):
          "ewin": need("FOB EWIN", "FOB E-WIN"), "zs": need("FOB ZS"), "xgm": need("FOB XGM")}
     if not c["pn"]: raise ValueError("Coluna «PartNumber» (código do produto) não encontrada na planilha FOB. Colunas: " + ", ".join(map(str, raw.columns)))
     s = lambda k: raw[c[k]] if c[k] else pd.Series([None] * len(raw))
-    d = pd.DataFrame({"codigo": s("pn").astype("object").where(s("pn").notna(), "").astype(str).str.replace(" ", " ", regex=False).str.strip().str.upper(),
-                      "fob_ewin": s("ewin").map(money), "fob_zs": s("zs").map(money), "fob_xgm": s("xgm").map(money), "fob_cod_fornecedor": s("forn").astype("object").where(s("forn").notna(), None)})
-    d["fob_cod_fornecedor"] = d["fob_cod_fornecedor"].map(lambda v: None if v is None else str(v).replace(" ", " ").strip())
+    nb = lambda x: x.str.replace(" ", " ", regex=False)
+    txt = lambda k: nb(s(k).astype("object").where(s(k).notna(), "").astype(str)).str.strip().str.upper().replace({"NAN": "", "NONE": ""})
+    pn, cod = txt("pn").str.replace(" ", "", regex=False), txt("forn")
+    pelo_codigo = pn.eq("") & cod.str.replace(" ", "", regex=False).str.startswith("AMD")      # o próprio item PERFECT na planilha, sem PartNumber
+    d = pd.DataFrame({"codigo": pn.where(~pelo_codigo, cod.str.replace(" ", "", regex=False)),
+                      "fob_ewin": s("ewin").map(money), "fob_zs": s("zs").map(money), "fob_xgm": s("xgm").map(money), "fob_cod_fornecedor": cod.where(cod.ne(""), None)})
     d["fob"] = s("min").map(money); alt = d[["fob_ewin", "fob_zs", "fob_xgm"]].min(axis=1, skipna=True); d["fob"] = d["fob"].where(d["fob"].notna(), alt)
-    best = s("best").astype("object").where(s("best").notna(), "").astype(str).str.replace(" ", " ", regex=False)
+    best = nb(s("best").astype("object").where(s("best").notna(), "").astype(str))
     m = best.str.extract(r"^\s*([A-Za-z\-]+)\s*=\s*([A-Za-z]+)\.?\s*(\d{4}-\d{2}-\d{2})?")
     d["fob_fornecedor"] = m[0].str.upper(); d["fob_origem"] = m[1].str.upper(); d["fob_data"] = m[2]
-    n0 = len(d); no_pn = d["codigo"].isin(["", "NAN", "NONE"]); d = d[~no_pn]
-    dup = int(d["codigo"].duplicated().sum()); d = d.sort_values(["codigo", "fob"], na_position="last").drop_duplicates("codigo", keep="first").reset_index(drop=True)
-    return d, {"linhas_fob": n0, "sem_partnumber": int(no_pn.sum()), "partnumber_repetido": dup, "itens_fob": len(d)}
+    n0 = len(d); sem = d["codigo"].eq(""); d = d[~sem]
+    dup = int(d["codigo"].duplicated().sum())
+    juntar = lambda xs: ", ".join(dict.fromkeys(x for x in xs if isinstance(x, str) and x)) or None      # códigos da planilha que levam ao item, o mais barato primeiro
+    d = (d.sort_values(["codigo", "fob"], na_position="last")
+          .groupby("codigo", sort=True).agg(fob_ewin=("fob_ewin", "min"), fob_zs=("fob_zs", "min"), fob_xgm=("fob_xgm", "min"), fob_cod_fornecedor=("fob_cod_fornecedor", juntar),
+                                            fob=("fob", "min"), fob_fornecedor=("fob_fornecedor", "first"), fob_origem=("fob_origem", "first"), fob_data=("fob_data", "first")).reset_index())
+    d["fob"] = d[["fob", "fob_ewin", "fob_zs", "fob_xgm"]].min(axis=1, skipna=True)      # o menor entre o «Mínimo» e o de cada fornecedor
+    return d, {"linhas_fob": n0, "sem_partnumber": int(sem.sum()), "codigo_como_chave": int(pelo_codigo.sum()), "partnumber_repetido": dup, "itens_fob": len(d)}
 
 def merge_fob(products, fob, key="codigo"):
     """LEFT JOIN: todos os produtos + colunas FOB (casadas pelo código do produto, sem espaços/caixa). Devolve (DataFrame, relatório)."""
