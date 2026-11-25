@@ -21,9 +21,12 @@
     return vs.length ? `<div class="psd-sublist">${vs.map(x => `<span title="Sub status ${esc(x.l.toLowerCase())}"><i class="psd-sd ${tom(x.v)}"></i>${esc(x.v)}</span>`).join("")}</div>` : '<span class="text-mute">–</span>'; };
 
   function rdPage(k) {
-    const slug = k === "des" ? "desenvolvimento" : "redesenvolvimento";
+    const slug = k === "des" ? "desenvolvimento" : "redesenvolvimento", V = PSD.validacao;
+    /* etapa 24: Redesenvolvimento tem a aba «Validar itens» (telas/validacao.js); Desenvolvimento ganha a mesma aba depois que o fluxo do R-D for aprovado */
+    if (k === "rd" && V && new URLSearchParams(location.search).get("aba") === "validar") return V.abaRD();
     const F = TW.filtros(slug, CHAVES); let pg = 1, fc = null, timer;
     root.innerHTML = `<div class="flex flex-col gap-5">
+      ${k === "rd" && V ? `<div id="rabas">${V.abasRD("itens")}</div>` : ""}
       <section aria-label="Linha"><div id="rlin" class="psd-est psd-linha" role="group" aria-label="Linha do produto"></div></section>
       <section aria-label="Estágios"><div id="rest" class="psd-est"></div></section>
       <div id="rbar"></div>
@@ -128,6 +131,7 @@
 
     const facetas = async () => { const s = F.get(), st = estagio(s); fc = await J(`/api/rd/${k}/facets?` + new URLSearchParams({ status: st === TODOS ? "" : st, linha: s.linha || "", marca: s.marca || "" })); };          // etapa 23 · Q4: sem a fileira de KPIs (repetia os estágios; «Curtidos» e «Pendente compras» são atalhos da barra)
     facetas().then(() => aplicar(null, true)).catch(fail);
+    if (k === "rd" && V) { V.ligarAbas($("#rabas")); J("/api/validacao/aba/rd").then(d => { $("#rabas").innerHTML = V.abasRD("itens", d.pendentes); }).catch(() => { }); }
   }
   PSD.tela("desenvolvimento", () => rdPage("des"));
   PSD.tela("redesenvolvimento", () => rdPage("rd"));

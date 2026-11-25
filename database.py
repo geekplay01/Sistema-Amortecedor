@@ -133,6 +133,13 @@ CREATE INDEX IF NOT EXISTS ix_cv_prod ON catalog_vehicles(product_id);
 CREATE TABLE IF NOT EXISTS ds_situacao(code TEXT, active TEXT, blocked TEXT, line TEXT, extra TEXT);
 CREATE INDEX IF NOT EXISTS ix_dssit_code ON ds_situacao(code);
 """
+# etapa 24: módulo Validação — validação de desenho (PERFECT × fornecedor) que gera o F-008. `dados` = JSON com as linhas de medidas e o damping force.
+SCHEMA_V8 = """
+CREATE TABLE IF NOT EXISTS validacoes(id INTEGER PRIMARY KEY, kind TEXT NOT NULL, code TEXT NOT NULL, supplier TEXT, supplier_code TEXT, family TEXT,
+  status TEXT NOT NULL DEFAULT 'andamento', received_at TEXT, dados TEXT, perfect_name TEXT, supplier_name TEXT, leitura_em TEXT, concluida_em TEXT,
+  xlsx TEXT, pdf TEXT, aviso TEXT, drawing_file_id INTEGER, by_user TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX IF NOT EXISTS ix_val_code ON validacoes(kind, code);
+"""
 NEW_COLUMNS["import_batches"] = [("rows_read","INTEGER")]
 NEW_COLUMNS["products"] += [("catalog_position","INTEGER"),("catalog_group","TEXT"),("fob","REAL"),("fob_supplier","TEXT"),("catalog_subgroup","TEXT"),("catalog_highlight","TEXT"),("catalog_photo","TEXT")]   # FOB em USD (menor preço) e fornecedor do melhor preço
 # etapa 17: Linha e Híbrido/elétrico (CatalogoAMD; híbrido 'S'/'N', NULL = não informado) e o peso/EAN como estão na planilha (cat_*) — o efetivo (weight_kg/ean) vem do BI03 quando ele tem o item
@@ -156,7 +163,7 @@ def rebuild_flags_view():
 
 def migrate():
     with session() as c:
-        c.executescript(SCHEMA_V2 + SCHEMA_V3 + SCHEMA_V4 + SCHEMA_V5 + SCHEMA_V6 + SCHEMA_V7)
+        c.executescript(SCHEMA_V2 + SCHEMA_V3 + SCHEMA_V4 + SCHEMA_V5 + SCHEMA_V6 + SCHEMA_V7 + SCHEMA_V8)
         for t, cols in NEW_COLUMNS.items():
             have = {r["name"] for r in c.execute(f"PRAGMA table_info({t})")}
             for n, ty in cols:

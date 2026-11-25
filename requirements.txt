@@ -18,3 +18,6 @@ pyodbc>=5.1
 # ── foto de perfil, miniaturas de desenhos (pillow) e prévia de PDF (pypdfium2) ──
 pillow>=10
 pypdfium2>=4.30
+
+# ── etapa 24: leitura dos desenhos na Validação (API do Claude; chave ANTHROPIC_API_KEY no ~/.perfect_shock_data/.env) ──
+anthropic>=1.0

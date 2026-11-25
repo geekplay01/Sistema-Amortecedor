@@ -55,8 +55,10 @@ menu suspenso); o azul-marinho fica só no menu lateral, que assim se separa da 
 - azul-marinho/`--b600` = selecionado, ação principal · azul-claro = destaque e séries de gráfico · cinza (`--mut`) = neutro, zerado, parado.
 - Bolinha de sub status (`.psd-sd`): laranja = pendente, verde = finalizado/aprovado, vermelho = reprovado.
 - **Faixa inclinada do logo (etapa 23 · Q7)** — `--inc` (paralelogramo) em azul-claro `--pf-sky`: o **único** destaque de marca dentro das telas. Marca só
-  o que está selecionado: estágio (`.psd-est`), item atual do menu (`.nav-item.is-cur`), opção do seletor de linha (`.psd-linha`) e do segmentado (`.psd-seg`).
-  Não usar como enfeite em outro lugar.
+  o que está selecionado: estágio (`.psd-est`), item atual do menu (`.nav-item.is-cur`), opção do seletor de linha (`.psd-linha`) e do segmentado (`.psd-seg`)
+  e o passo atual da bancada de validação (`.psd-passos`, etapa 24). Não usar como enfeite em outro lugar.
+- **Desenho técnico (etapa 24)**: `--papel` (branco nos dois temas) — desenho é preto sobre branco e não se inverte no escuro. `--cota` (= vermelho da marca)
+  só para a **marca de cota** do F-008: quadrado de borda vermelha com o número da linha (`.psd-mk` no desenho, `.psd-num` na tabela); cheio quando em foco.
 
 Selo/etiqueta: `PSDTW.badge(texto, tom)` com tons `blue · green · amber · red · violet · slate`. Fundo com `color-mix(... 12–15%, transparent)` do tom e texto no tom.
 
@@ -121,6 +123,18 @@ tabela: `<b>N</b> item(ns), k filtro(s) ativo(s)`.
 - **Célula editável** (`.psd-ed` + lápis `.psd-ed-btn`, `PSDTW.editarCodigos`): Cobertura («Nosso código») e Brands («Código PERFECT»). Enter salva,
   Esc cancela, aviso com «Desfazer»; o que foi mudado no app ganha selo laranja («corrigido», «vinculado no app»). `.psd-ed.nw` não quebra linha.
 
+### 6.4c Bancada de validação (etapa 24, `telas/validacao.js`)
+Um cartão (`.psd-banc`): cabeçalho com o código, a descrição e os dados do par (fornecedor, código, família, tipo) em `dl.psd-par`; faixa de **passos** numerados
+(`.psd-passos`, sequência real: «1 · Desenhos» … «4 · Revisão e aprovação»; o atual leva a faixa inclinada, o concluído tem a linha de apoio em verde); corpo do passo.
+- **Desenhos lado a lado** em papel (`.psd-papel`); envio por área tracejada (`.psd-drop`, clique ou arrastar). Máscara: arrastar seleciona (`.psd-sel`),
+  Delete apaga, Ctrl+Z desfaz.
+- **Medidas**: tabela editável (`.psd-vtab`, campos discretos que ganham borda no foco) ao lado dos dois desenhos empilhados (fixos ao rolar). O número da
+  linha liga tabela e desenhos: passar o mouse acende a linha e as duas cotas; clicar no número «arma» a linha e o próximo clique no desenho marca a posição;
+  as marcas se arrastam. Ap em selo A (verde) / R (vermelho) (`.psd-ap`).
+- **Revisão**: tabela de damping, faixa de três números (A, R em vermelho quando houver, conferidas em laranja enquanto faltar), duas ações (Aprovar = principal;
+  Reprovar = contorno vermelho, não preenchido) e os arquivos do F-008. Concluída, a bancada fica só leitura.
+- Abaixo de 1100 px as colunas viram uma.
+
 ### 6.5 Retorno e estados
 - Carregando: `PSDTW.esqueleto(linhas, kpis)` no lugar do conteúdo (preferir a texto «Carregando…»); `carregando()` para blocos pequenos.
 - Vazio: `PSDTW.empty(texto)` — frase curta com o que fazer.
@@ -138,6 +152,7 @@ repinta. Verde só para «atingido».
 
 - Entrada da tela 0,18 s (fade + 4 px); troca de tela por View Transition (o menu fica parado); toasts 0,2 s; hover 0,15 s.
 - Botão de tema (etapa 23): o ícone que entra gira e cresce em 0,35 s (sol gira, lua balança); as cores da página trocam na hora.
+- Ação demorada (ler os desenhos com o Claude, gerar o F-008): o botão troca o texto e mostra o ícone girando (`.psd-gira`) até terminar.
 - Nada de animação em número ou tabela. A única animação longa é a da tela inicial (13 s em ciclo, pausa fora da tela).
 - `prefers-reduced-motion: reduce` desliga tudo (`marca.css`, fim do arquivo); a animação inicial fica parada, em pé.
 

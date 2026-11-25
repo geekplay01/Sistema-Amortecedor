@@ -357,6 +357,93 @@ div:has(>.psd-kpi,>a>.psd-kpi):not(:has(>:not(.psd-kpi,a)))>a:hover{background:v
 .themebtn.gira .i-sun{animation:psd-tema-sol .35s cubic-bezier(.2,.8,.2,1)}
 .themebtn.gira .i-moon{animation:psd-tema-lua .35s cubic-bezier(.2,.8,.2,1)}
 
+/* ---------- etapa 24 · Validação: bancada (telas/validacao.js) ----------
+   O desenho é preto sobre branco: fica em «papel» branco nos dois temas (--papel). As medidas são marcadas como no F-008: quadrado de borda vermelha com o
+   número da linha (--cota); a linha da tabela e a cota nos dois desenhos acendem juntas. O passo atual leva a faixa inclinada do logo (único destaque, §3). */
+:root{--papel:#FFFFFF;--cota:#E72B3B}
+.psd-btn.sm{min-height:32px;padding:5px 11px;font-size:13px;border-radius:9px;gap:6px}
+.psd-btn:disabled{opacity:.5;cursor:not-allowed}.psd-btn:disabled:hover{background:var(--card)}.psd-btn.prim:disabled:hover{background:var(--b600)}
+.psd-gira{animation:psd-gira 1s linear infinite}@keyframes psd-gira{to{transform:rotate(360deg)}}
+.psd-vn{display:inline-block;min-width:1.6em;margin-left:4px;padding:2px 6px;border-radius:999px;font:700 11.5px/1 var(--fontd);text-align:center;background:color-mix(in srgb,currentColor 16%,transparent)}
+.psd-est button.amb .n{color:var(--t-amber-700)}.psd-est button.red .n{color:var(--t-red-600)}
+.psd-banc{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.psd-banc-top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 22px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.psd-banc-top .id{font:700 22px/1 var(--fontd);color:var(--tx)}
+.psd-banc-top .desc{max-width:34rem;font-size:13px;color:var(--mut)}
+.psd-banc-top .dir{margin-left:auto;display:flex;align-items:center;gap:10px}
+.psd-vvolta{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--cobalt);text-decoration:none}.psd-vvolta .psd-ico{transform:rotate(180deg)}
+.psd-par{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0}.psd-par div{display:flex;flex-direction:column}
+.psd-par dt{font:600 12px/1.25 var(--fontd);color:var(--mut)}.psd-par dd{margin:0;font-size:13.5px;font-weight:600;color:var(--tx)}
+.psd-passos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.psd-passos button{position:relative;padding:10px 16px 10px 22px;border:0;border-left:1px solid var(--line);background:transparent;text-align:left;font:600 14px/1.25 var(--fontd);color:var(--mut);cursor:pointer}
+.psd-passos button:first-child{border-left:0}.psd-passos button:hover{background:var(--hover)}
+.psd-passos small{display:block;margin-top:2px;font:400 12px/1.3 "Segoe UI",system-ui,sans-serif;color:var(--mut)}
+.psd-passos .feito{color:var(--tx)}.psd-passos .feito small{color:var(--t-emerald-600)}
+.psd-passos [aria-selected=true]{color:var(--tx);background:color-mix(in srgb,var(--pf-sky) 12%,var(--card))}
+.psd-passos [aria-selected=true]::before{content:"";position:absolute;left:0;top:0;bottom:0;width:10px;background:var(--pf-sky);clip-path:var(--inc)}
+#vbc{padding:18px 20px 20px}
+.psd-vdois{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.psd-vdois h3,.psd-vrev h3{margin:0 0 3px;font:600 16px/1.2 var(--fontd);color:var(--tx)}
+.psd-vsub{margin:0 0 10px;font-size:12.5px;letter-spacing:0;color:var(--mut)}
+.psd-ferr{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px;min-height:32px}
+.psd-ferr-dica{display:inline-flex;align-items:center;gap:6px;margin-right:4px;font-size:12.5px;color:var(--mut)}
+.psd-papel{position:relative;background:var(--papel);border:1px solid var(--line);border-radius:10px;overflow:hidden;user-select:none;touch-action:none}
+.psd-papel img,.psd-papel canvas{display:block;width:100%;height:auto;-webkit-user-drag:none}
+.psd-masc{cursor:crosshair;outline:none}.psd-masc:focus-visible{box-shadow:0 0 0 2px var(--focus)}
+.psd-sel{position:absolute;border:2px dashed var(--b500);background:rgb(47 74 140/.1);pointer-events:none}
+.psd-papel.armado{cursor:crosshair;box-shadow:0 0 0 2px var(--cota)}
+.psd-mk{position:absolute;transform:translate(-50%,-50%);min-width:20px;height:20px;padding:0 3px;border:1.5px solid var(--cota);background:#fff;color:var(--cota);font:700 11.5px/17px var(--fontd);text-align:center;cursor:grab;transition:background .15s,color .15s}
+.psd-mk.foco{background:var(--cota);color:#fff;box-shadow:0 0 0 3px rgb(231 43 59/.28);z-index:2}
+.psd-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:260px;padding:24px;border:2px dashed var(--line);border-radius:12px;color:var(--mut);text-align:center;cursor:pointer;transition:background .15s,border-color .15s}
+.psd-drop b{color:var(--tx);font-size:14px}.psd-drop span{font-size:12.5px}
+.psd-drop:hover,.psd-drop.sobre{background:var(--hover);border-color:var(--b500)}
+.psd-vcampos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.psd-vcampos label{display:flex;flex-direction:column;gap:4px}.psd-vcampos span{font:600 13px/1 var(--fontd);color:var(--mut)}
+.psd-vcampos input{height:40px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--tx);font-size:15px}
+.psd-vcampos input:focus{outline:none;border-color:var(--b500)}
+.psd-vrodape{display:flex;justify-content:flex-end;margin-top:16px}
+.psd-vfam .psd-linha{margin:8px 0 14px}
+.psd-vlista ol{margin:8px 0 0;padding:0 0 0 1.6em;columns:3 14rem;column-gap:28px;font-size:13.5px;color:var(--tx)}.psd-vlista li{padding:2px 0;break-inside:avoid}
+.psd-vtab td input[data-k=p],.psd-vtab td input[data-k=f]{min-width:5.6rem}.psd-vtab td input[data-k=tm],.psd-vtab td input[data-k=tn]{min-width:3.2rem;width:3.6rem}
+.psd-vtab td input[data-k=melhoria]{min-width:9rem}.psd-vtab td.nome{white-space:normal;line-height:1.25}
+.psd-vmedidas{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:20px;align-items:start}
+.psd-vleit{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:10px}
+.psd-vleit .info{font-size:13px;color:var(--mut)}.psd-vleit .info b{color:var(--tx)}.psd-vleit .dir{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px}
+.psd-vtab-w{max-height:68vh;overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.psd-vtab{width:100%;border-collapse:collapse;font-size:13px}
+.psd-vtab th{position:sticky;top:0;z-index:1;background:var(--thead);padding:8px 8px;text-align:left;font:600 13px/1.2 var(--fontd);color:var(--mut);white-space:nowrap}
+.psd-vtab td{padding:3px 6px;border-top:1px solid var(--line);vertical-align:middle}
+.psd-vtab tbody tr:nth-child(even) td{background:var(--zebra)}
+.psd-vtab tr.foco td{background:color-mix(in srgb,var(--pf-sky) 16%,var(--card))!important}
+.psd-vtab .r,.psd-vtab th.r{text-align:right}.psd-vtab .c{text-align:center}
+.psd-vtab td.nome{min-width:8rem;max-width:11rem;font-weight:600;color:var(--tx)}
+.psd-vtab td.nome small{display:block;max-width:16rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;font-weight:400;color:var(--t-amber-700)}
+.psd-vtab input:not([type=checkbox]){width:100%;min-width:3.2rem;height:30px;padding:0 7px;border:1px solid transparent;border-radius:7px;background:color-mix(in srgb,var(--mut) 7%,transparent);color:var(--tx);font:inherit;font-variant-numeric:tabular-nums}
+.psd-vtab input.r{text-align:right;font-weight:600}
+.psd-vtab input:not([type=checkbox]):hover{border-color:var(--line)}.psd-vtab input:not([type=checkbox]):focus{outline:none;border-color:var(--b500);background:var(--card)}
+.psd-vtab input:disabled{color:var(--tx);border-color:transparent!important}
+.psd-vtab input[type=checkbox]{width:18px;height:18px;accent-color:var(--b600);cursor:pointer}
+.psd-num{min-width:24px;height:22px;padding:0 3px;border:1.5px solid var(--cota);background:#fff;color:var(--cota);font:700 11.5px/1 var(--fontd);cursor:pointer}
+.psd-vtab tr.foco .psd-num,.psd-num.armado{background:var(--cota);color:#fff}
+.psd-ap{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:6px;font:700 13px/1 var(--fontd)}
+.psd-ap.A{color:var(--t-emerald-600);background:color-mix(in srgb,var(--ok) 14%,transparent)}.psd-ap.R{color:var(--t-red-600);background:color-mix(in srgb,var(--pf-red) 14%,transparent)}
+.psd-vx{display:inline-flex;padding:4px;border-radius:6px;color:var(--mut)}.psd-vx:hover{background:var(--hover);color:var(--t-red-600)}
+.psd-vdica{margin:8px 2px 0;font-size:12.5px;color:var(--mut)}
+.psd-vpilha{display:flex;flex-direction:column;gap:12px;position:sticky;top:12px}
+.psd-vpilha h4{display:flex;justify-content:space-between;gap:8px;margin:0 0 6px;font:600 14px/1.2 var(--fontd);color:var(--tx)}.psd-vpilha h4 span{font:400 12px/1.2 "Segoe UI",sans-serif;color:var(--mut)}
+.psd-vrev{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px;align-items:start}
+.psd-vrev .psd-vtab td:first-child{white-space:nowrap;font-weight:600}
+.psd-vconta{grid-template-columns:repeat(3,minmax(0,1fr));margin:6px 0 12px}.psd-vconta button{cursor:default;min-height:72px}.psd-vconta button:hover{background:transparent!important}
+.psd-vdecide{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 14px}
+.psd-vrepr{color:var(--t-red-600);border-color:color-mix(in srgb,var(--pf-red) 45%,var(--line))}
+.psd-varq{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
+.psd-varq-l{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--tx);text-decoration:none;word-break:break-word}
+a.psd-varq-l:hover span:not(.ext){text-decoration:underline}.psd-varq-l.mudo{color:var(--mut);font-weight:400}
+.psd-varq .ext{flex:none;padding:4px 6px;border-radius:5px;font:700 11px/1 var(--fontd)}
+.psd-varq .ext.xlsx{color:var(--t-emerald-600);background:color-mix(in srgb,var(--ok) 14%,transparent)}.psd-varq .ext.pdf{color:var(--t-red-600);background:color-mix(in srgb,var(--pf-red) 12%,transparent)}
+.psd-vfile{padding:2px 8px;border:1px solid var(--line);border-radius:8px;font-size:12.5px;font-weight:600;color:var(--cobalt);text-decoration:none}.psd-vfile:hover{background:var(--hover)}
+@media (max-width:1100px){.psd-vdois,.psd-vmedidas,.psd-vrev{grid-template-columns:minmax(0,1fr)}.psd-vpilha{position:static}.psd-passos{grid-template-columns:repeat(2,minmax(0,1fr))}.psd-vcampos{grid-template-columns:minmax(0,1fr)}}
+
 /* ---------- mapa do Brasil (tela Garantia, etapa 18): estados clicáveis, rótulos que não roubam o clique, amostras da legenda ---------- */
 .psd-mapa path{cursor:pointer;outline:none;transition:opacity .15s}
 .psd-mapa path:hover,.psd-mapa path:focus-visible{opacity:.78}

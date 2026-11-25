@@ -50,6 +50,65 @@ def _products(a):
              [11, 16, 38, 18, 24, 12, 16, 22, 12, 11, 11, 16, 10, 10, 10, 11, 30, 30, 30, 12, 14, 12, 12, 11])], len(rows)
 HYB = {"S": "Sim", "N": "Não"}
 
+def _pesquisa(a):
+    """Pesquisa de amortecedores (etapa 24 · Q1): todos os dados do produto, inclusive caixa e medidas da caixa (C x L x A, mm, da CaixasAMD),
+    mais as abas «Aplicações» (uma linha por veículo dos produtos filtrados) e «DES e R-D» (os itens que a busca achou, como na tela)."""
+    import re, rd as R
+    from loaders import box_base
+    o = a.get("origem") or ""; so_rd = o in ("des", "rd")
+    rows = [] if so_rd else Q.products({**a, "all": 1})["rows"]; ids = [r["id"] for r in rows]
+    cd = _codes(); inm, fob, est = _extras()
+    det = {}
+    for i in range(0, len(ids), 500):
+        ch = ids[i:i + 500]
+        for r in Q.q(f"""SELECT p.id,p.package_code,p.ncm,p.description_en,p.description_es,p.inmetro_number,d.stroke_mm,d.body_length_mm,d.tube_diameter_mm,
+                          d.upper_mount,d.upper_mount_dims,d.lower_mount,d.lower_mount_dims FROM products p LEFT JOIN dimensions d ON d.product_id=p.id WHERE p.id IN ({','.join('?' * len(ch))})""", ch):
+            det[r["id"]] = r
+    caixas = {b["code"]: b for b in Q.q("SELECT code,length_mm,width_mm,height_mm,raw_dims FROM packaging_boxes")}
+    def medida(cx):
+        if not cx: return None
+        b = caixas.get(str(cx).strip().upper()) or caixas.get(box_base(cx))
+        if not b: return None
+        n = lambda v: f"{v:g}" if isinstance(v, (int, float)) else str(v)
+        return " x ".join(n(v) for v in (b["length_mm"], b["width_mm"], b["height_mm"])) if b["length_mm"] is not None else b["raw_dims"]
+    def e(r): return est.get(re.sub(r"[^A-Z0-9]", "", (r["perfect_code"] or "").upper()), [None, None])
+    def fix(t, dims): return " ".join(x for x in (t, f"({dims})" if dims else "") if x) or None
+    head = ["Pos. catálogo", "Código PERFECT", "Descrição", "Descrição (inglês)", "Descrição (espanhol)", "Grupo", "Linha", "Híbrido ou elétrico", "Família", "Família Inmetro", "Nº Inmetro", "Sistema",
+            "Lmin (mm)", "Lmax (mm)", "Curso (mm)", "Comprimento do corpo (mm)", "Ø haste (mm)", "Ø tubo (mm)", "Fixação superior", "Fixação inferior", "Caixa", "Medidas da caixa (C x L x A, mm)",
+            "EAN", "NCM", "Peso (kg)", "Lançamento", "Aplicações", "Códigos OEM", "Códigos fornecedor", "Códigos concorrente", "FOB menor (US$)", "Fornecedor do FOB", "Estoque disponível", "Estoque reservado", "Pendências abertas"]
+    data = []
+    for r in rows:
+        x = det.get(r["id"], {})
+        data.append([r["catalog_position"], r["perfect_code"], r["description"], x.get("description_en"), x.get("description_es"), r["catalog_group"], r["catalog_line"], HYB.get(r["hybrid"], "Não informado"), r["family"], inm.get(r["id"]), x.get("inmetro_number"),
+                     SYS.get(r["system_type"]), r["lmin_mm"], r["lmax_mm"], x.get("stroke_mm"), x.get("body_length_mm"), r["rod_diameter_mm"], x.get("tube_diameter_mm"), fix(x.get("upper_mount"), x.get("upper_mount_dims")), fix(x.get("lower_mount"), x.get("lower_mount_dims")),
+                     x.get("package_code"), medida(x.get("package_code")), r["ean"], x.get("ncm"), r["weight_kg"], "Sim" if r["is_launch"] == "S" else "", r["apps"],
+                     cd.get((r["id"], "oem")), cd.get((r["id"], "fornecedor")), cd.get((r["id"], "concorrente")), *fob.get(r["id"], (None, None)), *e(r), r["pend"]])
+    sheets = [("Produtos", head, data, [11, 16, 38, 30, 30, 18, 24, 12, 16, 22, 16, 12, 10, 10, 10, 14, 11, 11, 24, 24, 10, 18, 16, 12, 10, 11, 11, 30, 30, 30, 12, 14, 12, 12, 11])]
+    apps = []
+    for i in range(0, len(ids), 500):
+        ch = ids[i:i + 500]
+        apps += Q.q(f"""SELECT p.perfect_code,a.make,a.model,a.version,a.application_text,a.year_from,a.year_to,a.axle,a.side FROM applications a JOIN products p ON p.id=a.product_id
+                        WHERE a.product_id IN ({','.join('?' * len(ch))})""", ch)
+    pos = {r["perfect_code"]: n for n, r in enumerate(rows)}
+    apps.sort(key=lambda x: (pos.get(x["perfect_code"], 0), x["make"] or "", x["model"] or "", x["year_from"] or 0))
+    sheets.append(("Aplicações", ["Código PERFECT", "Montadora", "Modelo", "Versão", "Aplicação", "Ano inicial", "Ano final", "Eixo", "Lado"],
+                   [[x["perfect_code"], x["make"], x["model"], x["version"], x["application_text"], x["year_from"], x["year_to"], x["axle"], x["side"]] for x in apps], [16, 16, 22, 14, 40, 11, 11, 11, 11]))
+    want = ["des", "rd"] if o == "" else [] if o == "catalogo" else [o]; f = {k: a[k] for k in ("q", "make", "model", "year") if a.get(k)}
+    rdl = []
+    if want and (o or f):          # como na tela: sem busca nem veículo, a lista de DES / R-D não aparece
+        for k in want:
+            for r in R.items("DESENVOLVIMENTO" if k == "des" else "REDESENVOLVIMENTO", {**f, "all": 1})["rows"]:
+                rdl.append(["DESENVOLVIMENTO" if k == "des" else "REDESENVOLVIMENTO", r["code"], r["description"], r["makes"], r["vehicles"], r["statuses"], r["suppliers"], "Sim" if r["product_id"] else ""])
+    sheets.append(("DES e R-D", ["Tipo", "Código", "Descrição", "Montadoras", "Veículos", "Status", "Fornecedores", "No catálogo"], rdl, [20, 16, 36, 20, 34, 28, 18, 11]))
+    return sheets, len(rows) + len(rdl)
+
+def _selecao(a):
+    """Etapa 24 · Q2: o que está selecionado na Pesquisa (código buscado; montadora, modelo e ano) para o nome do arquivo."""
+    import re
+    s = " ".join(str(a[k]).strip() for k in ("q", "code", "make", "model", "year") if a.get(k) and str(a[k]).strip())
+    s = re.sub(r'[\\/:*?"<>|]+', " ", s.upper()); s = re.sub(r"\s+", " ", s).strip()
+    return s[:60].strip()
+
 def _apps(a):
     rows = Q.applications({**a, "all": 1})["rows"]
     return [("Aplicações", ["Montadora", "Modelo", "Versão", "Aplicação", "Ano inicial", "Ano final", "Eixo", "Lado", "Código PERFECT", "Pos. catálogo"],
@@ -121,16 +180,16 @@ def _rd(kind):
                  [16, 8, 34, 16, 18, 40, 10, 10, 24, *[24] * len(S.SUBS), 12, 14, 14])], len(its)
     return f
 
-BUILD = {"desenvolvimento": _rd("DESENVOLVIMENTO"), "redesenvolvimento": _rd("REDESENVOLVIMENTO"), "produtos": _products, "pesquisa": _products, "aplicacoes": _apps, "comparacao": _compare, "pendencias": _pend, "fontes": _fontes, "amostras": _samples, "damping": _damping, "configuracoes": _backups}
+BUILD = {"desenvolvimento": _rd("DESENVOLVIMENTO"), "redesenvolvimento": _rd("REDESENVOLVIMENTO"), "produtos": _products, "pesquisa": _pesquisa, "aplicacoes": _apps, "comparacao": _compare, "pendencias": _pend, "fontes": _fontes, "amostras": _samples, "damping": _damping, "configuracoes": _backups}
 
 LABELS = {"desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvolvimento", "produtos": "Produtos e códigos", "pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares",
           "comparacao": "Comparação técnica", "pendencias": "Pendências de dados", "fontes": "Fontes e histórico", "amostras": "Compra de amostras", "damping": "Damping force",
-          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra", "cobertura": "Cobertura de concorrentes"}      # nome da tela como no menu (nome do arquivo baixado)
+          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra", "cobertura": "Cobertura de concorrentes", "validacao": "Validação"}      # nome da tela como no menu (nome do arquivo baixado)
 FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
           "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "linha": "Linha", "hibrido": "Híbrido ou elétrico","origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito", "concorrente": "Concorrente", "curva": "Curva ABC", "lancamento": "Lançamento", "tab": "Aba", "uf": "UF", "validade": "Lote válido/vencido", "situacao": "Situação", "classif": "Classificação"}
-FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "hibrido": {"S": "Sim", "N": "Não", "nd": "Não informado"}, "linha": {"sem": "Sem linha"},"kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT", "conflito": "Conflito entre fontes", "campo_ausente": "Campo ausente", "campo_invalido": "Campo inválido"},
-          "status": {"aberta": "Abertas", "resolvida": "Resolvidas", "ignorada": "Ignoradas", "todas": "Todas", "simulado": "Só verificação"},
+FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "hibrido": {"S": "Sim", "N": "Não", "nd": "Não informado"}, "linha": {"sem": "Sem linha"},"kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT", "rd": "Redesenvolvimento", "des": "Desenvolvimento", "conflito": "Conflito entre fontes", "campo_ausente": "Campo ausente", "campo_invalido": "Campo inválido"},
+          "status": {"aberta": "Abertas", "resolvida": "Resolvidas", "ignorada": "Ignoradas", "todas": "Todas", "simulado": "Só verificação", "andamento": "Em andamento", "aprovada": "Aprovadas", "reprovada": "Reprovadas"},
           "field": {"family": "Família", "package_code": "Código da caixa", "ean": "EAN", "peso": "Peso", "sistema": "Sistema"},
           "where": {"cat": "No catálogo", "des": "Em DES", "rd": "Em R-D", "sem": "Sem vínculo", "falta": "Sem desenho"},
           "res": {"APPROVED": "Aprovados", "DISAPPROVED": "Reprovados", "INCOMPLETO": "Incompletos"}, "axle": {"sem": "não informado"}, "side": {"sem": "não informado"},
@@ -140,8 +199,10 @@ def _fv(k, v): return FVALUE.get(k, {}).get(v, v)
 
 def friendly_name(module, filtros=None, ext="xlsx"):
     """'PerfectAmortecedores - Produtos e códigos - 18-11.xlsx' (decisão Q16/Q26 da etapa 17): nome da tela como no menu e o dia.
-    Os filtros não entram no nome — ficam na aba «Filtros aplicados». Dois downloads no mesmo dia: o navegador acrescenta «(1)»."""
-    return f"PerfectAmortecedores - {LABELS.get(module, module.title())} - {datetime.datetime.now():%d-%m}.{ext}"
+    Os filtros não entram no nome — ficam na aba «Filtros aplicados». Dois downloads no mesmo dia: o navegador acrescenta «(1)».
+    Exceção (etapa 24 · Q2): na Pesquisa, o item selecionado (código buscado; montadora, modelo e ano) entra no nome."""
+    sel = _selecao(filtros or {}) if module == "pesquisa" else ""
+    return f"PerfectAmortecedores - {LABELS.get(module, module.title())}{' - ' + sel if sel else ''} - {datetime.datetime.now():%d-%m}.{ext}"
 
 def _desenhos(a):
     """Sem filtro: todos os arquivos dos dois tipos. Com filtro (tela Desenhos): os mesmos códigos da galeria; where=falta lista os itens sem arquivo."""
@@ -266,6 +327,24 @@ def _cobertura(a):
                ", ".join(r["concorrentes"]), "; ".join(f"{v['nome']} ({v['frota']:,.0f})".replace(",", ".") for v in r["veiculos"])] for r in d["rows"]],
              [14, 30, 20, 12, 40, 12, 16, 8, 10, 36, 50])], c["total"] + d["total"]
 BUILD["cobertura"] = _cobertura
+
+def _validacao(a):
+    """Tela Validação (etapa 24): as validações com os filtros da tela e, em outra aba, todas as medidas de cada uma (com o Ap do modelo F-008)."""
+    import validacao, json
+    d = validacao.listagem({**a}); ids = [r["id"] for r in d["rows"]]
+    med = []
+    for vid in ids:
+        v = q1("SELECT code,supplier,supplier_code,dados FROM validacoes WHERE id=?", (vid,))
+        for l in (json.loads(v["dados"] or "{}").get("linhas") or []):
+            if str(l.get("p") or "").strip() or str(l.get("f") or "").strip():
+                med.append([vid, v["code"], v["supplier"], l.get("n"), l.get("nome"), l.get("p"), l.get("f"), l.get("tm"), l.get("tn"), validacao.ap(l), l.get("melhoria"), "Sim" if l.get("conferida") else ""])
+    return [("Validações", ["#", "Código", "Descrição", "Tipo", "Fornecedor", "Cód. fornecedor", "Família", "Medidas", "Conferidas", "A", "R", "Situação", "Atualizada", "Concluída", "F-008"],
+             [[r["id"], r["code"], r["description"], r["kind_label"], r["supplier"], r["supplier_code"], (r["family"] or "").capitalize(), r["conta"]["linhas"], r["conta"]["conferidas"], r["conta"]["A"], r["conta"]["R"],
+               r["status_label"], (r["updated_at"] or "")[:16].replace("T", " "), (r["concluida_em"] or "")[:16].replace("T", " "), "Sim" if r["xlsx"] else ""] for r in d["rows"]],
+             [6, 14, 34, 18, 12, 16, 24, 9, 10, 6, 6, 14, 16, 16, 8]),
+            ("Medidas", ["Validação", "Código", "Fornecedor", "Nº", "Medida", "PERFECT", "Fornecedor (valor)", "Tol. +", "Tol. −", "Ap", "Melhoria", "Conferida"], med, [10, 14, 12, 5, 30, 14, 16, 8, 8, 5, 30, 10])], d["total"]
+BUILD["validacao"] = _validacao
+from queries import q1
 
 def build(name, args):
     if name not in BUILD: raise ValueError("Módulo sem exportação.")

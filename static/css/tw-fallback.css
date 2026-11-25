@@ -241,9 +241,7 @@
 .text-xl{font-size:1.25rem;line-height:1.75rem}
 .text-xs{font-size:.75rem;line-height:1rem}
 .top-0{top:0}
-.tracking-wide{letter-spacing:.025em}
 .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.uppercase{text-transform:uppercase}
 .w-12{width:3rem}
 .w-14{width:3.5rem}
 .w-16{width:4rem}
@@ -267,7 +265,6 @@
 .hover\:bg-slate-500\/10:hover{background-color:rgba(100,116,139,0.1)}
 .hover\:bg-slate-500\/20:hover{background-color:rgba(100,116,139,0.2)}
 .hover\:border-blue-500:hover{border-color:var(--b500,#2F4A8C)}
-.hover\:shadow-lg:hover{box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1)}
 .hover\:text-ink:hover{color:var(--tx)}
 .hover\:text-red-600:hover{color:var(--t-red-600,#C81E2E)}
 @media(min-width:640px){.sm\:col-span-2{grid-column:span 2/span 2}}

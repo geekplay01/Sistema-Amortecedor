@@ -42,6 +42,7 @@ PAGES = [
  ("importacao", "Importação de Excel", "upload", 2),
  ("desenvolvimento", "Desenvolvimento", "amortecedor", 3),
  ("redesenvolvimento", "Redesenvolvimento", "rotate-ccw", 3),
+ ("validacao", "Validação", "clipboard-check", 24),          # etapa 24: validação de desenho (PERFECT × fornecedor) que gera o F-008
  ("amostras", "Compra de amostras", "shopping-cart", 3),
  ("damping", "Damping force", "activity", 3),
  ("pendencias", "Pendências de dados", "circle-alert", 4),
@@ -66,7 +67,7 @@ CARDS = [  # chave, rótulo, destino, dica — produtos, DES e R-D ficam só na 
 PRIMARY = ["metas", "pedidos-aberto", "vendas", "estoque", "garantia"]     # menu fixo da sidebar (Metas & Validação · Pedidos em Aberto · Vendas (Curva A) · Estoque · Garantia)
 # Menu na ordem do FLUXO do produto: desenvolve → compra amostra → entra no catálogo → compra/importa → vende (o menu lateral desenha o conector entre as etapas)
 MENU = [("Visão geral", ["dashboard", "brands"]),
-        ("1 · Desenvolvimento", ["desenvolvimento", "redesenvolvimento", "desenhos", "damping"]),
+        ("1 · Desenvolvimento", ["desenvolvimento", "redesenvolvimento", "validacao", "desenhos", "damping"]),
         ("2 · Amostras", ["amostras", "envio"]),
         ("3 · Catálogo", ["pesquisa", "produtos", "aplicacoes", "lados", "comparacao", "cobertura", "anomalias"]),
         ("4 · Compras", ["fob"]),
@@ -74,7 +75,8 @@ MENU = [("Visão geral", ["dashboard", "brands"]),
 FLOW_GROUPS = {"1 · Desenvolvimento", "2 · Amostras", "3 · Catálogo", "4 · Compras"}
 # Conectores entre telas: de onde a informação vem → esta tela → para onde ela vai (faixa abaixo do título de cada página)
 RELATED = {
- "desenvolvimento": (["metas"], ["amostras", "desenhos", "lados"]), "redesenvolvimento": (["metas"], ["amostras", "desenhos", "lados"]),
+ "desenvolvimento": (["metas"], ["amostras", "desenhos", "lados"]), "redesenvolvimento": (["metas"], ["validacao", "amostras", "desenhos", "lados"]),
+ "validacao": (["redesenvolvimento"], ["desenhos"]),
  "amostras": (["desenvolvimento", "redesenvolvimento"], ["envio", "pedidos-aberto"]), "envio": (["amostras"], ["desenvolvimento"]),
  "produtos": (["atualizacao"], ["lados", "aplicacoes", "vendas"]), "pesquisa": (["produtos"], ["lados", "pedidos-aberto", "vendas"]),
  "lados": (["produtos", "desenvolvimento"], ["pedidos-aberto", "vendas"]), "aplicacoes": (["produtos"], ["lados"]),
@@ -511,6 +513,64 @@ def api_rd_f(kind): return jsonify(rd.facets(_rdk(kind), request.args.get("statu
 def api_rd_d(kind, code): return jsonify(rd.detail(_rdk(kind), code) or abort(404))
 @app.get("/api/filters")
 def api_filters(): return jsonify(rd.filter_lists(request.args.get("make") or None))
+
+# ---- Validação de desenho (etapa 24): bancada do R-D e tela do menu; gera o F-008 ----
+import validacao
+def _val(f):
+    """Erros da validação: regra (ValueError) = 400 com a frase para o usuário; validação inexistente = 404."""
+    from functools import wraps
+    @wraps(f)
+    def g(*a, **k):
+        try: return f(*a, **k)
+        except LookupError as e: return jsonify(error=str(e)), 404
+        except ValueError as e: return jsonify(error=str(e)), 400
+    return g
+def _quem(): return (auth.current_user() or {}).get("username")
+@app.get("/api/validacao")
+@_val
+def api_val_lista(): return jsonify(validacao.listagem(A()))
+@app.get("/api/validacao/aba/<kind>")
+@_val
+def api_val_aba(kind): return jsonify(validacao.aba(kind, A()))
+@app.post("/api/validacao")
+@_val
+def api_val_criar():
+    b = request.get_json(force=True) or {}; return jsonify(id=validacao.criar(b.get("kind") or "rd", b.get("code"), _quem()))
+@app.get("/api/validacao/<int:vid>")
+@_val
+def api_val_obter(vid): return jsonify(validacao.obter(vid))
+@app.patch("/api/validacao/<int:vid>")
+@_val
+def api_val_salvar(vid): return jsonify(validacao.salvar(vid, request.get_json(force=True) or {}))
+@app.delete("/api/validacao/<int:vid>")
+@_val
+def api_val_excluir(vid): validacao.excluir(vid); return jsonify(ok=True)
+@app.post("/api/validacao/<int:vid>/desenho/<lado>")
+@_val
+def api_val_desenho(vid, lado):
+    f = request.files.get("file")
+    if not f or not f.filename: raise ValueError("Escolha o arquivo do desenho.")
+    return jsonify(validacao.desenho(vid, lado, f))
+@app.get("/api/validacao/<int:vid>/img/<nome>.png")
+def api_val_img(vid, nome):
+    p = validacao.imagem(vid, nome)
+    if not p: abort(404)
+    r = send_file(p, mimetype="image/png"); r.headers["Cache-Control"] = "no-store"; return r
+@app.post("/api/validacao/<int:vid>/ler")
+@_val
+def api_val_ler(vid): return jsonify(validacao.ler(vid))
+@app.post("/api/validacao/<int:vid>/concluir")
+@_val
+def api_val_concluir(vid): return jsonify(validacao.gerar(vid, (request.get_json(force=True) or {}).get("decisao"), _quem()))
+@app.post("/api/validacao/<int:vid>/nova")
+@_val
+def api_val_nova(vid): return jsonify(id=validacao.nova(vid, _quem()))
+@app.get("/api/validacao/<int:vid>/arquivo/<tipo>")
+@_val
+def api_val_arquivo(vid, tipo):
+    p, nome = validacao.arquivo_gerado(vid, tipo)
+    if not p: abort(404)
+    return send_file(p, as_attachment=True, download_name=nome)
 
 # ---- Plotly servido localmente (pip install plotly) — sem CDN, funciona atrás do firewall da empresa ----
 @app.get("/vendor/plotly.min.js")

@@ -97,7 +97,24 @@ def lista():
             "<b>Código PERFECT</b>: vem do cross, da base de marcas e das amostras. O lápis da célula vincula manualmente o item PERFECT relativo "
             "(um ou mais códigos AMD… do catálogo ou de DES/R-D; vazio = sem relação); o vínculo vale sobre a base, aparece como «vinculado no app» e tem «Desfazer»."]),
         ("desenvolvimento", "Desenvolvimento", _des_rd(c, "des")),
-        ("redesenvolvimento", "Redesenvolvimento", _des_rd(c, "rd")),
+        ("redesenvolvimento", "Redesenvolvimento", _des_rd(c, "rd") + [
+            "<b>Validar itens</b> (etapa 24): sem busca, lista os itens em andamento que o servidor marca «Pendente validação», «Validação reprovada» ou «Pendente desenho do fornecedor», "
+            "nessa ordem; com busca, qualquer item em andamento. «Iniciar validação» abre a bancada (a mesma da tela Validação); quem já tem rascunho mostra «Continuar»."]),
+        ("validacao", "Validação", [
+            "Validação de desenho que gera o F-008: o desenho PERFECT (referência) contra o desenho do fornecedor. Por enquanto só Redesenvolvimento; Desenvolvimento entra depois.",
+            "<b>1 · Desenhos</b>: os dois são enviados na hora (PDF, PNG ou JPG; o PDF vale pela 1ª página). No PERFECT, arraste para selecionar: «Apagar seleção» (Delete) pinta de branco e "
+            "«Manter só a seleção» apaga o resto; «Desfazer» volta um passo. A versão limpa fica só na validação; o arquivo em Desenhos não muda.",
+            "<b>2 · Família</b>: os modelos F-008 de <code>bases_exemplo\\VALIDATION</code> (Cartucho, Convencional, Estrutural, Semi-estrutural, Semi-estrutural interferência). "
+            "As medidas são as da coluna B do modelo, na mesma ordem; até 25 linhas, as extras com nome em inglês. Trocar a família guarda os valores das medidas de mesmo nome.",
+            "<b>3 · Medidas</b>: o Claude (Opus 5.5, pela API, com a chave ANTHROPIC_API_KEY do ~/.perfect_shock_data/.env) lê os dois desenhos e lista valor, tolerância e onde está cada cota. "
+            "Ele não aprova nada: cada linha precisa ser marcada «Conferida». As imagens dos desenhos saem do PC para a API da Anthropic. Sem chave, as medidas são digitadas.",
+            "<b>Ap</b> (A/R) é a fórmula do modelo: tolerância «OK» aprova e «N» reprova; roscas (M…), ângulos e textos comparam como texto; números aprovam dentro da tolerância "
+            "(fornecedor ≤ PERFECT + Tol.+ e ≥ PERFECT + Tol.−). A Melhoria sugere «CHANGE TO <valor PERFECT>» na linha R e pode ser trocada. Damping: a fórmula do modelo da família — Cartucho: cada velocidade "
+            "dentro de ±30/25/15/15/15 % do PERFECT (com ±30 N a menos abaixo de 1000 N); os outros: diferença de até 30/25/15/20/15 %, e sem valor do PERFECT numa velocidade o Ap fica vazio.",
+            "<b>4 · Revisão e aprovação</b>: só com todas as linhas conferidas. Aprovar ou Reprovar preenche o modelo da família (Dados, medidas, damping, as duas imagens e o X da conclusão) e grava "
+            "«F-008 - Validation Test - Rev.00 - <código> - <fornecedor> - <código do fornecedor> - REV.00» em xlsx e pdf (o pdf pelo Excel do PC) em <code>data\\validacoes</code>. "
+            "Só Aprovar sobe o desenho original do fornecedor para Desenhos («RED - … - REV.00», fonte «Validação»), como a revisão vigente.",
+            "Concluída, a validação não muda mais; «Nova validação deste item» abre outra. O status do item no servidor não muda (o servidor só é lido)."]),
         ("amostras", "Compra de amostras", [
             "<b>Sugestões</b>: itens PERFECT em DESENVOLVIMENTO marcados PENDENTE COMPRAS, sem amostra comprada, fora do catálogo e com status diferente de ITEM RECEBIDO (só Amortecedor). "
             "Redesenvolvimento não tem sugestão: para comprar amostra de um item já desenvolvido, use «+ Nova amostra». Cada referência abre a consulta do menor preço.",

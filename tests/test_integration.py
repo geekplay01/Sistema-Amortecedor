@@ -13,6 +13,7 @@ seed_db.guard(db)
 DES, RD = kinds.DES, kinds.RD
 import drawings
 drawings.DIR = os.path.join(TMP, "drawings"); drawings.TMP = os.path.join(TMP, "uploads"); auth.AVATAR_DIR = os.path.join(TMP, "avatars")      # os testes não tocam nos arquivos reais do projeto
+import validacao; validacao.DIR = os.path.join(TMP, "validacoes")
 fake_server.build(SERVER, DB)
 A.app.config["PIPELINE_CONN_FACTORY"] = lambda cfg: sqlite3.connect(SERVER)
 C = A.app.test_client()
@@ -580,6 +581,30 @@ class Fluxo(unittest.TestCase):
             self.assertEqual(row["Família Inmetro"], "CONVENCIONAL; ESTRUTURAL"); self.assertEqual((row["FOB menor (US$)"], row["Fornecedor do FOB"]), (12.5, "ZS"))
             self.assertEqual((row["Estoque disponível"], row["Estoque reservado"]), (42, 5))
 
+    def test_27b_excel_pesquisa_caixa_abas_e_nome(self):
+        """Etapa 24 · Q1–Q2: o Excel da Pesquisa traz a caixa e as medidas da caixa (C x L x A) em outra coluna, as abas Aplicações e DES e R-D,
+        e o item selecionado (código buscado; montadora, modelo e ano) no nome do arquivo. Produtos continua sem filtro no nome."""
+        import io, re, datetime
+        from urllib.parse import unquote
+        from openpyxl import load_workbook
+        if not C.get("/api/products?q=AMDT26").json["total"]: self.test_26_anomalias()
+        con = sqlite3.connect(DB)
+        try:
+            con.execute("INSERT OR REPLACE INTO packaging_boxes(code,length_mm,width_mm,height_mm,raw_dims) VALUES('PP913',425,85,60,'425x85x60')")
+            con.execute("UPDATE products SET package_code='PP913M' WHERE perfect_code='AMDT26'"); con.commit()
+        finally: con.close()
+        nome = lambda r: unquote((re.search(r"filename\*=UTF-8''([^;]+)", r.headers["Content-Disposition"]) or re.search(r"filename=\"?([^\";]+)", r.headers["Content-Disposition"])).group(1))
+        dia = datetime.date.today().strftime("%d-%m")
+        r = C.get("/api/export/pesquisa.xlsx?q=AMDT26"); wb = load_workbook(io.BytesIO(r.data)); ws = wb["Produtos"]
+        row = dict(zip([c.value for c in ws[1]], [c.value for c in ws[2]]))
+        self.assertEqual((row["Caixa"], row["Medidas da caixa (C x L x A, mm)"]), ("PP913M", "425 x 85 x 60"))
+        for k in ("Curso (mm)", "Ø tubo (mm)", "Fixação superior", "NCM", "Descrição (inglês)", "Nº Inmetro"): self.assertIn(k, row)
+        self.assertEqual(wb.sheetnames[:3], ["Produtos", "Aplicações", "DES e R-D"])
+        self.assertEqual(nome(r), f"PerfectAmortecedores - Pesquisa de amortecedores - AMDT26 - {dia}.xlsx")
+        self.assertEqual(nome(C.get("/api/export/pesquisa.xlsx?make=Fiat&model=Toro&year=2020")), f"PerfectAmortecedores - Pesquisa de amortecedores - FIAT TORO 2020 - {dia}.xlsx")
+        self.assertEqual(nome(C.get("/api/export/pesquisa.xlsx")), f"PerfectAmortecedores - Pesquisa de amortecedores - {dia}.xlsx")
+        self.assertEqual(nome(C.get("/api/export/produtos.xlsx?q=AMDT26")), f"PerfectAmortecedores - Produtos e códigos - {dia}.xlsx")
+
     def test_28_garantia_planilha(self):
         """D8/etapa 18: sem dados do servidor, /api/garantias avisa e o Excel recusa; com a tabela da tela preenchida, rota e Excel seguem os filtros."""
         import io, datetime, garantias
@@ -754,6 +779,27 @@ class Fluxo(unittest.TestCase):
             try: con.execute("DELETE FROM pendencies WHERE description='T37'"); con.commit()
             finally: con.close()
         self.assertEqual(C.get("/api/menu/counts").json["pendencias"], m0)
+
+    def test_38_validacao_rotas_menu_e_aba(self):
+        """Etapa 24: tela Validação no menu (1 · Desenvolvimento), aba «Validar itens» do R-D, bancada pelas rotas (criar, salvar, imagem, Excel da lista) e erros com frase."""
+        import io
+        from openpyxl import load_workbook
+        from PIL import Image
+        pg = C.get("/validacao").get_data(as_text=True); self.assertIn("telas/validacao.js", pg); self.assertIn('href="/validacao"', pg)
+        self.assertEqual(C.post("/api/validacao", json={"kind": "rd", "code": "NAOEXISTE"}).status_code, 400)
+        self.assertEqual(C.get("/api/validacao/999999").status_code, 404)
+        code = next(iter(C.get("/api/rd/rd?status=andamento").json["rows"]), {}).get("code")
+        if not code: self.skipTest("seed sem item de R-D em andamento")
+        vid = C.post("/api/validacao", json={"kind": "rd", "code": code}).json["id"]
+        v = C.patch(f"/api/validacao/{vid}", json={"family": "CARTUCHO", "supplier_code": "DQ1"}).json; self.assertEqual((v["family"], len(v["dados"]["linhas"])), ("CARTUCHO", 10))
+        b = io.BytesIO(); Image.new("RGB", (300, 200), "white").save(b, "PNG")
+        r = C.post(f"/api/validacao/{vid}/desenho/perfect", data={"file": (io.BytesIO(b.getvalue()), "P.png")}, content_type="multipart/form-data"); self.assertEqual(r.status_code, 200, r.json)
+        self.assertEqual(C.get(f"/api/validacao/{vid}/img/perfect.png").status_code, 200); self.assertEqual(C.get(f"/api/validacao/{vid}/img/fornecedor.png").status_code, 404)
+        self.assertEqual(C.post(f"/api/validacao/{vid}/concluir", json={"decisao": "aprovada"}).status_code, 400)        # sem o desenho do fornecedor
+        a = C.get("/api/validacao/aba/rd?q=" + code).json; self.assertIn(code, [x["code"] for x in a["rows"]])
+        lst = C.get("/api/validacao?status=andamento").json; self.assertIn(vid, [x["id"] for x in lst["rows"]])
+        wb = load_workbook(io.BytesIO(C.get("/api/export/validacao.xlsx?status=andamento").data)); self.assertEqual(wb.sheetnames[:2], ["Validações", "Medidas"])
+        self.assertEqual(C.delete(f"/api/validacao/{vid}").status_code, 200)
 
     def test_30_nome_do_arquivo_e_filtros_limpos(self):
         """Etapa 17 · Q8/Q16/Q26: arquivo «PerfectAmortecedores - <tela do menu> - dd-mm.xlsx», sem filtros no nome (eles ficam na aba «Filtros aplicados»);

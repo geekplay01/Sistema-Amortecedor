@@ -62,7 +62,7 @@
     <script src="{{ url_for('static', filename='js/core.js') }}"></script>
     {% if cur[0]=='garantia' %}<script src="{{ url_for('static', filename='js/brasil_uf.js') }}"></script>{# contorno dos estados (IBGE) para o mapa da Garantia #}{% endif %}
     {# uma tela por arquivo (static/js/telas); cada uma se registra com PSD.tela(slug, desenhar) #}
-    {% for t in ['dashboard', 'catalogo','produtos', 'desenvolvimento', 'metas', 'desenhos', 'damping', 'amostras', 'envio', 'lados', 'brands', 'anomalias', 'garantia', 'estoque', 'pendencias', 'fontes', 'configuracoes', 'atualizacao', 'guia', 'item', 'cobertura'] %}
+    {% for t in ['dashboard', 'catalogo','produtos', 'desenvolvimento', 'metas', 'desenhos', 'damping', 'amostras', 'envio', 'lados', 'brands', 'anomalias', 'garantia', 'estoque', 'pendencias', 'fontes', 'configuracoes', 'atualizacao', 'guia', 'item', 'cobertura', 'validacao'] %}
     <script src="{{ url_for('static', filename='js/telas/' ~ t ~ '.js') }}"></script>
     {% endfor %}
     <script>PSD.iniciar();</script>
