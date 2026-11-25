@@ -36,7 +36,8 @@
 
   /* ======================= bancada ======================= */
   function bancada(el, vid, o = {}) {
-    let v = null, passo = null, armado = null, timer = null, sel = null, base = null;
+    let v = null, passo = null, armado = null, timer = null, sel = null, base = null, esc3 = null;
+    const zoom = {};          // zoom e posição de cada desenho no passo 3 (ficam ao trocar de passo)
     const ro = () => v.status !== "andamento";
     const src = n => `/api/validacao/${vid}/img/${n}.png?u=${encodeURIComponent(v.updated_at || "")}`;
     const imgPerfect = () => v.imagens.perfect_limpo ? "perfect_limpo" : "perfect";
@@ -56,7 +57,8 @@
       <div class="psd-passos" role="tablist">${PASSOS.map((t, i) => `<button type="button" role="tab" data-passo="${i}" aria-selected="${i === passo}" class="${feito(i) ? "feito" : ""}">${i + 1} · ${t}<small>${esc(sub(i))}</small></button>`).join("")}</div>`;
     const redesenharTopo = () => { const t = $("#vtopo", el); if (t) t.innerHTML = topo(); };
     const desenhar = () => { el.innerHTML = `<div class="psd-banc"><div id="vtopo">${topo()}</div><div id="vbc"></div></div>`; corpo(); };
-    const corpo = () => { const c = $("#vbc", el); c.innerHTML = [passo1, passo2, passo3, passo4][passo](); [ligar1, ligar2, ligar3, ligar4][passo](c); };
+    const corpo = () => { document.querySelectorAll("body > .psd-vdes.cheio").forEach(x => x.remove()); document.body.classList.remove("psd-vcheio"); esc3 = null;
+      const c = $("#vbc", el); c.innerHTML = [passo1, passo2, passo3, passo4][passo](); [ligar1, ligar2, ligar3, ligar4][passo](c); };
     const ir = i => { passo = i; redesenharTopo(); corpo(); };
     const salvar = async (b, redesenha = false) => { try { v = await JS(`/${vid}`, "PATCH", b); redesenharTopo(); if (redesenha) corpo(); } catch (e) { TW.erro(e); } };
     const salvarLinhas = () => { clearTimeout(timer); timer = setTimeout(() => salvar({ linhas: v.dados.linhas }), 700); };
@@ -126,61 +128,130 @@
         if (v.family && conta(v.dados.linhas).linhas && !(await TW.confirmar({ titulo: `Trocar para ${FAM(nova)}?`, texto: "As medidas com o mesmo nome guardam os valores; as que não existem no outro modelo saem da tabela.", botao: "Trocar a família" }))) return;
         salvar({ family: nova }, true); })); };
 
-    /* ---------- passo 3: medidas ---------- */
+    /* ---------- passo 3: medidas ----------
+       Digitação no desenho (padrão, sem API): «Digitar no desenho» marca a linha; o clique na cota abre o campo ali mesmo (PERFECT: valor e tolerâncias,
+       «553±3» já separa; fornecedor: valor). Enter grava, põe o número no desenho e passa para a próxima linha. Roda do mouse aproxima, arrastar move,
+       «Tela cheia» abre o desenho grande. Com a leitura pelo Claude ligada em Configurações, aparece também «Ler medidas com o Claude». */
     const marca = (l, i, lado) => l[lado] && usada(l) ? `<span class="psd-mk" data-i="${i}" style="left:${l[lado][0] * 100}%;top:${l[lado][1] * 100}%" title="${esc(l.n + " " + l.nome)}">${l.n}</span>` : "";
     const marcas = lado => v.dados.linhas.map((l, i) => marca(l, i, lado)).join("");
+    const LADO = { pp: "PERFECT", pf: "fornecedor" };
     const linha = (l, i) => { const dis = ro() ? "disabled" : "", a = ap(l);
-      return `<tr data-i="${i}">
-        <td><button type="button" class="psd-num${armado === i ? " armado" : ""}" data-arma="${i}" ${dis} title="Marcar onde esta medida fica nos desenhos">${l.n}</button></td>
+      return `<tr data-i="${i}" class="${armado === i ? "armada" : ""}">
+        <td><button type="button" class="psd-num${armado === i ? " armado" : ""}" data-arma="${i}" ${dis} title="Digitar esta medida no desenho">${l.n}</button></td>
         <td class="nome">${l.extra && !ro() ? `<input data-k="nome" value="${esc(l.nome)}" aria-label="Nome da medida em inglês">` : `<span>${esc(l.nome)}</span>`}${l.obs ? `<small title="${esc(l.obs)}">${esc(l.obs)}</small>` : ""}</td>
         ${["p", "f", "tm", "tn"].map(k => `<td><input data-k="${k}" value="${esc(l[k] || "")}" class="r" ${dis} aria-label="${{ p: "PERFECT", f: "Fornecedor", tm: "Tolerância +", tn: "Tolerância −" }[k]}"></td>`).join("")}
         <td class="c" data-ap>${apTag(a)}</td>
         <td><input data-k="melhoria" value="${esc(l.melhoria || "")}" ${dis} aria-label="Melhoria (Improve)"></td>
         <td class="c"><input type="checkbox" data-k="conferida" ${l.conferida ? "checked" : ""} ${dis} aria-label="Conferida"></td>
         <td>${l.extra && !ro() ? `<button type="button" class="psd-vx" data-tira="${i}" aria-label="Tirar a medida">${ico("x", "sm")}</button>` : ""}</td></tr>`; };
+    const papel = (lado, titulo, extra, img) => `<div class="psd-vdes" data-des="${lado}"><h4><span class="tt">${titulo}${extra ? `<small>${extra}</small>` : ""}</span>
+        <span class="psd-zctl">${img ? `<button type="button" data-z="mais" aria-label="Aproximar">${ico("plus", "sm")}</button><button type="button" data-z="menos" aria-label="Afastar"><b>−</b></button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="cheia">Tela cheia</button>` : ""}</span></h4>
+      <div class="psd-papel" data-lado="${lado}">${img ? `<div class="psd-zoom"><img alt="" src="${img}">${marcas(lado)}</div>` : empty("Sem desenho.")}</div></div>`;
+    const marcando = () => armado == null ? "" : `<div class="psd-vmarca">${ico("pencil", "sm")}<span>Digitando <b>${esc(v.dados.linhas[armado].n + " " + v.dados.linhas[armado].nome)}</b>: clique na cota no desenho PERFECT ou no do fornecedor</span><button type="button" class="psd-btn sm" data-pular>Pular linha</button><button type="button" class="psd-btn sm" data-parar>Parar</button></div>`;
     const passo3 = () => { const c = conta(v.dados.linhas), lida = v.leitura_em, podeLer = v.ia.ok && !ro() && v.imagens.perfect && v.imagens.fornecedor && v.family;
       return `<div class="psd-vmedidas"><div class="min-w-0">
-        <div class="psd-vleit"><span class="info">${lida ? `<b>${nf(c.linhas)} medidas</b> lidas pelo Claude em ${dmy(lida)} às ${String(lida).slice(11, 16)}, <b>${nf(c.conferidas)}</b> conferidas` : c.linhas ? `<b>${nf(c.linhas)} medidas</b>, <b>${nf(c.conferidas)}</b> conferidas` : "Nenhuma medida lida ainda"}</span>
-          ${ro() ? "" : `<span class="dir"><button type="button" class="psd-btn sm ${lida ? "" : "prim"}" data-ler ${podeLer ? "" : "disabled"}>${ico("sparkles", "sm")}${lida ? "Ler de novo" : "Ler medidas com o Claude"}</button>
+        <div class="psd-vleit"><span class="info">${lida ? `<b>${nf(c.linhas)} ${c.linhas === 1 ? "medida" : "medidas"}</b>, lidas pelo Claude em ${dmy(lida)} às ${String(lida).slice(11, 16)}; <b>${nf(c.conferidas)}</b> ${c.conferidas === 1 ? "conferida" : "conferidas"}`
+            : c.linhas ? `<b>${nf(c.linhas)} ${c.linhas === 1 ? "medida preenchida" : "medidas preenchidas"}</b>, <b>${nf(c.conferidas)}</b> ${c.conferidas === 1 ? "conferida" : "conferidas"}` : "Nenhuma medida preenchida ainda"}</span>
+          ${ro() ? "" : `<span class="dir">
+            ${v.dados.linhas.length ? `<button type="button" class="psd-btn sm ${c.linhas || v.ia.ligada ? "" : "prim"}" data-digitar>${ico("pencil", "sm")}Digitar no desenho</button>` : ""}
+            ${v.ia.ligada ? `<button type="button" class="psd-btn sm ${lida || !v.ia.ok ? "" : "prim"}" data-ler ${podeLer ? "" : "disabled"}>${ico("sparkles", "sm")}${lida ? "Ler de novo" : "Ler medidas com o Claude"}</button>` : ""}
             <button type="button" class="psd-btn sm" data-mais ${v.dados.linhas.length >= 25 ? "disabled" : ""}>${ico("plus", "sm")}Adicionar medida</button>
-            ${c.linhas && lida ? `<button type="button" class="psd-btn sm" data-confa>${ico("check", "sm")}Conferir as que deram A</button>` : ""}</span>`}</div>
-        ${!v.ia.ok && !ro() ? notice(`${esc(v.ia.motivo)} Enquanto isso, as medidas podem ser digitadas na tabela.`, "amber") : ""}
+            ${c.linhas ? `<button type="button" class="psd-btn sm" data-confa>${ico("check", "sm")}Conferir as que deram A</button>` : ""}</span>`}</div>
+        ${v.ia.ligada && !v.ia.ok && !ro() ? notice(`${esc(v.ia.motivo)} Enquanto isso, digite as medidas no desenho.`, "amber") : ""}
+        <div id="vmarca">${marcando()}</div>
         ${v.dados.linhas.length ? `<div class="psd-vtab-w"><table class="psd-vtab"><thead><tr><th>Nº</th><th>Medida</th><th class="r">PERFECT</th><th class="r">Fornecedor</th><th class="r">Tol. +</th><th class="r">Tol. −</th><th class="c">Ap</th><th>Melhoria</th><th class="c">Conferida</th><th></th></tr></thead>
           <tbody>${v.dados.linhas.map(linha).join("")}</tbody></table></div>` : empty("Escolha a família no passo 2 para montar a tabela.")}
-        ${ro() ? "" : `<p class="psd-vdica">Clique no número de uma linha e depois na cota, num dos desenhos, para marcar onde ela fica. Arraste um número para corrigir. Tolerância «OK» aprova e «N» reprova a linha, como no modelo.</p>`}
+        ${ro() ? "" : `<p class="psd-vdica">No PERFECT, «553±3» ou «12.1 +0.15/0» já separa as tolerâncias. Tolerância «OK» aprova e «N» reprova a linha, como no modelo. Roda do mouse aproxima, arrastar move o desenho, arrastar um número muda o lugar dele.</p>`}
       </div>
       <div class="psd-vpilha">
-        <div><h4>Desenho PERFECT<span>${v.dados.mascara.length ? "máscara limpa" : ""}</span></h4><div class="psd-papel" data-lado="pp">${v.imagens.perfect ? `<img alt="" src="${src(imgPerfect())}">${marcas("pp")}` : empty("Sem desenho.")}</div></div>
-        <div><h4>Desenho do fornecedor<span>${esc([v.supplier, v.supplier_code].filter(Boolean).join(" "))}</span></h4><div class="psd-papel" data-lado="pf">${v.imagens.fornecedor ? `<img alt="" src="${src("fornecedor")}">${marcas("pf")}` : empty("Sem desenho.")}</div></div>
+        ${papel("pp", "Desenho PERFECT", v.dados.mascara.length ? "máscara limpa" : "", v.imagens.perfect ? src(imgPerfect()) : "")}
+        ${papel("pf", "Desenho do fornecedor", esc([v.supplier, v.supplier_code].filter(Boolean).join(" ")), v.imagens.fornecedor ? src("fornecedor") : "")}
       </div></div>${rodape(3, "Próximo: revisão e aprovação")}`; };
+    /* «553±3» → 553, 3, −3 · «12.1 +0.15/0» → 12.1, 0.15, 0 · «Ø51» → 51 */
+    const separa = t => { const s = String(t || "").trim().replace(/^[ØøΦ]\s*/, "");
+      let m = s.match(/^(.+?)\s*±\s*([\d.,]+)$/); if (m) return { v: m[1].trim(), tm: m[2], tn: "-" + m[2] };
+      m = s.match(/^(.+?)\s*\+\s*([\d.,]+)\s*\/\s*-?\s*([\d.,]+)$/); if (m) return { v: m[1].trim(), tm: m[2], tn: Number(m[3].replace(",", ".")) ? "-" + m[3] : "0" };
+      return { v: s }; };
     const ligar3 = c => {
       ligarEnvio(c);
       const foco = i => c.querySelectorAll(".psd-mk, .psd-vtab tr").forEach(x => x.classList.toggle("foco", i != null && x.dataset.i === String(i)));
       const tab = c.querySelector(".psd-vtab");
+      const atualiza = i => { const tr = tab && tab.querySelector(`tr[data-i="${i}"]`), l = v.dados.linhas[i]; if (!tr) return;
+        ["p", "f", "tm", "tn", "melhoria"].forEach(k => { const x = tr.querySelector(`[data-k="${k}"]`); if (x) x.value = l[k] || ""; }); tr.querySelector("[data-ap]").innerHTML = apTag(ap(l)); };
+      const melhoria = l => { const a = ap(l); if (a === "R" && !l.melhoria && l.p) l.melhoria = `CHANGE TO ${l.p}`.toUpperCase(); else if (a !== "R" && /^CHANGE TO /.test(l.melhoria || "")) l.melhoria = ""; };
+      const armar = i => { armado = i == null || i >= v.dados.linhas.length ? null : i; $("#vmarca", c).innerHTML = marcando();
+        c.querySelectorAll("[data-arma]").forEach(y => y.classList.toggle("armado", +y.dataset.arma === armado)); c.querySelectorAll(".psd-vtab tr[data-i]").forEach(y => y.classList.toggle("armada", +y.dataset.i === armado));
+        c.querySelectorAll(".psd-papel[data-lado]").forEach(p => p.classList.toggle("armado", armado != null));
+        if (armado != null) { const tr = tab && tab.querySelector(`tr[data-i="${armado}"]`); if (tr) tr.scrollIntoView({ block: "nearest" }); } };
       if (tab) {
         tab.addEventListener("mouseover", e => { const tr = e.target.closest("tr[data-i]"); foco(tr ? tr.dataset.i : null); });
         tab.addEventListener("mouseleave", () => foco(null));
         tab.addEventListener("input", e => { const i = e.target.closest("[data-k]"); if (!i) return; const tr = i.closest("tr"), l = v.dados.linhas[+tr.dataset.i], k = i.dataset.k;
           if (k === "conferida") l.conferida = i.checked; else l[k] = i.value;
-          if (["p", "f", "tm", "tn"].includes(k)) { const a = ap(l); tr.querySelector("[data-ap]").innerHTML = apTag(a); const m = tr.querySelector('[data-k="melhoria"]');
-            if (a === "R" && !l.melhoria && l.p) { l.melhoria = `CHANGE TO ${l.p}`.toUpperCase(); m.value = l.melhoria; } else if (a !== "R" && /^CHANGE TO /.test(l.melhoria || "")) { l.melhoria = ""; m.value = ""; } }
+          if (["p", "f", "tm", "tn"].includes(k)) { melhoria(l); tr.querySelector("[data-ap]").innerHTML = apTag(ap(l)); tr.querySelector('[data-k="melhoria"]').value = l.melhoria || ""; }
           salvarLinhas(); });
         tab.addEventListener("click", e => { const b = e.target.closest("[data-arma]"), x = e.target.closest("[data-tira]");
-          if (b) { armado = armado === +b.dataset.arma ? null : +b.dataset.arma; c.querySelectorAll("[data-arma]").forEach(y => y.classList.toggle("armado", +y.dataset.arma === armado)); c.querySelectorAll(".psd-papel[data-lado]").forEach(p => p.classList.toggle("armado", armado != null)); }
-          if (x) { v.dados.linhas.splice(+x.dataset.tira, 1); v.dados.linhas.forEach((l, k) => l.n = k + 1); salvar({ linhas: v.dados.linhas }, true); } });
+          if (b) armar(armado === +b.dataset.arma ? null : +b.dataset.arma);
+          if (x) { v.dados.linhas.splice(+x.dataset.tira, 1); v.dados.linhas.forEach((l, k) => l.n = k + 1); armado = null; salvar({ linhas: v.dados.linhas }, true); } });
       }
-      c.querySelectorAll(".psd-papel[data-lado]").forEach(p => {
-        const lado = p.dataset.lado, fr = e => { const r = p.getBoundingClientRect(); return [Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1), Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1)]; };
+      c.addEventListener("click", e => { if (e.target.closest("[data-digitar]")) { const i = v.dados.linhas.findIndex(l => !String(l.p || "").trim()); armar(i < 0 ? 0 : i); }
+        if (e.target.closest("[data-pular]")) { fecharPop(); armar(armado + 1); } if (e.target.closest("[data-parar]")) { fecharPop(); armar(null); } });
+
+      /* zoom e arrastar: a camada .psd-zoom (imagem + números) cresce; os números mantêm o tamanho (--z) */
+      let pop = null;
+      const fecharPop = () => { if (pop) { pop.remove(); pop = null; } };
+      c.querySelectorAll(".psd-vdes").forEach(box => {
+        const lado = box.dataset.des, p = box.querySelector(".psd-papel"), z = p.querySelector(".psd-zoom"); if (!z) return;
+        const st = zoom[lado] || (zoom[lado] = { z: 1, x: 0, y: 0 });
+        const limita = () => { const W = p.clientWidth, H = p.clientHeight; st.x = Math.min(0, Math.max(W - W * st.z, st.x)); st.y = Math.min(0, Math.max(H - H * st.z, st.y)); };
+        const aplica = () => { limita(); z.style.transform = `translate(${st.x}px,${st.y}px) scale(${st.z})`; z.style.setProperty("--z", st.z); };
+        const zoomEm = (f, cx, cy) => { const nz = Math.min(8, Math.max(1, st.z * f)); st.x = cx - (cx - st.x) * nz / st.z; st.y = cy - (cy - st.y) * nz / st.z; st.z = nz; fecharPop(); aplica(); };
+        aplica();
+        const fr = e => { const r = z.getBoundingClientRect(); return [Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1), Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1)]; };
+        p.addEventListener("wheel", e => { e.preventDefault(); const r = p.getBoundingClientRect(); zoomEm(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+        box.querySelector(".psd-zctl").addEventListener("click", e => { const b = e.target.closest("[data-z]"); if (!b) return; const W = p.clientWidth / 2, H = p.clientHeight / 2;
+          if (b.dataset.z === "mais") zoomEm(1.5, W, H); else if (b.dataset.z === "menos") zoomEm(1 / 1.5, W, H); else if (b.dataset.z === "ajustar") { Object.assign(st, { z: 1, x: 0, y: 0 }); fecharPop(); aplica(); }
+          else { const on = !box.classList.contains("cheio"); fecharPop();
+            /* tela cheia: o bloco vai para o <body> (sai do recorte e da camada da página) e volta para o mesmo lugar ao fechar */
+            if (on) { box._lugar = document.createComment("desenho"); box.before(box._lugar); document.body.appendChild(box); } else if (box._lugar) { box._lugar.replaceWith(box); box._lugar = null; }
+            box.classList.toggle("cheio", on); document.body.classList.toggle("psd-vcheio", on); b.textContent = on ? "Fechar tela cheia" : "Tela cheia";
+            if (on) { const ir = z.querySelector("img"), ratio = ir.naturalWidth / ir.naturalHeight || 1.414; p.style.width = Math.min(innerWidth - 48, (innerHeight - 96) * ratio) + "px"; } else p.style.width = ""; Object.assign(st, { z: 1, x: 0, y: 0 }); aplica(); } });
         p.addEventListener("mouseover", e => { const m = e.target.closest(".psd-mk"); foco(m ? m.dataset.i : null); });
-        if (ro()) return;
-        let arr = null;
-        p.addEventListener("pointerdown", e => { const m = e.target.closest(".psd-mk"); if (!m) return; e.preventDefault(); arr = m; p.setPointerCapture(e.pointerId); });
-        p.addEventListener("pointermove", e => { if (!arr) return; const [x, y] = fr(e); arr.style.left = x * 100 + "%"; arr.style.top = y * 100 + "%"; });
-        p.addEventListener("pointerup", e => { if (arr) { v.dados.linhas[+arr.dataset.i][lado] = fr(e); arr = null; salvarLinhas(); return; }
-          if (armado == null || e.target.closest(".psd-mk")) return; const l = v.dados.linhas[armado]; l[lado] = fr(e);
-          if (!usada(l)) return TW.toast("Preencha o valor da linha para o número aparecer no desenho.", { tom: "aviso" });
-          p.querySelectorAll(`.psd-mk[data-i="${armado}"]`).forEach(x => x.remove()); p.insertAdjacentHTML("beforeend", marca(l, armado, lado)); salvarLinhas(); });
+        let arr = null, pan = null;
+        p.addEventListener("pointerdown", e => { if (e.button !== 0 || e.target.closest(".psd-vpop")) return; const m = e.target.closest(".psd-mk");
+          if (m && !ro()) { e.preventDefault(); arr = m; p.setPointerCapture(e.pointerId); return; }
+          pan = { x0: e.clientX, y0: e.clientY, sx: st.x, sy: st.y, moveu: false }; p.setPointerCapture(e.pointerId); });
+        p.addEventListener("pointermove", e => { if (arr) { const [x, y] = fr(e); arr.style.left = x * 100 + "%"; arr.style.top = y * 100 + "%"; return; }
+          if (!pan) return; const dx = e.clientX - pan.x0, dy = e.clientY - pan.y0; if (Math.abs(dx) + Math.abs(dy) > 4) pan.moveu = true;
+          if (pan.moveu && st.z > 1) { st.x = pan.sx + dx; st.y = pan.sy + dy; fecharPop(); aplica(); p.classList.add("movendo"); } });
+        p.addEventListener("pointerup", e => { p.classList.remove("movendo");
+          if (arr) { v.dados.linhas[+arr.dataset.i][lado] = fr(e); arr = null; salvarLinhas(); return; }
+          const clique = pan && !pan.moveu; pan = null; if (!clique || ro() || armado == null) return;
+          abrirPop(lado, p, z, fr(e), e); });
       });
+      /* campo no ponto clicado: grava valor (e tolerâncias no PERFECT), põe o número no desenho e passa para a próxima linha */
+      const abrirPop = (lado, p, z, pt, e) => { fecharPop(); const i = armado, l = v.dados.linhas[i], box = p.closest(".psd-vdes"), r = box.getBoundingClientRect(), k = lado === "pp" ? "p" : "f";
+        pop = document.createElement("form"); pop.className = "psd-vpop"; pop.autocomplete = "off";          // fica no bloco do desenho (fora do recorte do papel)
+        const x = Math.min(e.clientX - r.left + 14, r.width - 232), y = e.clientY - r.top + 14;
+        Object.assign(pop.style, { left: Math.max(0, x) + "px", top: y + "px" });
+        pop.innerHTML = `<div class="t"><span class="psd-num armado">${l.n}</span><b>${esc(l.nome)}</b><small>${LADO[lado]}</small></div>
+          <label><span>Valor</span><input name="v" value="${esc(l[k] || "")}" placeholder="${lado === "pp" ? "553±3" : "552"}" required></label>
+          ${lado === "pp" ? `<div class="dois"><label><span>Tol. +</span><input name="tm" value="${esc(l.tm || "")}"></label><label><span>Tol. −</span><input name="tn" value="${esc(l.tn || "")}"></label></div>` : ""}
+          <div class="a"><button type="submit" class="psd-btn sm prim">Gravar</button><button type="button" class="psd-btn sm" data-fechar>Cancelar</button><small>Enter grava, Esc fecha</small></div>`;
+        box.appendChild(pop); const iv = pop.querySelector("[name=v]"); iv.focus(); iv.select();
+        const rp = pop.getBoundingClientRect(); if (rp.bottom > innerHeight - 8) pop.style.top = Math.max(0, y - rp.height - 28) + "px";          // sem espaço embaixo: abre acima do clique
+        if (lado === "pp") iv.addEventListener("input", () => { const s = separa(iv.value); if (s.tm != null) { pop.querySelector("[name=tm]").value = s.tm; pop.querySelector("[name=tn]").value = s.tn; } });
+        pop.addEventListener("keydown", ev => { if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); fecharPop(); } });
+        pop.querySelector("[data-fechar]").addEventListener("click", fecharPop);
+        pop.addEventListener("submit", ev => { ev.preventDefault(); const s = separa(iv.value);
+          l[k] = s.v; if (lado === "pp") { l.tm = (pop.querySelector("[name=tm]").value || "").trim(); l.tn = (pop.querySelector("[name=tn]").value || "").trim(); const t = numv(l.tn); if (t != null && t > 0) l.tn = "-" + l.tn; }
+          l[lado] = pt; melhoria(l); atualiza(i);
+          z.querySelectorAll(`.psd-mk[data-i="${i}"]`).forEach(m => m.remove()); z.insertAdjacentHTML("beforeend", marca(l, i, lado));
+          fecharPop(); salvarLinhas(); armar(i + 1 < v.dados.linhas.length ? i + 1 : null);
+          if (armado == null) TW.toast(`Última linha no desenho ${LADO[lado]}. Para continuar, clique em «Digitar no desenho».`, { tom: "info" }); });
+      };
+      esc3 = () => { if (!el.contains(c)) return false; if (pop) { fecharPop(); return true; }
+        const ch = document.querySelector(".psd-vdes.cheio"); if (ch) { ch.querySelector('[data-z="cheia"]').click(); return true; } return false; };
       const ler = c.querySelector("[data-ler]");
       if (ler) ler.addEventListener("click", async () => {
         if (v.leitura_em && !(await TW.confirmar({ titulo: "Ler os desenhos de novo?", texto: "As linhas que você já conferiu ficam como estão; as outras são substituídas pela nova leitura.", botao: "Ler de novo" }))) return;
@@ -227,7 +298,8 @@
     };
 
     el.addEventListener("click", e => { const b = e.target.closest("[data-passo]"); if (b && el.contains(b)) ir(+b.dataset.passo); });
-    document.addEventListener("keydown", e => { if (e.key === "Escape" && armado != null) { armado = null; el.querySelectorAll(".armado").forEach(x => x.classList.remove("armado")); } });
+    document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (esc3 && esc3()) return;          // Esc: fecha o campo, depois a tela cheia, depois para a digitação
+      if (armado != null && passo === 2) { const b = el.querySelector("[data-parar]"); if (b) b.click(); } });
     el.innerHTML = TW.esqueleto(8);
     J(`/api/validacao/${vid}`).then(r => { v = r; passo = inicial(); desenhar(); }).catch(e => { el.innerHTML = notice(esc(e.message), "red"); });
   }

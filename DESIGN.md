@@ -129,8 +129,11 @@ Um cartão (`.psd-banc`): cabeçalho com o código, a descrição e os dados do 
 - **Desenhos lado a lado** em papel (`.psd-papel`); envio por área tracejada (`.psd-drop`, clique ou arrastar). Máscara: arrastar seleciona (`.psd-sel`),
   Delete apaga, Ctrl+Z desfaz.
 - **Medidas**: tabela editável (`.psd-vtab`, campos discretos que ganham borda no foco) ao lado dos dois desenhos empilhados (fixos ao rolar). O número da
-  linha liga tabela e desenhos: passar o mouse acende a linha e as duas cotas; clicar no número «arma» a linha e o próximo clique no desenho marca a posição;
-  as marcas se arrastam. Ap em selo A (verde) / R (vermelho) (`.psd-ap`).
+  linha liga tabela e desenhos: passar o mouse acende a linha e as duas cotas; as marcas se arrastam. Ap em selo A (verde) / R (vermelho) (`.psd-ap`).
+- **Digitação no desenho** (padrão, sem API): a linha em digitação fica marcada (faixa `.psd-vmarca` acima da tabela, linha `.armada`, desenho com borda `--cota`);
+  o clique na cota abre o campo no ponto (`.psd-vpop`, cartão pequeno com sombra de menu; abre acima quando não cabe embaixo). Enter grava e passa para a próxima.
+- **Zoom**: roda do mouse sobre o ponto, botões «+ − Ajustar» e «Tela cheia» no título do desenho (`.psd-zctl`); os números mantêm o tamanho (`--z`).
+  Em tela cheia o bloco vai para o `<body>` (fora do recorte do cartão) e Esc volta (Esc fecha antes o campo aberto).
 - **Revisão**: tabela de damping, faixa de três números (A, R em vermelho quando houver, conferidas em laranja enquanto faltar), duas ações (Aprovar = principal;
   Reprovar = contorno vermelho, não preenchido) e os arquivos do F-008. Concluída, a bancada fica só leitura.
 - Abaixo de 1100 px as colunas viram uma.

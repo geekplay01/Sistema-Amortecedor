@@ -58,4 +58,21 @@ Decididos na implementação (registrados aqui):
 - [x] `validacao.py` (tabela `validacoes`, SCHEMA_V8), rotas `/api/validacao…`, tela `telas/validacao.js`, aba no R-D, menu, Excel da lista, CSS (`.psd-banc` …), ícones (clipboard-check, eraser, crop, square-dashed), regras das telas, DESIGN.md §3/§6.4c/§7, REGRAS §13.
 - [x] Testes: `tests/test_validacao.py` (regras A/R e damping, famílias, fluxo completo com dublê do Claude, máscara, F-008, Desenhos) e `test_38` (rotas). Suíte 5/5 verde.
 - [x] Conferido na cópia (porta 5055): aba Validar itens (65 pendentes), bancada AMD0100 com os desenhos reais (E-WIN como PERFECT, ZS DQ41746), máscara por arrastar + Delete + Ctrl+Z, linha ↔ cotas, Ap ao digitar, passo 4, lista e Excel. PDF pelo Excel do PC: 2 páginas, layout como a foto (`maquetes/etapa24_F-008_exemplo.pdf`).
-- [ ] Usuário: instalar `anthropic`, pôr a chave no .env e testar a leitura real; depois, liberar a aba em Desenvolvimento.
+- [x] Commit `1a155c2`, push conferido (origin/etapa-16).
+
+## Ajuste (25/11/2026) — sem a API
+
+O usuário instalou o SDK, mas não tem chave da API e perguntou se dava para não usar a API. Teste do OCR do Windows (offline) em 15 recortes ampliados das cotas reais:
+não leu «Lmax=553±3» (nem com traço engrossado), trocou «S=157» por «S:151», «Lmax=577±3» por «Lmox-577*3» e «365±3» (ZS) por «55±3»; acertou só 3 cotas do desenho vetorial.
+
+| # | Pergunta | Decisão («Sim para todas») |
+|---|---|---|
+| Q1 | Como entram as medidas sem API | Digitação no desenho: linha marcada, clique na cota abre o campo ali, Enter grava e passa à próxima; sem OCR |
+| Q2 | Zoom | Roda do mouse, arrastar para mover, «+ − Ajustar» e tela cheia |
+| Q3 | Leitura pelo Claude | Fica, mas desligada por padrão: chave em Configurações › Regras de negócio («Ler medidas com o Claude (API) na Validação») |
+| Q4 | SDK e LEIA-ME | `anthropic` opcional no requirements; LEIA-ME com os passos da API só como opcionais |
+
+- [x] `rules.validacao_ia` + `/api/settings` + Configurações; `validacao.ia_disponivel` desligada não oferece nem chama a API (teste garante que `_chamar_claude` não é chamado).
+- [x] Passo 3: «Digitar no desenho», campo no ponto (`.psd-vpop`, «553±3» separa as tolerâncias), avanço de linha, zoom/arrastar, tela cheia (bloco vai para o `<body>`), Esc em camadas.
+- [x] Conferido na cópia: LMAX digitado no PERFECT com zoom (553 / 3 / −3, número no desenho, avançou para LMIN); LMIN do fornecedor em tela cheia (gravado com a posição); Esc fechou a tela cheia; Configurações mostra a opção desligada. Testes verdes.
+- [ ] Usuário: validar o fluxo de R-D na prática; depois, liberar a aba em Desenvolvimento.

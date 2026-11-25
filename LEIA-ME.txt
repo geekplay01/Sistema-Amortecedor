@@ -229,8 +229,10 @@ ETAPA 24 — 25/11/2026 (decisões em DECISOES_ETAPA24.md, regras em REGRAS_DE_N
    Aplicações e DES e R-D, e o item selecionado no nome do arquivo.
  - Validação (menu 1 · Desenvolvimento) e aba «Validar itens» em Redesenvolvimento: desenho PERFECT (com a máscara limpa) x desenho do
    fornecedor, família, medidas lidas pelo Claude e conferidas por você, e o F-008 em xlsx e pdf. Aprovado, o desenho vai para Desenhos.
- DEPOIS DE ATUALIZAR PARA A ETAPA 24 (uma vez)
- 1. Instale o SDK do Claude:  .venv\Scripts\python.exe -m pip install anthropic
- 2. No arquivo %USERPROFILE%\.perfect_shock_data\.env, acrescente a linha  ANTHROPIC_API_KEY=<sua chave da API da Anthropic>
- 3. Feche e abra o app (iniciar.bat). Sem a chave, a validação funciona com as medidas digitadas.
+ - As medidas são digitadas no próprio desenho (clique na cota, digite, Enter). Nada sai do PC.
  - O PDF do F-008 é gerado pelo Excel instalado no PC. Os arquivos ficam em data\validacoes (copie essa pasta junto ao fazer backup).
+ - Feche e abra o app (iniciar.bat) para carregar a etapa 24.
+ OPCIONAL: leitura das medidas pelo Claude (API da Anthropic; as imagens dos desenhos saem do PC)
+ 1. .venv\Scripts\python.exe -m pip install anthropic
+ 2. No arquivo %USERPROFILE%\.perfect_shock_data\.env, acrescente  ANTHROPIC_API_KEY=<chave da API da Anthropic>
+ 3. Em Configurações › Regras de negócio, ligue «Ler medidas com o Claude (API) na Validação».

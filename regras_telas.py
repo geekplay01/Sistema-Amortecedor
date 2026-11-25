@@ -106,8 +106,11 @@ def lista():
             "«Manter só a seleção» apaga o resto; «Desfazer» volta um passo. A versão limpa fica só na validação; o arquivo em Desenhos não muda.",
             "<b>2 · Família</b>: os modelos F-008 de <code>bases_exemplo\\VALIDATION</code> (Cartucho, Convencional, Estrutural, Semi-estrutural, Semi-estrutural interferência). "
             "As medidas são as da coluna B do modelo, na mesma ordem; até 25 linhas, as extras com nome em inglês. Trocar a família guarda os valores das medidas de mesmo nome.",
-            "<b>3 · Medidas</b>: o Claude (Opus 5.5, pela API, com a chave ANTHROPIC_API_KEY do ~/.perfect_shock_data/.env) lê os dois desenhos e lista valor, tolerância e onde está cada cota. "
-            "Ele não aprova nada: cada linha precisa ser marcada «Conferida». As imagens dos desenhos saem do PC para a API da Anthropic. Sem chave, as medidas são digitadas.",
+            "<b>3 · Medidas</b>: «Digitar no desenho» marca a linha; clique na cota no desenho PERFECT ou no do fornecedor e digite o valor ali mesmo (no PERFECT, «553±3» ou "
+            "«12.1 +0.15/0» já separa as tolerâncias). Enter grava, põe o número no desenho e passa para a próxima linha. Roda do mouse aproxima, arrastar move, «Tela cheia» abre o desenho grande; "
+            "arrastar um número muda o lugar dele. Cada linha preenchida precisa ser marcada «Conferida».",
+            "Leitura pelo Claude: desligada por padrão (Configurações › Regras de negócio). Ligada, o Claude (Opus 5.5, pela API, com a chave ANTHROPIC_API_KEY do ~/.perfect_shock_data/.env) "
+            "lê os dois desenhos e preenche valor, tolerância e lugar de cada cota; não aprova nada. As imagens dos desenhos saem do PC para a API da Anthropic.",
             "<b>Ap</b> (A/R) é a fórmula do modelo: tolerância «OK» aprova e «N» reprova; roscas (M…), ângulos e textos comparam como texto; números aprovam dentro da tolerância "
             "(fornecedor ≤ PERFECT + Tol.+ e ≥ PERFECT + Tol.−). A Melhoria sugere «CHANGE TO <valor PERFECT>» na linha R e pode ser trocada. Damping: a fórmula do modelo da família — Cartucho: cada velocidade "
             "dentro de ±30/25/15/15/15 % do PERFECT (com ±30 N a menos abaixo de 1000 N); os outros: diferença de até 30/25/15/20/15 %, e sem valor do PERFECT numa velocidade o Ap fica vazio.",

@@ -799,6 +799,10 @@ class Fluxo(unittest.TestCase):
         a = C.get("/api/validacao/aba/rd?q=" + code).json; self.assertIn(code, [x["code"] for x in a["rows"]])
         lst = C.get("/api/validacao?status=andamento").json; self.assertIn(vid, [x["id"] for x in lst["rows"]])
         wb = load_workbook(io.BytesIO(C.get("/api/export/validacao.xlsx?status=andamento").data)); self.assertEqual(wb.sheetnames[:2], ["Validações", "Medidas"])
+        self.assertEqual((v["ia"]["ligada"], C.get("/api/settings").json["validacao_ia"]), (False, False))           # padrão: sem API
+        self.assertEqual(C.post(f"/api/validacao/{vid}/ler").status_code, 400)
+        self.assertTrue(C.put("/api/settings", json={"validacao_ia": "1"}).json["validacao_ia"]); self.assertTrue(C.get(f"/api/validacao/{vid}").json["ia"]["ligada"])
+        self.assertFalse(C.put("/api/settings", json={"validacao_ia": "0"}).json["validacao_ia"])
         self.assertEqual(C.delete(f"/api/validacao/{vid}").status_code, 200)
 
     def test_30_nome_do_arquivo_e_filtros_limpos(self):

@@ -603,7 +603,8 @@ def api_pipe_runs():
 # ---- Configurações de regras (aba Administração) ----
 @app.get("/api/settings")
 def api_settings():
-    admin_only(); return jsonify(only_description=rules.only_desc(), goal_valid_user=rules.valid_user(), goal_basis=rules.goal_basis(), leadtime_meta_dias=__import__("leadtime").meta_dias(), defaults={"only_description": "AMORTECEDOR", "goal_valid_user": "ITALOC", "goal_basis": "validacao", "leadtime_meta_dias": 180})
+    admin_only(); return jsonify(only_description=rules.only_desc(), goal_valid_user=rules.valid_user(), goal_basis=rules.goal_basis(), leadtime_meta_dias=__import__("leadtime").meta_dias(), validacao_ia=rules.validacao_ia(),
+                                 defaults={"only_description": "AMORTECEDOR", "goal_valid_user": "ITALOC", "goal_basis": "validacao", "leadtime_meta_dias": 180, "validacao_ia": False})
 @app.put("/api/settings")
 def api_settings_set():
     admin_only(); b = request.get_json(force=True) or {}; u = (auth.current_user() or {}).get("username")
@@ -621,8 +622,9 @@ def api_settings_set():
         except (TypeError, ValueError): v = 0
         if not 30 <= v <= 720: return jsonify(error="Meta de lead time inválida (use de 30 a 720 dias; padrão 180 = 6 meses)."), 400
         rules.set_setting("leadtime_meta_dias", str(v), u)
+    if "validacao_ia" in b: rules.set_setting("validacao_ia", "1" if str(b["validacao_ia"]).strip().lower() in ("1", "true", "sim", "on") else "0", u)      # etapa 24: leitura pelo Claude (padrão desligada)
     db.rebuild_flags_view(); _memo.clear()
-    return jsonify(only_description=rules.only_desc(), goal_valid_user=rules.valid_user(), goal_basis=rules.goal_basis(), leadtime_meta_dias=__import__("leadtime").meta_dias())
+    return jsonify(only_description=rules.only_desc(), goal_valid_user=rules.valid_user(), goal_basis=rules.goal_basis(), leadtime_meta_dias=__import__("leadtime").meta_dias(), validacao_ia=rules.validacao_ia())
 
 # ---- Metas e validações ----
 @app.get("/api/goals")

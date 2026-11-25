@@ -19,5 +19,5 @@ pyodbc>=5.1
 pillow>=10
 pypdfium2>=4.30
 
-# ── etapa 24: leitura dos desenhos na Validação (API do Claude; chave ANTHROPIC_API_KEY no ~/.perfect_shock_data/.env) ──
+# ── etapa 24 (OPCIONAL): leitura dos desenhos pelo Claude na Validação — só se ligada em Configurações; chave ANTHROPIC_API_KEY no ~/.perfect_shock_data/.env ──
 anthropic>=1.0

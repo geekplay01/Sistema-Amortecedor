@@ -92,6 +92,13 @@ class Bancada(unittest.TestCase):
         self.assertEqual((v["damping_regra"], v["damping_ap"]["pf"], v["leitura_em"] is not None), ("relativa", "", True))      # Estrutural: 0,750 sem PERFECT → vazio, como o modelo
         with mock.patch.object(V, "ia_disponivel", return_value={"ok": False, "motivo": "sem chave"}):
             with self.assertRaises(ValueError): V.ler(vid)
+        # padrão: leitura pelo Claude desligada (nada vai para a API, nem com SDK e chave); ligada só em Configurações
+        import rules
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "teste"}), mock.patch.object(V, "_chamar_claude") as nunca:
+            self.assertEqual(V.ia_disponivel(), {"ok": False, "ligada": False, "motivo": ""})
+            with self.assertRaises(ValueError): V.ler(vid)
+            nunca.assert_not_called()
+            rules.set_setting("validacao_ia", "1"); self.assertTrue(V.ia_disponivel()["ligada"]); rules.set_setting("validacao_ia", "0")
         # concluir só com tudo conferido
         with self.assertRaises(ValueError): V.gerar(vid, "aprovada", pdf=False)
         ls = V.obter(vid)["dados"]["linhas"]

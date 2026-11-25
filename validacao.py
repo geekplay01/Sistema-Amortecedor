@@ -283,7 +283,13 @@ def _img_perfect(vid): return _arquivo(vid, "perfect_limpo.png") or _arquivo(vid
 
 # ---------------- leitura pelo Claude ----------------
 def ia_disponivel():
-    """{ok, motivo}: o SDK `anthropic` instalado e uma credencial (ANTHROPIC_API_KEY no ~/.perfect_shock_data/.env ou no ambiente)."""
+    """{ok, ligada, motivo}. Desligada em Configurações (padrão): ok=False, sem motivo — a bancada não mostra o botão nem aviso e nada vai para a API.
+    Ligada: exige o SDK `anthropic` e uma credencial (ANTHROPIC_API_KEY no ~/.perfect_shock_data/.env ou no ambiente)."""
+    import rules
+    if not rules.validacao_ia(): return {"ok": False, "ligada": False, "motivo": ""}
+    r = _ia_pronta(); r["ligada"] = True; return r
+
+def _ia_pronta():
     try: import anthropic  # noqa: F401
     except ImportError: return {"ok": False, "motivo": "Falta instalar o SDK do Claude: .venv\\Scripts\\python.exe -m pip install anthropic"}
     try:
@@ -357,7 +363,7 @@ def ler(vid):
     pp, pf = _img_perfect(vid), _arquivo(vid, "fornecedor.png")
     if not pp or not pf: raise ValueError("Envie os dois desenhos antes de ler as medidas.")
     disp = ia_disponivel()
-    if not disp["ok"]: raise ValueError(disp["motivo"])
+    if not disp["ok"]: raise ValueError(disp["motivo"] or "A leitura pelo Claude está desligada (Configurações › Regras de negócio). Digite as medidas no desenho.")
     nomes = [l["nome"] for l in d["linhas"]] or _medidas(v["family"])
     texto = ("Medidas do modelo F-008 da família " + v["family"] + " (nome exato, uma por linha):\n" + "\n".join(nomes) +
              "\n\nImagem 1 = desenho PERFECT (referência). Imagem 2 = desenho do fornecedor " + (v["supplier"] or "") + ". Devolva uma entrada para cada medida da lista.")

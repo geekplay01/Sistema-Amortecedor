@@ -392,6 +392,31 @@ div:has(>.psd-kpi,>a>.psd-kpi):not(:has(>:not(.psd-kpi,a)))>a:hover{background:v
 .psd-masc{cursor:crosshair;outline:none}.psd-masc:focus-visible{box-shadow:0 0 0 2px var(--focus)}
 .psd-sel{position:absolute;border:2px dashed var(--b500);background:rgb(47 74 140/.1);pointer-events:none}
 .psd-papel.armado{cursor:crosshair;box-shadow:0 0 0 2px var(--cota)}
+/* passo 3 sem API: zoom (a camada cresce, os números não), campo no ponto clicado e tela cheia */
+.psd-zoom{position:relative;transform-origin:0 0;--z:1}
+.psd-zoom .psd-mk{transform:translate(-50%,-50%) scale(calc(1/var(--z)))}
+.psd-papel[data-lado]{cursor:grab}.psd-papel.armado{cursor:crosshair}.psd-papel.movendo{cursor:grabbing}
+.psd-vdes{position:relative}
+.psd-vdes h4{align-items:center}
+.psd-vdes h4 .tt{display:flex;flex-direction:column;gap:2px;min-width:0;font:600 14px/1.2 var(--fontd);color:var(--tx)}.psd-vdes h4 .tt small{font:400 12px/1.2 "Segoe UI",sans-serif;color:var(--mut)}
+.psd-zctl{display:inline-flex;flex:none;gap:2px;margin-left:auto;white-space:nowrap}
+.psd-vpop input{width:100%;min-width:0}
+.psd-zctl button{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:26px;padding:0 8px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--tx);font:600 12px/1 "Segoe UI",sans-serif;cursor:pointer}
+.psd-zctl button:hover{background:var(--hover)}.psd-zctl b{font-size:15px;line-height:1}
+.psd-vdes.cheio{position:fixed;inset:12px;z-index:90;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 18px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 64px rgb(0 0 0/.35);overflow:auto}
+.psd-vdes.cheio h4{width:100%}
+body.psd-vcheio{overflow:hidden}
+.psd-vmarca{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;border:1px solid color-mix(in srgb,var(--cota) 40%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--cota) 6%,var(--card));font-size:13px;color:var(--tx)}
+.psd-vmarca > span{flex:1;min-width:14rem}.psd-vmarca .psd-ico{color:var(--cota)}
+.psd-vtab tr.armada td{background:color-mix(in srgb,var(--cota) 8%,var(--card))!important}
+.psd-vpop{position:absolute;z-index:5;width:228px;display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--tx);box-shadow:0 12px 32px rgb(15 23 42/.22);cursor:default}
+[data-theme=dark] .psd-vpop{box-shadow:0 12px 32px rgb(0 0 0/.5)}
+.psd-vpop .t{display:flex;align-items:center;gap:6px;font-size:13px}.psd-vpop .t b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.psd-vpop .t small{color:var(--mut)}
+.psd-vpop label{display:flex;flex-direction:column;gap:3px}.psd-vpop label span{font:600 12px/1 var(--fontd);color:var(--mut)}
+.psd-vpop input{height:34px;padding:0 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--tx);font-size:15px;font-variant-numeric:tabular-nums}
+.psd-vpop input:focus{outline:none;border-color:var(--b500)}
+.psd-vpop .dois{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.psd-vpop .a{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.psd-vpop .a small{width:100%;font-size:11.5px;color:var(--mut)}
 .psd-mk{position:absolute;transform:translate(-50%,-50%);min-width:20px;height:20px;padding:0 3px;border:1.5px solid var(--cota);background:#fff;color:var(--cota);font:700 11.5px/17px var(--fontd);text-align:center;cursor:grab;transition:background .15s,color .15s}
 .psd-mk.foco{background:var(--cota);color:#fff;box-shadow:0 0 0 3px rgb(231 43 59/.28);z-index:2}
 .psd-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:260px;padding:24px;border:2px dashed var(--line);border-radius:12px;color:var(--mut);text-align:center;cursor:pointer;transition:background .15s,border-color .15s}
