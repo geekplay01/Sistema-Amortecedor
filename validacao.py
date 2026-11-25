@@ -68,6 +68,17 @@ def _linhas_da_familia(fam, antigas=None):
     for i, l in enumerate(out, 1): l["n"] = i
     return out
 
+def _aplicar_mola(linhas, mola, antiga=None):
+    """Item com mola (etapa 24): a linha LMAX2 entra logo abaixo do LMAX (sem LMAX, no começo); desligado, ela sai. `antiga` = a LMAX2 de antes (guarda os valores)."""
+    sem = [l for l in linhas if not l.get("mola")]
+    if mola:
+        if len(sem) >= NLINHAS: raise ValueError("A tabela já tem 25 medidas: tire uma antes de ligar «Item com mola».")
+        nova = dict(antiga or {**_linha_vazia(), "nome": "LMAX2"}); nova["mola"] = True; nova["extra"] = False
+        pos = next((i + 1 for i, l in enumerate(sem) if (l.get("nome") or "").upper() == "LMAX"), 0)
+        sem = sem[:pos] + [nova] + sem[pos:]
+    for i, l in enumerate(sem, 1): l["n"] = i
+    return sem
+
 def _linha_vazia(): return {"n": 0, "nome": "", "p": "", "f": "", "tm": "", "tn": "", "melhoria": "", "conferida": False, "lida": False, "pp": None, "pf": None, "obs": "", "extra": False}
 
 # ---------------- regras do modelo (A / R) ----------------
@@ -149,7 +160,7 @@ def _damping_vazio(): return {"p": {"pf": [""] * 5, "py": [""] * 5}, "f": {"pf":
 def _row(vid):
     v = q1("SELECT * FROM validacoes WHERE id=?", (vid,))
     if not v: raise LookupError("Validação não encontrada.")
-    v["dados"] = json.loads(v["dados"] or "{}"); v["dados"].setdefault("linhas", []); v["dados"].setdefault("damping", _damping_vazio()); v["dados"].setdefault("mascara", [])
+    v["dados"] = json.loads(v["dados"] or "{}"); v["dados"].setdefault("linhas", []); v["dados"].setdefault("damping", _damping_vazio()); v["dados"].setdefault("mascara", []); v["dados"].setdefault("mola", False)
     return v
 
 def _arquivo(vid, nome):
@@ -165,7 +176,7 @@ def obter(vid):
     v["damping_ap"] = {"pf": ap_damping(dm["p"]["pf"], dm["f"]["pf"], rg), "py": ap_damping(dm["p"]["py"], dm["f"]["py"], rg)}
     usadas = [l for l in d["linhas"] if str(l.get("p") or "").strip() or str(l.get("f") or "").strip()]
     v["conta"] = {"linhas": len(usadas), "conferidas": sum(1 for l in usadas if l.get("conferida")), "A": sum(1 for l in usadas if l["ap"] == "A"), "R": sum(1 for l in usadas if l["ap"] == "R")}
-    v["imagens"] = {k: bool(_arquivo(vid, k + ".png")) for k in ("perfect", "perfect_limpo", "fornecedor")}
+    v["img_ver"] = _versoes(vid); v["imagens"] = {k: bool(n) for k, n in v["img_ver"].items()}
     v["info"] = _rd_info(v["kind"], v["code"]); v["familias"] = familias(); v["status_label"] = STATUS.get(v["status"], v["status"])
     v["kind_label"] = KINDS.get(v["kind"], v["kind"]); v["nome_f008"] = nome_f008(v)
     v["ia"] = ia_disponivel()
@@ -191,25 +202,31 @@ def salvar(vid, patch):
     if "family" in patch and (patch["family"] or "").upper() != (v["family"] or ""):
         fam = (patch["family"] or "").upper()
         if fam and fam not in {x["v"] for x in familias()}: raise ValueError("Família sem modelo F-008.")
-        campos["family"] = fam or None; d["linhas"] = _linhas_da_familia(fam, d["linhas"]) if fam else []
+        antiga = next((l for l in d["linhas"] if l.get("mola")), None)
+        campos["family"] = fam or None; d["linhas"] = _linhas_da_familia(fam, [l for l in d["linhas"] if not l.get("mola")]) if fam else []
+        if fam and d.get("mola"): d["linhas"] = _aplicar_mola(d["linhas"], True, antiga)
     if "linhas" in patch:
         novas = []
         for i, l in enumerate(patch["linhas"][:NLINHAS], 1):
             x = {**_linha_vazia(), **{k: l.get(k) for k in _linha_vazia() if k in l}}; x["n"] = i
             for k in ("nome", "p", "f", "tm", "tn", "melhoria", "obs"): x[k] = str(x[k] or "").strip()
-            x["nome"] = x["nome"].upper(); x["conferida"] = bool(x["conferida"])
+            x["nome"] = x["nome"].upper(); x["conferida"] = bool(x["conferida"]); x["mola"] = bool(l.get("mola"))
             t = num(x["tn"])
             if t is not None and t > 0: x["tn"] = f"-{x['tn']}"          # tolerância «−» sempre negativa (a fórmula soma F + M)
             for k in ("pp", "pf"):
                 pt = x.get(k); x[k] = [min(max(float(pt[0]), 0.0), 1.0), min(max(float(pt[1]), 0.0), 1.0)] if isinstance(pt, (list, tuple)) and len(pt) == 2 else None
             if x["nome"]: novas.append(x)
         d["linhas"] = novas
+    if "mola" in patch:
+        d["mola"] = bool(patch["mola"])
+        if d["linhas"]: d["linhas"] = _aplicar_mola(d["linhas"], d["mola"], next((l for l in d["linhas"] if l.get("mola")), None))
     if "mascara" in patch:
         if not _arquivo(vid, "perfect.png"): raise ValueError("Envie primeiro o desenho PERFECT.")
         d["mascara"] = _ops_mascara(patch["mascara"]); _aplicar_mascara(vid, d["mascara"])
     if "damping" in patch:
         dm = patch["damping"] or {}
-        d["damping"] = {lado: {g: [str(x or "").strip() for x in ((dm.get(lado) or {}).get(g) or [""] * 5)][:5] + [""] * max(0, 5 - len((dm.get(lado) or {}).get(g) or [])) for g in ("pf", "py")} for lado in ("p", "f")}
+        nominal = lambda x: str(x or "").split("±")[0].strip()          # «1155±365» → 1155 (o modelo usa só o nominal)
+        d["damping"] = {lado: {g: ([nominal(x) for x in ((dm.get(lado) or {}).get(g) or [])][:5] + [""] * 5)[:5] for g in ("pf", "py")} for lado in ("p", "f")}
     campos["dados"] = d; _gravar(vid, **campos)
     return obter(vid)
 
@@ -275,9 +292,27 @@ def _ops_mascara(lst):
         except (TypeError, ValueError, AttributeError): continue
     return out
 
-def imagem(vid, nome):
+TELA = 1600
+def imagem(vid, nome, tela=False):
+    """PNG cheio (F-008) ou, com `tela`, a versão leve da bancada (JPEG de 1600 px, refeita quando o PNG muda)."""
     if nome not in ("perfect", "perfect_limpo", "fornecedor"): return None
-    return _arquivo(vid, nome + ".png")
+    p = _arquivo(vid, nome + ".png")
+    if not p or not tela: return p
+    t = os.path.join(os.path.dirname(p), nome + "_tela.jpg")
+    if not os.path.isfile(t) or os.path.getmtime(t) < os.path.getmtime(p):
+        from PIL import Image
+        with Image.open(p) as im:
+            img = im.convert("RGB"); img.load()
+        if img.width > TELA: img = img.resize((TELA, round(img.height * TELA / img.width)), Image.LANCZOS)
+        img.save(t, "JPEG", quality=88, optimize=True)
+    return t
+
+def _versoes(vid):
+    """Chave de cada imagem para o navegador: muda só quando a imagem muda (antes mudava a cada gravação e o desenho era baixado de novo)."""
+    out = {}
+    for k in ("perfect", "perfect_limpo", "fornecedor"):
+        p = _arquivo(vid, k + ".png"); out[k] = int(os.path.getmtime(p) * 1000) if p else 0
+    return out
 
 def _img_perfect(vid): return _arquivo(vid, "perfect_limpo.png") or _arquivo(vid, "perfect.png")
 
@@ -570,13 +605,18 @@ def excluir(vid):
 # ---------------- listas ----------------
 PEND_FLAGS = ("pend_validacao", "val_reprovada", "pend_desenho_forn")
 
-def _pendentes_rd(kind):
-    """Itens do servidor que pedem validação de desenho (em andamento): pendente validação, validação reprovada, pendente desenho do fornecedor."""
+_cache_pend = {}
+def pendentes_rd(kind):
+    """Itens do servidor que pedem validação de desenho (em andamento): pendente validação, validação reprovada, pendente desenho do fornecedor.
+    Guardado até o banco mudar ou o dia virar (≈ 0,5–0,9 s na cópia; antes rodava a cada abertura do Redesenvolvimento e da tela Validação)."""
     import rd as R
+    k = (db.versao(), datetime.date.today(), db.DB_PATH)
+    if kind in _cache_pend and _cache_pend[kind][0] == k: return _cache_pend[kind][1]
     sug = KINDS[kind]; out = {}
     for fl in PEND_FLAGS:
         for r in R.items(sug, {"flag": fl, "status": "andamento", "all": 1})["rows"]:
             out.setdefault(r["code"].upper(), {**r, "flags": []})["flags"].append(fl)
+    _cache_pend[kind] = (k, out)
     return out
 
 def _local_por_codigo(kind):
@@ -595,7 +635,7 @@ def aba(kind, f):
     """Aba «Validar itens» do R-D: sem busca, os pendentes no servidor (validação primeiro); com busca, qualquer item em andamento que case.
     Cada linha leva a situação da validação no app."""
     import rd as R
-    kind = kind if kind in KINDS else "rd"; loc = _local_por_codigo(kind); pend = _pendentes_rd(kind)
+    kind = kind if kind in KINDS else "rd"; loc = _local_por_codigo(kind); pend = pendentes_rd(kind)
     if (f.get("q") or "").strip():
         rows = {r["code"].upper(): {**r, "flags": pend.get(r["code"].upper(), {}).get("flags", [])} for r in R.items(KINDS[kind], {"q": f["q"], "status": "andamento", "all": 1})["rows"]}
     else: rows = dict(pend)
@@ -629,7 +669,7 @@ def listagem(f):
             **{"conta": _conta(v["dados"])}} for v in rows]
     pend = 0
     try:
-        loc = _local_por_codigo("rd"); pend = sum(1 for k in _pendentes_rd("rd") if k not in loc)
+        loc = _local_por_codigo("rd"); pend = sum(1 for k in pendentes_rd("rd") if k not in loc)
     except Exception: pass
     return {"total": len(out), "rows": out, "counts": {**cont, "pendentes": pend},
             "suppliers": sorted({v["supplier"] for v in q("SELECT DISTINCT supplier FROM validacoes WHERE supplier IS NOT NULL")}), "familias": [{"v": x["v"], "l": x["l"]} for x in familias()]}

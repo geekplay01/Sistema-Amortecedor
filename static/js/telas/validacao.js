@@ -36,10 +36,11 @@
 
   /* ======================= bancada ======================= */
   function bancada(el, vid, o = {}) {
-    let v = null, passo = null, armado = null, timer = null, sel = null, base = null, esc3 = null;
-    const zoom = {};          // zoom e posição de cada desenho no passo 3 (ficam ao trocar de passo)
+    let v = null, passo = null, armado = null, timer = null, sel = null, base = null, esc3 = null, tecla3 = null, modo = "marcar";
+    const zoom = {}, desfazer = [];          // zoom e posição de cada desenho no passo 3 (ficam ao trocar de passo); números postos (Ctrl+Z)
     const ro = () => v.status !== "andamento";
-    const src = n => `/api/validacao/${vid}/img/${n}.png?u=${encodeURIComponent(v.updated_at || "")}`;
+    /* versão leve do desenho (JPEG 1600 px); o endereço só muda quando a imagem muda (img_ver), então o navegador reaproveita */
+    const src = n => `/api/validacao/${vid}/img/${n}.png?tela=1&u=${v.img_ver[n] || 0}`;
     const imgPerfect = () => v.imagens.perfect_limpo ? "perfect_limpo" : "perfect";
     const PASSOS = ["Desenhos", "Família", "Medidas", "Revisão e aprovação"];
     const sub = i => { const c = conta(v.dados.linhas);
@@ -60,7 +61,7 @@
     const corpo = () => { document.querySelectorAll("body > .psd-vdes.cheio").forEach(x => x.remove()); document.body.classList.remove("psd-vcheio"); esc3 = null;
       const c = $("#vbc", el); c.innerHTML = [passo1, passo2, passo3, passo4][passo](); [ligar1, ligar2, ligar3, ligar4][passo](c); };
     const ir = i => { passo = i; redesenharTopo(); corpo(); };
-    const salvar = async (b, redesenha = false) => { try { v = await JS(`/${vid}`, "PATCH", b); redesenharTopo(); if (redesenha) corpo(); } catch (e) { TW.erro(e); } };
+    const salvar = async (b, redesenha = false) => { try { v = await JS(`/${vid}`, "PATCH", b); redesenharTopo(); if (redesenha) corpo(); } catch (e) { TW.erro(e); if (redesenha) corpo(); } };
     const salvarLinhas = () => { clearTimeout(timer); timer = setTimeout(() => salvar({ linhas: v.dados.linhas }), 700); };
     const rodape = (prox, txt) => prox == null ? "" : `<div class="psd-vrodape"><button type="button" class="psd-btn" data-ir="${prox}">${esc(txt)}${ico("chevron-right", "sm")}</button></div>`;
     const drop = (lado, rot) => ro() ? empty("Sem desenho.") : `<label class="psd-drop" data-drop="${lado}">${ico("upload", "lg")}<b>Enviar ${esc(rot)}</b><span>PDF, PNG ou JPG; arraste o arquivo para cá ou clique</span><input type="file" accept=".pdf,.png,.jpg,.jpeg,.bmp,.webp" data-up="${lado}" hidden></label>`;
@@ -121,24 +122,26 @@
       return `<div class="psd-vfam"><div class="psd-rot">Família do amortecedor (modelo F-008)</div>
         <div class="psd-est psd-linha" role="group" aria-label="Família">${v.familias.map(x => `<button type="button" data-fam="${esc(x.v)}" aria-pressed="${x.v === v.family}" ${ro() ? "disabled" : ""}><span class="t">${esc(x.l)}</span><span class="n" title="medidas no modelo">${nf(x.n)}</span></button>`).join("")}</div>
         ${!v.family && v.info.family ? notice(`A família do item no catálogo é «${esc(FAM(v.info.family))}», que não tem modelo F-008. Escolha o modelo mais próximo.`, "amber") : ""}
-        ${f ? `<div class="psd-vlista"><div class="psd-rot">Medidas do modelo, na ordem do F-008</div><ol>${f.medidas.map(m => `<li>${esc(m)}</li>`).join("")}</ol></div>` : empty("Escolha a família para ver as medidas do modelo.")}
+        <label class="psd-switch"><input type="checkbox" data-mola ${v.dados.mola ? "checked" : ""} ${ro() ? "disabled" : ""}><span class="tr" aria-hidden="true"></span><span class="tx"><b>Item com mola</b><small>Acrescenta a medida LMAX2, logo abaixo do LMAX</small></span></label>
+        ${f ? `<div class="psd-vlista"><div class="psd-rot">Medidas desta validação, na ordem do F-008</div><ol>${(v.dados.linhas.length ? v.dados.linhas.map(l => l.nome) : f.medidas).map(m => `<li${m === "LMAX2" ? ' class="mola"' : ""}>${esc(m)}</li>`).join("")}</ol></div>` : empty("Escolha a família para ver as medidas do modelo.")}
       </div>${rodape(v.family ? 2 : null, "Próximo: medidas")}`; };
     const ligar2 = c => { ligarEnvio(c);
       c.querySelectorAll("[data-fam]").forEach(b => b.addEventListener("click", async () => { const nova = b.dataset.fam; if (nova === v.family) return;
         if (v.family && conta(v.dados.linhas).linhas && !(await TW.confirmar({ titulo: `Trocar para ${FAM(nova)}?`, texto: "As medidas com o mesmo nome guardam os valores; as que não existem no outro modelo saem da tabela.", botao: "Trocar a família" }))) return;
-        salvar({ family: nova }, true); })); };
+        salvar({ family: nova }, true); }));
+      const ml = c.querySelector("[data-mola]"); if (ml) ml.addEventListener("change", () => salvar({ mola: ml.checked }, true)); };
 
     /* ---------- passo 3: medidas ----------
        Digitação no desenho (padrão, sem API): «Digitar no desenho» marca a linha; o clique na cota abre o campo ali mesmo (PERFECT: valor e tolerâncias,
        «553±3» já separa; fornecedor: valor). Enter grava, põe o número no desenho e passa para a próxima linha. Roda do mouse aproxima, arrastar move,
        «Tela cheia» abre o desenho grande. Com a leitura pelo Claude ligada em Configurações, aparece também «Ler medidas com o Claude». */
-    const marca = (l, i, lado) => l[lado] && usada(l) ? `<span class="psd-mk" data-i="${i}" style="left:${l[lado][0] * 100}%;top:${l[lado][1] * 100}%" title="${esc(l.n + " " + l.nome)}">${l.n}</span>` : "";
+    const marca = (l, i, lado) => l[lado] ? `<span class="psd-mk" data-i="${i}" style="left:${l[lado][0] * 100}%;top:${l[lado][1] * 100}%" title="${esc(l.n + " " + l.nome)}">${l.n}</span>` : "";
     const marcas = lado => v.dados.linhas.map((l, i) => marca(l, i, lado)).join("");
     const LADO = { pp: "PERFECT", pf: "fornecedor" };
     const linha = (l, i) => { const dis = ro() ? "disabled" : "", a = ap(l);
       return `<tr data-i="${i}" class="${armado === i ? "armada" : ""}">
         <td><button type="button" class="psd-num${armado === i ? " armado" : ""}" data-arma="${i}" ${dis} title="Digitar esta medida no desenho">${l.n}</button></td>
-        <td class="nome">${l.extra && !ro() ? `<input data-k="nome" value="${esc(l.nome)}" aria-label="Nome da medida em inglês">` : `<span>${esc(l.nome)}</span>`}${l.obs ? `<small title="${esc(l.obs)}">${esc(l.obs)}</small>` : ""}</td>
+        <td class="nome">${!ro() ? `<input data-k="nome" class="nm" value="${esc(l.nome)}" title="Nome da cota no F-008 (só nesta validação)" aria-label="Nome da cota em inglês">` : `<span>${esc(l.nome)}</span>`}${l.obs ? `<small title="${esc(l.obs)}">${esc(l.obs)}</small>` : ""}</td>
         ${["p", "f", "tm", "tn"].map(k => `<td><input data-k="${k}" value="${esc(l[k] || "")}" class="r" ${dis} aria-label="${{ p: "PERFECT", f: "Fornecedor", tm: "Tolerância +", tn: "Tolerância −" }[k]}"></td>`).join("")}
         <td class="c" data-ap>${apTag(a)}</td>
         <td><input data-k="melhoria" value="${esc(l.melhoria || "")}" ${dis} aria-label="Melhoria (Improve)"></td>
@@ -147,13 +150,16 @@
     const papel = (lado, titulo, extra, img) => `<div class="psd-vdes" data-des="${lado}"><h4><span class="tt">${titulo}${extra ? `<small>${extra}</small>` : ""}</span>
         <span class="psd-zctl">${img ? `<button type="button" data-z="mais" aria-label="Aproximar">${ico("plus", "sm")}</button><button type="button" data-z="menos" aria-label="Afastar"><b>−</b></button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="cheia">Tela cheia</button>` : ""}</span></h4>
       <div class="psd-papel" data-lado="${lado}">${img ? `<div class="psd-zoom"><img alt="" src="${img}">${marcas(lado)}</div>` : empty("Sem desenho.")}</div></div>`;
-    const marcando = () => armado == null ? "" : `<div class="psd-vmarca">${ico("pencil", "sm")}<span>Digitando <b>${esc(v.dados.linhas[armado].n + " " + v.dados.linhas[armado].nome)}</b>: clique na cota no desenho PERFECT ou no do fornecedor</span><button type="button" class="psd-btn sm" data-pular>Pular linha</button><button type="button" class="psd-btn sm" data-parar>Parar</button></div>`;
+    const marcando = () => armado == null ? "" : `<div class="psd-vmarca">${ico("pencil", "sm")}<span>${modo === "marcar" ? "Marcando" : "Digitando"} <b>${esc(v.dados.linhas[armado].n + " " + v.dados.linhas[armado].nome)}</b>: clique na cota${modo === "marcar" ? ". Ctrl+Z desfaz; duplo clique no número abre o valor" : ""}</span>
+        <span class="psd-seg sm" role="group" aria-label="Modo"><button type="button" data-modo="marcar" aria-pressed="${modo === "marcar"}">Só marcar</button><button type="button" data-modo="digitar" aria-pressed="${modo === "digitar"}">Marcar e digitar</button></span>
+        <button type="button" class="psd-btn sm" data-pular>Pular linha</button><button type="button" class="psd-btn sm" data-parar>Parar</button></div>`;
     const passo3 = () => { const c = conta(v.dados.linhas), lida = v.leitura_em, podeLer = v.ia.ok && !ro() && v.imagens.perfect && v.imagens.fornecedor && v.family;
       return `<div class="psd-vmedidas"><div class="min-w-0">
         <div class="psd-vleit"><span class="info">${lida ? `<b>${nf(c.linhas)} ${c.linhas === 1 ? "medida" : "medidas"}</b>, lidas pelo Claude em ${dmy(lida)} às ${String(lida).slice(11, 16)}; <b>${nf(c.conferidas)}</b> ${c.conferidas === 1 ? "conferida" : "conferidas"}`
             : c.linhas ? `<b>${nf(c.linhas)} ${c.linhas === 1 ? "medida preenchida" : "medidas preenchidas"}</b>, <b>${nf(c.conferidas)}</b> ${c.conferidas === 1 ? "conferida" : "conferidas"}` : "Nenhuma medida preenchida ainda"}</span>
           ${ro() ? "" : `<span class="dir">
-            ${v.dados.linhas.length ? `<button type="button" class="psd-btn sm ${c.linhas || v.ia.ligada ? "" : "prim"}" data-digitar>${ico("pencil", "sm")}Digitar no desenho</button>` : ""}
+            ${v.dados.linhas.length ? `<button type="button" class="psd-btn sm ${c.linhas || v.ia.ligada ? "" : "prim"}" data-digitar>${ico("pencil", "sm")}Marcar no desenho</button>` : ""}
+            ${v.imagens.perfect && v.imagens.fornecedor ? `<button type="button" class="psd-btn sm" data-sobrepor>${ico("layers", "sm")}Sobrepor</button>` : ""}
             ${v.ia.ligada ? `<button type="button" class="psd-btn sm ${lida || !v.ia.ok ? "" : "prim"}" data-ler ${podeLer ? "" : "disabled"}>${ico("sparkles", "sm")}${lida ? "Ler de novo" : "Ler medidas com o Claude"}</button>` : ""}
             <button type="button" class="psd-btn sm" data-mais ${v.dados.linhas.length >= 25 ? "disabled" : ""}>${ico("plus", "sm")}Adicionar medida</button>
             ${c.linhas ? `<button type="button" class="psd-btn sm" data-confa>${ico("check", "sm")}Conferir as que deram A</button>` : ""}</span>`}</div>
@@ -194,8 +200,19 @@
           if (b) armar(armado === +b.dataset.arma ? null : +b.dataset.arma);
           if (x) { v.dados.linhas.splice(+x.dataset.tira, 1); v.dados.linhas.forEach((l, k) => l.n = k + 1); armado = null; salvar({ linhas: v.dados.linhas }, true); } });
       }
-      c.addEventListener("click", e => { if (e.target.closest("[data-digitar]")) { const i = v.dados.linhas.findIndex(l => !String(l.p || "").trim()); armar(i < 0 ? 0 : i); }
+      /* o ouvinte fica no conteúdo do passo (novo a cada desenho), não em #vbc: em #vbc ele se acumulava a cada troca de passo e «Pular linha» pulava várias */
+      c.querySelector(".psd-vmedidas").addEventListener("click", e => { if (e.target.closest("[data-digitar]")) { const i = v.dados.linhas.findIndex(l => !l.pp); armar(i < 0 ? 0 : i); }
+        const md = e.target.closest("[data-modo]"); if (md) { modo = md.dataset.modo; armar(armado); }
+        if (e.target.closest("[data-sobrepor]")) sobrepor();
         if (e.target.closest("[data-pular]")) { fecharPop(); armar(armado + 1); } if (e.target.closest("[data-parar]")) { fecharPop(); armar(null); } });
+      /* Ctrl+Z (ou Backspace fora de um campo): tira o último número posto e volta a linha */
+      tecla3 = e => { if (!el.contains(c) || pop) return false; const campo = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || "");
+        const desf = ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !campo) || (e.key === "Backspace" && !campo && armado != null);
+        if (!desf || !desfazer.length) return false; e.preventDefault();
+        const u = desfazer.pop(), l = v.dados.linhas[u.i]; l[u.lado] = u.antes;
+        c.querySelectorAll(`.psd-papel[data-lado="${u.lado}"] .psd-mk[data-i="${u.i}"]`).forEach(m => m.remove());
+        const z = c.querySelector(`.psd-papel[data-lado="${u.lado}"] .psd-zoom`); if (z && l[u.lado]) z.insertAdjacentHTML("beforeend", marca(l, u.i, u.lado));
+        salvarLinhas(); armar(u.i); return true; };
 
       /* zoom e arrastar: a camada .psd-zoom (imagem + números) cresce; os números mantêm o tamanho (--z) */
       let pop = null;
@@ -227,10 +244,17 @@
         p.addEventListener("pointerup", e => { p.classList.remove("movendo");
           if (arr) { v.dados.linhas[+arr.dataset.i][lado] = fr(e); arr = null; salvarLinhas(); return; }
           const clique = pan && !pan.moveu; pan = null; if (!clique || ro() || armado == null) return;
-          abrirPop(lado, p, z, fr(e), e); });
+          if (modo === "digitar") return abrirPop(lado, p, z, fr(e), e, true);
+          /* só marcar: põe o número e passa para a próxima linha */
+          const i = armado, l = v.dados.linhas[i]; desfazer.push({ i, lado, antes: l[lado] }); l[lado] = fr(e);
+          z.querySelectorAll(`.psd-mk[data-i="${i}"]`).forEach(m => m.remove()); z.insertAdjacentHTML("beforeend", marca(l, i, lado)); salvarLinhas();
+          armar(i + 1 < v.dados.linhas.length ? i + 1 : null);
+          if (armado == null) TW.toast(`Última linha marcada no desenho ${LADO[lado]}. Para o outro desenho, clique em «Marcar no desenho» de novo.`, { tom: "info" }); });
+        /* duplo clique num número: abre o valor daquela linha naquele desenho */
+        p.addEventListener("dblclick", e => { const m = e.target.closest(".psd-mk"); if (!m || ro()) return; const i = +m.dataset.i; armar(i); abrirPop(lado, p, z, v.dados.linhas[i][lado], e, false); });
       });
       /* campo no ponto clicado: grava valor (e tolerâncias no PERFECT), põe o número no desenho e passa para a próxima linha */
-      const abrirPop = (lado, p, z, pt, e) => { fecharPop(); const i = armado, l = v.dados.linhas[i], box = p.closest(".psd-vdes"), r = box.getBoundingClientRect(), k = lado === "pp" ? "p" : "f";
+      const abrirPop = (lado, p, z, pt, e, avanca = true) => { fecharPop(); const i = armado, l = v.dados.linhas[i], box = p.closest(".psd-vdes"), r = box.getBoundingClientRect(), k = lado === "pp" ? "p" : "f";
         pop = document.createElement("form"); pop.className = "psd-vpop"; pop.autocomplete = "off";          // fica no bloco do desenho (fora do recorte do papel)
         const x = Math.min(e.clientX - r.left + 14, r.width - 232), y = e.clientY - r.top + 14;
         Object.assign(pop.style, { left: Math.max(0, x) + "px", top: y + "px" });
@@ -245,10 +269,13 @@
         pop.querySelector("[data-fechar]").addEventListener("click", fecharPop);
         pop.addEventListener("submit", ev => { ev.preventDefault(); const s = separa(iv.value);
           l[k] = s.v; if (lado === "pp") { l.tm = (pop.querySelector("[name=tm]").value || "").trim(); l.tn = (pop.querySelector("[name=tn]").value || "").trim(); const t = numv(l.tn); if (t != null && t > 0) l.tn = "-" + l.tn; }
+          if (String(l[lado]) !== String(pt)) desfazer.push({ i, lado, antes: l[lado] });
           l[lado] = pt; melhoria(l); atualiza(i);
           z.querySelectorAll(`.psd-mk[data-i="${i}"]`).forEach(m => m.remove()); z.insertAdjacentHTML("beforeend", marca(l, i, lado));
-          fecharPop(); salvarLinhas(); armar(i + 1 < v.dados.linhas.length ? i + 1 : null);
-          if (armado == null) TW.toast(`Última linha no desenho ${LADO[lado]}. Para continuar, clique em «Digitar no desenho».`, { tom: "info" }); });
+          fecharPop(); salvarLinhas();
+          if (!avanca) return armar(null);
+          armar(i + 1 < v.dados.linhas.length ? i + 1 : null);
+          if (armado == null) TW.toast(`Última linha no desenho ${LADO[lado]}. Para continuar, clique em «Marcar no desenho».`, { tom: "info" }); });
       };
       esc3 = () => { if (!el.contains(c)) return false; if (pop) { fecharPop(); return true; }
         const ch = document.querySelector(".psd-vdes.cheio"); if (ch) { ch.querySelector('[data-z="cheia"]').click(); return true; } return false; };
@@ -262,6 +289,49 @@
       if (mais) mais.addEventListener("click", () => { v.dados.linhas.push({ n: v.dados.linhas.length + 1, nome: "NOVA MEDIDA", p: "", f: "", tm: "", tn: "", melhoria: "", conferida: false, lida: false, pp: null, pf: null, obs: "", extra: true }); salvar({ linhas: v.dados.linhas }, true); });
       const ca = c.querySelector("[data-confa]");
       if (ca) ca.addEventListener("click", () => { let n = 0; v.dados.linhas.forEach(l => { if (usada(l) && ap(l) === "A" && !l.conferida) { l.conferida = true; n++; } }); salvar({ linhas: v.dados.linhas }, true); TW.toast(`${nf(n)} linha(s) marcada(s) como conferida(s).`); });
+    };
+
+    /* ---------- sobrepor os dois desenhos (etapa 24, sem API) ----------
+       PERFECT em vermelho, fornecedor em azul; onde as linhas coincidem fica escuro. Alinha pelos números marcados nos dois desenhos (escala e posição por
+       mínimos quadrados, 2 ou mais linhas); arrastar move o desenho do fornecedor, a roda muda o tamanho dele. Não lê números: mostra onde os desenhos diferem. */
+    const sobrepor = async () => {
+      const carrega = s => new Promise((ok, er) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => er(new Error("Não foi possível abrir os desenhos.")); im.src = s; });
+      let a, b; try { [a, b] = await Promise.all([carrega(src(imgPerfect())), carrega(src("fornecedor"))]); } catch (e) { return TW.erro(e); }
+      const tinge = (im, cor) => { const cv = document.createElement("canvas"); cv.width = im.naturalWidth; cv.height = im.naturalHeight; const x = cv.getContext("2d"); x.drawImage(im, 0, 0);
+        const d = x.getImageData(0, 0, cv.width, cv.height), p = d.data;
+        for (let k = 0; k < p.length; k += 4) { const tinta = 255 - (p[k] + p[k + 1] + p[k + 2]) / 3; p[k] = cor[0]; p[k + 1] = cor[1]; p[k + 2] = cor[2]; p[k + 3] = tinta < 40 ? 0 : Math.min(255, tinta * 1.6); }
+        x.putImageData(d, 0, 0); return cv; };
+      const A = tinge(a, [220, 38, 38]), B = tinge(b, [37, 99, 235]);
+      const pares = v.dados.linhas.filter(l => l.pp && l.pf).map(l => [[l.pp[0] * A.width, l.pp[1] * A.height], [l.pf[0] * B.width, l.pf[1] * B.height]]);
+      let t = { s: A.width / B.width, x: 0, y: 0 };
+      const alinha = () => { const n = pares.length; if (n < 2) return false;
+        const m = i => [pares.reduce((s, q) => s + q[i][0], 0) / n, pares.reduce((s, q) => s + q[i][1], 0) / n], mp = m(0), mf = m(1); let num = 0, den = 0;
+        pares.forEach(([P, F]) => { const fx = F[0] - mf[0], fy = F[1] - mf[1]; num += (P[0] - mp[0]) * fx + (P[1] - mp[1]) * fy; den += fx * fx + fy * fy; });
+        const s = den ? num / den : t.s; if (!(s > 0.2 && s < 5)) return false; t = { s, x: mp[0] - s * mf[0], y: mp[1] - s * mf[1] }; return true; };
+      const auto = alinha();
+      const box = document.createElement("div"); box.className = "psd-vsob"; box.setAttribute("role", "dialog"); box.setAttribute("aria-label", "Desenhos sobrepostos");
+      box.innerHTML = `<div class="h"><b>Desenhos sobrepostos</b><span class="leg"><i class="r"></i>só no PERFECT</span><span class="leg"><i class="a"></i>só no fornecedor</span><span class="leg"><i class="e"></i>nos dois</span>
+          <span class="ml-auto flex flex-wrap gap-1.5"><button type="button" class="psd-btn sm" data-al ${pares.length < 2 ? "disabled title=\"Marque 2 ou mais linhas nos dois desenhos\"" : ""}>Alinhar pelos números</button>
+          <button type="button" class="psd-btn sm" data-sc="1.02">Fornecedor maior</button><button type="button" class="psd-btn sm" data-sc="0.98">Fornecedor menor</button><button type="button" class="psd-btn sm" data-fim>Fechar</button></span></div>
+        <p class="d">${auto ? `Alinhado por ${nf(pares.length)} números marcados nos dois desenhos.` : pares.length >= 2 ? "Os números marcados não dão um alinhamento coerente (confira se marcam a mesma cota nos dois desenhos)." : "Marque 2 ou mais linhas nos dois desenhos para alinhar sozinho."} Arraste para mover o desenho do fornecedor; a roda do mouse muda o tamanho dele.</p>
+        <div class="cv"><canvas></canvas></div>`;
+      document.body.appendChild(box); document.body.classList.add("psd-vcheio");
+      const cv = box.querySelector("canvas"), x = cv.getContext("2d"); cv.width = A.width; cv.height = A.height;
+      const pinta = () => { x.globalCompositeOperation = "source-over"; x.fillStyle = "#fff"; x.fillRect(0, 0, cv.width, cv.height); x.drawImage(A, 0, 0);
+        x.globalCompositeOperation = "multiply"; x.drawImage(B, t.x, t.y, B.width * t.s, B.height * t.s); x.globalCompositeOperation = "source-over"; };
+      pinta();
+      const k = () => cv.width / cv.getBoundingClientRect().width;
+      const fim = () => { box.remove(); document.body.classList.remove("psd-vcheio"); document.removeEventListener("keydown", tecla, true); };
+      const tecla = e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fim(); } };
+      document.addEventListener("keydown", tecla, true);
+      let arr = null;
+      cv.addEventListener("pointerdown", e => { arr = { x0: e.clientX, y0: e.clientY, tx: t.x, ty: t.y }; cv.setPointerCapture(e.pointerId); });
+      cv.addEventListener("pointermove", e => { if (!arr) return; t.x = arr.tx + (e.clientX - arr.x0) * k(); t.y = arr.ty + (e.clientY - arr.y0) * k(); pinta(); });
+      cv.addEventListener("pointerup", () => { arr = null; });
+      const escala = (f, cx, cy) => { t.x = cx - (cx - t.x) * f; t.y = cy - (cy - t.y) * f; t.s *= f; pinta(); };
+      cv.addEventListener("wheel", e => { e.preventDefault(); const r = cv.getBoundingClientRect(); escala(e.deltaY < 0 ? 1.02 : 0.98, (e.clientX - r.left) * k(), (e.clientY - r.top) * k()); }, { passive: false });
+      box.addEventListener("click", e => { if (e.target.closest("[data-fim]")) fim(); if (e.target.closest("[data-al]")) { alinha(); pinta(); }
+        const sc = e.target.closest("[data-sc]"); if (sc) escala(+sc.dataset.sc, cv.width / 2, cv.height / 2); });
     };
 
     /* ---------- passo 4: revisão e aprovação ---------- */
@@ -285,8 +355,18 @@
           ${ro() ? `<div class="psd-vdecide"><button type="button" class="psd-btn" data-nova>${ico("plus", "sm")}Nova validação deste item</button></div>` : ""}
         </section></div>`; };
     const ligar4 = c => {
-      c.querySelectorAll("[data-dg]").forEach(i => i.addEventListener("input", () => { const dm = v.dados.damping; dm[i.dataset.dl][i.dataset.dg][+i.dataset.dj] = i.value;
-        c.querySelector(`[data-dap="${i.dataset.dg}"]`).innerHTML = apTag(apDamp(dm.p[i.dataset.dg], dm.f[i.dataset.dg], v.damping_regra)); clearTimeout(timer); timer = setTimeout(() => salvar({ damping: dm }), 700); }));
+      /* damping: Enter vai para o valor ao lado (no fim da linha, o 1º da linha de baixo), Shift+Enter volta; colar vários números preenche a linha; «1155±365» guarda 1155 */
+      const cels = [...c.querySelectorAll("[data-dg]")];
+      const grava = i => { const dm = v.dados.damping; dm[i.dataset.dl][i.dataset.dg][+i.dataset.dj] = i.value;
+        c.querySelector(`[data-dap="${i.dataset.dg}"]`).innerHTML = apTag(apDamp(dm.p[i.dataset.dg], dm.f[i.dataset.dg], v.damping_regra)); clearTimeout(timer); timer = setTimeout(() => salvar({ damping: dm }), 700); };
+      const nominal = i => { if (i.value.includes("±")) { i.value = i.value.split("±")[0].trim(); grava(i); } };
+      cels.forEach((i, k) => {
+        i.addEventListener("input", () => grava(i));
+        i.addEventListener("keydown", e => { if (e.key !== "Enter") return; e.preventDefault(); nominal(i); const prox = cels[k + (e.shiftKey ? -1 : 1)]; if (prox) { prox.focus(); prox.select(); } else i.blur(); });
+        i.addEventListener("blur", () => nominal(i));
+        i.addEventListener("paste", e => { const t = (e.clipboardData || window.clipboardData).getData("text"); const vals = t.split(/[\s;\t]+/).map(x => x.split("±")[0].trim()).filter(Boolean);
+          if (vals.length < 2) return; e.preventDefault(); vals.forEach((x, n) => { const alvo = cels[k + n]; if (alvo && alvo.dataset.dl === i.dataset.dl && alvo.dataset.dg === i.dataset.dg) { alvo.value = x; grava(alvo); } }); });
+      });
       c.querySelectorAll("[data-dec]").forEach(b => b.addEventListener("click", async () => { const ok = b.dataset.dec === "aprovada";
         if (!(await TW.confirmar({ titulo: ok ? "Aprovar o desenho e gerar o F-008?" : "Reprovar o desenho e gerar o F-008?", texto: `${v.nome_f008}.xlsx e .pdf`, botao: ok ? "Aprovar e gerar" : "Reprovar e gerar", perigo: !ok, icone: ok ? "circle-check" : "",
           nota: ok ? "O desenho do fornecedor vai para Desenhos. A validação fica fechada para edição." : "A validação fica fechada para edição; para validar de novo, abra uma nova validação." }))) return;
@@ -298,7 +378,8 @@
     };
 
     el.addEventListener("click", e => { const b = e.target.closest("[data-passo]"); if (b && el.contains(b)) ir(+b.dataset.passo); });
-    document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (esc3 && esc3()) return;          // Esc: fecha o campo, depois a tela cheia, depois para a digitação
+    document.addEventListener("keydown", e => { if (!el.isConnected) return;          // bancada que saiu da tela (troca de aba sem recarregar) não responde mais
+      if (passo === 2 && tecla3 && tecla3(e)) return; if (e.key !== "Escape") return; if (esc3 && esc3()) return;          // Esc: fecha o campo, depois a tela cheia, depois para a digitação
       if (armado != null && passo === 2) { const b = el.querySelector("[data-parar]"); if (b) b.click(); } });
     el.innerHTML = TW.esqueleto(8);
     J(`/api/validacao/${vid}`).then(r => { v = r; passo = inicial(); desenhar(); }).catch(e => { el.innerHTML = notice(esc(e.message), "red"); });
@@ -309,7 +390,13 @@
   function abasRD(atual, n) {
     return `<div class="psd-seg" role="tablist" aria-label="Abas do Redesenvolvimento"><button type="button" data-aba="itens" aria-pressed="${atual === "itens"}">Itens</button><button type="button" data-aba="validar" aria-pressed="${atual === "validar"}">Validar itens${n != null ? ` <span class="psd-vn">${nf(n)}</span>` : ""}</button></div>`;
   }
-  function ligarAbas(el) { el.addEventListener("click", e => { const b = e.target.closest("[data-aba]"); if (!b) return; location.href = "/redesenvolvimento" + (b.dataset.aba === "validar" ? "?aba=validar" : ""); }); }
+  /* etapa 24: trocar de aba não recarrega a página — a tela é redesenhada e o destaque da chave desliza (tw.js); Voltar do navegador também troca */
+  let voltarLigado = false;
+  function ligarAbas(el) {
+    el.addEventListener("click", e => { const b = e.target.closest("[data-aba]"); if (!b || b.getAttribute("aria-pressed") === "true") return;
+      history.pushState(null, "", "/redesenvolvimento" + (b.dataset.aba === "validar" ? "?aba=validar" : "")); PSD.pages.redesenvolvimento(); scrollTo(0, 0); });
+    if (!voltarLigado) { voltarLigado = true; addEventListener("popstate", () => { if (location.pathname === "/redesenvolvimento") PSD.pages.redesenvolvimento(); }); }
+  }
 
   function abaRD() {
     const u = new URLSearchParams(location.search), vid = u.get("v");

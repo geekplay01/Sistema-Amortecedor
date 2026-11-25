@@ -129,6 +129,28 @@ class Bancada(unittest.TestCase):
         V.excluir(nv); self.assertEqual(V.listagem({})["total"], 1)
         with self.assertRaises(ValueError): V.excluir(vid)
 
+    def test_mola_nome_imagem_leve_damping_e_pendentes_guardados(self):
+        """Ajustes da etapa 24: «Item com mola» põe LMAX2 logo abaixo do LMAX (e tira), guardando o valor ao trocar de família; o nome da cota muda só nesta
+        validação; a bancada usa a imagem leve (JPEG 1600 px) com chave que só muda quando a imagem muda; «1155±365» vira 1155; pendentes guardados até o banco mudar."""
+        import validacao as V
+        from PIL import Image
+        vid = V.criar("rd", "AMD0100")
+        v = V.salvar(vid, {"mola": True}); ls = v["dados"]["linhas"]
+        self.assertEqual(([l["nome"] for l in ls[:3]], [l["n"] for l in ls[:3]], len(ls)), (["LMAX", "LMAX2", "LMIN"], [1, 2, 3], 22))
+        ls[1]["p"] = "560"; ls[2]["nome"] = "lmin comprimido"; V.salvar(vid, {"linhas": ls})
+        ls = V.obter(vid)["dados"]["linhas"]; self.assertEqual((ls[1]["mola"], ls[2]["nome"]), (True, "LMIN COMPRIMIDO"))
+        v = V.salvar(vid, {"family": "CARTUCHO"}); self.assertEqual([(l["nome"], l["p"]) for l in v["dados"]["linhas"][:2]], [("LMAX", ""), ("LMAX2", "560")])
+        v = V.salvar(vid, {"mola": False}); self.assertEqual((len(v["dados"]["linhas"]), "LMAX2" in [l["nome"] for l in v["dados"]["linhas"]]), (10, False))
+        v = V.salvar(vid, {"damping": {"p": {"pf": ["1155±365", "1360", "", "", ""], "py": []}, "f": {}}}); self.assertEqual(v["dados"]["damping"]["p"]["pf"][:2], ["1155", "1360"])
+        self.assertEqual(v["dados"]["damping"]["f"]["py"], [""] * 5)
+        V.desenho(vid, "fornecedor", _Arq("F.png", _png(tam=(2400, 1700))))
+        k1 = V.obter(vid)["img_ver"]["fornecedor"]; V.salvar(vid, {"supplier_code": "X"}); self.assertEqual(V.obter(vid)["img_ver"]["fornecedor"], k1)        # gravar não muda a chave
+        with Image.open(V.imagem(vid, "fornecedor", tela=True)) as im: self.assertEqual((im.format, im.width), ("JPEG", 1600))
+        with Image.open(V.imagem(vid, "fornecedor")) as im: self.assertEqual((im.format, im.width), ("PNG", 2400))
+        p1 = V.pendentes_rd("rd"); self.assertIs(V.pendentes_rd("rd"), p1)          # mesmo banco: não recalcula
+        with self.db.session() as c: c.execute("UPDATE rd_projects SET validation_substatus='PENDENTE VALIDAÇÃO' WHERE code='AMD0200'")
+        self.assertEqual(sorted(V.pendentes_rd("rd")), ["AMD0100", "AMD0200"])
+
     def test_reprovar_nao_sobe_desenho_e_familia_troca_guardando_valores(self):
         import validacao as V
         vid = V.criar("rd", "AMD0200"); self.assertIsNone(V.obter(vid)["family"])        # sem família no catálogo: escolher

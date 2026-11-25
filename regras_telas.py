@@ -106,9 +106,12 @@ def lista():
             "«Manter só a seleção» apaga o resto; «Desfazer» volta um passo. A versão limpa fica só na validação; o arquivo em Desenhos não muda.",
             "<b>2 · Família</b>: os modelos F-008 de <code>bases_exemplo\\VALIDATION</code> (Cartucho, Convencional, Estrutural, Semi-estrutural, Semi-estrutural interferência). "
             "As medidas são as da coluna B do modelo, na mesma ordem; até 25 linhas, as extras com nome em inglês. Trocar a família guarda os valores das medidas de mesmo nome.",
-            "<b>3 · Medidas</b>: «Digitar no desenho» marca a linha; clique na cota no desenho PERFECT ou no do fornecedor e digite o valor ali mesmo (no PERFECT, «553±3» ou "
-            "«12.1 +0.15/0» já separa as tolerâncias). Enter grava, põe o número no desenho e passa para a próxima linha. Roda do mouse aproxima, arrastar move, «Tela cheia» abre o desenho grande; "
-            "arrastar um número muda o lugar dele. Cada linha preenchida precisa ser marcada «Conferida».",
+            "<b>3 · Medidas</b>: «Marcar no desenho» começa pela primeira linha sem número. Em «Só marcar» (padrão), cada clique na cota põe o número e passa para a próxima linha; "
+            "Ctrl+Z tira o último; duplo clique num número abre o valor. Em «Marcar e digitar», o clique abre o campo ali mesmo (no PERFECT, «553±3» ou «12.1 +0.15/0» já separa as tolerâncias). "
+            "O nome da cota pode ser trocado na tabela (só nesta validação). Roda do mouse aproxima, arrastar move, «Tela cheia» abre o desenho grande; arrastar um número muda o lugar dele. "
+            "Cada linha preenchida precisa ser marcada «Conferida».",
+            "«Item com mola» (passo 2) acrescenta a medida LMAX2 logo abaixo do LMAX. «Sobrepor» mostra os dois desenhos juntos (PERFECT vermelho, fornecedor azul, coincidência escura); com "
+            "2 ou mais linhas marcadas nos dois desenhos, alinha sozinho. Damping: Enter passa para o valor ao lado; colar vários números preenche a linha.",
             "Leitura pelo Claude: desligada por padrão (Configurações › Regras de negócio). Ligada, o Claude (Opus 5.5, pela API, com a chave ANTHROPIC_API_KEY do ~/.perfect_shock_data/.env) "
             "lê os dois desenhos e preenche valor, tolerância e lugar de cada cota; não aprova nada. As imagens dos desenhos saem do PC para a API da Anthropic.",
             "<b>Ap</b> (A/R) é a fórmula do modelo: tolerância «OK» aprova e «N» reprova; roscas (M…), ângulos e textos comparam como texto; números aprovam dentro da tolerância "

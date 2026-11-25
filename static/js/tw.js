@@ -281,5 +281,33 @@ window.PSDTW = (() => {
   })();
 
   document.addEventListener("psd-theme", () => { tema(); vivos.forEach(g => { if (!g.canvas.isConnected) { vivos.delete(g); return; } pinta(g.config.type, g.data.datasets); g.update(); }); });
+  /* ---------- etapa 24: chaves de escolha (.psd-seg, .psd-linha) — o destaque desliza até a opção escolhida (0,2 s) ----------
+     Um único marcador (.psd-ind, com a faixa inclinada) fica atrás dos botões. A posição anterior de cada chave fica guardada pela identidade dela
+     (id ou aria-label), então a animação aparece também quando a tela redesenha a chave (troca de aba, filtro). «Reduzir movimento» desliga (marca.css). */
+  const ultimo = new Map(), CHAVES = ".psd-seg, .psd-linha";
+  const posicionar = el => {
+    const b = el.querySelector(':scope > button[aria-pressed="true"]'); let ind = el.querySelector(":scope > .psd-ind");
+    if (!b) { if (ind) ind.style.opacity = "0"; return; }
+    if (!ind) { ind = document.createElement("span"); ind.className = "psd-ind"; ind.setAttribute("aria-hidden", "true"); el.prepend(ind); el.classList.add("psd-anim"); }
+    const r = { left: b.offsetLeft, top: b.offsetTop, width: b.offsetWidth, height: b.offsetHeight }, k = el.id || el.getAttribute("aria-label") || "";
+    const px = o => Object.fromEntries(Object.entries(o).map(([a, x]) => [a, x + "px"]));
+    if (!ind.dataset.pos) {           // marcador novo: começa onde a chave estava antes (mesma chave redesenhada) e desliza; sem histórico, aparece direto
+      const antes = k && ultimo.get(k); ind.style.transition = "none"; Object.assign(ind.style, px(antes || r), { opacity: "1" }); void ind.offsetWidth; ind.style.transition = "";
+    }
+    Object.assign(ind.style, px(r), { opacity: "1" }); ind.dataset.pos = "1"; if (k) ultimo.set(k, r);
+  };
+  let fila = new Set(), agendado = false;
+  const agenda = el => { fila.add(el); if (agendado) return; agendado = true; queueMicrotask(() => { agendado = false; const f = fila; fila = new Set(); f.forEach(x => x.isConnected && posicionar(x)); }); };
+  const varrer = raiz => { if (raiz.nodeType !== 1) return; if (raiz.matches(CHAVES)) agenda(raiz); raiz.querySelectorAll(CHAVES).forEach(agenda); };
+  if (typeof MutationObserver !== "undefined") {
+    new MutationObserver(ms => ms.forEach(m => {
+      if (m.type === "attributes") { const c = m.target.parentElement; if (c && c.matches(CHAVES)) agenda(c); }
+      else { if (m.target.matches && m.target.matches(CHAVES)) agenda(m.target); m.addedNodes.forEach(varrer); }          // chave cujo conteúdo foi redesenhado (innerHTML)
+    })).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-pressed"] });
+    const inicio = () => varrer(document.body);
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", inicio); else inicio();
+    addEventListener("resize", () => document.querySelectorAll(CHAVES).forEach(el => { const i = el.querySelector(":scope > .psd-ind"); if (i) { i.style.transition = "none"; posicionar(el); void i.offsetWidth; i.style.transition = ""; } }));
+  }
+
   return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, editarCodigos, fobRD, enviar, carregando, esqueleto, grafico, CORES, barra, pintarBarra, ligarBarra, botao, ops, etiquetas };
 })();

@@ -115,6 +115,8 @@ def _aquecer():
     """Calcula menu e Dashboard antes de alguém abrir (ao iniciar o app e ao fim de cada sincronização): a 1ª abertura já sai do cache."""
     try: _menu_counts(); _dashboard()
     except Exception: pass
+    try: validacao.familias(); validacao.pendentes_rd("rd")          # etapa 24: modelos F-008 e pendentes de validação prontos antes da 1ª abertura
+    except Exception: pass
 
 @app.get("/favicon.ico")
 def favicon():
@@ -553,9 +555,11 @@ def api_val_desenho(vid, lado):
     return jsonify(validacao.desenho(vid, lado, f))
 @app.get("/api/validacao/<int:vid>/img/<nome>.png")
 def api_val_img(vid, nome):
-    p = validacao.imagem(vid, nome)
+    tela = request.args.get("tela") == "1"; p = validacao.imagem(vid, nome, tela)
     if not p: abort(404)
-    r = send_file(p, mimetype="image/png"); r.headers["Cache-Control"] = "no-store"; return r
+    r = send_file(p, mimetype="image/jpeg" if tela else "image/png")
+    r.headers["Cache-Control"] = "private, max-age=604800" if request.args.get("u") else "no-store"     # o endereço leva a versão da imagem (img_ver)
+    return r
 @app.post("/api/validacao/<int:vid>/ler")
 @_val
 def api_val_ler(vid): return jsonify(validacao.ler(vid))

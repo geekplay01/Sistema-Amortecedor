@@ -132,6 +132,12 @@ Um cartão (`.psd-banc`): cabeçalho com o código, a descrição e os dados do 
   linha liga tabela e desenhos: passar o mouse acende a linha e as duas cotas; as marcas se arrastam. Ap em selo A (verde) / R (vermelho) (`.psd-ap`).
 - **Digitação no desenho** (padrão, sem API): a linha em digitação fica marcada (faixa `.psd-vmarca` acima da tabela, linha `.armada`, desenho com borda `--cota`);
   o clique na cota abre o campo no ponto (`.psd-vpop`, cartão pequeno com sombra de menu; abre acima quando não cabe embaixo). Enter grava e passa para a próxima.
+- **Só marcar** (padrão) | **Marcar e digitar** (`.psd-seg` na faixa de marcação): no primeiro, cada clique põe o número e passa para a próxima linha;
+  Ctrl+Z tira o último; duplo clique num número abre o campo. O nome da cota é um campo na própria tabela (maiúsculas, vai para o F-008).
+- **Sobrepor** (`.psd-vsob`, tela inteira): PERFECT em vermelho `--sob-p`, fornecedor em azul `--sob-f`, coincidência escura `--sob-e` (cores do desenho,
+  iguais nos dois temas), legenda no topo; arrastar move e a roda muda o tamanho do desenho do fornecedor.
+- **Item com mola** no passo 2: chave liga/desliga `.psd-switch` (rótulo em negrito + linha de apoio).
+- **Damping**: Enter vai para o valor ao lado (no fim, a linha de baixo), Shift+Enter volta, colar vários números preenche a linha.
 - **Zoom**: roda do mouse sobre o ponto, botões «+ − Ajustar» e «Tela cheia» no título do desenho (`.psd-zctl`); os números mantêm o tamanho (`--z`).
   Em tela cheia o bloco vai para o `<body>` (fora do recorte do cartão) e Esc volta (Esc fecha antes o campo aberto).
 - **Revisão**: tabela de damping, faixa de três números (A, R em vermelho quando houver, conferidas em laranja enquanto faltar), duas ações (Aprovar = principal;
@@ -156,6 +162,10 @@ repinta. Verde só para «atingido».
 - Entrada da tela 0,18 s (fade + 4 px); troca de tela por View Transition (o menu fica parado); toasts 0,2 s; hover 0,15 s.
 - Botão de tema (etapa 23): o ícone que entra gira e cresce em 0,35 s (sol gira, lua balança); as cores da página trocam na hora.
 - Ação demorada (ler os desenhos com o Claude, gerar o F-008): o botão troca o texto e mostra o ícone girando (`.psd-gira`) até terminar.
+- **Chaves de escolha (etapa 24)**: em toda `.psd-seg` e `.psd-linha` o destaque **desliza** até a opção escolhida em 0,2 s (`.psd-ind`, posto pelo
+  `tw.js`; a posição anterior fica guardada pelo `id`/`aria-label` da chave, então desliza também quando a tela redesenha a chave). Vale para todos os
+  módulos, sem código na tela. Troca de aba dentro da mesma tela (Itens | Validar itens) não recarrega a página. Chave liga/desliga (`.psd-switch`):
+  a bolinha corre em 0,2 s.
 - Nada de animação em número ou tabela. A única animação longa é a da tela inicial (13 s em ciclo, pausa fora da tela).
 - `prefers-reduced-motion: reduce` desliga tudo (`marca.css`, fim do arquivo); a animação inicial fica parada, em pé.
 

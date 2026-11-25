@@ -75,4 +75,25 @@ não leu «Lmax=553±3» (nem com traço engrossado), trocou «S=157» por «S:1
 - [x] `rules.validacao_ia` + `/api/settings` + Configurações; `validacao.ia_disponivel` desligada não oferece nem chama a API (teste garante que `_chamar_claude` não é chamado).
 - [x] Passo 3: «Digitar no desenho», campo no ponto (`.psd-vpop`, «553±3» separa as tolerâncias), avanço de linha, zoom/arrastar, tela cheia (bloco vai para o `<body>`), Esc em camadas.
 - [x] Conferido na cópia: LMAX digitado no PERFECT com zoom (553 / 3 / −3, número no desenho, avançou para LMIN); LMIN do fornecedor em tela cheia (gravado com a posição); Esc fechou a tela cheia; Configurações mostra a opção desligada. Testes verdes.
-- [ ] Usuário: validar o fluxo de R-D na prática; depois, liberar a aba em Desenvolvimento.
+- [x] Commit `24ab28b`, push conferido.
+
+## Ajuste 2 (25/11/2026) — mola, marcação rápida, animação das chaves, damping e velocidade
+
+Medido na cópia antes: bancada 20 ms; contagem «Validar itens» 0,5–0,9 s a cada abertura do R-D; lista da Validação 0,7 s (3,9 s na 1ª); desenhos de 800 KB
+baixados de novo a cada gravação que redesenha. Achado na conferência: o ouvinte de cliques do passo 3 ficava em `#vbc` e se acumulava a cada troca de passo
+(«Pular linha» pulava várias linhas, «Sobrepor» abria duas vezes) — provável parte dos «bugs» sentidos.
+
+| # | Pergunta | Decisão («Sim para todas») |
+|---|---|---|
+| Q1 | Item com mola | Chave no passo 2; LMAX2 logo abaixo do LMAX; sai ao desligar |
+| Q2 | Marcar mais rápido | «Só marcar» (padrão) \| «Marcar e digitar»; Ctrl+Z; duplo clique abre o valor |
+| Q3 | Nome da cota | Editável na tabela, só nesta validação, vai para o F-008 |
+| Q4 | Animação das chaves | Destaque desliza (0,2 s) em toda `.psd-seg`/`.psd-linha` do app; abas do R-D sem recarregar |
+| Q5 | Damping | Enter → valor ao lado; Shift+Enter volta; colar preenche a linha; «±» guarda o nominal |
+| Q6 | Velocidade | Pendentes guardados até o banco mudar (e calculados ao abrir); imagem leve 1600 px com chave estável |
+| Q7 | Seguir | «Sobrepor» agora; teste do PaddleOCR depois (instalação pelo usuário); DXF com os fornecedores |
+
+- [x] Feito e conferido na cópia: mola (LMAX, LMAX2, LMIN), só marcar + Ctrl+Z, nome trocado gravado, duplo clique → 553/3/−3, damping (Enter, colar, ±),
+  sobrepor (abre, fecha com Esc, um só), abas sem recarregar com o destaque deslizando, ouvinte do passo 3 corrigido. Testes verdes.
+- Node.js 26.13.1 portátil instalado em `%LOCALAPPDATA%\nodejs` (sem administrador; fora do PATH) para o `npx skills find`.
+- [ ] Usuário: validar o fluxo de R-D na prática; teste do PaddleOCR; depois, liberar a aba em Desenvolvimento.
