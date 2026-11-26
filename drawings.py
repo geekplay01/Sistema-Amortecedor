@@ -5,7 +5,7 @@ import os, re, json, uuid, shutil, hashlib, datetime, zipfile
 import database as db
 from queries import q, q1
 
-DIR = os.path.join(db.BASE, "data", "drawings")
+DIR = os.path.join(db.DATA_DIR, "drawings")          # ao lado do banco (cópia de teste ≠ pasta real)
 TMP = os.path.join(db.BASE, "data", "uploads")
 IMG = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 INLINE = IMG | {".pdf", ".svg"}          # abrem no navegador; o resto (dwg, dxf, step, zip...) baixa

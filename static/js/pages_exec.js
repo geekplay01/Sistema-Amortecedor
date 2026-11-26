@@ -37,7 +37,8 @@ window.PSD_EXEC = ctx => {
 
   // ───────────────────────── Previsão de embarques e chegadas (etapas medidas no histórico) ─────────────────────────
   const ETAPAS = ["Aguardando embarque", "No mar", "No porto / desembaraço"], PARADO = "Parado — verificar saldo";
-  const FCLR = { "ZS": "#2f6bff", "E-WIN": "#10b981", "XGM": "#8b5cf6", "VERIFICAR": "#f59e0b" };
+  // cor fixa por fornecedor, a mesma do selo da tabela (FORN): filtrar não troca as cores; VERIFICAR é o resto, em cinza. Trio validado (DESIGN.md §6.6)
+  const FCLR = { "ZS": "--chart-1", "E-WIN": "--chart-6", "XGM": "--chart-5", "VERIFICAR": "--chart-7" };
   async function previsaoBlock(el, PF) {
     let F; try { F = await J("/api/pedidos/previsao"); } catch (e) { el.innerHTML = ""; return; }
     if (!F.available) { el.innerHTML = ""; return; }
@@ -168,9 +169,9 @@ window.PSD_EXEC = ctx => {
   // «Conferir com o BI»: envia o export VENDA_POR_SKU do Power BI e compara com o servidor e com o catálogo (POST /api/vendas/conciliar). Nada é gravado.
   function conciliar(el) {
     el.innerHTML = `<details class="rounded-2xl border border-line bg-card shadow-sm"><summary class="cursor-pointer px-5 py-4 text-base font-semibold text-ink">Conferir com o BI (export VENDA_POR_SKU)</summary><div class="flex flex-col gap-4 px-5 pb-5">
-      <label for="cfile" class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line px-6 py-6 text-center hover:bg-slate-500/10"><span class="text-sm font-semibold text-ink">Clique para enviar o export do BI (.xlsx ou .csv com PRODUTO, QTD e VALOR)</span><span class="text-xs text-mute">Os filtros do BI (ano, mês e LINHA) são lidos da linha «Filtros aplicados» e aplicados também aos dados do servidor.</span></label>
-      <input id="cfile" type="file" accept=".xlsx,.xls,.csv,.txt" class="hidden"><div id="cres"></div></div></details>`;
-    el.querySelector("#cfile").onchange = async e => { const f = e.target.files[0]; if (!f) return; const out = el.querySelector("#cres"), fd = new FormData(); fd.append("file", f); out.innerHTML = waiting(`Comparando ${esc(f.name)}…`);
+      ${TW.zonaPlanilha({ id: "cfile", titulo: "Enviar o export do BI (PRODUTO, QTD e VALOR)", aceita: ".xlsx,.xls,.csv,.txt", dica: "XLSX ou CSV; arraste para cá, cole com Ctrl+V ou clique. Os filtros do BI (linha «Filtros aplicados») valem também para o servidor." })}
+      <div id="cres"></div></div></details>`;
+    TW.ligarPlanilha(el.querySelector("#cfile"), { aceita: ".xlsx,.xls,.csv,.txt", receber: async ([f]) => { const out = el.querySelector("#cres"), fd = new FormData(); fd.append("file", f); out.innerHTML = waiting(`Comparando ${esc(f.name)}…`);
       let r; try { r = await J("/api/vendas/conciliar", { method: "POST", body: fd }); } catch (er) { out.innerHTML = TW.notice(esc(er.message), "red"); return; }
       const S = r.servidor || {}, C = r.catalogo, F = r.filtros || {};
       const lst = (t, rows) => rows && rows.length ? TW.card(t, TW.table([{ h: "Produto" }, { h: "Qtd BI", r: 1 }, { h: "Valor BI", r: 1 }, { h: "Qtd servidor", r: 1 }, { h: "Valor servidor", r: 1 }, { h: "Dif. valor", r: 1 }],
@@ -179,7 +180,7 @@ window.PSD_EXEC = ctx => {
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi("BI", brl0(r.bi.valor), `${nf(r.bi.skus)} SKUs · ${nf(r.bi.qtd)} peças`, "blue")}${S.disponivel ? TW.kpi("Servidor", brl0(S.valor), `${nf(S.skus)} SKUs · ${nf(S.qtd)} peças`, "green") + TW.kpi("SKUs iguais", nf(S.iguais), `${nf(S.diferentes)} com diferença · ${nf(S.n_so_bi)} só no BI · ${nf(S.n_so_srv)} só no servidor`, S.diferentes ? "amber" : "green") : TW.kpi("Servidor", "–", esc(S.motivo || ""), "amber")}
           ${C ? TW.kpi("Fora do catálogo", `${nf(C.skus_fora)} SKUs`, `${nf(C.pct_valor_fora, 1)}% do valor · ${nf(C.resolvidos_por_equivalencia)} resolvidos por equivalência`, C.skus_fora ? "amber" : "green") : ""}</div>
         ${lst("Diferenças BI × servidor", S.diferencas)}${lst("Só no BI", S.so_no_bi)}${lst("Só no servidor", S.so_no_servidor)}
-        ${C && C.rows.length ? TW.card("Vendidos fora do catálogo (CatalogoAMD)", TW.table([{ h: "Produto" }, { h: "Qtd", r: 1 }, { h: "Valor", r: 1 }, { h: "Equivalente no catálogo" }], C.rows.slice(0, 200).map(x => [pc(x.produto), nf(x.qtd), brl(x.valor), x.equivalente ? esc(x.equivalente) : '<span class="text-mute">–</span>']), { h: "max-h-[40vh]" })) : ""}</div>`; };
+        ${C && C.rows.length ? TW.card("Vendidos fora do catálogo (CatalogoAMD)", TW.table([{ h: "Produto" }, { h: "Qtd", r: 1 }, { h: "Valor", r: 1 }, { h: "Equivalente no catálogo" }], C.rows.slice(0, 200).map(x => [pc(x.produto), nf(x.qtd), brl(x.valor), x.equivalente ? esc(x.equivalente) : '<span class="text-mute">–</span>']), { h: "max-h-[40vh]" })) : ""}</div>`; } });
   }
 
   // universo de vendas (etapa 16 · C1/Q10): padrão = BI (LINHA = AMORTECEDOR exata); linha pesada e kit entram só pelo seletor
@@ -199,7 +200,7 @@ window.PSD_EXEC = ctx => {
         ${TW.kpi(`Acumulado ${Y.ano} (até ${MONTHS[Y.ate_mes]})`, brl0(Y.valor), `${pct(Y.var_valor_pct)} vs. ${brl0(Y.valor_ant)} no mesmo período de ${Y.ano - 1}`, "green")}
         ${TW.kpi("Faturamento de SKUs do catálogo", o.catalogo.pct_valor_catalogo == null ? "–" : nf(o.catalogo.pct_valor_catalogo, 1) + "%", `${nf(o.catalogo.skus_fora)} SKU(s) vendidos fora do CatalogoAMD em ${o.catalogo.ano}`, o.catalogo.pct_valor_catalogo >= 90 ? "green" : "amber")}</div>
       ${TW.card("Faturamento mensal (últimos 24 meses, com IPI)", '<div id="vmes" class="chart"></div>', `<span class="text-sm text-mute">servidor: ${mesAno(o.primeiro_mes)} → ${mesAno(o.ultimo_mes)}, atualizado ${dmy(o.atualizado_em)}, ano ${o.catalogo.ano} por linha: ${o.por_linha.map(l => `${esc(l.linha)} ${brl0(l.v)}`).join(", ")}</span>`)}</div>`;
-    PSDCharts.bars($("#vmes"), { x: o.meses.map(m => m.mes), series: [{ name: "Faturado (R$)", y: o.meses.map(m => Math.round(m.valor)) }], colors: ["#2f6bff"] });
+    PSDCharts.bars($("#vmes"), { x: o.meses.map(m => m.mes), series: [{ name: "Faturado (R$)", y: o.meses.map(m => Math.round(m.valor)) }], fmt: v => "R$ " + TW.curto(v) });
   }
   async function vendas() {
     const P = new URLSearchParams(location.search);
@@ -231,11 +232,12 @@ window.PSD_EXEC = ctx => {
       const C = d.classes; const sk = ["A", "B", "C"].map(c => [c, C.n[c], C.valor_pct[c]]);
       $("#vbody").innerHTML = `<div class="flex flex-col gap-6"><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${TW.kpi("Faturado", brl0(d.total_valor), month || year ? `${month ? MONTHS[+month] + " de " : ""}${year || "todos os anos"}` : "todo o período", "blue")}
         ${TW.kpi("Quantidade", nf(d.total_qtd), "peças faturadas", "green")}${TW.kpi("SKUs", nf(d.skus), "códigos com faturamento", "slate")}${TW.kpi("Curva A", `${nf(C.n.A)} SKUs`, `${nf(C.valor_pct.A, 1)}% do faturamento`, "amber")}</div>
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3"><div class="xl:col-span-2">${TW.card("Top 15 SKUs por valor faturado", '<div id="vh" class="chart"></div>')}</div>${TW.card("Participação por classe", '<div id="vd" class="chart"></div>')}</div>
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3"><div class="xl:col-span-2">${TW.card("Top 15 SKUs por valor faturado", '<div id="vh" class="chart"></div>')}</div>${TW.card("Participação por classe", '<div id="vd"></div><div class="mt-4">' + TW.table([{ h: "Classe" }, { h: "SKUs", r: true }, { h: "Faturado", r: true }, { h: "% do valor", r: true }],
+          sk.map(([c, n, p]) => [`Classe ${c}`, nf(n), brl0((p || 0) * d.total_valor / 100), nf(p || 0, 1) + "%"]), { h: "" }) + "</div>")}</div>
         ${TW.card("Curva ABC por produto", '<div id="vt"></div>', `<span id="vcount" class="text-sm text-mute"></span>`)}</div>`;
       const top = d.rows.slice(0, 15);
-      top.length ? PSDCharts.hbars($("#vh"), { labels: top.map(r => r.PRODUTO), values: top.map(r => r.VALOR), color: "#2f6bff" }) : $("#vh").innerHTML = '<div class="ch-empty">Sem vendas no período.</div>';
-      PSDCharts.donut($("#vd"), { labels: sk.map(([c, n]) => `Classe ${c}: ${n} SKUs`), values: sk.map(s => s[2] || 0), colors: ["#2f6bff", "#10b981", "#94a3b8"] });
+      top.length ? PSDCharts.hbars($("#vh"), { labels: top.map(r => r.PRODUTO), values: top.map(r => r.VALOR), fmt: v => "R$ " + TW.curto(v) }) : $("#vh").innerHTML = '<div class="ch-empty">Sem vendas no período.</div>';
+      PSDCharts.donut($("#vd"), { labels: sk.map(([c, n]) => `Classe ${c}, ${nf(n)} SKUs`), values: sk.map(s => s[2] || 0), colors: ["--chart-1", "--chart-2", "--chart-3"], fmtParte: p => `${p.l.slice(7, 8)} ${nf(p.v, 1)}%` });
       table();
     };
     const table = () => {
@@ -254,13 +256,12 @@ window.PSD_EXEC = ctx => {
     const st = { q: "", filtro: "", page: 1 }; let msg = "", d;
     root.innerHTML = `<div class="flex flex-col gap-6"><div id="fup"></div><div id="fbody">${waiting("Carregando FOB…")}</div></div>`;
     const money = v => v == null ? "–" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const upload = () => { $("#fup").innerHTML = TW.card("Planilha FOB", `<label for="ffile" class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line px-6 py-6 text-center hover:bg-slate-500/10">
-        <span class="text-sm font-semibold text-ink">Clique para enviar a tabela FOB (TABELA-PRECO .xlsx)</span><span class="text-xs text-mute">Reenviar substitui a versão anterior. Só administrador.</span></label>
-        <input id="ffile" type="file" accept=".xlsx,.xls,.csv" class="hidden"><div class="mt-4">${msg}</div>`);
-      $("#ffile").onchange = async e => { const f = e.target.files[0]; if (!f) return; const fd = new FormData(); fd.append("file", f); msg = waiting(`Importando ${esc(f.name)}…`); upload();
+    const upload = () => { $("#fup").innerHTML = TW.card("Planilha FOB", `${TW.zonaPlanilha({ id: "ffile", titulo: "Enviar a tabela FOB (TABELA-PRECO)", dica: "XLSX; arraste para cá, cole com Ctrl+V ou clique. Reenviar substitui a versão anterior. Só administrador." })}
+        <div class="mt-4">${msg}</div>`);
+      TW.ligarPlanilha("#ffile", { receber: async ([f]) => { const fd = new FormData(); fd.append("file", f); msg = waiting(`Importando ${esc(f.name)}…`); upload();
         try { const r = await J("/api/fob/import", { method: "POST", body: fd });
           msg = TW.notice(`FOB importado: <b>${nf(r.itens_fob)}</b> itens (de ${nf(r.linhas_fob)} linhas; ${nf(r.codigo_como_chave || 0)} pelo próprio código AMD, ${nf(r.via_relativo || 0)} pelo item PERFECT relativo, ${nf(r.sem_partnumber)} sem código PERFECT, ${nf(r.partnumber_repetido)} repetidos juntados). <b>${nf(r.com_fob)}</b> produtos receberam FOB; ${nf(r.sem_fob)} ficaram sem; ${nf(r.fob_sem_produto)} itens do FOB não existem no catálogo.`, "blue"); upload(); load(); }
-        catch (er) { msg = TW.notice(esc(er.message), "red"); upload(); } };
+        catch (er) { msg = TW.notice(esc(er.message), "red"); upload(); } } });
     };
     // etapa 22 · 3ª rodada: só a resposta da ÚLTIMA busca é desenhada (as antigas chegavam depois e tomavam o lugar), e a barra de busca é desenhada uma vez
     // só — a resposta troca os cartões e a tabela, não o que está sendo digitado.

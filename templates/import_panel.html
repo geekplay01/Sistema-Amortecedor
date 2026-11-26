@@ -1,7 +1,7 @@
 <section class="imp">
   <div class="notice">Confira o mapeamento e clique em <b>Validar</b>: a simulação mostra o resumo <b>sem gravar nada</b>. Só depois de confirmar o banco é alterado (com backup antes).</div>
+  <div id="imp-zona-host"></div>{# zona de planilha (PSDTW.zonaPlanilha): arrastar, Ctrl+V ou clique #}
   <div class="imp-row">
-    <label>Arquivo<input type="file" id="imp-file" accept=".xlsx,.xls,.csv"></label>
     <label>Categoria<select id="imp-cat" disabled></select></label>
     <label>Planilha<select id="imp-sheet" disabled></select></label>
     <label>Se o valor divergir do já cadastrado<select id="imp-policy"><option value="keep">Manter o atual e abrir pendência</option><option value="overwrite">Usar o valor da planilha importada</option></select></label>
@@ -17,4 +17,5 @@
     <div id="imp-result" class="notice" hidden></div>
   </div>
 </section>
+<script src="{{ url_for('static', filename='js/tw.js') }}"></script>{# esta página não carrega o núcleo das telas; o tw.js traz a zona de planilha #}
 <script src="{{ url_for('static', filename='js/import.js') }}"></script>

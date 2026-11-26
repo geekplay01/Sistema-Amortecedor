@@ -556,12 +556,19 @@ class Fluxo(unittest.TestCase):
         try:
             p = con.execute("INSERT INTO products(perfect_code,description,family,ean) VALUES('AMDT26','T26 AMORTECEDOR','CONVENCIONAL','789')").lastrowid
             con.executemany("INSERT INTO certificates(product_id,perfect_code_raw,inmetro_number,family,supplier) VALUES(?,?,?,?,?)", [(p, "AMDT26", "001/2026", "ESTRUTURAL", "ZS"), (p, "AMDT26", "002/2026", "CONVENCIONAL", "E-WIN")])
-            con.execute("INSERT INTO pendencies(product_id,kind,field,description) VALUES(?,?,?,?)", (p, "conflito", "ean", "Valor atual «789» × importado «790» (fonte T26.xlsx). Nada foi sobrescrito.")); con.commit()
+            con.execute("INSERT INTO pendencies(product_id,kind,field,description) VALUES(?,?,?,?)", (p, "conflito", "ean", "Valor atual «789» × importado «790» (fonte T26.xlsx). Nada foi sobrescrito."))
+            con.execute("INSERT INTO applications(product_id,make,model,year_from,year_to,axle,side) VALUES(?,?,?,?,?,?,?)", (p, "FIAT", "UNO T26", 2010, 2014, "dianteiro", "ambos")); con.commit()
         finally: con.close()
         f = C.get("/api/anomalies?q=T26").json; self.assertEqual([x["perfect_code"] for x in f["rows"]], ["AMDT26"]); self.assertEqual(f["rows"][0]["inmetro_families"], ["CONVENCIONAL", "ESTRUTURAL"])
+        # update 4 · Q7: descrição e aplicação do item em todas as abas (e no Excel)
+        self.assertEqual((f["rows"][0]["description"], f["rows"][0]["application"]), ("T26 AMORTECEDOR", "FIAT - UNO T26 - DIANT. LD/LE - 2010/2014"))
+        import anomalias
+        self.assertEqual(anomalias.com_itens("repetidos", [{"codigos": ["AMDT26", "AMDNADA"]}])[0]["itens"],
+                         [{"code": "AMDT26", "description": "T26 AMORTECEDOR", "application": "FIAT - UNO T26 - DIANT. LD/LE - 2010/2014"}, {"code": "AMDNADA", "description": None, "application": ""}])
         e = C.get("/api/anomalies?tab=ean&q=T26").json; self.assertEqual([(x["current"], x["imported"], x["source"]) for x in e["rows"]], [("789", "790", "T26.xlsx")])
         self.assertEqual((f["counts"]["familia"], f["counts"]["ean"]), (1, 1))
         wb = load_workbook(io.BytesIO(C.get("/api/anomalies/export.xlsx?q=T26").data)); self.assertEqual([ws.max_row - 1 for ws in wb.worksheets[:2]], [1, 1])
+        self.assertEqual([c.value for c in wb.worksheets[0][2]][:3], ["AMDT26", "T26 AMORTECEDOR", "FIAT - UNO T26 - DIANT. LD/LE - 2010/2014"])
         self.assertIn("Anomalias", C.get("/anomalias").get_data(as_text=True))
 
     def test_27_excel_pesquisa_inmetro_fob_estoque(self):

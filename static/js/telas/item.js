@@ -83,11 +83,11 @@
         ${d.pendencias.map(x => `<div class="rounded-xl border border-line px-3 py-2 text-sm"><b class="text-ink">${esc(x.field || x.kind)}</b> <span class="text-mute">${esc(x.description || "")}</span></div>`).join("")}</div>`)}
     </div>`;
     if (d.vendas.available && d.vendas.total_qty) grafico($("#g-vendas"), { type: "bar", altura: 240, titulo: "Vendas por mês", data: { labels: d.vendas.months.map(x => mes(x.month)), datasets: [{ label: "Peças", data: d.vendas.months.map(x => x.qty) }] },
-      options: { plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: c => "Faturado: " + brl0(d.vendas.months[c.dataIndex].value) } } } } });
+      options: { plugins: { tooltip: { callbacks: { afterLabel: c => "Faturado: " + brl0(d.vendas.months[c.dataIndex].value) } } } } });
     if (e) grafico($("#g-proj"), { type: "bar", altura: 240, titulo: "Projeção de estoque", data: { labels: d.estoque.meses.map(mes), datasets: [
-        { type: "line", label: "Saldo projetado", data: e.projecao, cor: "#2F4A8C", fill: false, order: 0 }, { label: "Chegadas previstas", data: e.chegadas, cor: "#64C4E9", order: 1 }] },
+        { type: "line", label: "Saldo projetado", data: e.projecao, cor: "--chart-1", order: 0 }, { label: "Chegadas previstas", data: e.chegadas, cor: "--chart-3", order: 1 }] },
       options: { plugins: { tooltip: { mode: "index", intersect: false } } } });
-    if (d.garantia.available && d.garantia.kpis.pecas) grafico($("#g-gar"), { type: "bar", altura: 200, titulo: "Garantia por ano", data: { labels: d.garantia.por_ano.map(x => x.ano), datasets: [{ label: "Peças em garantia", data: d.garantia.por_ano.map(x => x.pecas), cor: "#F6A019" }] }, options: { plugins: { legend: { display: false } } } });
+    if (d.garantia.available && d.garantia.kpis.pecas) grafico($("#g-gar"), { type: "bar", altura: 200, titulo: "Garantia por ano", data: { labels: d.garantia.por_ano.map(x => x.ano), datasets: [{ label: "Peças em garantia", data: d.garantia.por_ano.map(x => x.pecas) }] } });
   }
   PSD.tela("item", item);
 })();

@@ -51,11 +51,12 @@
 
     const topo = () => `<div class="psd-banc-top">
         ${o.voltar ? `<a class="psd-vvolta" href="${o.voltar}">${ico("chevron-right", "sm")}<span>Voltar à lista</span></a>` : ""}
-        <span class="id">${esc(v.code)}</span><span class="desc">${esc([v.info.description, v.info.vehicle].filter(Boolean).join(", "))}</span>
+        <span class="id">${esc(v.code)}</span><span class="psd-vrevn" title="Revisão do teste (último REV do nome do F-008)">Rev.${String(v.revisao || 0).padStart(2, "0")}</span><span class="desc">${esc([v.info.description, v.info.vehicle].filter(Boolean).join(", "))}</span>
         <dl class="psd-par"><div><dt>Fornecedor</dt><dd>${esc(v.supplier || "–")}</dd></div><div><dt>Cód. fornecedor</dt><dd>${esc(v.supplier_code || "–")}</dd></div>
           <div><dt>Família</dt><dd>${esc(FAM(v.family) || "–")}</dd></div><div><dt>Tipo</dt><dd>${esc(FAM(v.kind_label))}</dd></div>
           ${v.par ? `<div><dt>Lado</dt><dd>${esc(v.par.meu)}, par ${v.par.validacao ? `<a class="psd-vpar" href="#" data-irpar="${v.par.validacao.id}">${esc(v.par.code)} (${esc(v.par.lado)})</a>` : esc(`${v.par.code} (${v.par.lado})`)}</dd></div>` : ""}</dl>
-        <span class="dir">${badge(ST[v.status][0], ST[v.status][1])}<span id="vsalvo" class="text-xs text-mute">${ro() ? "concluída em " + dmy(v.concluida_em) : v.updated_at ? "rascunho salvo " + String(v.updated_at).slice(11, 16) : ""}</span></span></div>
+        <span class="dir">${badge(ST[v.status][0], ST[v.status][1])}<span id="vsalvo" class="text-xs text-mute">${ro() ? "concluída em " + dmy(v.concluida_em) : v.updated_at ? "rascunho salvo " + String(v.updated_at).slice(11, 16) : ""}</span>
+          <button type="button" class="psd-vx" data-excluir title="Excluir esta revisão" aria-label="Excluir esta revisão">${ico("trash-2", "sm")}</button></span></div>
       <div class="psd-passos" role="tablist">${PASSOS.map((t, i) => `<button type="button" role="tab" data-passo="${i}" aria-selected="${i === passo}" class="${feito(i) ? "feito" : ""}">${i + 1} · ${t}<small>${esc(sub(i))}</small></button>`).join("")}</div>`;
     const redesenharTopo = () => { const t = $("#vtopo", el); if (t) t.innerHTML = topo(); };
     const desenhar = () => { el.innerHTML = `<div class="psd-banc"><div id="vtopo">${topo()}</div><div id="vbc"></div></div>`; corpo(); };
@@ -257,9 +258,14 @@
             if (on) { const ir = z.querySelector("img"), ratio = ir.naturalWidth / ir.naturalHeight || 1.414; p.style.width = Math.min(innerWidth - 48, (innerHeight - 96) * ratio) + "px"; } else p.style.width = ""; Object.assign(st, { z: 1, x: 0, y: 0 }); aplica(); } });
         p.addEventListener("mouseover", e => { const m = e.target.closest(".psd-mk"); foco(m ? m.dataset.i : null); });
         let arr = null, pan = null;
-        p.addEventListener("pointerdown", e => { if (e.button !== 0 || e.target.closest(".psd-vpop")) return; const m = e.target.closest(".psd-mk");
+        /* rodinha apertada e arrastar = mover o desenho, como no CAD (etapa 24); o clique esquerdo continua pondo o número */
+        p.addEventListener("pointerdown", e => { if (e.target.closest(".psd-vpop")) return;
+          if (e.button === 1) { e.preventDefault(); pan = { x0: e.clientX, y0: e.clientY, sx: st.x, sy: st.y, moveu: true, meio: true }; p.setPointerCapture(e.pointerId); p.classList.add("movendo"); return; }
+          if (e.button !== 0) return; const m = e.target.closest(".psd-mk");
           if (m && !ro()) { e.preventDefault(); arr = m; p.setPointerCapture(e.pointerId); return; }
           pan = { x0: e.clientX, y0: e.clientY, sx: st.x, sy: st.y, moveu: false }; p.setPointerCapture(e.pointerId); });
+        p.addEventListener("auxclick", e => { if (e.button === 1) e.preventDefault(); });          // sem a rolagem automática do navegador
+        p.addEventListener("mousedown", e => { if (e.button === 1) e.preventDefault(); });
         p.addEventListener("pointermove", e => { if (arr) { const [x, y] = fr(e); arr.style.left = x * 100 + "%"; arr.style.top = y * 100 + "%"; return; }
           if (!pan) return; const dx = e.clientX - pan.x0, dy = e.clientY - pan.y0; if (Math.abs(dx) + Math.abs(dy) > 4) pan.moveu = true;
           if (pan.moveu && st.z > 1) { st.x = pan.sx + dx; st.y = pan.sy + dy; fecharPop(); aplica(); p.classList.add("movendo"); } });
@@ -362,7 +368,13 @@
       return `<div class="psd-vrev"><section><h3>Damping force</h3>
           <div class="psd-vtab-w"><table class="psd-vtab"><thead><tr><th>F (N)</th>${VEL.map(x => `<th class="r">${x}</th>`).join("")}<th class="c">Ap</th></tr></thead>
           <tbody>${lin("pf", "p", "Pf PERFECT")}${lin("pf", "f", "Pf fornecedor")}${lin("py", "p", "Py PERFECT")}${lin("py", "f", "Py fornecedor")}</tbody></table></div>
-          <p class="psd-vdica">Valores nominais em N, por velocidade (m/s).</p></section>
+          <p class="psd-vdica">Valores nominais em N, por velocidade (m/s).</p>
+          ${v.imagens.perfect || v.imagens.fornecedor ? `<div class="psd-vrecs"><div class="psd-rot">Imagens da aba de damping do F-008</div>
+            <p class="psd-vdica">Arraste sobre a tabela de damping de cada desenho e use «Manter só a seleção»; sem recorte, vai o desenho inteiro.</p>
+            <div class="psd-vrecs-g">${["pp", "pf"].filter(k => v.imagens[k === "pp" ? "perfect" : "fornecedor"]).map(k => { const r = (v.dados.recorte || {})[k];
+              return `<div class="psd-vrec"><div class="tt"><b>${k === "pp" ? "PERFECT" : "Fornecedor"}</b><span>${r ? "só a tabela" : "desenho inteiro"}</span></div>
+                <div class="psd-papel psd-masc" data-recp="${k}" tabindex="0"><img alt="" src="${src(k === "pp" ? imgPerfect() : "fornecedor")}">${r ? `<div class="psd-recorte" style="left:${r[0] * 100}%;top:${r[1] * 100}%;width:${r[2] * 100}%;height:${r[3] * 100}%"></div>` : ""}<div class="psd-sel" hidden></div></div>
+                ${ro() ? "" : `<div class="a"><button type="button" class="psd-btn sm" data-recok="${k}">${ico("crop", "sm")}Manter só a seleção</button>${r ? `<button type="button" class="psd-btn sm" data-recx="${k}">Desenho inteiro</button>` : ""}</div>`}</div>`; }).join("")}</div></div>` : ""}</section>
         <section><h3>Conclusão</h3>
           <div class="psd-est psd-vconta"><button type="button" tabindex="-1"><span class="t">Aprovadas (A)</span><span class="n">${nf(c.A)}</span></button><button type="button" tabindex="-1" class="${c.R ? "red" : ""}"><span class="t">Reprovadas (R)</span><span class="n">${nf(c.R)}</span></button>
             <button type="button" tabindex="-1" class="${falta ? "amb" : ""}"><span class="t">Conferidas</span><span class="n">${nf(c.conferidas)}</span><span class="l">de ${nf(c.linhas)}</span></button></div>
@@ -376,9 +388,24 @@
             <div class="text-sm text-mute">${ro() ? (v.status === "aprovada" ? (v.drawing_file_id ? `Desenho do fornecedor enviado para <a class="font-semibold text-blue-600" href="/desenhos?open=${encodeURIComponent(v.code)}">Desenhos</a>.` : "") : "Reprovada: o desenho não foi para Desenhos.") : `Ao aprovar: o desenho do fornecedor vai para Desenhos como ${esc((v.kind === "rd" ? "RED" : "DES") + " - " + v.code + " - " + (v.supplier || "FORNECEDOR") + " - " + (v.supplier_code || "CÓDIGO") + " - REV.00")}.`}</div>
           </div>
           ${v.aviso ? notice(esc(v.aviso), "amber") : ""}
-          ${ro() ? `<div class="psd-vdecide"><button type="button" class="psd-btn" data-nova>${ico("plus", "sm")}Nova validação deste item</button></div>` : ""}
+          ${ro() ? `<div class="psd-vdecide"><button type="button" class="psd-btn" data-nova>${ico("plus", "sm")}Nova revisão (Rev.${String((Math.max(...v.revisoes.map(r => r.revisao)) || 0) + 1).padStart(2, "0")})</button></div>` : ""}
+          ${v.revisoes.length > 1 ? `<div class="psd-vrevs"><div class="psd-rot">Revisões desta validação</div>${v.revisoes.map(r => `<div class="${r.id === v.id ? "atual" : ""}">
+              ${r.id === v.id ? `<b>Rev.${String(r.revisao).padStart(2, "0")}</b>` : `<a href="#" data-irpar="${r.id}">Rev.${String(r.revisao).padStart(2, "0")}</a>`}${badge(ST[r.status][0], ST[r.status][1])}<span class="text-mute">${r.concluida_em ? dmy(r.concluida_em) : dmy(r.updated_at)}</span>
+              <span class="ml-auto flex gap-1.5">${r.xlsx ? `<a class="psd-vfile" href="/api/validacao/${r.id}/arquivo/xlsx">xlsx</a>` : ""}${r.pdf ? `<a class="psd-vfile" href="/api/validacao/${r.id}/arquivo/pdf">pdf</a>` : ""}</span></div>`).join("")}</div>` : ""}
         </section></div>`; };
     const ligar4 = c => {
+      /* recorte da tabela de damping (etapa 24): arrastar seleciona; «Manter só a seleção» guarda; «Desenho inteiro» desfaz */
+      const selRec = {};
+      if (!ro()) c.querySelectorAll("[data-recp]").forEach(box => { const k = box.dataset.recp, sx = box.querySelector(".psd-sel");
+        const fr = e => { const b = box.getBoundingClientRect(); return [Math.min(Math.max((e.clientX - b.left) / b.width, 0), 1), Math.min(Math.max((e.clientY - b.top) / b.height, 0), 1)]; };
+        const mostra = () => { const s = selRec[k]; if (!s) { sx.hidden = true; return; } Object.assign(sx.style, { left: s[0] * 100 + "%", top: s[1] * 100 + "%", width: s[2] * 100 + "%", height: s[3] * 100 + "%" }); sx.hidden = false; };
+        let ini = null;
+        box.addEventListener("pointerdown", e => { if (e.button !== 0) return; box.setPointerCapture(e.pointerId); ini = fr(e); selRec[k] = [...ini, 0, 0]; mostra(); });
+        box.addEventListener("pointermove", e => { if (!ini) return; const p = fr(e); selRec[k] = [Math.min(ini[0], p[0]), Math.min(ini[1], p[1]), Math.abs(p[0] - ini[0]), Math.abs(p[1] - ini[1])]; mostra(); });
+        box.addEventListener("pointerup", () => { ini = null; const s = selRec[k]; if (s && (s[2] < 0.01 || s[3] < 0.01)) { selRec[k] = null; mostra(); } }); });
+      c.querySelectorAll("[data-recok]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.recok;
+        if (!selRec[k]) return TW.toast("Arraste sobre a tabela de damping do desenho primeiro.", { tom: "aviso" }); salvar({ recorte: { [k]: selRec[k] } }, true); }));
+      c.querySelectorAll("[data-recx]").forEach(b => b.addEventListener("click", () => salvar({ recorte: { [b.dataset.recx]: null } }, true)));
       /* damping: Enter vai para o valor ao lado (no fim da linha, o 1º da linha de baixo), Shift+Enter volta; colar vários números preenche a linha; «1155±365» guarda 1155 */
       const cels = [...c.querySelectorAll("[data-dg]")];
       const grava = i => { const dm = v.dados.damping; dm[i.dataset.dl][i.dataset.dg][+i.dataset.dj] = i.value;
@@ -405,7 +432,16 @@
     };
 
     el.addEventListener("click", e => { const b = e.target.closest("[data-passo]"); if (b && el.contains(b)) ir(+b.dataset.passo);
-      const pr = e.target.closest("[data-irpar]"); if (pr) { e.preventDefault(); irPara(pr.dataset.irpar); } });
+      const pr = e.target.closest("[data-irpar]"); if (pr) { e.preventDefault(); irPara(pr.dataset.irpar); }
+      if (e.target.closest("[data-excluir]")) excluir(); });
+    /* excluir qualquer revisão (etapa 24): some o registro e os arquivos dela; o desenho já enviado para Desenhos fica */
+    const excluir = async () => {
+      const outras = v.revisoes.filter(r => r.id !== v.id);
+      if (!(await TW.confirmar({ titulo: `Excluir ${v.code} Rev.${String(v.revisao).padStart(2, "0")}?`, botao: "Excluir", perigo: true,
+        texto: `Somem as medidas, os desenhos desta validação${v.xlsx ? " e o F-008 (xlsx e pdf)" : ""}.${v.drawing_file_id ? " O desenho do fornecedor que ela enviou para Desenhos fica lá." : ""}${outras.length ? ` As outras ${outras.length} revisão(ões) continuam.` : ""}`,
+        nota: "Não dá para desfazer." }))) return;
+      try { await J(`/api/validacao/${vid}`, { method: "DELETE" }); TW.toast(`${v.code} Rev.${String(v.revisao).padStart(2, "0")} excluída.`);
+        if (outras.length) irPara(outras[0].id); else location.href = o.voltar || "/validacao"; } catch (e) { TW.erro(e); } };
     document.addEventListener("keydown", e => { if (!el.isConnected) return;          // bancada que saiu da tela (troca de aba sem recarregar) não responde mais
       if (passo === 2 && tecla3 && tecla3(e)) return; if (e.key !== "Escape") return; if (esc3 && esc3()) return;          // Esc: fecha o campo, depois a tela cheia, depois para a digitação
       if (armado != null && passo === 2) { const b = el.querySelector("[data-parar]"); if (b) b.click(); } });
@@ -477,7 +513,7 @@
       const ativos = Object.keys(s).length;
       $("#vmeta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> validação(ões)${ativos ? `, ${ativos} filtro(s) ativo(s)` : ""}`;
       $("#vlista").innerHTML = d.rows.length || ativos ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Fornecedor" }, { h: "Cód. fornecedor" }, { h: "Família" }, { h: "Medidas", r: true }, { h: "Situação" }, { h: "Atualizada" }, { h: "Arquivos" }],
-        d.rows.map(r => [`<a class="font-semibold text-blue-600" href="/validacao?v=${r.id}">${esc(r.code)}</a>`, `<span class="block max-w-[18rem] truncate" title="${esc(r.description || "")}">${esc(r.description || "–")}</span>`,
+        d.rows.map(r => [`<a class="font-semibold text-blue-600" href="/validacao?v=${r.id}">${esc(r.code)}</a>${r.revisao || r.n_revisoes > 1 ? ` <span class="psd-vrevn" title="${nf(r.n_revisoes)} revisão(ões)">Rev.${String(r.revisao).padStart(2, "0")}</span>` : ""}`, `<span class="block max-w-[18rem] truncate" title="${esc(r.description || "")}">${esc(r.description || "–")}</span>`,
           esc(r.supplier || "–"), esc(r.supplier_code || "–"), esc(FAM(r.family) || "–"), r.conta.linhas ? `${nf(r.conta.conferidas)} de ${nf(r.conta.linhas)}` : '<span class="text-mute">–</span>', badge(r.status_label, ST[r.status][1]), dmy(r.updated_at),
           r.xlsx || r.pdf ? `<span class="inline-flex gap-1.5">${r.xlsx ? `<a class="psd-vfile" href="/api/validacao/${r.id}/arquivo/xlsx">xlsx</a>` : ""}${r.pdf ? `<a class="psd-vfile" href="/api/validacao/${r.id}/arquivo/pdf">pdf</a>` : ""}</span>` : '<span class="text-mute">–</span>']), { h: "max-h-[65vh]" })
         : empty(`Nenhuma validação ainda. Comece pelos itens pendentes em <a class="font-semibold text-blue-600" href="/redesenvolvimento?aba=validar">Redesenvolvimento, aba «Validar itens»</a>.`);

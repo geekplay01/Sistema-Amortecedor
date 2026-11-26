@@ -5,8 +5,9 @@
   let fid = null;
   const msg = (t, err) => { const m = $("#imp-msg"); m.textContent = t || ""; m.classList.toggle("err", !!err); };
 
-  $("#imp-file").addEventListener("change", async e => {
-    const file = e.target.files[0]; if (!file) return;
+  // zona de planilha (update 4 · Q8): arrastar, Ctrl+V ou clique (o import_panel.html carrega o tw.js antes deste arquivo)
+  $("#imp-zona-host").innerHTML = PSDTW.zonaPlanilha({ id: "imp-file", titulo: "Enviar a planilha" }); PSDTW.ligarPlanilha("#imp-file", { receber });
+  async function receber([file]) {
     msg("Lendo arquivo…"); $("#imp-map").hidden = true;
     const fd = new FormData(); fd.append("file", file);
     const r = await fetch("/api/import/upload", { method: "POST", body: fd }), d = await r.json();
@@ -15,7 +16,7 @@
     $("#imp-cat").innerHTML = d.categories.map(c => `<option>${esc(c)}</option>`).join(""); $("#imp-cat").disabled = false;
     $("#imp-sheet").innerHTML = d.sheets.map(s => `<option>${esc(s)}</option>`).join(""); $("#imp-sheet").disabled = false;
     loadPreview();
-  });
+  }
   $("#imp-sheet").addEventListener("change", loadPreview);
 
   async function loadPreview() {

@@ -63,7 +63,9 @@ def lista():
             "Só do servidor (ANALITICO_GARANTIA_DEVOLUCAO), FAMILIA AMORTECEDOR ou AMORTECEDOR LINHA PESADA, todos os anos. Valor com IPI.",
             "Padrão da tela: tipos GARANTIA, GARANTIA AUTOMATICA, CRÉDITO GARANTIA e GARANTIA EM DEVOLUÇÃO, sem ocorrência cancelada, no ano atual (data de cadastro). Defeito agrupado sem o prefixo AM-xxx/O-xxx.",
             "<b>Índice por UF</b> = peças em garantia ÷ peças de amortecedor vendidas no estado no mesmo ano. «Mesmo período do ano anterior» = 1/jan até o dia do último cadastro filtrado.",
-            "% procedente = peças procedentes ÷ (procedentes + improcedentes). O CNPJ do cliente não é guardado."]),
+            "% procedente = peças procedentes ÷ (procedentes + improcedentes). O CNPJ do cliente não é guardado.",
+            "<b>Mês a mês</b>: o ano filtrado em azul e o ano anterior em cinza, lado a lado. <b>Pareto de defeitos</b>: defeitos do maior para o menor; a linha vertical "
+            "marca onde os defeitos à esquerda somam 80% das peças, e a dica de cada barra mostra o % dela e o acumulado. Clicar numa barra filtra a tela pelo defeito."]),
         ("fob", "FOB (preços de compra)", ["Chave = PartNumber; sem PartNumber, o «Codigo» quando é código PERFECT (AMD…), porque a linha é o próprio item; "
                                            "1BP… sem PartNumber entra pelo item PERFECT relativo do Brands (só quando há um só e ele não tem linha própria).",
                                            "Item em várias linhas: os fornecedores se juntam, cada um com o seu menor preço.",
@@ -108,7 +110,7 @@ def lista():
             "As medidas são as da coluna B do modelo, na mesma ordem; até 25 linhas, as extras com nome em inglês. Trocar a família guarda os valores das medidas de mesmo nome.",
             "<b>3 · Medidas</b>: «Marcar no desenho» começa pela primeira linha sem número. Em «Só marcar» (padrão), cada clique na cota põe o número e passa para a próxima linha; "
             "Ctrl+Z tira o último; duplo clique num número abre o valor. Em «Marcar e digitar», o clique abre o campo ali mesmo (no PERFECT, «553±3» ou «12.1 +0.15/0» já separa as tolerâncias). "
-            "O nome da cota pode ser trocado na tabela (só nesta validação). Roda do mouse aproxima, arrastar move, «Tela cheia» abre o desenho grande; arrastar um número muda o lugar dele. "
+            "O nome da cota pode ser trocado na tabela (só nesta validação). Roda do mouse aproxima, arrastar (ou a rodinha apertada) move, «Tela cheia» abre o desenho grande; arrastar um número muda o lugar dele. "
             "Cada linha preenchida precisa ser marcada «Conferida».",
             "O fornecedor e o código do fornecedor saem do nome do arquivo do desenho («RED - AMD0128 - ZS - DQ32713 - REV.06»). A coluna PERFECT já vem preenchida (itálico azul) da última "
             "validação do mesmo código, do par ou do catálogo; confira. «Reaproveitar posições» traz os números de uma validação anterior do mesmo código ou do mesmo fornecedor e família. "
@@ -123,9 +125,12 @@ def lista():
             "(fornecedor ≤ PERFECT + Tol.+ e ≥ PERFECT + Tol.−). A Melhoria sugere «CHANGE TO <valor PERFECT>» na linha R e pode ser trocada. Damping: a fórmula do modelo da família — Cartucho: cada velocidade "
             "dentro de ±30/25/15/15/15 % do PERFECT (com ±30 N a menos abaixo de 1000 N); os outros: diferença de até 30/25/15/20/15 %, e sem valor do PERFECT numa velocidade o Ap fica vazio.",
             "<b>4 · Revisão e aprovação</b>: só com todas as linhas conferidas. Aprovar ou Reprovar preenche o modelo da família (Dados, medidas, damping, as duas imagens e o X da conclusão) e grava "
-            "«F-008 - Validation Test - Rev.00 - <código> - <fornecedor> - <código do fornecedor> - REV.00» em xlsx e pdf (o pdf pelo Excel do PC) em <code>data\\validacoes</code>. "
+            "«F-008 - Validation Test - Rev.00 - <código> - <fornecedor> - <código do fornecedor> - REV.nn» (nn = revisão da validação) em xlsx e pdf (o pdf pelo Excel do PC) em <code>data\\validacoes</code>. "
             "Só Aprovar sobe o desenho original do fornecedor para Desenhos («RED - … - REV.00», fonte «Validação»), como a revisão vigente.",
-            "Concluída, a validação não muda mais; «Nova validação deste item» abre outra. O status do item no servidor não muda (o servidor só é lido)."]),
+            "Aba de damping do F-008: arraste sobre a tabela de damping de cada desenho e use «Manter só a seleção»; sem recorte, vai o desenho inteiro. "
+            "Com o Excel no PC, os números das medidas entram como caixas de texto («Medida n») sobre o desenho do fornecedor e podem ser movidos no Excel; sem Excel, são pintados no desenho.",
+            "Concluída, a validação não muda mais; «Nova revisão» abre a Rev.01, Rev.02… com tudo da anterior (troque o que mudou), e as anteriores ficam guardadas. "
+            "A lixeira exclui a revisão com os arquivos dela (o desenho já enviado para Desenhos fica). O status do item no servidor não muda (o servidor só é lido)."]),
         ("amostras", "Compra de amostras", [
             "<b>Sugestões</b>: itens PERFECT em DESENVOLVIMENTO marcados PENDENTE COMPRAS, sem amostra comprada, fora do catálogo e com status diferente de ITEM RECEBIDO (só Amortecedor). "
             "Redesenvolvimento não tem sugestão: para comprar amostra de um item já desenvolvido, use «+ Nova amostra». Cada referência abre a consulta do menor preço.",

@@ -73,7 +73,7 @@ def current_user():
     if not r: session.clear(); return None
     return {"id": r["id"], "username": r["username"], "role": r["role"], "avatar": bool(r["avatar"])}
 
-AVATAR_DIR = os.path.join(db.BASE, "data", "avatars")
+AVATAR_DIR = os.path.join(db.DATA_DIR, "avatars")          # ao lado do banco (cópia de teste ≠ pasta real)
 
 def change_username(uid, password, new):
     new = (new or "").strip()

@@ -23,9 +23,9 @@
     root.innerHTML = `<div class="flex flex-col gap-5">
       <section class="grid gap-4 rounded-2xl border border-line bg-card p-5 shadow-sm lg:grid-cols-5">
         <div class="lg:col-span-3"><h3 class="m-0 text-base font-semibold text-ink">Regra de damping force</h3>${regra}</div>
-        <div class="flex flex-col items-start justify-center gap-2 lg:col-span-2">
+        <div class="flex flex-col items-stretch justify-center gap-2 lg:col-span-2">
           ${names.length ? `<span class="text-sm text-mute">Fonte: <b class="text-ink">${esc(R.source || "—")}</b>, ${nf(pontos)} ponto(s) em ${names.map(n => "<b class=\"text-ink\">" + esc(n) + "</b>").join(", ")}</span>` : ""}
-          <label class="${names.length ? botao : primario} cursor-pointer">${names.length ? "Atualizar regra (planilha)" : "Carregar a planilha da regra"}<input type="file" id="dm-rf" accept=".xlsx" hidden></label>
+          ${PSDTW.zonaPlanilha({ id: "dm-rf", titulo: names.length ? "Atualizar a regra (planilha)" : "Carregar a planilha da regra", aceita: ".xlsx" })}
           <span id="dm-rmsg" class="hidden text-sm" role="status"></span>
         </div>
       </section>
@@ -51,8 +51,8 @@
     </div>`;
 
     const aviso = (id, t, err) => { const m = $("#" + id); m.innerHTML = t; m.classList.toggle("hidden", !t); m.classList.toggle("text-red-600", !!err); m.classList.toggle("text-emerald-600", !err); };
-    $("#dm-rf").onchange = async e => { const f = e.target.files[0]; if (!f) return; const fd = new FormData(); fd.append("file", f); aviso("dm-rmsg", "Lendo a planilha…");
-      try { const d = await J("/api/damping/rules", { method: "POST", body: fd }); aviso("dm-rmsg", `Regra atualizada: ${nf(d.points)} pontos.`); setTimeout(damping, 900); } catch (er) { aviso("dm-rmsg", esc(er.message), true); } };
+    PSDTW.ligarPlanilha("#dm-rf", { aceita: ".xlsx", receber: async ([f]) => { const fd = new FormData(); fd.append("file", f); aviso("dm-rmsg", "Lendo a planilha…");
+      try { const d = await J("/api/damping/rules", { method: "POST", body: fd }); aviso("dm-rmsg", `Regra atualizada: ${nf(d.points)} pontos.`); setTimeout(damping, 900); } catch (er) { aviso("dm-rmsg", esc(er.message), true); } } });
     if (!names.length) return;
 
     // ---------- formulário do ensaio (cálculo ao vivo) ----------

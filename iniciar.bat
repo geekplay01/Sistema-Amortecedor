@@ -40,10 +40,18 @@ if not defined HAVEENV if exist ".env.example" (
   echo.
 )
 
-rem --- 2) dependencias: tenta tudo de uma vez; se algum pacote falhar, instala um a um e segue ---
+rem --- 2) dependencias: so reinstala quando o requirements.txt muda (.venv\req.ok guarda o hash da ultima instalacao) ---
+set "REQSUM="
+for /f "skip=1 delims=" %%H in ('certutil -hashfile requirements.txt SHA256') do if not defined REQSUM set "REQSUM=%%H"
+set "OKSUM="
+if exist ".venv\req.ok" set /p OKSUM=<".venv\req.ok"
+if defined REQSUM if "%OKSUM%"=="%REQSUM%" goto deps_ok
 echo Instalando/verificando dependencias (na 1a vez precisa de internet)...
 "%VPY%" -m pip install --disable-pip-version-check --prefer-binary -r requirements.txt >> "%LOG%" 2>&1
-if not errorlevel 1 goto deps_ok
+if not errorlevel 1 (
+  if defined REQSUM >".venv\req.ok" echo %REQSUM%
+  goto deps_ok
+)
 echo Alguns pacotes falharam; instalando um por um...
 for /f "usebackq eol=# tokens=*" %%L in ("requirements.txt") do (
   "%VPY%" -m pip install --disable-pip-version-check --prefer-binary "%%L" >> "%LOG%" 2>&1
@@ -55,28 +63,38 @@ for /f "delims=" %%D in ('"%VPY%" -c "import data_pipeline as d; print(', '.join
 echo Drivers do SQL Server disponiveis: %DRV%
 echo Drivers: %DRV% >> "%LOG%"
 
+rem --- 3) etapa 24: o sistema roda sem janela (pythonw); o proprio app abre o navegador e, se ja estiver aberto, so abre o navegador ---
+rem     Para fechar: botao «Fechar o sistema» no topo do app. Mensagens do sistema: data\app_log.txt
 echo.
-echo Abrindo http://127.0.0.1:5000  (feche esta janela para encerrar o sistema)
-start "" /min cmd /c "ping -n 4 127.0.0.1 >nul & start http://127.0.0.1:5000"
+echo Abrindo http://127.0.0.1:5000 ... (esta janela fecha sozinha; para fechar o sistema use o botao no topo do app)
+set "PSD_ABRIR=1"
+if exist ".venv\Scripts\pythonw.exe" (
+  start "" ".venv\Scripts\pythonw.exe" app.py
+  exit /b 0
+)
 "%VPY%" app.py
 echo.
 echo O sistema parou. Leia a mensagem acima.
 pause
 exit /b 0
 
+:mostra
+rem aberto escondido pelo atalho: reabre esta janela visivel para a mensagem de erro aparecer
+if /i "%~1"=="oculto" (
+  start "PERFECT Shock Data" cmd /k ""%~f0""
+  exit /b 1
+)
+pause
+exit /b 1
 :sem_pasta
 echo Execute este arquivo dentro da pasta do projeto (onde esta o app.py).
-pause
-exit /b 1
+goto mostra
 :sem_python
 echo Python 3 nao encontrado. Instale o Python (marque "Add to PATH"; nao precisa de administrador: "Install for me only").
-pause
-exit /b 1
+goto mostra
 :erro_venv
 echo Nao foi possivel criar o ambiente .venv. Veja iniciar_log.txt
-pause
-exit /b 1
+goto mostra
 :erro_pip
 echo Nao foi possivel instalar as dependencias basicas. Confira a internet/proxy e veja iniciar_log.txt
-pause
-exit /b 1
+goto mostra

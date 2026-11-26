@@ -5,6 +5,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from unittest import mock
 
 class Regras(unittest.TestCase):
+    def test_pastas_de_arquivos_ficam_ao_lado_do_banco(self):
+        """Com PSD_DB numa cópia, validações, desenhos e fotos usam as pastas ao lado da cópia — nunca as do banco real (25/11/2026)."""
+        import database as db, validacao as V, drawings, auth
+        real = os.path.join(db.BASE, "data")
+        self.assertEqual(db.DATA_DIR, os.path.dirname(os.path.abspath(db.DB_PATH)))
+        self.assertNotEqual(os.path.normcase(db.DATA_DIR), os.path.normcase(real))          # tests/__init__.py aponta o banco para o temporário
+        for d in (V.DIR, drawings.DIR, auth.AVATAR_DIR): self.assertEqual(os.path.normcase(os.path.dirname(d)), os.path.normcase(db.DATA_DIR))
+
     def test_ap_igual_a_formula_do_modelo(self):
         import validacao as V
         L = lambda p, f, tm="", tn="": {"p": p, "f": f, "tm": tm, "tn": tn}
@@ -123,11 +131,17 @@ class Bancada(unittest.TestCase):
         # concluída: só leitura; nova validação abre outra
         with self.assertRaises(ValueError): V.salvar(vid, {"supplier": "X"})
         with self.assertRaises(ValueError): V.gerar(vid, "reprovada", pdf=False)
-        nv = V.nova(vid); self.assertNotEqual(nv, vid); self.assertEqual(V.obter(nv)["family"], "ESTRUTURAL")
-        lst = V.listagem({}); self.assertEqual((lst["counts"]["aprovada"], lst["counts"]["andamento"], lst["total"]), (1, 1, 2))
-        self.assertEqual(V.listagem({"status": "aprovada"})["rows"][0]["conta"], {"linhas": 5, "conferidas": 5, "A": 3, "R": 2})      # só as linhas preenchidas contam
-        V.excluir(nv); self.assertEqual(V.listagem({})["total"], 1)
-        with self.assertRaises(ValueError): V.excluir(vid)
+        # «Nova revisão» (no lugar de duplicar): Rev.01 com tudo da Rev.00; a lista mostra uma linha por validação (a revisão mais nova)
+        nv = V.nova(vid); n = V.obter(nv); self.assertNotEqual(nv, vid); self.assertEqual(V.nova(vid), nv)          # uma revisão aberta por vez
+        self.assertEqual((n["family"], n["revisao"], n["supplier_code"], n["conta"]["linhas"], n["imagens"]["fornecedor"]), ("ESTRUTURAL", 1, "DQ41746", 5, True))
+        self.assertTrue(n["nome_f008"].endswith("DQ41746 - REV.01")); self.assertEqual([r["revisao"] for r in n["revisoes"]], [1, 0])
+        lst = V.listagem({}); self.assertEqual((lst["counts"]["aprovada"], lst["counts"]["andamento"], lst["total"], lst["rows"][0]["n_revisoes"]), (0, 1, 1, 2))
+        self.assertEqual(V.listagem({"status": "andamento"})["rows"][0]["conta"], {"linhas": 5, "conferidas": 5, "A": 3, "R": 2})      # só as linhas preenchidas contam
+        V.excluir(nv); self.assertEqual((V.listagem({})["total"], V.listagem({})["counts"]["aprovada"]), (1, 1))
+        self.assertIsNotNone(V.excluir(vid)["drawing_file_id"]); self.assertEqual(V.listagem({})["total"], 0)          # concluída também se exclui (o desenho fica em Desenhos)
+        c = self.db.conn()
+        try: self.assertEqual(c.execute("SELECT COUNT(*) FROM drawing_files").fetchone()[0], 1)
+        finally: c.close()
 
     def test_mola_nome_imagem_leve_damping_e_pendentes_guardados(self):
         """Ajustes da etapa 24: «Item com mola» põe LMAX2 logo abaixo do LMAX (e tira), guardando o valor ao trocar de família; o nome da cota muda só nesta
@@ -187,8 +201,8 @@ class Bancada(unittest.TestCase):
         self.assertEqual((w["family"], w["supplier"], w["supplier_code"], w["dados"]["origem_par"]["code"], w["dados"]["origem_par"]["decisao"]), ("ESTRUTURAL", "ZS", None, "AMD0138", "aprovada"))
         self.assertEqual((W["LMAX"]["f"], W["LMAX"]["conferida"], W["LMAX"]["pf"]), ("553", True, [0.3, 0.1])); self.assertTrue(w["imagens"]["perfect"])
         w = V.salvar(w["id"], {"espelhar": "ambos"}); self.assertEqual(w["dados"]["linhas"][0]["pf"], [0.7, 0.1])          # desenho do outro lado espelhado
-        # nova validação do lado já validado: PERFECT da validação anterior; posições reaproveitáveis do mesmo código e do mesmo fornecedor/família
-        nv = V.nova(vid); n = V.obter(nv)
+        # outra validação do lado já validado (sem ser revisão): PERFECT da validação anterior; posições reaproveitáveis do mesmo código e do mesmo fornecedor/família
+        nv = V.criar("rd", "AMD0138"); self.assertNotEqual(nv, vid); n = V.obter(nv)
         self.assertEqual((n["dados"]["linhas"][0]["p"], n["dados"]["linhas"][0]["fonte_p"][:22]), ("553", "validação de AMD0138 ("))
         self.assertEqual((n["reaproveitar"]["pp"]["code"], n["reaproveitar"]["pf"]["supplier"], n["reaproveitar"]["pf"]["n"]), ("AMD0138", "ZS", 3))
         n = V.salvar(nv, {"reaproveitar": ["pp", "pf"]}); self.assertEqual((n["dados"]["linhas"][0]["pp"], n["dados"]["linhas"][0]["pf"]), ([0.2, 0.1], [0.3, 0.1]))

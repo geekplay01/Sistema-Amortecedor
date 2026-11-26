@@ -409,9 +409,9 @@ def api_anomalies():
     q = request.args.get("q", ""); tab = request.args.get("tab") or "familia"
     if tab == "protheus":
         f = {k: request.args.get(k) for k in anomalias.PROT_FILTROS if request.args.get(k)}
-        return jsonify(rows=anomalias.protheus(q, f), counts=anomalias.counts(q), atalhos=anomalias.protheus_counts(q, f), tab=tab)
+        return jsonify(rows=anomalias.com_itens(tab, anomalias.protheus(q, f)), counts=anomalias.counts(q), atalhos=anomalias.protheus_counts(q, f), tab=tab)
     tab = tab if tab in anomalias.TABS else "familia"
-    return jsonify(rows=anomalias.TABS[tab](q), counts=anomalias.counts(q), tab=tab)
+    return jsonify(rows=anomalias.com_itens(tab, anomalias.TABS[tab](q)), counts=anomalias.counts(q), tab=tab)
 @app.get("/api/anomalies/export.xlsx")
 def api_anomalies_xlsx():
     import anomalias
@@ -546,7 +546,7 @@ def api_val_obter(vid): return jsonify(validacao.obter(vid))
 def api_val_salvar(vid): return jsonify(validacao.salvar(vid, request.get_json(force=True) or {}))
 @app.delete("/api/validacao/<int:vid>")
 @_val
-def api_val_excluir(vid): validacao.excluir(vid); return jsonify(ok=True)
+def api_val_excluir(vid): return jsonify(ok=True, **validacao.excluir(vid))
 @app.post("/api/validacao/<int:vid>/desenho/<lado>")
 @_val
 def api_val_desenho(vid, lado):
@@ -755,7 +755,31 @@ def api_price_save():
     try: return jsonify(id=price_search.save_quote(b.get("order_id"), b.get("price"), b.get("link"), b.get("chosen", True)))
     except ValueError as e: return jsonify(error=str(e)), 400
 
+# ---- etapa 24 · próximo update Q1: o sistema roda sem a janela do cmd (pythonw); «Fechar o sistema» no topo encerra o servidor ----
+@app.post("/api/sistema/fechar")
+def api_sistema_fechar():
+    if app.config.get("TESTING"): return jsonify(ok=True, teste=True)          # nos testes não derruba o processo
+    import threading; threading.Timer(0.6, lambda: os._exit(0)).start()
+    return jsonify(ok=True)
+
+def _ja_aberto(porta):
+    """Já há um sistema respondendo nesta porta? (abrir de novo só abre o navegador)"""
+    import socket
+    with socket.socket() as s:
+        s.settimeout(0.6)
+        return s.connect_ex(("127.0.0.1", porta)) == 0
+
 if __name__ == "__main__":
+    import sys, threading, webbrowser
+    porta = int(os.environ.get("PORT", 5000)); url = f"http://127.0.0.1:{porta}"
+    if sys.stdout is None or sys.stderr is None:          # aberto pelo pythonw (sem janela): as mensagens vão para data\app_log.txt
+        os.makedirs(os.path.join(db.BASE, "data"), exist_ok=True)
+        _log = open(os.path.join(db.BASE, "data", "app_log.txt"), "a", encoding="utf-8", buffering=1); sys.stdout = sys.stderr = _log
+        print(f"\n=== {datetime.datetime.now():%d/%m/%Y %H:%M:%S} · sistema aberto ===")
+    if _ja_aberto(porta):
+        if os.environ.get("PSD_ABRIR") == "1": webbrowser.open(url)
+        print("O sistema já está aberto nesta porta: só abri o navegador."); sys.exit(0)
     if os.environ.get("PSD_SCHEDULER", "on") != "off": data_pipeline.start_scheduler(on_done=_after_sync)      # sincronização diária automática (DEV_SYNC_HOURS, padrão 24)
-    import threading; threading.Thread(target=_aquecer, daemon=True).start()
-    app.run(host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", 5000)), debug=False)
+    threading.Thread(target=_aquecer, daemon=True).start()
+    if os.environ.get("PSD_ABRIR") == "1": threading.Timer(1.5, webbrowser.open, (url,)).start()
+    app.run(host=os.environ.get("HOST", "127.0.0.1"), port=porta, debug=False)

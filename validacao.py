@@ -13,7 +13,7 @@ import os, re, io, json, glob, shutil, datetime, subprocess
 import database as db
 from queries import q, q1
 
-DIR = os.path.join(db.BASE, "data", "validacoes")
+DIR = os.path.join(db.DATA_DIR, "validacoes")          # ao lado do banco (cópia de teste ≠ pasta real)
 MODELOS = os.path.join(db.BASE, "bases_exemplo", "VALIDATION")
 KINDS = {"rd": "REDESENVOLVIMENTO", "des": "DESENVOLVIMENTO"}
 STATUS = {"andamento": "Em andamento", "aprovada": "Aprovada", "reprovada": "Reprovada"}
@@ -263,7 +263,7 @@ def obter(vid):
     v["img_ver"] = _versoes(vid); v["imagens"] = {k: bool(n) for k, n in v["img_ver"].items()}
     v["info"] = _rd_info(v["kind"], v["code"]); v["familias"] = familias(); v["status_label"] = STATUS.get(v["status"], v["status"])
     v["kind_label"] = KINDS.get(v["kind"], v["kind"]); v["nome_f008"] = nome_f008(v)
-    v["ia"] = ia_disponivel()
+    v["ia"] = ia_disponivel(); v["revisao"] = int(v.get("revisao") or 0); v["revisoes"] = revisoes(v)
     pr = par(v["code"])
     if pr:
         w = q1("SELECT id, status FROM validacoes WHERE kind=? AND upper(code)=? ORDER BY id DESC", (v["kind"], pr["code"]))
@@ -278,7 +278,9 @@ def obter(vid):
     return v
 
 def nome_f008(v):
-    return f"F-008 - Validation Test - Rev.00 - {_seguro(v['code'])} - {_seguro(v.get('supplier') or 'FORNECEDOR')} - {_seguro(v.get('supplier_code') or 'CÓDIGO DO FORNECEDOR')} - REV.00"
+    """O primeiro «Rev.00» é a revisão do formulário F-008 (fixa); o último é a revisão do teste (Rev.00, Rev.01… — «Nova revisão»)."""
+    return (f"F-008 - Validation Test - Rev.00 - {_seguro(v['code'])} - {_seguro(v.get('supplier') or 'FORNECEDOR')} - {_seguro(v.get('supplier_code') or 'CÓDIGO DO FORNECEDOR')}"
+            f" - REV.{int(v.get('revisao') or 0):02d}")
 
 def _gravar(vid, **campos):
     if "dados" in campos: campos["dados"] = json.dumps(campos["dados"], ensure_ascii=False)
@@ -328,6 +330,12 @@ def salvar(vid, patch):
         for l in d["linhas"]:
             for lado in (("pp", "pf") if patch["espelhar"] == "ambos" else (patch["espelhar"],)):
                 if l.get(lado): l[lado] = [round(1 - l[lado][0], 6), l[lado][1]]
+    if isinstance(patch.get("recorte"), dict):          # recorte da tabela de damping de cada desenho (vai para a aba DampingForce do F-008)
+        rec = d.setdefault("recorte", {})
+        for k, r in patch["recorte"].items():
+            if k not in ("pp", "pf"): continue
+            ok = _ops_mascara([{"t": "manter", "r": r}]) if r else []
+            rec[k] = ok[0]["r"] if ok else None
     if "mascara" in patch:
         if not _arquivo(vid, "perfect.png"): raise ValueError("Envie primeiro o desenho PERFECT.")
         d["mascara"] = _ops_mascara(patch["mascara"]); _aplicar_mascara(vid, d["mascara"])
@@ -595,7 +603,7 @@ def _dados_aba(wb, v):
     try: rec = datetime.datetime.fromisoformat(v["received_at"]) if v.get("received_at") else datetime.datetime.now()
     except ValueError: rec = datetime.datetime.now()
     for cel, val in (("B9", v["code"]), ("B14", info["make"]), ("B15", info["vehicle"]), ("B16", info["application"]), ("B17", info["description"]), ("B18", info["years"]),
-                     ("B19", v.get("supplier")), ("B21", rec), ("B22", v.get("supplier_code")), ("B23", "R-D" if v["kind"] == "rd" else "des"), ("B24", 0), ("B25", 0), ("B26", "DRAWING")):
+                     ("B19", v.get("supplier")), ("B21", rec), ("B22", v.get("supplier_code")), ("B23", "R-D" if v["kind"] == "rd" else "des"), ("B24", 0), ("B25", int(v.get("revisao") or 0)), ("B26", "DRAWING")):
         ws[cel] = val
     ws["B21"].number_format = "mmmm d, yyyy"
 
@@ -615,6 +623,35 @@ def gerar(vid, decisao, by=None, pdf=True):
     if falta: raise ValueError(f"Confira todas as medidas antes de concluir (faltam as linhas {', '.join(map(str, falta[:8]))}{'…' if len(falta) > 8 else ''}).")
     modelo = _arquivos_modelo().get(v["family"])
     if not modelo: raise ValueError("Modelo F-008 da família não encontrado em bases_exemplo\\VALIDATION.")
+    pasta = _pasta(vid); base = nome_f008(v); xlsx = os.path.join(pasta, base + ".xlsx"); aviso = None; pdf_nome = None
+    # com o Excel do PC (pdf=True), os números entram como caixas de texto por cima do desenho — dá para mexer neles no Excel; sem Excel, ficam pintados
+    _montar_f008(modelo, v, d, decisao, pp, pf, xlsx, caixas=pdf)
+    if pdf:
+        marcadores = [{"n": l["n"], "x": l["pf"][0], "y": l["pf"][1]} for l in d["linhas"] if l.get("pf") and (str(l.get("p") or "").strip() or str(l.get("f") or "").strip())]
+        try: _pdf(xlsx, os.path.join(pasta, base + ".pdf"), marcadores); pdf_nome = base + ".pdf"
+        except Exception as e:
+            _montar_f008(modelo, v, d, decisao, pp, pf, xlsx, caixas=False)
+            aviso = f"O Excel não respondeu ({e}): o xlsx está pronto, com os números pintados no desenho, e o PDF não foi gerado."
+    fid = None
+    if decisao == "aprovada":
+        try: fid = subir_desenho(v)
+        except Exception as e: aviso = ((aviso + " ") if aviso else "") + f"O desenho não subiu para Desenhos ({e})."
+    _gravar(vid, status=decisao, concluida_em=_agora(), xlsx=base + ".xlsx", pdf=pdf_nome, aviso=aviso, drawing_file_id=fid, by_user=by or v.get("by_user"))
+    try: pp_ = preparar_par(vid, by)          # item com lados: o outro lado fica pronto para concluir (ajuste 3)
+    except Exception: pp_ = None
+    out = obter(vid); out["par_preparado"] = pp_
+    return out
+
+def _recortar(img, r):
+    """Recorte [x, y, w, h] em fração (a tabela de damping do desenho); sem recorte, a imagem inteira."""
+    if not r: return img
+    W, H = img.size
+    return img.crop((round(r[0] * W), round(r[1] * H), round((r[0] + r[2]) * W), round((r[1] + r[3]) * H)))
+
+def _montar_f008(modelo, v, d, decisao, pp, pf, xlsx, caixas):
+    """Preenche o modelo F-008 da família (Dados, medidas, damping, imagens, X da conclusão) e grava o xlsx."""
+    import openpyxl
+    from PIL import Image
     wb = openpyxl.load_workbook(modelo); ws, dmp = wb.worksheets[0], wb.worksheets[1]
     _dados_aba(wb, v)
     for i in range(NLINHAS):
@@ -633,45 +670,60 @@ def gerar(vid, decisao, by=None, pdf=True):
         for j in range(5):
             dmp.cell(r, 3 + j).value = _valor_excel(dm["p"][g][j]); dmp.cell(r, 8 + j).value = _valor_excel(dm["f"][g][j])
     with Image.open(pp) as im: ip = im.convert("RGB"); ip.load()
-    ifn = marcar(pf, d["linhas"], "pf")
-    _por_imagem(ws, ip, "S10:AJ34"); _por_imagem(ws, ifn, "A37:R57"); _por_imagem(dmp, ip, "R11:AI25"); _por_imagem(dmp, ifn, "A28:Q48")
+    with Image.open(pf) as im: fr = im.convert("RGB"); fr.load()
+    ifn = fr if caixas else marcar(pf, d["linhas"], "pf")          # com caixas de texto (Excel), o desenho vai limpo e os números por cima
+    rec = d.get("recorte") or {}
+    _por_imagem(ws, ip, "S10:AJ34"); _por_imagem(ws, ifn, "A37:R57")
+    _por_imagem(dmp, _recortar(ip, rec.get("pp")), "R11:AI25"); _por_imagem(dmp, _recortar(fr, rec["pf"]) if rec.get("pf") else ifn, "A28:Q48")          # aba de damping: só a tabela, se recortada
     ws["S50" if decisao == "aprovada" else "S52"] = "X"; dmp["R41" if decisao == "aprovada" else "R43"] = "X"
     try:
         from openpyxl.workbook.properties import CalcProperties
         wb.calculation = CalcProperties(fullCalcOnLoad=True)
     except Exception: pass
-    pasta = _pasta(vid); base = nome_f008(v); xlsx = os.path.join(pasta, base + ".xlsx")
-    wb.save(xlsx); aviso = None; pdf_nome = None
-    if pdf:
-        try: _pdf(xlsx, os.path.join(pasta, base + ".pdf")); pdf_nome = base + ".pdf"
-        except Exception as e: aviso = f"O PDF não foi gerado ({e}). O xlsx está pronto; gere o PDF pelo Excel se precisar."
-    fid = None
-    if decisao == "aprovada":
-        try: fid = subir_desenho(v)
-        except Exception as e: aviso = ((aviso + " ") if aviso else "") + f"O desenho não subiu para Desenhos ({e})."
-    _gravar(vid, status=decisao, concluida_em=_agora(), xlsx=base + ".xlsx", pdf=pdf_nome, aviso=aviso, drawing_file_id=fid, by_user=by or v.get("by_user"))
-    try: pp_ = preparar_par(vid, by)          # item com lados: o outro lado fica pronto para concluir (ajuste 3)
-    except Exception: pp_ = None
-    out = obter(vid); out["par_preparado"] = pp_
-    return out
+    wb.save(xlsx)
 
-PS_PDF = r"""param([string]$x, [string]$p)
+# Excel do PC: põe os números das medidas como caixas de texto sobre o desenho do fornecedor (aba 1, imagem em A37), grava o xlsx e exporta o PDF das duas abas de teste
+PS_PDF = r"""param([string]$x, [string]$p, [string]$m)
 $e = New-Object -ComObject Excel.Application
 $e.Visible = $false; $e.DisplayAlerts = $false
 try {
   $wb = $e.Workbooks.Open($x)
+  if ($m -and (Test-Path $m)) {
+    $marc = Get-Content $m -Raw -Encoding UTF8 | ConvertFrom-Json
+    $ws = $wb.Worksheets.Item(1); $pic = $null
+    foreach ($s in $ws.Shapes) { if ($s.TopLeftCell.Row -eq 37 -and $s.TopLeftCell.Column -eq 1) { $pic = $s } }
+    if ($pic -ne $null -and $marc.Count -gt 0) {
+      $lado = [Math]::Max(13, $pic.Width * 0.028)
+      foreach ($k in $marc) {
+        $w = $lado * ([string]$k.n).Length * 0.55 + $lado * 0.55
+        $l = $pic.Left + [double]$k.x * $pic.Width - $w / 2; $t = $pic.Top + [double]$k.y * $pic.Height - $lado - 2
+        if ($t -lt $pic.Top) { $t = $pic.Top + [double]$k.y * $pic.Height + 2 }
+        $b = $ws.Shapes.AddTextbox(1, $l, $t, $w, $lado); $b.Name = "Medida " + $k.n
+        $b.Fill.ForeColor.RGB = 16777215; $b.Line.ForeColor.RGB = 3877863; $b.Line.Weight = 1.25
+        $tf = $b.TextFrame2; $tf.MarginLeft = 0; $tf.MarginRight = 0; $tf.MarginTop = 0; $tf.MarginBottom = 0; $tf.VerticalAnchor = 3; $tf.WordWrap = 0
+        $tr = $tf.TextRange; $tr.Text = [string]$k.n; $tr.Font.Bold = 1; $tr.Font.Size = [Math]::Round($lado * 0.62); $tr.Font.Fill.ForeColor.RGB = 3877863; $tr.ParagraphFormat.Alignment = 2
+      }
+    }
+    $wb.Save()
+  }
   $e.CalculateFull()
   for ($i = $wb.Worksheets.Count; $i -ge 3; $i--) { $wb.Worksheets.Item($i).Visible = 0 }
   $wb.ExportAsFixedFormat(0, $p)
   $wb.Close($false)
 } finally { $e.Quit(); [System.Runtime.InteropServices.Marshal]::ReleaseComObject($e) | Out-Null }
 """
-def _pdf(xlsx, pdf):
-    """PDF das duas abas de teste pelo Excel instalado no PC (as fórmulas são calculadas pelo próprio Excel)."""
+def _pdf(xlsx, pdf, marcadores=None):
+    """Excel instalado no PC: números como caixas de texto (mexíveis no Excel) e PDF das duas abas de teste (as fórmulas são calculadas pelo próprio Excel)."""
     ps1 = os.path.join(DIR, "_excel_pdf.ps1"); os.makedirs(DIR, exist_ok=True)
     with open(ps1, "w", encoding="utf-8-sig") as fh: fh.write(PS_PDF)
-    r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps1, os.path.abspath(xlsx), os.path.abspath(pdf)],
-                       capture_output=True, text=True, timeout=240, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    mj = os.path.splitext(os.path.abspath(xlsx))[0] + "_marcadores.json"
+    with open(mj, "w", encoding="utf-8") as fh: json.dump(marcadores or [], fh)
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps1, os.path.abspath(xlsx), os.path.abspath(pdf), mj],
+                           capture_output=True, text=True, timeout=240, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    finally:
+        try: os.remove(mj)
+        except OSError: pass
     if r.returncode != 0 or not os.path.isfile(pdf): raise RuntimeError((r.stderr or r.stdout or "Excel não respondeu").strip().splitlines()[-1][:200])
 
 def subir_desenho(v):
@@ -700,17 +752,38 @@ def arquivo_gerado(vid, tipo):
     p = _arquivo(vid, nome) if nome else None
     return (p, nome) if p else (None, None)
 
+def serie(v): return v.get("serie") or v["id"]
+
 def nova(vid, by=None):
-    """Nova validação do mesmo item (depois de uma concluída): copia fornecedor e família; desenhos e medidas começam vazios."""
+    """«Nova revisão» (etapa 24, no lugar de duplicar): a mesma validação ganha Rev.01, Rev.02… Começa com tudo da revisão anterior — desenhos (com a
+    máscara e os recortes), medidas, conferência, posições, damping, fornecedor e família — e você troca o que mudou. As anteriores ficam com os arquivos."""
+    import copy
     v = _row(vid)
     if v["status"] == "andamento": return vid
-    ja = q1("SELECT id FROM validacoes WHERE kind=? AND upper(code)=upper(?) AND status='andamento'", (v["kind"], v["code"]))
+    s = serie(v)
+    ja = q1("SELECT id FROM validacoes WHERE coalesce(serie,id)=? AND status='andamento'", (s,))
     if ja: return ja["id"]
+    ult = q1("SELECT MAX(coalesce(revisao,0)) r FROM validacoes WHERE coalesce(serie,id)=?", (s,))["r"] or 0
+    d = copy.deepcopy(v["dados"]); d.pop("origem_par", None); d["revisao_de"] = {"id": vid, "revisao": int(v.get("revisao") or 0), "status": v["status"]}
     with db.session() as c:
-        nid = c.execute("INSERT INTO validacoes(kind,code,supplier,family,received_at,dados,by_user) VALUES(?,?,?,?,?,?,?)",
-                        (v["kind"], v["code"], v["supplier"], v["family"], datetime.date.today().isoformat(),
-                         json.dumps({"linhas": _preencher_perfect(v["code"], _linhas_da_familia(v["family"])) if v["family"] else [], "damping": _damping_vazio()}, ensure_ascii=False), by)).lastrowid
-    return _pasta_limpa(nid)
+        nid = c.execute("""INSERT INTO validacoes(kind,code,supplier,supplier_code,family,received_at,dados,perfect_name,supplier_name,by_user,revisao,serie)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (v["kind"], v["code"], v["supplier"], v["supplier_code"], v["family"], datetime.date.today().isoformat(), json.dumps(d, ensure_ascii=False),
+                         v["perfect_name"], v["supplier_name"], by, ult + 1, s)).lastrowid
+    _pasta_limpa(nid)
+    origem = os.path.join(DIR, str(int(vid)))
+    if os.path.isdir(origem):          # desenhos da revisão anterior (sem o F-008 gerado nem as versões leves)
+        destino = _pasta(nid)
+        for f in os.listdir(origem):
+            if f.endswith((".xlsx", ".pdf")) and not f.startswith(("perfect_original", "fornecedor_original")): continue
+            if f.endswith("_tela.jpg"): continue
+            shutil.copy2(os.path.join(origem, f), os.path.join(destino, f))
+    return nid
+
+def revisoes(v):
+    """Todas as revisões da mesma validação, da mais nova para a mais velha."""
+    return [dict(r) for r in q("""SELECT id, coalesce(revisao,0) revisao, status, xlsx, pdf, concluida_em, updated_at FROM validacoes
+                                  WHERE coalesce(serie,id)=? ORDER BY coalesce(revisao,0) DESC, id DESC""", (serie(v),))]
 
 def preparar_par(vid, by=None):
     """Ao concluir um lado de um item com lados (LD × LE da planilha Lados), deixa a validação do outro lado pronta: família, mola, medidas (valores,
@@ -744,10 +817,16 @@ def preparar_par(vid, by=None):
     return {"id": pid, "code": pr["code"], "lado": LADO_CURTO[pr["side"]], "perfect": bool(_arquivo(pid, "perfect.png"))}
 
 def excluir(vid):
-    v = _row(vid)
-    if v["status"] != "andamento": raise ValueError("Só um rascunho pode ser excluído.")
-    with db.session() as c: c.execute("DELETE FROM validacoes WHERE id=?", (vid,))
+    """Exclui a validação (qualquer situação) com os arquivos dela (desenhos, xlsx, pdf). O desenho já enviado para Desenhos fica lá.
+    Se era a Rev.00 de uma série com outras revisões, a seguinte passa a ser a referência da série. Devolve {drawing_file_id} para o aviso."""
+    v = _row(vid); s = serie(v)
+    with db.session() as c:
+        c.execute("DELETE FROM validacoes WHERE id=?", (vid,))
+        if s == vid:          # a série perdeu a Rev.00: as outras revisões passam a apontar para a mais antiga que sobrou
+            r = c.execute("SELECT MIN(id) FROM validacoes WHERE serie=?", (vid,)).fetchone()[0]
+            if r: c.execute("UPDATE validacoes SET serie=? WHERE serie=?", (r, vid)); c.execute("UPDATE validacoes SET serie=NULL WHERE id=?", (r,))
     shutil.rmtree(os.path.join(DIR, str(int(vid))), ignore_errors=True)
+    return {"drawing_file_id": v.get("drawing_file_id")}
 
 # ---------------- listas ----------------
 PEND_FLAGS = ("pend_validacao", "val_reprovada", "pend_desenho_forn")
@@ -804,7 +883,13 @@ def listagem(f):
     if f.get("family"): w.append("v.family=?"); p.append(f["family"].upper())
     for i, t in enumerate((f.get("q") or "").split()):
         w.append("(upper(v.code) LIKE ? OR upper(coalesce(v.supplier,'')) LIKE ? OR upper(coalesce(v.supplier_code,'')) LIKE ?)"); p += [f"%{t.upper()}%"] * 3
-    base = q(f"SELECT v.* FROM validacoes v WHERE {' AND '.join(w)} ORDER BY v.updated_at DESC, v.id DESC", p)
+    base, vistos = [], {}
+    for v in q(f"SELECT v.* FROM validacoes v WHERE {' AND '.join(w)} ORDER BY coalesce(v.revisao,0) DESC, v.id DESC", p):          # uma linha por validação: a revisão mais nova
+        s = serie(v)
+        if s in vistos: vistos[s] += 1; continue
+        vistos[s] = 1; base.append(v)
+    for v in base: v["n_revisoes"] = vistos[serie(v)]
+    base.sort(key=lambda v: (v["updated_at"] or "", v["id"]), reverse=True)
     cont = {k: sum(1 for v in base if v["status"] == k) for k in STATUS}
     st = f.get("status") if f.get("status") in STATUS else ""
     rows = [v for v in base if not st or v["status"] == st]
@@ -813,7 +898,7 @@ def listagem(f):
     for r in q("SELECT upper(code) c, MAX(description) d FROM rd_projects GROUP BY upper(code)"): desc.setdefault(r["c"], r["d"])
     out = [{"id": v["id"], "kind": v["kind"], "kind_label": KINDS[v["kind"]], "code": v["code"], "description": desc.get(v["code"].upper()), "supplier": v["supplier"], "supplier_code": v["supplier_code"],
             "family": v["family"], "status": v["status"], "status_label": STATUS[v["status"]], "updated_at": v["updated_at"], "concluida_em": v["concluida_em"], "xlsx": bool(v["xlsx"]), "pdf": bool(v["pdf"]),
-            **{"conta": _conta(v["dados"])}} for v in rows]
+            "revisao": int(v.get("revisao") or 0), "n_revisoes": v["n_revisoes"], **{"conta": _conta(v["dados"])}} for v in rows]
     pend = 0
     try:
         loc = _local_por_codigo("rd"); pend = sum(1 for k in pendentes_rd("rd") if k not in loc)

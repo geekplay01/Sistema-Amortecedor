@@ -18,6 +18,10 @@
   const ABAS = [["catalogo", "Catálogo: concorrentes × nossos itens", "package"], ["desenvolvimento", "Em desenvolvimento: curva pela frota", "amortecedor"], ["cofap", "COFAP: temos × não temos", "swords"]];
   const SITC = { catalogo: ["Temos no catálogo", "green"], des: ["Em desenvolvimento", "blue"], nao: ["Não temos", "red"] };
   const CLS = { "Automóveis e Utilitários Leves": "Leves e utilitários", "Caminhões": "Caminhões", "Ônibus": "Ônibus" };
+  /* etapa 24 · Q9: a curva é ordem (A > B > C), não identidade: um azul em degraus (forte, claro, cinza), com legenda — DESIGN.md §6.6 */
+  const CURC = { A: "--chart-1", B: "--chart-1s", C: "--chart-7" }, corCurva = c => CURC[c] || "--chart-7";
+  const legCurva = TW.legenda([{ l: "Curva A", cor: CURC.A }, { l: "Curva B", cor: CURC.B }, { l: "Curva C ou sem frota", cor: CURC.C }]);
+  const SITCOR = { catalogo: "--chart-1", des: "--chart-3", nao: "--chart-4" };
   const mi = v => nf(v / 1e6, 1) + " mi";
   /* «Nosso código» editável na própria célula (etapa 19 · Q7): o lápis troca o conteúdo por um campo ali mesmo; Enter salva, Esc cancela, aviso com «Desfazer» */
   const editavel = (attrs, inner) => `<span class="psd-ed" ${attrs}>${inner}<button type="button" class="psd-ed-btn" data-editar title="Corrigir o nosso código" aria-label="Corrigir o nosso código">${ico("pencil", "sm")}</button></span>`;
@@ -68,7 +72,7 @@
       $("#cbk").innerHTML = kpi("DES em andamento", nf(k.itens), "com os filtros", "blue", "amortecedor") + kpi("Com frota", nf(k.com_frota), "Fraga ou servidor", "green", "car")
         + kpi(`Frota ${k.ano}`, nf(k.frota / 1e6, 1) + " mi", "veículos das aplicações somados", "sky", "gauge") + kpi("Curva A", nf(A), "até 80% da frota acumulada", "amber", "target");
       $("#cbx").innerHTML = (k.fraga ? "" : notice("A planilha <b>LANÇAMENTOS</b> da Fraga ainda não foi carregada: a curva usa só a FROTA do servidor. Carregue «LANÇAMENTOS aaaa.xlsx» (e «COFAP_AMORTECEDORES_x_FROTA.xlsx») em Atualização de dados.", "amber"))
-        + (d.rows.length ? TW.card("Maiores frotas", '<div id="cbg"></div>') : "");
+        + (d.rows.length ? TW.card("Maiores frotas", '<div id="cbg"></div><div class="mt-2">' + legCurva + "</div>") : "");
       barra(d, [{ k: "curva", rotulo: "Curva", tipo: "lista", atual: s.curva || "", opcoes: curvaOps(d.counts.curva, "Sem frota") },
                 { k: "origem", rotulo: "Origem da frota", tipo: "lista", atual: s.origem || "", opcoes: [{ v: "", l: "Todas" }, ...Object.entries(d.counts.origem).map(([v, n]) => ({ v, l: v, n }))] },
                 { k: "lancamento", rotulo: "Lançamento", tipo: "lista", atual: s.lancamento || "", opcoes: [{ v: "", l: "Todos" }, { v: "1", l: "Lançamento (2024+)", n: d.counts.lancamento }] }],
@@ -81,7 +85,7 @@
           `<span title="${esc(r.veiculos.map(v => v.nome + ": " + nf(v.frota)).join("\n") || "")}" class="tabular-nums font-semibold">${r.frota ? nf(r.frota) : "–"}</span>`, `<span class="text-xs text-mute">${esc(r.origem)}</span>`,
           r.curva !== "sem" ? badge("Curva " + r.curva, CUR[r.curva]) : '<span class="text-xs text-mute">sem dado</span>', `<span class="block max-w-[16rem] truncate text-xs" title="${esc(r.concorrentes.join(", "))}">${esc(r.concorrentes.join(", ") || "–")}</span>`, `<span class="text-xs">${esc(r.status || "")}</span>`]), { h: "max-h-[65vh]" });
       const top = d.rows.filter(r => r.frota > 0).slice(0, 15);
-      if (top.length) grafico($("#cbg"), { type: "bar", altura: 260, titulo: "Maiores frotas", data: { labels: top.map(r => r.codigo), datasets: [{ label: `Frota ${k.ano}`, data: top.map(r => r.frota), backgroundColor: top.map(r => ({ A: "#2F4A8C", B: "#64C4E9", C: "#94A3B8" })[r.curva] || "#94A3B8") }] },
+      if (top.length) grafico($("#cbg"), { type: "bar", altura: 260, titulo: "Maiores frotas", data: { labels: top.map(r => r.codigo), datasets: [{ label: `Frota ${k.ano}`, data: top.map(r => r.frota), backgroundColor: top.map(r => corCurva(r.curva)) }] },
         options: { indexAxis: "y", plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: c => top[c.dataIndex].aplicacoes.slice(0, 2).join(", ") } } }, scales: { x: { ticks: { callback: v => nf(v / 1e3) + " mil" } } } } });
     };
 
@@ -95,9 +99,9 @@
         + kpi("Cobertura pela frota", nf(k.frota ? 100 * k.frota_temos / k.frota : 0, 1) + "%", "frota dos códigos que temos ÷ frota total", "slate", "gauge");
       const tot = k.codigos || 1;
       $("#cbx").innerHTML = (d.sem_classificacao ? notice("Esta carga da planilha COFAP não tem a classificação: as <b>motos ainda estão na conta</b>. Reaplique a planilha em Atualização de dados.", "amber") : "")
-        + TW.card("Temos × não temos", `<div class="flex h-4 overflow-hidden rounded-full bg-thead">${["catalogo", "des", "nao"].map(x => `<span title="${SITC[x][0]}: ${nf(k[x])}" style="width:${100 * k[x] / tot}%;background:${{ catalogo: "#2F4A8C", des: "#64C4E9", nao: "#E72B3B" }[x]}"></span>`).join("")}</div>
-          <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-mute">${["catalogo", "des", "nao"].map(x => `<span class="inline-flex items-center gap-1.5"><i class="psd-sw" style="background:${{ catalogo: "#2F4A8C", des: "#64C4E9", nao: "#E72B3B" }[x]}"></i>${SITC[x][0]} <b class="text-ink">${nf(k[x])}</b></span>`).join("")}</div>
-          ${s.situacao !== "catalogo" && s.situacao !== "des" ? '<div id="cbg" class="mt-4"></div>' : ""}`, '<span class="text-xs text-mute">pelo nosso cross: CrossCatalogo e servidor; montadora não conta</span>');
+        + TW.card("Temos × não temos", `<div class="flex h-4 overflow-hidden rounded-full bg-thead">${["catalogo", "des", "nao"].map(x => `<span title="${SITC[x][0]}: ${nf(k[x])}" style="width:${100 * k[x] / tot}%;background:var(${SITCOR[x]})"></span>`).join("")}</div>
+          <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-mute">${["catalogo", "des", "nao"].map(x => `<span class="inline-flex items-center gap-1.5"><i class="psd-sw" style="background:var(${SITCOR[x]})"></i>${SITC[x][0]} <b class="text-ink">${nf(k[x])}</b></span>`).join("")}</div>
+          ${s.situacao !== "catalogo" && s.situacao !== "des" ? '<div class="mt-4 text-sm font-semibold text-ink">Não temos: maiores frotas</div><div id="cbg" class="mt-2"></div><div class="mt-2">' + legCurva + "</div>" : ""}`, '<span class="text-xs text-mute">pelo nosso cross: CrossCatalogo e servidor; montadora não conta</span>');
       barra(d, [{ k: "situacao", rotulo: "Situação", tipo: "lista", atual: s.situacao || "", opcoes: [{ v: "", l: "Todas" }, ...["catalogo", "des", "nao"].filter(x => d.counts.situacao[x]).map(x => ({ v: x, l: SITC[x][0], n: d.counts.situacao[x] }))] },
                 { k: "curva", rotulo: "Curva (não temos)", tipo: "lista", atual: s.curva || "", opcoes: [{ v: "", l: "Todas" }, ...["A", "B", "C"].filter(c => d.counts.curva[c]).map(c => ({ v: c, l: "Curva " + c, n: d.counts.curva[c] }))] },
                 { k: "classif", rotulo: "Classificação", tipo: "lista", atual: s.classif || "", opcoes: [{ v: "", l: "Todas" }, ...Object.entries(d.counts.classif).map(([v, n]) => ({ v, l: CLS[v] || v, n }))] }],
@@ -111,8 +115,8 @@
           `<span class="block min-w-[14rem] max-w-[26rem] text-xs" title="${esc(r.veiculos.map(v => `${v.nome} ${v.anos}: ${nf(v.frota)}`).join("\n"))}">${esc(r.veiculos.slice(0, 3).map(v => `${v.nome} ${v.anos}`).join(", "))}${r.n_veiculos > 3 ? ` <span class="text-mute">+${r.n_veiculos - 3}</span>` : ""}</span>`,
           `<span class="text-xs">${esc(r.classes.map(c => CLS[c] || c).join(", "))}</span>`]), { h: "max-h-[65vh]" });
       const top = d.rows.filter(r => r.situacao === "nao" && r.frota > 0).slice(0, 15);
-      if (top.length && $("#cbg")) grafico($("#cbg"), { type: "bar", altura: 300, titulo: "Não temos: maiores frotas", data: { labels: top.map(r => r.cofap), datasets: [{ label: "Frota 2024", data: top.map(r => r.frota), backgroundColor: top.map(r => ({ A: "#E72B3B", B: "#F6A019" })[r.curva] || "#94A3B8") }] },
-        options: { indexAxis: "y", plugins: { legend: { display: false }, title: { display: true, text: "Não temos: maiores frotas", align: "start" }, tooltip: { callbacks: { afterLabel: c => top[c.dataIndex].veiculos.slice(0, 2).map(v => v.nome + " " + v.anos).join(", ") } } }, scales: { x: { ticks: { callback: v => nf(v / 1e3) + " mil" } } } } });
+      if (top.length && $("#cbg")) grafico($("#cbg"), { type: "bar", altura: 300, titulo: "Não temos: maiores frotas", data: { labels: top.map(r => r.cofap), datasets: [{ label: "Frota 2024", data: top.map(r => r.frota), backgroundColor: top.map(r => corCurva(r.curva)) }] },
+        options: { indexAxis: "y", plugins: { tooltip: { callbacks: { afterLabel: c => top[c.dataIndex].veiculos.slice(0, 2).map(v => v.nome + " " + v.anos).join(", ") } } } } });
     };
 
     const carregar = async () => {

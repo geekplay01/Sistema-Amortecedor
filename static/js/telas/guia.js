@@ -36,19 +36,19 @@
          ["AMD0245", "AMORTECEDOR TRASEIRO LD/LE", "Pesada", "Excesso", 2600, "22,1"], ["AMD4701", "AMORTECEDOR TRASEIRO LD/LE", "Leve", "OK", 880, "11,0"]].map(r =>
           [`<b class="text-blue-600">${r[0]}</b>`, r[1], r[2], badge(r[3], { Ruptura: "red", Risco: "amber", OK: "green", Excesso: "violet" }[r[3]]), nf(r[4]), r[5]]), { h: "max-h-[40vh]" }))}
       <section class="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        ${card("Vendas por mês (barras)", '<div id="g1"></div>', "", "xl:col-span-2")}${card("Situação do estoque (rosca)", '<div id="g2"></div>')}
-        ${card("Previsão × realizado (linhas)", '<div id="g3"></div>', "", "xl:col-span-3")}</section>
+        ${card("Vendas por mês (barras; ano anterior em cinza)", '<div id="g1"></div>', "", "xl:col-span-2")}${card("Situação do estoque (barra segmentada)", '<div id="g2"></div>')}
+        ${card("Previsão × realizado (linhas)", '<div id="g3"></div>', "", "xl:col-span-2")}${card("Meta do ano (medidor)", TW.medidor({ value: 41, target: 60, title: "DESENVOLVIMENTO" }) + TW.medidor({ value: 62, target: 60, title: "REDESENVOLVIMENTO" }))}</section>
       ${card("Avisos, confirmação e carregamento", `<div class="flex flex-wrap gap-2">
         <button type="button" class="${sec}" data-t="ok">${ico("circle-check", "sm")}Aviso de inclusão</button><button type="button" class="${sec}" data-t="erro">${ico("circle-alert", "sm")}Aviso de erro</button>
         <button type="button" class="${sec}" data-t="aviso">${ico("triangle-alert", "sm")}Aviso de atenção</button><button type="button" class="${sec}" data-c="1">${ico("trash-2", "sm")}Excluir (confirmação)</button></div>
         <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"><div>${TW.carregando("Carregando a lista…")}</div><div>${TW.esqueleto(3)}</div></div>`)}
     </div>`;
     const meses = ["jun", "jul", "ago", "set", "out", "nov"];
-    grafico($("#g1"), { type: "bar", titulo: "Vendas por mês", data: { labels: meses, datasets: [{ label: "2026", data: [21.4, 22.8, 24.1, 23.6, 25.5, 12.9] }, { label: "2025", data: [16.2, 17.0, 17.9, 18.4, 18.8, 17.1], cor: "#64C4E9" }] },
-      options: { plugins: { tooltip: { callbacks: { label: c => ` ${c.dataset.label}: R$ ${nf(c.parsed.y, 1)} mi` } } }, scales: { y: { ticks: { callback: v => "R$ " + v + " mi" } } } } });
-    grafico($("#g2"), { type: "doughnut", titulo: "Situação do estoque", data: { labels: ["OK", "Risco", "Ruptura", "Excesso", "Sem giro"], datasets: [{ data: [390, 236, 197, 166, 70], backgroundColor: ["#0E9F6E", "#F6A019", "#E72B3B", "#8B5CF6", "#94A3B8"] }] },
-      options: { cutout: "68%", plugins: { legend: { position: "bottom" } } } });
-    grafico($("#g3"), { type: "line", altura: 240, titulo: "Previsão × realizado", data: { labels: ["sem 1", "sem 2", "sem 3", "sem 4", "sem 5", "sem 6"], datasets: [{ label: "Previsto", data: [120, 180, 150, 210, 190, 240] }, { label: "Chegou", data: [110, 170, 160, 190, 200, null], cor: "#F6A019", fill: false }] } });
+    grafico($("#g1"), { type: "bar", titulo: "Vendas por mês", data: { labels: meses, datasets: [{ label: "2025", data: [16.2, 17.0, 17.9, 18.4, 18.8, 17.1], cor: "--chart-7", maxBarThickness: 12 }, { label: "2026", data: [21.4, 22.8, 24.1, 23.6, 25.5, 12.9], cor: "--chart-1", maxBarThickness: 12 }] },
+      options: { datasets: { bar: { categoryPercentage: 0.62, barPercentage: 0.92 } }, interaction: { mode: "index", intersect: false }, plugins: { tooltip: { callbacks: { label: c => ` ${c.dataset.label}: R$ ${nf(c.parsed.y, 1)} mi` } } }, scales: { y: { ticks: { callback: v => "R$ " + v + " mi" } } } } });
+    // situação do estoque é estado (bom/ruim): cores de status, não da paleta das séries
+    TW.segmentos($("#g2"), [["OK", 390, "--ok"], ["Risco", 236, "--t-amber-500"], ["Ruptura", 197, "--t-red-500"], ["Excesso", 166, "--t-violet-500"], ["Sem giro", 70, "--chart-7"]].map(([l, v, cor]) => ({ l, v, cor })));
+    grafico($("#g3"), { type: "line", altura: 240, titulo: "Previsão × realizado", data: { labels: ["sem 1", "sem 2", "sem 3", "sem 4", "sem 5", "sem 6"], datasets: [{ label: "Previsto", data: [120, 180, 150, 210, 190, 240] }, { label: "Chegou", data: [110, 170, 160, 190, 200, null] }] } });
     PSD.root.addEventListener("click", async e => {
       const t = e.target.closest("[data-t]"), c = e.target.closest("[data-c]");
       if (t) toast({ ok: "3 desenhos enviados, AMD0170 rev 02", erro: "Não foi possível gravar: o arquivo está aberto em outro programa.", aviso: "12 itens sem peso no catálogo." }[t.dataset.t],

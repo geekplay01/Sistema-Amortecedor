@@ -33,7 +33,8 @@
     <div class="syncpop" id="syncpop" hidden></div>
     <button class="themebtn" id="themebtn" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema claro/escuro">{{ ico("sun", "i-sun") }}{{ ico("moon", "i-moon") }}</button>
     {% if user %}<span class="usermenu"><a class="uavatar" href="/configuracoes#perfil" title="Meu perfil">{% if user.avatar %}<img src="/avatar/{{ user.id }}" alt="">{% else %}{{ user.username[:1]|upper }}{% endif %}</a><a class="uname" href="/configuracoes#perfil" style="color:inherit;text-decoration:none">{{ user.username }}</a><a href="/logout" class="ulogout" title="Sair">Sair</a></span>{% endif %}
-    <a class="gear" href="/configuracoes" aria-label="Configurações">{{ ico("settings") }}</a></header>
+    <a class="gear" href="/configuracoes" aria-label="Configurações">{{ ico("settings") }}</a>
+    <button type="button" class="gear" id="psd-fechar" aria-label="Fechar o sistema" title="Fechar o sistema">{{ ico("power") }}</button></header>
   <main id="psd-main" class="max-w-none flex-1 overflow-y-auto p-8">
     <div class="ptitle-row"><h2 class="ptitle">{{ cur[1] }}</h2>{% if cur[0] in regras_slugs %}<a class="ptitle-regras" href="/configuracoes#telas-{{ cur[0] }}" title="Como esta tela calcula e o que entra nela">{{ ico("info", "sm") }}Regras da tela</a>{% endif %}</div>
     {% set rin, rout = related(cur[0]) %}{% if rin or rout %}

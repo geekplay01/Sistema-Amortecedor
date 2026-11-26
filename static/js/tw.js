@@ -114,7 +114,11 @@ window.PSDTW = (() => {
     + `<div class="flex flex-col gap-2 ${kpis ? "mt-5" : ""}"><div class="skel h-10"></div>${'<div class="skel h-8"></div>'.repeat(linhas)}</div>`;
   /* ---------- gráfico (Chart.js 4, salvo em static/vendor): cores da marca, fonte e grade do tema; redesenha ao trocar o tema ----------
      grafico(el, { type: "bar", data: { labels, datasets: [{ label, data }] }, options }) → instância (el = <canvas> ou contêiner) */
-  const CORES = ["#2F4A8C", "#64C4E9", "#F6A019", "#E72B3B", "#0E9F6E", "#8B5CF6", "#94A3B8"];
+  /* etapa 24 · Q9 (skill dataviz, regras em DESIGN.md §6.6): paleta validada em ordem fixa — azul, laranja, azul-claro, vermelho, violeta, verde; 7 = cinza de fundo.
+     A tela pede cor por token ("--chart-2" ou "var(--chart-2)"); hex antigos ainda passados por alguma tela caem no slot equivalente (ANTIGAS). */
+  const CORES = ["#3A57A3", "#D27800", "#2E9FD0", "#D62E3D", "#7B5CE0", "#0E9F6E", "#A3AEC2"];
+  const ANTIGAS = { "#2F4A8C": 0, "#2F6BFF": 0, "#3B82F6": 0, "#F6A019": 1, "#F59E0B": 1, "#64C4E9": 2, "#5AA9FF": 2, "#06B6D4": 2, "#E72B3B": 3, "#EF4444": 3, "#F43F5E": 3,
+    "#8B5CF6": 4, "#0E9F6E": 5, "#10B981": 5, "#94A3B8": 6, "#64748B": 6 };
   const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const tema = () => { const C = window.Chart; if (!C) return;
     C.defaults.font.family = '"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif'; C.defaults.font.size = 12.5; C.defaults.color = cssv("--mut"); C.defaults.borderColor = cssv("--chart-grid");
@@ -122,32 +126,102 @@ window.PSDTW = (() => {
     Object.assign(C.defaults.plugins.tooltip, { backgroundColor: cssv("--card"), titleColor: cssv("--tx"), bodyColor: cssv("--tx"), borderColor: cssv("--line"), borderWidth: 1, padding: 10, cornerRadius: 10, boxPadding: 4,
       titleFont: { family: cssv("--fontd"), weight: "600", size: 13 }, usePointStyle: true });
     // bolinha da legenda do tamanho da caixa (8 px): sem boxHeight ela crescia até o tamanho da fonte e cobria o começo do texto
-    Object.assign(C.defaults.plugins.legend.labels, { usePointStyle: true, boxWidth: 8, boxHeight: 8, padding: 14 }); C.defaults.maintainAspectRatio = false;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) C.defaults.animation = false; };
+    Object.assign(C.defaults.plugins.legend.labels, { usePointStyle: true, boxWidth: 8, boxHeight: 8, padding: 14 }); C.defaults.plugins.legend.align = "start"; C.defaults.maintainAspectRatio = false;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) C.defaults.animation = false; registra(); };
   const vivos = new Set();
-  /* cores do tema (etapa 20 · Q7): --chart-1..7 trocam no escuro; uma cor da paleta clara passada pela tela vira a equivalente do tema; "--var" lê o token */
   const paleta = () => CORES.map((c, i) => cssv(`--chart-${i + 1}`) || c);
-  const corTema = c => { if (!c || typeof c !== "string") return c; if (c.startsWith("--")) return cssv(c); const i = CORES.indexOf(c.toUpperCase()); return i < 0 ? c : paleta()[i]; };
-  const corDe = i => paleta()[i % CORES.length];
+  const corTema = c => { if (!c || typeof c !== "string") return c; const v = c.match(/^var\((--[\w-]+)\)$/); if (v) c = v[1];
+    if (c.startsWith("--")) return cssv(c); const i = ANTIGAS[c.toUpperCase()] ?? CORES.indexOf(c.toUpperCase()); return i < 0 ? c : paleta()[i]; };
+  const corDe = i => paleta()[i % 6];                                       // a 7ª (cinza) nunca é série automática
   const pinta = (type, datasets) => (datasets || []).forEach((ds, i) => {          // só pinta o que o chamador não definiu (marcado em _auto); série pode ter o próprio tipo (gráfico misto)
     ds._auto ??= { bg: ds.backgroundColor == null, bd: ds.borderColor == null }; if (!("_bg0" in ds)) { ds._bg0 = ds.backgroundColor; ds._bd0 = ds.borderColor; }
     const tp = ds.type || type, c = corTema(ds.cor) || corDe(i), roda = tp === "doughnut" || tp === "pie";
-    if (ds._auto.bg) ds.backgroundColor = tp === "line" ? c + "22" : roda ? paleta() : c;
+    if (ds._auto.bg) ds.backgroundColor = tp === "line" ? c + "1A" : roda ? paleta() : c;           // área da linha: lavada a 10%
     else ds.backgroundColor = Array.isArray(ds._bg0) ? ds._bg0.map(corTema) : corTema(ds._bg0);      // cor pedida pela tela também acompanha o tema
-    if (ds._auto.bd) ds.borderColor = roda ? cssv("--card") : c;
-    else ds.borderColor = Array.isArray(ds._bd0) ? ds._bd0.map(corTema) : corTema(ds._bd0); });
+    if (ds._auto.bd) ds.borderColor = roda ? cssv("--card") : ds.stack != null && tp === "bar" ? cssv("--card") : c;   // pilha: borda na cor do cartão = vão de 2 px
+    else ds.borderColor = Array.isArray(ds._bd0) ? ds._bd0.map(corTema) : corTema(ds._bd0);
+    if (tp === "line") { ds.pointBackgroundColor = c; ds.pointBorderColor = cssv("--card"); } });
+  /* números curtos no eixo e nos rótulos: 950 · 12,5 mil · 2,3 mi */
+  const curto = v => { const a = Math.abs(v), f = x => Number(x).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+    return a >= 1e6 ? f(v / 1e6) + " mi" : a >= 1e4 ? f(v / 1e3) + " mil" : f(v); };
+  /* plugins: rótulo seletivo (fim da linha; maior e último mês na barra), linha do cursor nas linhas, divisória vertical (Pareto) */
+  let registrado = false;
+  const registra = () => { if (registrado || !window.Chart) return; registrado = true;
+    const fixo = { _scriptable: false, _indexable: false };                // opções lidas como estão (fmt é função, não opção calculada)
+    const rotulos = { id: "psdRotulos", defaults: { modo: null, fmt: null }, descriptors: fixo, afterDatasetsDraw(ch, _a, o) { if (!o || !o.modo) return;
+      const { ctx } = ch, fmt = o.fmt || curto, its = [];
+      ch.data.datasets.forEach((ds, di) => { const m = ch.getDatasetMeta(di); if (m.hidden || !m.visible) return; const v = ds.data;
+        const ult = v.reduce((k, x, i) => x == null ? k : i, -1); if (ult < 0) return;
+        if (o.modo === "fim" && m.type === "line") its.push({ el: m.data[ult], txt: fmt(v[ult]), lado: "dir" });
+        if (o.modo === "destaque" && m.type === "bar") { const mx = v.reduce((k, x, i) => x != null && x > (v[k] ?? -Infinity) ? i : k, 0);
+          [...new Set([mx, ult])].forEach(i => its.push({ el: m.data[i], txt: fmt(v[i]), lado: "cima" })); } });
+      ctx.save(); ctx.font = `600 11.5px ${ch.options.font?.family || window.Chart.defaults.font.family}`; ctx.fillStyle = cssv("--tx");
+      const usados = [];                                                     // rótulos que se tocariam: fica o primeiro, o resto vai para a dica e a legenda
+      its.forEach(t => { if (!t.el) return; const w = ctx.measureText(t.txt).width, y = t.lado === "dir" ? t.el.y : t.el.y - 5;
+        const x = t.lado === "dir" ? Math.min(t.el.x + 8, ch.width - w - 2) : Math.min(Math.max(t.el.x, w / 2 + 2), ch.width - w / 2 - 2);   // o texto nunca sai do quadro
+        const cx = t.lado === "dir" ? x : x - w / 2, cy = t.lado === "dir" ? y - 7 : y - 14;
+        if (usados.some(u => cx < u.x + u.w + 4 && cx + w + 4 > u.x && cy < u.y + 14 && cy + 14 > u.y)) return; usados.push({ x: cx, y: cy, w });
+        ctx.textAlign = t.lado === "dir" ? "left" : "center"; ctx.textBaseline = t.lado === "dir" ? "middle" : "bottom"; ctx.fillText(t.txt, x, y); });
+      ctx.restore(); } };
+    const cursor = { id: "psdCursor", defaults: { ativo: false }, descriptors: fixo, afterDraw(ch, _a, op) { if (!op || !op.ativo) return; const a = ch.tooltip && ch.tooltip.getActiveElements(); if (!a || !a.length) return;
+      const x = a[0].element.x, { top, bottom } = ch.chartArea, ctx = ch.ctx; ctx.save(); ctx.strokeStyle = cssv("--mut"); ctx.globalAlpha = .45; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); ctx.restore(); } };
+    const divisa = { id: "psdDivisa", defaults: { i: null, texto: "" }, descriptors: fixo, afterDatasetsDraw(ch, _a, o) { if (!o || o.i == null) return; const m = ch.getDatasetMeta(0).data, a = m[o.i], b = m[o.i + 1]; if (!a || !b) return;
+      const x = (a.x + b.x) / 2, { top, bottom } = ch.chartArea, ctx = ch.ctx; ctx.save(); ctx.strokeStyle = cssv("--mut"); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, top + 16); ctx.lineTo(x, bottom); ctx.stroke(); ctx.font = `600 11.5px ${window.Chart.defaults.font.family}`; ctx.fillStyle = cssv("--tx");
+      const w = ctx.measureText(o.texto).width, dir = x + 6 + w <= ch.chartArea.right; ctx.textAlign = dir ? "left" : "right"; ctx.textBaseline = "top";
+      ctx.fillText(o.texto, dir ? x + 6 : x - 6, top); ctx.restore(); } };
+    window.Chart.register(rotulos, cursor, divisa); };
+  const _def = (o, k, v) => { if (o[k] === undefined) o[k] = v; return o[k]; };
+  /* eixos padrão: grade fina e sólida só no eixo dos valores, sem linha de eixo, até 5 marcas com número curto; cada tela pode sobrescrever */
+  const eixos = cfg => { if (cfg.type !== "bar" && cfg.type !== "line") return; const o = cfg.options, sc = _def(o, "scales", {}), val = o.indexAxis === "y" ? "x" : "y", cat = val === "x" ? "y" : "x";
+    const c = _def(sc, cat, {}); _def(_def(c, "grid", {}), "display", false); _def(_def(c, "border", {}), "display", false);
+    if (cat === "y") _def(_def(c, "ticks", {}), "autoSkip", false);        // barras deitadas (ranking): todo nome aparece
+    const v = _def(sc, val, {}); _def(v, "beginAtZero", true); _def(_def(v, "border", {}), "display", false); const t = _def(v, "ticks", {}); _def(t, "maxTicksLimit", 5); _def(t, "callback", x => curto(x));
+    // cores lidas do token a cada desenho (função): o Chart.js guarda as cores dos eixos e não as trocava com o tema
+    Object.values(sc).forEach(s => { _def(_def(s, "grid", {}), "color", () => cssv("--chart-grid")); _def(_def(s, "ticks", {}), "color", () => cssv("--mut")); }); };
   const grafico = (el, cfg) => {
     if (!window.Chart) { (el.tagName === "CANVAS" ? el.parentElement : el).innerHTML = notice("Gráfico indisponível: static/vendor/chart.umd.js não foi carregado.", "amber"); return null; }
     tema(); let cv = el;
     if (el.tagName !== "CANVAS") { el.innerHTML = '<canvas role="img"></canvas>'; cv = el.firstChild; if (!el.style.height) el.style.height = (cfg.altura || 280) + "px"; el.style.position = "relative"; }
     if (cfg.titulo) cv.setAttribute("aria-label", cfg.titulo);
-    pinta(cfg.type, cfg.data.datasets);
-    (cfg.data.datasets || []).forEach(ds => { const tp = ds.type || cfg.type;
-      if (tp === "bar") { ds.borderRadius ??= 6; ds.maxBarThickness ??= 34; ds.borderWidth ??= 0; }
-      if (tp === "line") { ds.tension ??= 0.35; ds.pointRadius ??= 3; ds.borderWidth ??= 2.5; ds.fill ??= true; } });
+    const dss = cfg.data.datasets || [], o = cfg.options ||= {}, pl = _def(o, "plugins", {}), roda = cfg.type === "doughnut" || cfg.type === "pie";
+    pinta(cfg.type, dss);
+    dss.forEach(ds => { const tp = ds.type || cfg.type;
+      if (tp === "bar") { ds.borderRadius ??= 4; ds.maxBarThickness ??= 24; ds.borderSkipped ??= "start";        // ponta arredondada de 4 px, base reta, no máximo 24 px
+        ds.borderWidth ??= ds.stack != null ? { top: 2 } : 0; }
+      if (tp === "line") { const ult = ds.data.reduce((k, x, i) => x == null ? k : i, -1);                       // 2 px, sem bolinha em todo ponto: só o último
+        ds.tension ??= 0.25; ds.cubicInterpolationMode ??= "monotone"; /* monótona: a curva não passa do valor (não fura o zero) */ ds.borderWidth ??= 2; ds.fill ??= false; ds.pointRadius ??= ds.data.map((_, i) => i === ult ? 4 : 0); ds.pointBorderWidth ??= 2; ds.pointHoverRadius ??= 5; ds.pointHitRadius ??= 12; } });
+    if (!roda) { eixos(cfg); const lg = _def(pl, "legend", {}); _def(lg, "display", dss.length > 1);                  // legenda só com 2 séries ou mais
+      const linha = dss.some(ds => (ds.type || cfg.type) === "line");
+      if (linha) { _def(o, "interaction", { mode: "index", intersect: false }); _def(pl, "psdCursor", { ativo: true }); }
+      const unicaBarra = dss.length === 1 && cfg.type === "bar" && o.indexAxis !== "y" && dss[0].data.length > 2;
+      const r = _def(pl, "psdRotulos", {}); if (r) _def(r, "modo", linha && dss.length <= 4 && !dss.some(ds => (ds.type || cfg.type) === "bar") ? "fim" : unicaBarra ? "destaque" : null);
+      if (r && r.modo) { const p = _def(o, "layout", {}).padding; if (p === undefined) o.layout.padding = r.modo === "fim" ? { right: 40, top: 6 } : { top: 18 }; } }
     const old = window.Chart.getChart(cv); if (old) old.destroy();
-    const g = new window.Chart(cv, { type: cfg.type, data: cfg.data, options: cfg.options || {} }); vivos.add(g); return g;
+    const g = new window.Chart(cv, { type: cfg.type, data: cfg.data, options: o }); vivos.add(g); return g;
   };
+  /* ---------- barra segmentada alta (no lugar da rosca) e medidor (no lugar da meia-rosca): HTML, sem Chart.js ----------
+     segmentos(el, [{ l, v, cor, txt }], { legenda: [{ l, cor }] (padrão: as partes), fmt }) — 28 px, vão de 2 px, a fatia de cada parte escrita dentro só se couber;
+     a que não couber vai para a legenda ao lado do nome. Cor por token ("--chart-1"). */
+  const _tinta = c => { const h = corTema(c) || "#000", m = h.match(/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})/i); if (!m) return "#fff";
+    const L = m.slice(1).map(x => { const s = parseInt(x, 16) / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }), y = 0.2126 * L[0] + 0.7152 * L[1] + 0.0722 * L[2];
+    return (1.05 / (y + 0.05)) >= ((y + 0.05) / 0.05) ? "#fff" : "#0B1220"; };                         // branco ou quase-preto, o que contrastar mais com o preenchimento
+  const _vivosSeg = new Set();
+  const _ajustaSeg = el => { el.querySelectorAll(".psd-segbar > div").forEach(b => { const s = b.firstElementChild; b.style.color = _tinta(b.dataset.cor); if (!s) return;
+      s.hidden = false; const cabe = s.offsetWidth + 16 <= b.clientWidth; s.hidden = !cabe; const lg = el.querySelector(`[data-segl="${b.dataset.i}"]`); if (lg) lg.hidden = cabe; }); };
+  const segmentos = (el, partes, op = {}) => { if (!el) return; const tot = partes.reduce((a, p) => a + (p.v || 0), 0) || 1, fmt = op.fmt || (p => Math.round(100 * p.v / tot) + "%");
+    const vis = partes.map((p, i) => ({ ...p, i })).filter(p => p.v > 0), nome = p => `${p.l}: ${p.txt || nf(p.v)} (${nf(100 * p.v / tot, 1)}%)`;
+    el.innerHTML = `<div class="psd-segbar" role="img" aria-label="${esc(vis.map(nome).join("; "))}">${vis.map(p => `<div data-i="${p.i}" data-cor="${esc(p.cor)}" tabindex="0" title="${esc(nome(p))}" style="flex:${p.v} 1 0;background:${String(p.cor).startsWith("--") ? `var(${p.cor})` : p.cor}"><span>${esc(fmt(p))}</span></div>`).join("")}</div>
+      <div class="psd-legs">${partes.map((p, i) => `<span><i style="background:${String(p.cor).startsWith("--") ? `var(${p.cor})` : p.cor}"></i>${esc(p.l)}<b data-segl="${i}" hidden>${nf(100 * (p.v || 0) / tot, 1)}%</b></span>`).join("")}</div>`;
+    _ajustaSeg(el); if (!el._ro && window.ResizeObserver) { el._ro = new ResizeObserver(() => _ajustaSeg(el)); el._ro.observe(el); } _vivosSeg.add(el); };
+  /* medidor de meta: número grande, «de N (x%)» e o trilho em tom claro do azul; verde (--ok) só quando bate a meta */
+  const medidor = o => { const v = o.value || 0, t = o.target || 0, ok = t && v >= t, p = t ? 100 * v / t : 0;
+    return `<div class="psd-med">${o.title ? `<div class="psd-med-t">${esc(o.title)}</div>` : ""}<div class="lin"><b>${nf(v)}</b><span>${t ? `de ${nf(t)} (${nf(p, 1)}%)${ok ? ", atingida" : ""}` : "sem meta"}</span></div>
+      <div class="trk" role="meter" aria-valuemin="0" aria-valuemax="${t || 0}" aria-valuenow="${v}" aria-label="${esc((o.title || "Meta") + ": " + nf(v) + (t ? " de " + nf(t) : ""))}"><div style="width:${Math.min(100, p).toFixed(1)}%;background:var(${ok ? "--ok" : "--chart-1"})"></div></div>
+      ${o.subtitle ? `<div class="psd-med-s">${esc(o.subtitle)}</div>` : ""}</div>`; };
+  /* legenda em HTML (gráfico de uma série com cor por categoria, p. ex. curva A/B/C) */
+  const legenda = itens => `<div class="psd-legs">${itens.map(x => `<span><i style="background:${String(x.cor).startsWith("--") ? `var(${x.cor})` : x.cor}"></i>${esc(x.l)}</span>`).join("")}</div>`;
   /* ---------- Barra de filtros (etapa 19 · Q4/Q6): um padrão para todas as telas ----------
      busca + até 3 filtros principais (tipo "seg" = botões lado a lado; "lista" = botão com o nome dentro que abre a lista com a contagem de cada opção)
      + «Mais filtros» (painel com os demais) + etiquetas dos filtros ativos com × e «Limpar tudo». Ações (Excel…) à direita.
@@ -280,7 +354,8 @@ window.PSDTW = (() => {
     window.addEventListener("resize", fechar);
   })();
 
-  document.addEventListener("psd-theme", () => { tema(); vivos.forEach(g => { if (!g.canvas.isConnected) { vivos.delete(g); return; } pinta(g.config.type, g.data.datasets); g.update(); }); });
+  document.addEventListener("psd-theme", () => { tema(); vivos.forEach(g => { if (!g.canvas.isConnected) { vivos.delete(g); return; } pinta(g.config.type, g.data.datasets); g.config.clearCache?.(); g.update(); });
+    _vivosSeg.forEach(el => el.isConnected ? _ajustaSeg(el) : _vivosSeg.delete(el)); });       // tinta do texto da barra segmentada muda com o tema
   /* ---------- etapa 24: chaves de escolha (.psd-seg, .psd-linha) — o destaque desliza até a opção escolhida (0,2 s) ----------
      Um único marcador (.psd-ind, com a faixa inclinada) fica atrás dos botões. A posição anterior de cada chave fica guardada pela identidade dela
      (id ou aria-label), então a animação aparece também quando a tela redesenha a chave (troca de aba, filtro). «Reduzir movimento» desliga (marca.css). */
@@ -309,5 +384,35 @@ window.PSDTW = (() => {
     addEventListener("resize", () => document.querySelectorAll(CHAVES).forEach(el => { const i = el.querySelector(":scope > .psd-ind"); if (i) { i.style.transition = "none"; posicionar(el); void i.offsetWidth; i.style.transition = ""; } }));
   }
 
-  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, editarCodigos, fobRD, enviar, carregando, esqueleto, grafico, CORES, barra, pintarBarra, ligarBarra, botao, ops, etiquetas };
+  /* Zona de planilha (etapa 24 · update 4 · Q8): toda tela que recebe planilha usa a mesma caixa tracejada de Desenhos/Validação.
+     Clique abre o seletor; arrastar e soltar; Ctrl+V cola um arquivo copiado no Explorer (enquanto a zona estiver na tela).
+       zonaPlanilha({ id, titulo, dica, multiplo, aceita, compacta })  → html
+       ligarPlanilha(el | "#id", { aceita, multiplo, receber(files) })   → files já filtrados pela extensão */
+  const ACEITA = ".xlsx,.xls,.csv";
+  const zonaPlanilha = ({ id, titulo = "Enviar planilha", dica, multiplo = false, aceita = ACEITA, compacta = true } = {}) =>
+    `<label id="${id}" class="psd-drop${compacta ? " psd-drop-p" : ""}" tabindex="0">${ico("file-spreadsheet", "lg")}<b>${esc(titulo)}</b>
+      <span>${esc(dica || `${aceita.replace(/\./g, "").toUpperCase().split(",").join(", ")}; arraste ${multiplo ? "os arquivos" : "o arquivo"} para cá, cole com Ctrl+V ou clique`)}</span>
+      <input type="file" accept="${esc(aceita)}"${multiplo ? " multiple" : ""} hidden></label>`;
+  const ligarPlanilha = (alvo, { aceita = ACEITA, multiplo = false, receber }) => {
+    const z = typeof alvo === "string" ? document.querySelector(alvo) : alvo; if (!z) return;
+    const exts = aceita.split(",").map(x => x.trim().toLowerCase()).filter(Boolean);
+    const entrega = lista => { const fs = [...(lista || [])]; if (!fs.length) return;
+      const ok = fs.filter(f => exts.some(x => f.name.toLowerCase().endsWith(x)));
+      if (!ok.length) return toast(`Envie ${exts.join(", ")}: «${fs[0].name}» não é desse tipo.`, { tom: "aviso", titulo: "Arquivo não aceito" });
+      if (ok.length < fs.length) toast(`${fs.length - ok.length} arquivo(s) de outro tipo ficaram de fora.`, { tom: "aviso" });
+      receber(multiplo ? ok : ok.slice(0, 1)); };
+    const inp = z.querySelector("input[type=file]");
+    if (inp) inp.addEventListener("change", () => { entrega(inp.files); inp.value = ""; });
+    z.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && inp && e.target === z) { e.preventDefault(); inp.click(); } });
+    ["dragenter", "dragover"].forEach(n => z.addEventListener(n, e => { e.preventDefault(); z.classList.add("sobre"); }));
+    z.addEventListener("dragleave", e => { if (!z.contains(e.relatedTarget)) z.classList.remove("sobre"); });
+    z.addEventListener("drop", e => { e.preventDefault(); z.classList.remove("sobre"); entrega(e.dataTransfer && e.dataTransfer.files); });
+    const colar = e => { if (!z.isConnected) return document.removeEventListener("paste", colar);          // a tela mudou: a zona saiu, o atalho também
+      if (z.closest("[hidden]") || !z.offsetParent) return;
+      const fs = e.clipboardData && e.clipboardData.files; if (!fs || !fs.length) return;          // texto colado num campo segue normal
+      e.preventDefault(); entrega(fs); };
+    document.addEventListener("paste", colar);
+  };
+
+  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, editarCodigos, fobRD, enviar, carregando, esqueleto, grafico, CORES, curto, segmentos, medidor, legenda, barra, pintarBarra, ligarBarra, botao, ops, etiquetas, zonaPlanilha, ligarPlanilha };
 })();

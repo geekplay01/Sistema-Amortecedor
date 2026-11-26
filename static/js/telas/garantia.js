@@ -127,26 +127,30 @@
       $("#gmes").innerHTML = card("Mês a mês", pm.length ? '<div id="gcm"></div>' : empty("Sem dados no período."), seg("serie", [["pecas", "Peças"], ["valor", "Valor"]], serie));
       if (!pm.length) return;
       const lab = pm.map(m => `${MES[+m.mes.slice(5, 7)]}/${m.mes.slice(2, 4)}`);
-      // a linha do ano anterior vai primeiro e sem cor fixa: usa a 1ª cor do tema (azul-marinho no claro, mais clara no escuro)
-      const ds = [{ type: "bar", label: temAnt ? ano() : (k === "valor" ? "Valor c/ IPI" : "Peças"), data: pm.map(m => m.futuro ? null : m[k]), cor: "#E72B3B", order: 2 }];
-      if (temAnt) ds.unshift({ type: "line", label: d.anterior.ano, data: pm.map(m => m[k + "_ant"]), fill: false, pointRadius: 2, tension: 0.2, order: 1 });
+      // etapa 24 · Q9: ano atual em azul (vermelho é «crítico»); o anterior em barra fina cinza ao lado, no mesmo eixo, em vez de uma linha cruzando as barras
+      const fino = temAnt ? { maxBarThickness: 12 } : {}, fmt = v => k === "valor" ? "R$ " + TW.curto(v) : TW.curto(v);
+      const ds = [{ label: temAnt ? ano() : (k === "valor" ? "Valor c/ IPI" : "Peças"), data: pm.map(m => m.futuro ? null : m[k]), cor: "--chart-1", ...fino }];
+      if (temAnt) ds.unshift({ label: d.anterior.ano, data: pm.map(m => m[k + "_ant"]), cor: "--chart-7", ...fino });
       TW.grafico($("#gcm"), { type: "bar", altura: 280, titulo: "Garantia mês a mês", data: { labels: lab, datasets: ds },
-        options: { plugins: { legend: { display: temAnt }, tooltip: { mode: "index", intersect: false, callbacks: { label: c => ` ${c.dataset.label}: ${k === "valor" ? brl0(c.parsed.y) : nf(c.parsed.y) + " peças"}` } } },
-          scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => k === "valor" ? "R$ " + nf(v / 1000) + " mil" : nf(v) } } } } });
+        options: { datasets: { bar: temAnt ? { categoryPercentage: 0.62, barPercentage: 0.92 } : {} }, interaction: { mode: "index", intersect: false },
+          plugins: { psdRotulos: { fmt }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${k === "valor" ? brl0(c.parsed.y) : nf(c.parsed.y) + " peças"}` } } },
+          scales: { y: { ticks: { callback: fmt } } } } });
     };
 
     const desenharPareto = () => {
       const s = F.get(), df = d.defeitos;
       $("#gpar").innerHTML = card("Pareto de defeitos", df.length ? '<div id="gcp"></div>' : empty("Nada."), s.defeito ? `<button type="button" data-def="" class="${botao} py-1 text-xs">Todos os defeitos</button>` : '<span class="text-xs text-mute">clique numa barra para filtrar</span>');
       if (!df.length) return;
+      // etapa 24 · Q9: um eixo só (dois eixos Y inventam uma relação entre as escalas); o acumulado vira a divisória «80% em N defeitos» e fica na dica.
+      // Sem filtro, todas as barras em azul; com um defeito filtrado, ele em laranja e o resto em cinza.
+      const i80 = df.findIndex(r => r.acum >= 80);
       const g = TW.grafico($("#gcp"), { type: "bar", altura: 280, titulo: "Pareto de defeitos", data: { labels: df.map(r => r.defeito.length > 22 ? r.defeito.slice(0, 21) + "…" : r.defeito),
-          datasets: [{ type: "line", label: "% acumulado", data: df.map(r => r.acum), fill: false, pointRadius: 2, tension: 0.2, yAxisID: "y1", order: 1 },
-                     { type: "bar", label: "Peças", data: df.map(r => r.pecas), backgroundColor: df.map(r => r.defeito === s.defeito ? "#F6A019" : "#E72B3B"), yAxisID: "y", order: 2 }] },
-        options: { onClick: (e, els) => { const i = (els.find(x => x.datasetIndex === 1) || els[0] || {}).index; if (i == null) return; F.set({ defeito: df[i].defeito === F.get().defeito ? "" : df[i].defeito }); aplicar(null, true); },
+          datasets: [{ label: "Peças", data: df.map(r => r.pecas), backgroundColor: df.map(r => !s.defeito ? "--chart-1" : r.defeito === s.defeito ? "--chart-2" : "--chart-7") }] },
+        options: { onClick: (e, els) => { const i = (els[0] || {}).index; if (i == null) return; F.set({ defeito: df[i].defeito === F.get().defeito ? "" : df[i].defeito }); aplicar(null, true); },
           onHover: (e, els) => { e.native.target.style.cursor = els.length ? "pointer" : "default"; },
-          plugins: { legend: { display: true }, tooltip: { mode: "index", intersect: false, callbacks: { title: c => df[c[0].dataIndex].defeito, label: c => c.datasetIndex === 1 ? ` ${nf(c.parsed.y)} peças (${pct(df[c.dataIndex].pct, 1)})` : ` acumulado ${pct(c.parsed.y, 1)}` } } },
-          scales: { x: { grid: { display: false }, ticks: { maxRotation: 50, minRotation: 30, font: { size: 11 } } }, y: { beginAtZero: true, ticks: { callback: v => nf(v) } },
-            y1: { position: "right", min: 0, max: 100, grid: { display: false }, ticks: { callback: v => v + "%" } } } } });
+          plugins: { psdRotulos: false, psdDivisa: i80 >= 0 && i80 < df.length - 1 ? { i: i80, texto: `80% em ${i80 + 1} defeito${i80 ? "s" : ""}` } : { i: null },
+            tooltip: { callbacks: { title: c => df[c[0].dataIndex].defeito, label: c => ` ${nf(c.parsed.y)} peças (${pct(df[c.dataIndex].pct, 1)}), acumulado ${pct(df[c.dataIndex].acum, 1)}` } } },
+          layout: { padding: { top: 4 } }, scales: { x: { ticks: { maxRotation: 50, minRotation: 30, font: { size: 11 } } } } } });
       return g;
     };
 

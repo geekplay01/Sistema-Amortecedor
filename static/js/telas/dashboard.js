@@ -5,7 +5,7 @@
 (function () {
   const { $, esc, J, root, fail } = PSD;
   const TW = window.PSDTW, { nf, brl0, dmy, kpi, card, notice } = TW;
-  const DES = "DESENVOLVIMENTO", RD = "REDESENVOLVIMENTO", SLUG = { [DES]: "desenvolvimento", [RD]: "redesenvolvimento" }, COR = { [DES]: "#2f6bff", [RD]: "#10b981" };
+  const DES = "DESENVOLVIMENTO", RD = "REDESENVOLVIMENTO", SLUG = { [DES]: "desenvolvimento", [RD]: "redesenvolvimento" }, COR = { [DES]: "var(--chart-1)", [RD]: "var(--chart-2)" };   // DES azul, R-D laranja (ordem fixa da paleta, DESIGN.md §6.6)
   const chip = (attrs, label, on) => `<button type="button" ${attrs} aria-pressed="${on}" class="rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-blue-500 bg-blue-500 text-white" : "border-line bg-card text-ink hover:bg-slate-500/10"}">${label}</button>`;
   const botao = "rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink no-underline hover:bg-slate-500/10";
   const vazio = t => `<p class="m-0 py-6 text-center text-sm text-mute">${t}</p>`;
@@ -76,12 +76,13 @@
       ].join("");
       flagsCard();
       const gg = (id, k, sub) => PSDCharts.gauge($(id), { value: g[k].done, target: g[k].target, title: k, subtitle: sub });
-      gg("#dg-des", DES, vb ? `meta ${g[DES].target}, validações ${u} em ${y}` : `meta ${g[DES].target}, item recebido em ${y}`);
-      gg("#dg-rd", RD, vb ? `meta ${g[RD].target}, validações ${u} em ${y}` : `meta ${g[RD].target}, recebido e validado (${u})`);
+      gg("#dg-des", DES, vb ? `validações ${u} em ${y}` : `item recebido em ${y}`);          // a meta já aparece no medidor («de N»)
+      gg("#dg-rd", RD, vb ? `validações ${u} em ${y}` : `recebido e validado (${u})`);
       const bs = vb ? `validações ${u}` : "item recebido";
       PSDCharts.line($("#dg-evo"), { x: g[DES].series.main.map(m => m.month), series: [DES, RD].map(k => ({ name: `${k}: ${bs}`, y: g[k].series.main.map(m => m.n), color: COR[k] })), height: 260 });
-      if (d.sales.available) PSDCharts.bars($("#dg-sales"), { x: d.sales.months.map(m => m.month), series: [{ name: "Peças vendidas", y: d.sales.months.map(m => m.qty), color: "#2f6bff" }], height: 250 });
-      PSDCharts.donut($("#dg-sys"), { labels: sys.map(r => LAB[r.s] || r.s), values: sys.map(r => r.n), colors: ["#2f6bff", "#10b981", "#94a3b8"] });
+      if (d.sales.available) PSDCharts.bars($("#dg-sales"), { x: d.sales.months.map(m => m.month), series: [{ name: "Peças vendidas", y: d.sales.months.map(m => m.qty) }], height: 250 });
+      // «Sem dado» em cinza: não é série, é o resto
+      PSDCharts.donut($("#dg-sys"), { labels: sys.map(r => LAB[r.s] || r.s), values: sys.map(r => r.n), colors: sys.map(r => ({ gas: "--chart-1", oleo: "--chart-2" })[r.s] || "--chart-7") });
     };
 
     root.addEventListener("click", e => { const b = e.target.closest("[data-pk]"); if (!b) return; F.set({ pk: b.dataset.pk }); flagsCard(); });

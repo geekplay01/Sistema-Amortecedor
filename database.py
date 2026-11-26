@@ -2,6 +2,9 @@
 import os, sqlite3
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get("PSD_DB", os.path.join(BASE, "data", "perfect_shock.db"))
+# Arquivos que o banco referencia por id (desenhos, validações) ficam AO LADO do banco: com PSD_DB apontando para uma cópia, a cópia usa as suas
+# próprias pastas. (25/11/2026: uma cópia de teste usava data\validacoes, os ids coincidiram e as pastas das validações reais foram apagadas.)
+DATA_DIR = os.path.dirname(os.path.abspath(DB_PATH))
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sources(id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT, priority INTEGER DEFAULT 5, notes TEXT);
@@ -141,6 +144,7 @@ CREATE TABLE IF NOT EXISTS validacoes(id INTEGER PRIMARY KEY, kind TEXT NOT NULL
 CREATE INDEX IF NOT EXISTS ix_val_code ON validacoes(kind, code);
 """
 NEW_COLUMNS["import_batches"] = [("rows_read","INTEGER")]
+NEW_COLUMNS["validacoes"] = [("revisao", "INTEGER DEFAULT 0"), ("serie", "INTEGER")]          # etapa 24: revisões da mesma validação (serie = id da Rev.00)
 NEW_COLUMNS["products"] += [("catalog_position","INTEGER"),("catalog_group","TEXT"),("fob","REAL"),("fob_supplier","TEXT"),("catalog_subgroup","TEXT"),("catalog_highlight","TEXT"),("catalog_photo","TEXT")]   # FOB em USD (menor preço) e fornecedor do melhor preço
 # etapa 17: Linha e Híbrido/elétrico (CatalogoAMD; híbrido 'S'/'N', NULL = não informado) e o peso/EAN como estão na planilha (cat_*) — o efetivo (weight_kg/ean) vem do BI03 quando ele tem o item
 NEW_COLUMNS["products"] += [("catalog_line","TEXT"),("hybrid","TEXT"),("cat_ean","TEXT"),("cat_weight_kg","REAL")]

@@ -13,8 +13,8 @@
       ${notice(`Envie as planilhas <b>com o mesmo nome de sempre</b> (ex.: <code>DadosR-D e DES.xlsx</code>, <code>Compra_de_amostra.xlsx</code>). O sistema lê todas as linhas, confere com o banco e <b>insere só o que ainda não está</b>.
         Planilhas novas (nome desconhecido) também entram: se as colunas forem de um cadastro conhecido, são carregadas como tal; senão, os dados ficam guardados como vieram. Tudo aparece em <a class="text-blue-600" href="/fontes">Fontes e histórico</a>.<br>
         <b>Nada é apagado.</b> Primeiro vem a <b>verificação</b> (o que seria alterado); só grava quando você clicar em <b>Aplicar</b>, e faz backup antes.`)}
-      <div class="flex flex-wrap items-center gap-2"><label class="${primario}">Escolher planilhas…<input id="uf" type="file" multiple accept=".xlsx,.xls,.csv" hidden></label>
-        <button type="button" id="uf-folder" class="${botao}">Verificar a pasta bases_exemplo</button><span id="uf-names" class="text-sm text-mute"></span></div>
+      ${TW.zonaPlanilha({ id: "uf", titulo: "Enviar planilhas", multiplo: true })}
+      <div class="flex flex-wrap items-center gap-2"><button type="button" id="uf-folder" class="${botao}">Verificar a pasta bases_exemplo</button><span id="uf-names" class="text-sm text-mute"></span></div>
       <p id="uf-msg" class="m-0 text-sm text-mute" role="status"></p><div id="uf-out" class="flex flex-col gap-5"></div></div>`;
     const msg = (t, err) => { const m = $("#uf-msg"); m.textContent = t; m.className = "m-0 text-sm " + (err ? "font-semibold text-red-600" : "text-mute"); };
     const show = (res, applied) => {
@@ -34,7 +34,7 @@
     };
     const check = async (fd, arquivos = []) => { msg("Lendo as planilhas e comparando com o banco… pode levar alguns segundos (o cadastro do Protheus e a Fraga levam mais)."); $("#uf-out").innerHTML = TW.carregando("Lendo as planilhas…");
       try { const r = await PSDTW.enviar("/api/update/check", fd, arquivos); msg(""); show(r, false); } catch (e) { $("#uf-out").innerHTML = ""; msg(e.message, true); PSDTW.erro(e); } };
-    $("#uf").onchange = e => { const fs = [...e.target.files]; if (!fs.length) return; $("#uf-names").textContent = fs.length + " arquivo(s): " + fs.map(f => f.name).join(", "); const fd = new FormData(); fs.forEach(f => fd.append("files", f)); check(fd, fs); };
+    TW.ligarPlanilha("#uf", { multiplo: true, receber: fs => { $("#uf-names").textContent = fs.length + " arquivo(s): " + fs.map(f => f.name).join(", "); const fd = new FormData(); fs.forEach(f => fd.append("files", f)); check(fd, fs); } });
     $("#uf-folder").onclick = () => { $("#uf-names").textContent = ""; const fd = new FormData(); fd.append("folder", "1"); check(fd); };
   }
   PSD.tela("atualizacao", atualizacao);

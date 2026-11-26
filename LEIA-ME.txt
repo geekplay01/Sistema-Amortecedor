@@ -232,6 +232,16 @@ ETAPA 24 — 25/11/2026 (decisões em DECISOES_ETAPA24.md, regras em REGRAS_DE_N
  - As medidas são digitadas no próprio desenho (clique na cota, digite, Enter). Nada sai do PC.
  - O PDF do F-008 é gerado pelo Excel instalado no PC. Os arquivos ficam em data\validacoes (copie essa pasta junto ao fazer backup).
  - Feche e abra o app (iniciar.bat) para carregar a etapa 24.
+ - Atualização de 25-26/11/2026:
+   - O sistema abre SEM a janela preta do cmd. Use o atalho «PERFECT Shock Data.vbs» (ou o iniciar.bat); se já estiver aberto, só abre o navegador.
+     Para fechar: botão «Fechar o sistema» (ícone de desligar, no topo à direita). Mensagens do sistema: data\app_log.txt.
+   - Validação: «Nova revisão» (Rev.01, Rev.02...) no lugar de duplicar; lixeira para excluir; recorte só da tabela de damping para o F-008;
+     rodinha do mouse apertada arrasta o desenho; no Excel do F-008 os números das medidas são caixas de texto que dá para mover.
+   - Anomalias: descrição e aplicação do item em todas as abas e no Excel.
+   - Planilhas: em Atualização de dados, FOB, Vendas (Conferir com o BI), Damping e Importação de Excel dá para arrastar o arquivo ou colar (Ctrl+V)
+     um arquivo copiado no Explorer.
+   - Gráficos revistos: cores novas (mais fáceis de distinguir, também para daltônicos), barras mais finas, só os números importantes escritos;
+     roscas viraram barras divididas e as metas viraram medidores retos; o Pareto da Garantia tem um eixo só. Nenhum número mudou.
  OPCIONAL: leitura das medidas pelo Claude (API da Anthropic; as imagens dos desenhos saem do PC)
  1. .venv\Scripts\python.exe -m pip install anthropic
  2. No arquivo %USERPROFILE%\.perfect_shock_data\.env, acrescente  ANTHROPIC_API_KEY=<chave da API da Anthropic>

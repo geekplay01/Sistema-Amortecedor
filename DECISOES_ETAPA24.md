@@ -125,3 +125,34 @@ também está pendente (AMD0138/0139, AMD0928/0929, AMD1714/1715).
 - Lançamento (ficaram para depois): botões «= PERFECT» e «OK» por linha; importar a tabela de medidas do fornecedor (Excel/CSV); ler DXF; teste do PaddleOCR.
 
 - [ ] Usuário: validar o fluxo de R-D na prática (inclusive um par LD/LE); depois, liberar a aba em Desenvolvimento.
+
+## Update 4 (25/11/2026) — «Sim para todas» (Q1–Q9)
+
+| # | Pedido | Decisão |
+|---|---|---|
+| Q1 | Abrir sem o cmd | `pythonw`; atalho `PERFECT Shock Data.vbs`; botão «Fechar o sistema»; uma instância; log em `data\app_log.txt` |
+| Q2 | Damping no F-008 | Recorte da tabela de damping de cada desenho (passo 4) para a aba DampingForce |
+| Q3 | Rodinha | Rodinha apertada arrasta o desenho; rodinha gira = zoom; clique esquerdo marca |
+| Q4 | Excluir | Qualquer validação; o arquivo em Desenhos fica |
+| Q5 | Revisões | «Nova revisão» Rev.01… no lugar de duplicar; último REV do nome e TEST REVISION (B25); lista agrupada |
+| Q6 | Marcadores no Excel | Caixas de texto («Medida n») pelo Excel do PC; sem Excel, pintados |
+| Q7 | Anomalias | Descrição e aplicação em todas as abas e no Excel |
+| Q8 | Planilhas | Arrastar e soltar + Ctrl+V em todos os módulos que recebem planilha |
+| Q9 | Gráficos | Revisão com a skill `dataviz`; maquete antes/depois para aprovação |
+
+- [x] Q1, Q4/Q5, Q3, Q2 (recorte; CSS do passo 4), Q6 (conferido no Excel do PC: 7 caixas, PDF gerado). Testes de validação verdes.
+- [x] **Incidente (25/11/2026):** a prévia com o banco de cópia gravava em `data\validacoes` (mesmos números) e a limpeza da demonstração apagou as pastas
+  das validações reais 1 (AMD0453) e 3 (AMD0456). Restauradas a partir dos originais em Downloads (desenhos, máscara refeita pelo banco, F-008 xlsx/pdf
+  refeitos; o banco não foi tocado). Correção: `database.DATA_DIR` = pasta do banco; validações, desenhos e fotos ficam ao lado dele (teste novo).
+- [x] Q7: `anomalias.itens`/`com_itens` (catálogo; sem catálogo, DES/R-D) — descrição e aplicação em todas as abas (repetidos e corrigido: por código) e no Excel. Teste.
+- [x] Q8: `PSDTW.zonaPlanilha` + `ligarPlanilha` (clique, arrastar, Ctrl+V de arquivo, filtro de extensão) em Atualização de dados, FOB, Vendas (BI),
+  Damping (regra) e Importação de Excel (a página carrega o `tw.js`). Conferido no navegador (colar .txt recusa; soltar .xlsx envia).
+- [x] Q9 (26/11/2026): maquete aprovada («Aprovo, aplicar») e aplicada. Paleta nova em `--chart-1..7` + `--chart-1s` + `--chart-trilho` (validada nos dois
+  temas); padrões em `PSDTW.grafico` (barra ≤ 24 px e ponta de 4 px, pilha com vão de 2 px, linha de 2 px monótona com bolinha só no fim, grade só no eixo
+  dos valores, legenda só com 2+ séries, rótulo seletivo, cursor, divisória); `PSDTW.segmentos` (rosca → barra segmentada) e `PSDTW.medidor` (meia-rosca →
+  medidor). Telas: Dashboard, Metas, Vendas (+ tabela por classe), Pedidos (cor do fornecedor = selo da tabela; trio ZS/E-WIN/XGM validado), Garantia
+  (Pareto com um eixo e divisória 80%; ano anterior em cinza), Item, Cobertura (curva em degraus de azul + legenda), Guia visual. Achados na conferência:
+  as cores dos eixos não trocavam com o tema (agora lidas do token a cada desenho), linha suavizada furava o zero (monótona), rótulo da última barra
+  cortado (preso ao quadro), nomes pulados no ranking deitado. Conferido no navegador (cópia, porta 5055), claro e escuro, e a troca de tema ao vivo.
+- [x] Documentação do Update 4: DESIGN.md (§3, §6.1 botão Fechar, §6.4 item identificado, §6.4c rodinha/recorte/revisões, §6.5 envio de planilha,
+  §6.6 gráficos reescrita, §10), REGRAS_DE_NEGOCIO (§2 Anomalias, §12 gráficos, §13 Update 4, abertura, planilhas), `regras_telas.py` (Garantia, Validação), LEIA-ME.

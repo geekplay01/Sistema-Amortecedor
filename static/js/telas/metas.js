@@ -5,7 +5,7 @@
 (function () {
   const { $, esc, J, post, root, fail, dlg } = PSD;
   const TW = window.PSDTW, { nf, dmy, badge, kpi, card, notice, empty } = TW;
-  const DES = "DESENVOLVIMENTO", RD = "REDESENVOLVIMENTO", TIPO = { des: DES, rd: RD }, SLUG = { [DES]: "des", [RD]: "rd" }, COR = { [DES]: "#2f6bff", [RD]: "#10b981" };
+  const DES = "DESENVOLVIMENTO", RD = "REDESENVOLVIMENTO", TIPO = { des: DES, rd: RD }, SLUG = { [DES]: "des", [RD]: "rd" }, COR = { [DES]: "var(--chart-1)", [RD]: "var(--chart-2)" };   // DES azul, R-D laranja (DESIGN.md §6.6)
   const campo = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-blue-500";
   const chip = (attrs, label, on) => `<button type="button" ${attrs} aria-pressed="${on}" class="psd-chip">${label}</button>`;      // etapa 19: mesmo visual da barra de filtros
   const LIMITE = 5000;                                       // recebidos no ano: lista inteira (contadores «conta?» exatos)
@@ -61,7 +61,7 @@
           <p class="m-0">${base}</p></div>`,
           `<button type="button" data-edit="${k}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10">Editar meta</button>`, g.reached ? "ring-1 ring-emerald-500/50" : "");
       }).join("");
-      ks.forEach(k => PSDCharts.gauge($("#gg-" + SLUG[k]), { value: d.goals[k].done, target: d.goals[k].target, title: "", subtitle: `realizado × meta ${d.goals[k].target}` }));
+      ks.forEach(k => PSDCharts.gauge($("#gg-" + SLUG[k]), { value: d.goals[k].done, target: d.goals[k].target, title: "" }));
       $("#mevo").innerHTML = d.basis === "validacao" ? "" : card("Evolução mensal — itens recebidos", '<div id="mevoc" class="chart"></div>');
       if (d.basis !== "validacao") PSDCharts.bars($("#mevoc"), { x: d.goals[DES].series.main.map(m => m.month), series: ks.map(k => ({ name: k + (k === DES ? ": item recebido" : ": recebido e validado"), y: d.goals[k].series.main.map(m => m.n), color: COR[k] })), height: 250, labels: true });
     };

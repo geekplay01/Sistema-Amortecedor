@@ -89,6 +89,56 @@ def corrigido(q=""):
 
 TABS = {"familia": familia, "ean": ean, "pesoean": pesoean, "cross": cross, "repetidos": repetidos, "corrigido": corrigido}
 
+# ---- dados do item em todas as abas (etapa 24 · update 4 · Q7): descrição e aplicação de cada código PERFECT ----
+_MAX_APP = 240
+def itens(codes):
+    """{CÓDIGO: {description, application}}: do catálogo (products + applications); o código que não está no catálogo vem do DES/R-D (rd_projects).
+    Aplicação no padrão das planilhas (MONTADORA - MODELO - DIANT. LD/LE - 2021/2025), sem repetir, cortada em ~240 caracteres."""
+    codes = sorted({str(c).strip().upper() for c in codes if c and str(c).strip()})
+    out = {}
+    for i in range(0, len(codes), 900):
+        parte = codes[i:i + 900]; ph = ",".join("?" * len(parte))
+        for r in Q.q(f"""SELECT upper(p.perfect_code) code, p.description, a.make, a.model, a.application_text, a.axle, a.side, a.year_from, a.year_to
+                         FROM products p LEFT JOIN applications a ON a.product_id=p.id WHERE upper(p.perfect_code) IN ({ph}) ORDER BY p.perfect_code, a.make, a.model, a.year_from""", parte):
+            g = out.setdefault(r["code"], {"description": r["description"], "apps": []})
+            if r["make"] or r["model"] or r["application_text"]:
+                g["apps"].append(Q._app_text(r["make"], r["model"], r["application_text"], r["axle"], r["side"], r["year_from"], r["year_to"]))
+        falta = [c for c in parte if c not in out or not out[c]["apps"] or not out[c]["description"]]
+        if falta:
+            ph = ",".join("?" * len(falta))
+            for r in Q.q(f"""SELECT upper(code) code, description, make, vehicle, application_text, year_from, year_to FROM rd_projects
+                             WHERE upper(code) IN ({ph}) ORDER BY CASE suggestion WHEN 'DESENVOLVIMENTO' THEN 0 ELSE 1 END, id""", falta):
+                g = out.setdefault(r["code"], {"description": None, "apps": [], "rd": True})
+                if not g["description"]: g["description"] = r["description"]
+                if g.get("rd") or not g["apps"]:
+                    g["rd"] = True; g["apps"].append(Q._app_text(r["make"], r["vehicle"], r["application_text"], None, None, r["year_from"], r["year_to"]))
+    res = {}
+    for c, g in out.items():
+        t = " · ".join(dict.fromkeys(a for a in g["apps"] if a))
+        res[c] = {"description": g["description"], "application": (t[:_MAX_APP - 1] + "…") if len(t) > _MAX_APP else t}
+    return res
+
+def _codigos(txt): return [c.strip() for c in str(txt or "").split(",") if c.strip() and not c.strip().startswith("(") and c.strip() != "—"]
+
+def com_itens(tab, rows):
+    """Acrescenta descrição e aplicação às linhas da aba (na tela e no Excel). Abas de um código: `description`/`application`;
+    Concorrentes repetidos e Cross corrigido (vários códigos): `itens` = [{code, description, application}]."""
+    if tab == "repetidos": chaves = [c for r in rows for c in r["codigos"]]
+    elif tab == "corrigido": chaves = [c for r in rows for c in _codigos(r["depois"])]
+    else: chaves = [r.get("perfect_code") or r.get("code") for r in rows]
+    I = itens(chaves); vazio = {"description": None, "application": ""}
+    for r in rows:
+        if tab in ("repetidos", "corrigido"):
+            cs = r["codigos"] if tab == "repetidos" else _codigos(r["depois"])
+            r["itens"] = [{"code": c, **I.get(c.upper(), vazio)} for c in cs]
+        else:
+            i = I.get(str(r.get("perfect_code") or r.get("code") or "").upper(), vazio)
+            if not r.get("description"): r["description"] = i["description"]
+            if not r.get("application"): r["application"] = i["application"]
+    return rows
+
+def _itens_txt(r, k): return "\n".join(f"{i['code']}: {i[k] or '-'}" for i in r.get("itens") or [])
+
 def counts(q=""):
     return {"familia": len(familia(q)), "ean": len(ean(q)), "pesoean": len(pesoean(q)), "protheus": len(protheus(q)), "cross": len(cross(q)), "repetidos": len(repetidos(q)), "corrigido": len(corrigido(q)),
             "sugestoes": Q.q1("SELECT COUNT(*) n FROM equivalence_suggestions WHERE status='pendente'")["n"]}
@@ -96,16 +146,19 @@ def counts(q=""):
 def export_xlsx(q=""):
     """Excel com as abas Família, EAN, Peso e EAN × BI03 e Pendente cadastro Protheus, filtradas pela busca."""
     import exporter
-    wb = exporter.Workbook(); wb.remove(wb.active); f = familia(q); e = ean(q); pe = pesoean(q); pr = protheus(q)
-    exporter._sheet(wb, "Família", ["Código PERFECT", "Descrição", "Família no catálogo", "Famílias no Inmetro", "Certificados (nº · fornecedor · família)"],
-                    [[r["perfect_code"], r["description"], r["family"], " / ".join(r["inmetro_families"]), "; ".join(f"{c['number']} · {c['supplier'] or '-'} · {c['family']}" for c in r["certificates"])] for r in f])
-    exporter._sheet(wb, "EAN", ["Código PERFECT", "Descrição", "EAN no catálogo", "EAN importado", "Fonte"], [[r["perfect_code"], r["description"], r["current"], r["imported"], r["source"]] for r in e])
-    exporter._sheet(wb, "Peso e EAN × BI03", ["Código PERFECT", "Descrição", "Campo", "No CatalogoAMD", "No BI03 (Protheus, vale este)"], [[r["perfect_code"], r["description"], r["campo"], r["catalogo"], r["bi03"]] for r in pe])
-    exporter._sheet(wb, "Pendente cadastro Protheus", ["Código", "Tipo", "Status", "Fornecedor", "Aplicação", "Situação"], [[r["code"], r["tipo"], r["status"], r["supplier"], r["application"], "Pendente cadastro Protheus"] for r in pr])
-    cx, rp = cross(q), repetidos(q)
-    exporter._sheet(wb, "Cross × servidor", ["Código PERFECT", "Descrição", "Concorrente", "No CrossCatalogo", "No servidor"], [[r["perfect_code"], r["description"], r["concorrente"], " / ".join(r["cross"]), " / ".join(r["servidor"])] for r in cx])
-    exporter._sheet(wb, "Concorrentes repetidos", ["Caso", "Concorrente", "Referência(s)", "Código(s) PERFECT"],
-                    [["Mesma referência em vários códigos" if r["grupo"] == "ref_em_varios" else "Várias referências no mesmo código", r["concorrente"], " / ".join(r["referencias"]), " / ".join(r["codigos"])] for r in rp])
-    co = corrigido(q)
-    exporter._sheet(wb, "Cross corrigido no app", ["Concorrente", "Referência", "Antes", "Depois (vale no app)", "Quando"], [[r["concorrente"], r["referencia"], r["antes"], r["depois"], r["em"]] for r in co])
+    wb = exporter.Workbook(); wb.remove(wb.active)
+    f, e, pe, pr = com_itens("familia", familia(q)), com_itens("ean", ean(q)), com_itens("pesoean", pesoean(q)), com_itens("protheus", protheus(q))
+    exporter._sheet(wb, "Família", ["Código PERFECT", "Descrição", "Aplicação", "Família no catálogo", "Famílias no Inmetro", "Certificados (nº · fornecedor · família)"],
+                    [[r["perfect_code"], r["description"], r["application"], r["family"], " / ".join(r["inmetro_families"]), "; ".join(f"{c['number']} · {c['supplier'] or '-'} · {c['family']}" for c in r["certificates"])] for r in f])
+    exporter._sheet(wb, "EAN", ["Código PERFECT", "Descrição", "Aplicação", "EAN no catálogo", "EAN importado", "Fonte"], [[r["perfect_code"], r["description"], r["application"], r["current"], r["imported"], r["source"]] for r in e])
+    exporter._sheet(wb, "Peso e EAN × BI03", ["Código PERFECT", "Descrição", "Aplicação", "Campo", "No CatalogoAMD", "No BI03 (Protheus, vale este)"], [[r["perfect_code"], r["description"], r["application"], r["campo"], r["catalogo"], r["bi03"]] for r in pe])
+    exporter._sheet(wb, "Pendente cadastro Protheus", ["Código", "Descrição", "Tipo", "Status", "Fornecedor", "Aplicação", "Situação"], [[r["code"], r["description"], r["tipo"], r["status"], r["supplier"], r["application"], "Pendente cadastro Protheus"] for r in pr])
+    cx, rp = com_itens("cross", cross(q)), com_itens("repetidos", repetidos(q))
+    exporter._sheet(wb, "Cross × servidor", ["Código PERFECT", "Descrição", "Aplicação", "Concorrente", "No CrossCatalogo", "No servidor"], [[r["perfect_code"], r["description"], r["application"], r["concorrente"], " / ".join(r["cross"]), " / ".join(r["servidor"])] for r in cx])
+    exporter._sheet(wb, "Concorrentes repetidos", ["Caso", "Concorrente", "Referência(s)", "Código(s) PERFECT", "Descrição", "Aplicação"],
+                    [["Mesma referência em vários códigos" if r["grupo"] == "ref_em_varios" else "Várias referências no mesmo código", r["concorrente"], " / ".join(r["referencias"]), " / ".join(r["codigos"]),
+                      _itens_txt(r, "description"), _itens_txt(r, "application")] for r in rp])
+    co = com_itens("corrigido", corrigido(q))
+    exporter._sheet(wb, "Cross corrigido no app", ["Concorrente", "Referência", "Antes", "Depois (vale no app)", "Descrição (depois)", "Aplicação (depois)", "Quando"],
+                    [[r["concorrente"], r["referencia"], r["antes"], r["depois"], _itens_txt(r, "description"), _itens_txt(r, "application"), r["em"]] for r in co])
     bio = io.BytesIO(); wb.save(bio); bio.seek(0); return bio, len(f) + len(e) + len(pe) + len(pr) + len(cx) + len(rp) + len(co)

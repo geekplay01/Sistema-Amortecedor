@@ -43,7 +43,7 @@ Paleta do logo (as quatro faixas inclinadas): azul-marinho `#202D56` · vermelho
 **Tema escuro (etapa 22):** superfícies neutras e pouco saturadas, em degraus que clareiam com a elevação (página → barra → cartão → cabeçalho/hover →
 menu suspenso); o azul-marinho fica só no menu lateral, que assim se separa da página. Azul usado como **texto** é claro (`--cobalt`, `--t-blue-*`,
 ≥ 7:1 sobre o cartão); azul usado como **fundo** com texto branco é o da marca (`--b600`, ≈ 5,8:1). Nunca use `--b500` como cor de texto no escuro.
-| `--pf-sky` | `#64C4E9` | igual | destaque, item atual do menu, gráficos |
+| `--pf-sky` | `#64C4E9` | igual | destaque, item atual do menu (gráficos têm paleta própria, §6.6) |
 | `--focus` | `#2F8FCB` | `#64C4E9` | anel de foco |
 | `--ok` | `#0E9F6E` | `#34D399` | só «OK / atingido / recebido» |
 | `--t-{blue,red,amber,emerald,violet}-*` | | | texto colorido legível sobre o fundo de cada tema |
@@ -52,7 +52,8 @@ menu suspenso); o azul-marinho fica só no menu lateral, que assim se separa da 
 - vermelho = ruptura, erro, vencida, reprovada · laranja = risco, aviso, pendente, atalho «forte» · verde = OK, atingido, aprovado, recebido
   · **exceção (etapa 22): preço FOB destacado** (`.psd-fob-min`, `.psd-fobrd-c.on`) — o menor na ficha e na aba FOB; o do fornecedor do item em DES/R-D
   (o de comparação fica neutro, «em branco»)
-- azul-marinho/`--b600` = selecionado, ação principal · azul-claro = destaque e séries de gráfico · cinza (`--mut`) = neutro, zerado, parado.
+- azul-marinho/`--b600` = selecionado, ação principal · azul-claro = destaque · cinza (`--mut`) = neutro, zerado, parado. Séries de gráfico: paleta
+  própria `--chart-*` (§6.6).
 - Bolinha de sub status (`.psd-sd`): laranja = pendente, verde = finalizado/aprovado, vermelho = reprovado.
 - **Faixa inclinada do logo (etapa 23 · Q7)** — `--inc` (paralelogramo) em azul-claro `--pf-sky`: o **único** destaque de marca dentro das telas. Marca só
   o que está selecionado: estágio (`.psd-est`), item atual do menu (`.nav-item.is-cur`), opção do seletor de linha (`.psd-linha`) e do segmentado (`.psd-seg`)
@@ -86,7 +87,8 @@ Selo/etiqueta: `PSDTW.badge(texto, tom)` com tons `blue · green · amber · red
 Use o que existe antes de criar. Componente novo entra em `marca.css` com prefixo `psd-` e é descrito aqui.
 
 ### 6.1 Estrutura de toda tela (`templates/page.html`)
-Menu lateral azul-marinho · barra do topo (título do app, sincronização, tema, usuário) · `h2.ptitle` + link «Regras da tela» (`.ptitle-regras`)
+Menu lateral azul-marinho · barra do topo (título do app, sincronização, tema, usuário, **«Fechar o sistema»** — ícone `power`, último à direita,
+confirmação com `perigo`; etapa 24, o app roda sem a janela do cmd) · `h2.ptitle` + link «Regras da tela» (`.ptitle-regras`)
 · faixa «vem de / alimenta» (`.relbar`) · conteúdo da tela em `#panel` (um arquivo por tela em `static/js/telas/`).
 
 ### 6.2 Números
@@ -113,6 +115,9 @@ Menu lateral azul-marinho · barra do topo (título do app, sincronização, tem
 `PSDTW.table(colunas, linhas, {h})`: cabeçalho fixo em Barlow 13 px, caixa normal, zebra, hover, altura máxima com rolagem interna (`max-h-[65vh]`).
 Código do item é link (ficha ou detalhe). Texto longo: `truncate` com `title`. Paginação centralizada (‹ Página n de N ›). Linha de resumo acima da
 tabela: `<b>N</b> item(ns), k filtro(s) ativo(s)`.
+- **Item identificado (etapa 24 · Q7, Anomalias):** onde a linha traz um código PERFECT, vêm junto a descrição e a aplicação (coluna «Aplicação» em
+  texto pequeno, `min-w-[12rem] max-w-[24rem]`, quebra linha). Linha com vários códigos (Concorrentes repetidos, Cross corrigido) lista cada código com a
+  sua descrição e aplicação embaixo; a coluna de referências quebra linha (`max-w-[16rem]`) para a tabela caber.
 
 ### 6.4b Campos com sugestão e célula editável
 - **Sugestões ao digitar**: use `<input list="id">` + `<datalist id="id">` e preencha o datalist; o `tw.js` troca a lista nativa (que segue a cor
@@ -143,6 +148,13 @@ Um cartão (`.psd-banc`): cabeçalho com o código, a descrição e os dados do 
 - **Tabela como planilha**: Enter/↓ desce na coluna, Shift+Enter/↑ sobe, colar uma coluna do Excel preenche para baixo.
 - **Damping**: Enter vai para o valor ao lado (no fim, a linha de baixo), Shift+Enter volta, colar vários números preenche a linha.
 - **Zoom**: roda do mouse sobre o ponto, botões «+ − Ajustar» e «Tela cheia» no título do desenho (`.psd-zctl`); os números mantêm o tamanho (`--z`).
+  **Rodinha apertada** (botão do meio) arrasta o desenho, em qualquer modo; o clique esquerdo continua marcando (etapa 24 · Q3).
+- **Recorte do damping** (passo 4, `.psd-vrecs`, grade de um quadro por desenho com «só a tabela» / «desenho inteiro» ao lado do nome): arrastar seleciona
+  sobre a tabela de damping e «Manter só a seleção» (ícone `crop`) guarda o retângulo (`.psd-recorte`: borda vermelha da marca, o resto escurecido); só esse
+  pedaço vai para a aba DampingForce do F-008. «Desenho inteiro» desfaz.
+- **Revisões** (Q5): concluída, a bancada oferece «Nova revisão (Rev.0n)» no lugar de duplicar; a faixa `.psd-vrevs` lista as revisões da validação (a atual
+  marcada) e a lista da tela Validação mostra uma linha por validação (a revisão mais nova) com a contagem de revisões. Excluir (Q4): lixeira `.psd-vx` ao
+  lado da revisão, em qualquer situação, com confirmação `perigo`.
   Em tela cheia o bloco vai para o `<body>` (fora do recorte do cartão) e Esc volta (Esc fecha antes o campo aberto).
 - **Revisão**: tabela de damping, faixa de três números (A, R em vermelho quando houver, conferidas em laranja enquanto faltar), duas ações (Aprovar = principal;
   Reprovar = contorno vermelho, não preenchido) e os arquivos do F-008. Concluída, a bancada fica só leitura.
@@ -154,12 +166,65 @@ Um cartão (`.psd-banc`): cabeçalho com o código, a descrição e os dados do 
 - Aviso de estado: `PSDTW.notice(html, "blue"|"amber"|"red")`. Não usar para explicar regra (ver §2.3).
 - Resultado de ação: `PSDTW.toast(msg, {tom})`; erro: `PSDTW.erro(e)`. Confirmação de exclusão: `PSDTW.confirmar({..., perigo: true})`.
 - Botões: `.psd-btn` (`.prim` = ação principal, uma por bloco; `.perigo` = destrutiva). Componentes antigos usam `.btn` — mesmo visual.
+- **Envio de planilha (etapa 24 · Q8):** todo módulo que recebe planilha usa a área tracejada de Desenhos em versão compacta —
+  `PSDTW.zonaPlanilha({id, titulo, dica, multiplo, aceita})` (`.psd-drop.psd-drop-p`, ícone `file-spreadsheet` em cobalto) + `PSDTW.ligarPlanilha(alvo,
+  {aceita, multiplo, receber})`: clique, Enter/Espaço, arrastar e soltar (`.sobre` enquanto passa por cima) e **Ctrl+V** de arquivo copiado no Explorer
+  (vale enquanto a área está na tela). Extensão fora de `aceita` → aviso «Arquivo não aceito». Em Atualização de dados, FOB, Vendas (BI), Damping e
+  Importação de Excel. Não desenhe `<input type=file>` solto.
 
-### 6.6 Gráficos
-`PSDCharts.{bars, line, hbars, donut, gauge, funnel}` (desenhados por `PSDTW.grafico`, Chart.js salvo no app). Cores **só** pelos tokens
-`--chart-1..7` (azul da marca, azul-claro, laranja, vermelho, verde, violeta, cinza), que clareiam no escuro; cor da paleta clara passada pela tela é
-traduzida para o tema. Grade `--chart-grid`, legenda `--chart-legend`, trilho do medidor `--chart-track`. Legenda com bolinha 8 × 8. Trocar o tema
-repinta. Verde só para «atingido».
+### 6.6 Gráficos (etapa 24 · Q9, skill `dataviz`; maquete aprovada em 26/11/2026)
+`PSDCharts.{bars, line, hbars, donut, gauge, funnel}` e `PSDTW.grafico(el, cfg)` (Chart.js salvo no app). Os padrões abaixo vêm de `PSDTW.grafico`;
+a tela só passa dados, rótulos e, quando precisa, a cor por token. **A forma vem antes da cor.**
+
+**Paleta** (validada pelo script da skill: faixa de claridade, croma mínimo, separação para daltonismo, contraste ≥ 3:1, nos dois temas — o escuro
+tem degraus próprios sobre o cartão `#141A28`, não uma inversão):
+
+| Ordem | Token | Claro | Escuro |
+|---|---|---|---|
+| 1 azul | `--chart-1` | `#3A57A3` | `#6F8EE6` |
+| 2 laranja | `--chart-2` | `#D27800` | `#CC7E12` |
+| 3 azul-claro | `--chart-3` | `#2E9FD0` | `#2493C6` |
+| 4 vermelho | `--chart-4` | `#D62E3D` | `#E8505C` |
+| 5 violeta | `--chart-5` | `#7B5CE0` | `#9479EE` |
+| 6 verde | `--chart-6` | `#0E9F6E` | `#1FAE7E` |
+| cinza de fundo (não é série) | `--chart-7` | `#A3AEC2` | `#4A5468` |
+| degrau claro do azul (escala) | `--chart-1s` | `#93A3CC` | `#465A90` |
+| trilho do medidor | `--chart-trilho` | `#DCE4F5` | `#26324F` |
+
+- **Ordem fixa, nunca ciclada.** A 1ª série é azul, a 2ª laranja… Vermelho e verde só a partir da 4ª. Passou de 6 séries: junte em «Outros» ou divida o gráfico.
+- **A cor segue a coisa, não a posição:** DES = azul, R-D = laranja (Dashboard e Metas); fornecedor = a cor do selo dele na tabela (ZS azul, E-WIN verde,
+  XGM violeta, VERIFICAR cinza — trio validado). Filtrar não repinta.
+- **Cinza = o resto:** ano anterior ao lado do atual (Garantia), «Sem dado», as barras não escolhidas quando uma está em destaque (laranja).
+- **Escala ordenada** (curva A > B > C, Cobertura): um azul em degraus (`--chart-1`, `--chart-1s`, `--chart-7`) com legenda em HTML (`PSDTW.legenda`), nunca
+  cores de identidade.
+- **Status não é série:** verde = atingido/OK, vermelho = crítico. Gráfico de estado (OK, risco, ruptura…) usa as cores de status, com o nome na legenda.
+- Cor pedida pela tela: token (`"--chart-2"` ou `"var(--chart-2)"`). Hex antigo ainda cai no slot equivalente (`ANTIGAS` em `tw.js`), mas não use em código novo.
+
+**Marcas e eixos:**
+- Barra ≤ **24 px**, ponta arredondada de **4 px** e base reta; duas séries lado a lado (ano atual × anterior) com 12 px cada.
+- Pilha: **vão de 2 px** na cor do cartão entre os blocos (borda de cima), só o bloco do topo arredondado. Nunca contorno em volta da marca.
+- Linha de **2 px**, interpolação monótona (não passa do valor nem fura o zero), sem área embaixo com 2 séries ou mais (uma série pode lavar a 10 %);
+  só o **último ponto** tem bolinha (8 px, anel de 2 px na cor do cartão).
+- Grade fina e sólida **só no eixo dos valores**, sem linha de eixo; até 5 marcas com número curto (`PSDTW.curto`: 950 · 12,5 mil · 2,3 mi).
+  Barras deitadas (ranking) mostram todos os nomes.
+- **Um eixo só.** Dois eixos Y inventam uma relação entre as escalas: o Pareto mostra o acumulado como a divisória «80% em N defeitos» (plugin
+  `psdDivisa`) e o % de cada um na dica.
+
+**Texto:**
+- Legenda **só com 2 séries ou mais**, alinhada à esquerda, bolinha 8 × 8; uma série não tem legenda (o título do cartão diz o que é).
+- **Rótulo seletivo** (`psdRotulos`): linha = o valor no fim de cada série; barras de uma série = o maior e o último mês. Rótulos que se tocariam: fica
+  um, o resto vai para a dica. O texto nunca sai do quadro e nunca usa a cor da série (`--tx`).
+- Dica ao passar o mouse em tudo; linhas e barras agrupadas mostram todas as séries do mês, com a linha vertical do cursor (`psdCursor`) nas linhas.
+
+**Formas que substituem a rosca e a meia-rosca:**
+- **Parte de um todo** → barra segmentada alta (`PSDTW.segmentos(el, [{l, v, cor}])`, `.psd-segbar`): 28 px, 2 px entre as partes, cantos de 4 px, a fatia
+  escrita dentro em branco ou quase-preto (o que contrastar mais) **só se couber**; a que não cabe vai para a legenda ao lado do nome. Legenda na ordem
+  dos blocos. Embaixo, a tabela com os números (Vendas por classe). `PSDCharts.donut` já desenha assim.
+- **Meta** → medidor reto (`PSDTW.medidor({value, target, title, subtitle})`, `.psd-med`): número grande, «de N (x%)» e o trilho; preenche em azul e em
+  verde (`--ok`) só quando bate a meta. `PSDCharts.gauge` já desenha assim.
+
+Trocar o tema repinta: as cores dos eixos são lidas do token a cada desenho e o cache de opções do Chart.js é limpo. Gráfico leva `aria-label` (`titulo`);
+barra segmentada e medidor têm nome acessível com todos os valores.
 
 ## 7. Movimento
 
@@ -199,6 +264,8 @@ repinta. Verde só para «atingido».
 - Explicar regra de cálculo na tela (vai para `regras_telas.py`).
 - Barra de filtros própria de uma tela, ou «Exportar CSV» em vez de «Baixar Excel».
 - Cor fixa (hex) em componente novo; verde para qualquer coisa que não seja «OK».
+- Gráfico com dois eixos Y, rosca/pizza, meia-rosca de meta, número em todo ponto, legenda de uma série só, barra grossa (> 24 px) ou cor de série
+  escolhida pela posição (§6.6).
 - Cartões grandes para escolha simples (use seletor segmentado); mais de uma ação principal por bloco.
 - Fonte abaixo de 11 px, emoji como ícone, gradiente/brilho decorativo.
 - Sinais de design genérico (etapa 23, skill `frontend-design`): caixas iguais para tudo, rótulo em CAIXA ALTA espaçada, informações emendadas com «·»,
