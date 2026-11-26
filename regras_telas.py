@@ -44,7 +44,10 @@ def lista():
             f"Validações: USER_VALID = <b>{c['user']}</b> · LINHA «{c['linha']}» (inclui a linha pesada) · contagem por código distinto · tipo pela SUGESTÃO do servidor (DES / R-D), no ano da data de aprovação.",
             "<b>Redesenvolvimento</b>: entram todas as validações do usuário no ano, inclusive as que estão com validação pendente da qualidade ou reprovada; o item entra na meta do ano quando chegar a ITEM RECEBIDO, mesmo que chegue depois.",
             "Itens em PENDENTE CONFIRMAÇÃO com validação enviada entram na meta sozinhos quando o servidor mostrar ITEM RECEBIDO.",
-            "Como as metas contam (validações ou itens recebidos) se escolhe em Configurações › Regras de negócio."]),
+            "Como as metas contam (validações ou itens recebidos) se escolhe em Configurações › Regras de negócio.",
+            "<b>Anel da meta</b>: o tracinho marca o ritmo de hoje (meta × parte do ano que já passou); ao lado, quanto falta ou sobra em relação a esse ritmo.",
+            "<b>Validações item a item</b>: DES e R-D, um código por linha. Clicar numa barra de «Validações por mês» mostra as validações daquele mês e tipo; "
+            "o código validado em dois meses aparece nos dois, por isso a soma das barras pode passar do total de códigos do ano."]),
         ("pedidos-aberto", "Pedidos em Aberto", [
             "Pedidos de compra de <b>amortecedor</b> com código iniciado em <b>MP-</b> e saldo em aberto. O fornecedor vem do código EX do ERP (EX0002116 = ZS · EX0002110 = E-WIN · EX008042 = XGM); outro código aparece como <b>VERIFICAR</b>.",
             f"<b>Previsão de chegada</b>: cada linha em aberto é prevista a partir de onde ela está hoje, somando as etapas que faltam com o prazo típico (<b>mediana</b>) daquele fornecedor; "
@@ -100,8 +103,9 @@ def lista():
             "(um ou mais códigos AMD… do catálogo ou de DES/R-D; vazio = sem relação); o vínculo vale sobre a base, aparece como «vinculado no app» e tem «Desfazer»."]),
         ("desenvolvimento", "Desenvolvimento", _des_rd(c, "des")),
         ("redesenvolvimento", "Redesenvolvimento", _des_rd(c, "rd") + [
-            "<b>Validar itens</b> (etapa 24): sem busca, lista os itens em andamento que o servidor marca «Pendente validação», «Validação reprovada» ou «Pendente desenho do fornecedor», "
-            "nessa ordem; com busca, qualquer item em andamento. «Iniciar validação» abre a bancada (a mesma da tela Validação); quem já tem rascunho mostra «Continuar»."]),
+            "<b>Validar itens</b>: todos os itens em andamento, primeiro os que o servidor marca «Pendente validação», «Validação reprovada» ou «Pendente desenho do fornecedor», "
+            "nessa ordem. O atalho «Pendentes de validação» mostra esses e o outro lado (LD/LE) de cada um, com o selo «par de …», mesmo quando o servidor marcou só um lado. "
+            "«Iniciar validação» abre a bancada (a mesma da tela Validação); quem já tem rascunho mostra «Continuar»; validação concluída, «Abrir»."]),
         ("validacao", "Validação", [
             "Validação de desenho que gera o F-008: o desenho PERFECT (referência) contra o desenho do fornecedor. Por enquanto só Redesenvolvimento; Desenvolvimento entra depois.",
             "<b>1 · Desenhos</b>: os dois são enviados na hora (PDF, PNG ou JPG; o PDF vale pela 1ª página). No PERFECT, arraste para selecionar: «Apagar seleção» (Delete) pinta de branco e "
@@ -130,7 +134,13 @@ def lista():
             "Aba de damping do F-008: arraste sobre a tabela de damping de cada desenho e use «Manter só a seleção»; sem recorte, vai o desenho inteiro. "
             "Com o Excel no PC, os números das medidas entram como caixas de texto («Medida n») sobre o desenho do fornecedor e podem ser movidos no Excel; sem Excel, são pintados no desenho.",
             "Concluída, a validação não muda mais; «Nova revisão» abre a Rev.01, Rev.02… com tudo da anterior (troque o que mudou), e as anteriores ficam guardadas. "
-            "A lixeira exclui a revisão com os arquivos dela (o desenho já enviado para Desenhos fica). O status do item no servidor não muda (o servidor só é lido)."]),
+            "Uma validação por código: validar de novo um item já validado abre a próxima revisão, nunca outra Rev.00. "
+            "A lixeira exclui a revisão com os arquivos dela (o desenho já enviado para Desenhos fica). O status do item no servidor não muda (o servidor só é lido).",
+            "<b>Par LD/LE</b>: pela planilha Lados; sem par ali (por exemplo, item fora do catálogo), pelo item do servidor com a mesma montadora, veículo, aplicação, "
+            "anos e eixo e o lado oposto (só quando há um único). Ao concluir um lado, o par que já tem validação concluída não é mexido; o que não tem fica pronto. "
+            "Validação concluída antes disso mostra «Preparar o par».",
+            "<b>Excluir cota</b>: o ✕ da linha tira a medida desta validação (com «Desfazer»); no F-008 a linha fica vazia. No desenho, clique no número e aperte Delete "
+            "(ou botão direito › «Tirar o número») para tirar só a posição; Ctrl+Z devolve."]),
         ("amostras", "Compra de amostras", [
             "<b>Sugestões</b>: itens PERFECT em DESENVOLVIMENTO marcados PENDENTE COMPRAS, sem amostra comprada, fora do catálogo e com status diferente de ITEM RECEBIDO (só Amortecedor). "
             "Redesenvolvimento não tem sugestão: para comprar amostra de um item já desenvolvido, use «+ Nova amostra». Cada referência abre a consulta do menor preço.",

@@ -195,14 +195,44 @@ def _preencher_perfect(code, linhas, sem_id=None):
     return linhas
 
 def par(code):
-    """Par do outro lado (LD × LE) pela planilha Lados (side_pairs). Só itens com lados (LD ou LE na descrição); LD/LE num item só não tem par."""
+    """Par do outro lado (LD × LE). 1º pela planilha Lados (side_pairs, itens do catálogo); sem par ali, pela aplicação do servidor (`_par_aplicacao`).
+    Só itens com lados (LD ou LE na descrição); LD/LE num item só não tem par."""
     p = q1("SELECT id, description FROM products WHERE upper(perfect_code)=upper(?)", (code or "",))
-    if not p: return None
-    r = q1("SELECT CASE WHEN right_product_id=? THEN left_product_id ELSE right_product_id END o FROM side_pairs WHERE right_product_id=? OR left_product_id=?", (p["id"],) * 3)
-    o = q1("SELECT perfect_code, description FROM products WHERE id=?", (r["o"],)) if r and r["o"] else None
-    meu, dele = db.side_from_text(p["description"]), db.side_from_text(o["description"]) if o else None
-    if not o or meu not in ("direito", "esquerdo") or dele not in ("direito", "esquerdo") or meu == dele: return None
-    return {"code": o["perfect_code"].upper(), "side": dele, "meu_lado": meu}
+    if p:
+        r = q1("SELECT CASE WHEN right_product_id=? THEN left_product_id ELSE right_product_id END o FROM side_pairs WHERE right_product_id=? OR left_product_id=?", (p["id"],) * 3)
+        o = q1("SELECT perfect_code, description FROM products WHERE id=?", (r["o"],)) if r and r["o"] else None
+        meu, dele = db.side_from_text(p["description"]), db.side_from_text(o["description"]) if o else None
+        if o and meu in ("direito", "esquerdo") and dele in ("direito", "esquerdo") and meu != dele:
+            return {"code": o["perfect_code"].upper(), "side": dele, "meu_lado": meu, "fonte": "planilha Lados"}
+    return _par_aplicacao(code)
+
+def _eixo(t):
+    d = (t or "").upper(); return "dianteiro" if "DIANT" in d else "traseiro" if "TRAS" in d else None
+
+def _par_aplicacao(code):
+    """Próximo update (26/11/2026): item fora do catálogo (ou sem par na planilha Lados) acha o par pela aplicação do servidor (rd_projects): mesma
+    montadora, veículo, aplicação e anos, mesmo eixo e lado oposto. Só quando sobra exatamente um código; senão, sem par (nada é adivinhado)."""
+    meus = q("SELECT description, make, vehicle, application_text, year_from, year_to FROM rd_projects WHERE upper(code)=upper(?)", (code or "",))
+    if not meus: return None
+    meu = next((s for s in (db.side_from_text(r["description"]) for r in meus) if s in ("direito", "esquerdo")), None)
+    eixo = next((e for e in (_eixo(r["description"]) for r in meus) if e), None)
+    if not meu: return None
+    norm = lambda x: str(x if x is not None else "").strip().upper()
+    apls = {(norm(r["make"]), norm(r["vehicle"]), norm(r["application_text"]), norm(r["year_from"]), norm(r["year_to"])) for r in meus if norm(r["make"]) and norm(r["vehicle"])}
+    if not apls: return None
+    cand, tipos = {}, {}
+    for a in apls:
+        for r in q("""SELECT code, description, suggestion FROM rd_projects WHERE upper(code)<>upper(?) AND upper(trim(coalesce(make,'')))=? AND upper(trim(coalesce(vehicle,'')))=?
+                      AND upper(trim(coalesce(application_text,'')))=? AND coalesce(CAST(year_from AS TEXT),'')=? AND coalesce(CAST(year_to AS TEXT),'')=?""", (code, *a)):
+            s = db.side_from_text(r["description"])
+            if s in ("direito", "esquerdo") and s != meu and _eixo(r["description"]) == eixo: cand[r["code"].upper()] = s; tipos.setdefault(r["code"].upper(), set()).add(r["suggestion"])
+    # desempate (Maverick: AMD0226 × NZ6Z/18124/P da montadora): mesmo prefixo de código (AMD com AMD) e, depois, também no mesmo tipo (R-D com R-D)
+    meus_tipos = {r["suggestion"] for r in q("SELECT DISTINCT suggestion FROM rd_projects WHERE upper(code)=upper(?)", (code,))}
+    for regra in (lambda c: c[:3] == (code or "").upper()[:3], lambda c: bool(tipos[c] & meus_tipos)):
+        if len(cand) > 1 and any(regra(c) for c in cand): cand = {c: s for c, s in cand.items() if regra(c)}
+    if len(cand) != 1: return None
+    c, s = next(iter(cand.items()))
+    return {"code": c, "side": s, "meu_lado": meu, "fonte": "aplicação"}
 
 LADO_CURTO = {"direito": "LD", "esquerdo": "LE"}
 
@@ -225,6 +255,9 @@ def criar(kind, code, by=None):
     if not code: raise ValueError("Informe o código.")
     v = q1("SELECT id FROM validacoes WHERE kind=? AND upper(code)=? AND status='andamento' ORDER BY id DESC", (kind, code))
     if v: return v["id"]
+    # uma validação por código (próximo update, 26/11/2026): código já validado não ganha outra Rev.00 — validar de novo é a próxima revisão da mesma série
+    ult = q1("SELECT id FROM validacoes WHERE kind=? AND upper(code)=? ORDER BY coalesce(revisao,0) DESC, id DESC", (kind, code))
+    if ult: return nova(ult["id"], by)
     info = _rd_info(kind, code)
     if not info["in_rd"]: raise ValueError(f"{code} não está em {KINDS[kind]}.")
     fams = {x["v"] for x in familias()}; fam = (info["family"] or "").upper()
@@ -656,7 +689,9 @@ def _montar_f008(modelo, v, d, decisao, pp, pf, xlsx, caixas):
     _dados_aba(wb, v)
     for i in range(NLINHAS):
         r = LINHA0 + i; l = d["linhas"][i] if i < len(d["linhas"]) else None
-        if not l: continue
+        if not l:          # linha do modelo sem medida (p. ex. cota excluída na bancada): sai limpa, sem o nome que o modelo trazia
+            for col in (2, 6, 9, 12, 13, 15): ws.cell(r, col).value = None
+            continue
         ws.cell(r, 2).value = l["nome"]
         ws.cell(r, 6).value = _valor_excel(l["p"]); ws.cell(r, 9).value = _valor_excel(l["f"])
         tm, tn = str(l.get("tm") or "").strip(), str(l.get("tn") or "").strip()
@@ -793,6 +828,10 @@ def preparar_par(vid, by=None):
     import copy, drawings
     v = _row(vid); pr = par(v["code"])
     if not pr: return None
+    # sem duplicar (próximo update): par que já tem validação concluída (e nenhuma em andamento) fica como está — só o aviso
+    feita = q1("SELECT id, status, concluida_em, coalesce(revisao,0) revisao FROM validacoes WHERE kind=? AND upper(code)=? ORDER BY coalesce(revisao,0) DESC, id DESC", (v["kind"], pr["code"]))
+    if feita and feita["status"] != "andamento":
+        return {"id": feita["id"], "code": pr["code"], "lado": LADO_CURTO[pr["side"]], "ja": {"status": feita["status"], "em": feita["concluida_em"], "revisao": feita["revisao"]}}
     try: pid = criar(v["kind"], pr["code"], by)
     except ValueError: return None
     w = _row(pid)
@@ -858,22 +897,31 @@ def _conta(dados):
     return {"linhas": len(us), "conferidas": sum(1 for l in us if l.get("conferida")), "A": sum(1 for l in us if ap(l) == "A"), "R": sum(1 for l in us if ap(l) == "R")}
 
 def aba(kind, f):
-    """Aba «Validar itens» do R-D: sem busca, os pendentes no servidor (validação primeiro); com busca, qualquer item em andamento que case.
-    Cada linha leva a situação da validação no app."""
+    """Aba «Validar itens» do R-D (próximo update, 26/11/2026): TODOS os itens em andamento, os pendentes no servidor primeiro (validação, reprovada,
+    desenho do fornecedor) e, logo depois, o par LD/LE de cada pendente (`par_de`), mesmo sem pendência própria. `ver=pendentes` mostra só os
+    pendentes e os pares deles; a busca procura em todos. Cada linha leva a situação da validação no app."""
     import rd as R
     kind = kind if kind in KINDS else "rd"; loc = _local_por_codigo(kind); pend = pendentes_rd(kind)
-    if (f.get("q") or "").strip():
-        rows = {r["code"].upper(): {**r, "flags": pend.get(r["code"].upper(), {}).get("flags", [])} for r in R.items(KINDS[kind], {"q": f["q"], "status": "andamento", "all": 1})["rows"]}
-    else: rows = dict(pend)
+    filtro = {"status": "andamento", "all": 1, **({"q": f["q"]} if (f.get("q") or "").strip() else {})}
+    todos = {r["code"].upper(): {**r, "flags": pend.get(r["code"].upper(), {}).get("flags", [])} for r in R.items(KINDS[kind], filtro)["rows"]}
+    tudo = todos if filtro.get("q") is None else {r["code"].upper(): r for r in R.items(KINDS[kind], {"status": "andamento", "all": 1})["rows"]}
+    par_de = {}
+    for k in pend:                                   # o par de quem está pendente entra junto (o servidor às vezes marca só um lado)
+        pr = par(k)
+        if pr and pr["code"] not in pend and pr["code"] in tudo: par_de.setdefault(pr["code"], k)
+    if f.get("ver") == "pendentes" and not filtro.get("q"): rows = {k: r for k, r in todos.items() if k in pend or k in par_de}
+    else: rows = todos
     ordem = {fl: i for i, fl in enumerate(PEND_FLAGS)}
     out = []
     for k, r in rows.items():
         v = loc.get(k)
         out.append({"code": r["code"], "description": r.get("description"), "vehicles": r.get("vehicles"), "suppliers": r.get("suppliers"), "flags": r.get("flags") or [],
-                    "subs": [s for s in (r.get("subs") or []) if s["k"] in ("validacao", "desenho")],
+                    "par_de": par_de.get(k), "subs": [s for s in (r.get("subs") or []) if s["k"] in ("validacao", "desenho")],
                     "validacao": {"id": v["id"], "status": v["status"], "status_label": STATUS[v["status"]], **_conta(v["dados"])} if v else None})
-    out.sort(key=lambda x: (min([ordem[fl] for fl in x["flags"]] or [9]), x["validacao"] is not None and x["validacao"]["status"] != "andamento", x["code"]))
-    return {"total": len(out), "pendentes": len(pend), "rows": out}
+    grupo = lambda x: min([ordem[fl] for fl in x["flags"]] or [5 if x["par_de"] else 9])
+    out.sort(key=lambda x: (grupo(x), x["validacao"] is not None and x["validacao"]["status"] != "andamento", x["code"]))
+    return {"total": len(out), "pendentes": len(pend), "pares": len(par_de), "em_andamento": len(tudo),
+            "counts": {"pendentes": len(pend) + len(par_de), "todos": len(tudo)}, "rows": out}
 
 def listagem(f):
     """Tela «Validação» do menu: todas as validações, com estágios (Pendentes no R-D, Em andamento, Aprovadas, Reprovadas) e filtros."""

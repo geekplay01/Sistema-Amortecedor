@@ -154,5 +154,37 @@ também está pendente (AMD0138/0139, AMD0928/0929, AMD1714/1715).
   (Pareto com um eixo e divisória 80%; ano anterior em cinza), Item, Cobertura (curva em degraus de azul + legenda), Guia visual. Achados na conferência:
   as cores dos eixos não trocavam com o tema (agora lidas do token a cada desenho), linha suavizada furava o zero (monótona), rótulo da última barra
   cortado (preso ao quadro), nomes pulados no ranking deitado. Conferido no navegador (cópia, porta 5055), claro e escuro, e a troca de tema ao vivo.
-- [x] Documentação do Update 4: DESIGN.md (§3, §6.1 botão Fechar, §6.4 item identificado, §6.4c rodinha/recorte/revisões, §6.5 envio de planilha,
+- [x] Documentação do Update 4 (commit 7c5a1c5): DESIGN.md (§3, §6.1 botão Fechar, §6.4 item identificado, §6.4c rodinha/recorte/revisões, §6.5 envio de planilha,
   §6.6 gráficos reescrita, §10), REGRAS_DE_NEGOCIO (§2 Anomalias, §12 gráficos, §13 Update 4, abertura, planilhas), `regras_telas.py` (Garantia, Validação), LEIA-ME.
+
+## Update 5 (26/11/2026) — «Sim» (Q1–Q11) e Q12 ajustada pelo usuário
+
+| # | Pedido | Decisão |
+|---|---|---|
+| Q1 | Ícone da aba mudava por módulo | Um só: o `favicon.svg` (azul-marinho); `static/img/favicon.ico` gerado dele (`tools/favicon_ico.py`); login e `/favicon.ico` também |
+| Q2 | Dashboard: volta a rosca do Sistema | Só no Dashboard; rosca fina com o total no centro e nome, quantidade e % ao lado (exceção ao §6.6 no DESIGN.md) |
+| Q3 | Indicador de metas mais moderno | Anel de progresso com o % no centro, «x de meta» e o ritmo do ano (tracinho no anel + «n abaixo/acima do ritmo») |
+| Q4 | Onde | Dashboard e cartões da tela Metas |
+| Q5 | Clique no gráfico de Metas | Lista única DES + R-D («Validações item a item»), filtrada por mês e tipo da barra; etiquetas com ×; rola até a lista |
+| Q6 | Filtros de sub status | Uma faixa por grupo com chips; zerados em «+n sem itens»; escolhido cheio em azul-marinho |
+| Q7 | Fechar o sistema | Sai do topo; seção «Sistema» em Configurações (aberto desde, endereço, log) com botão de contorno vermelho |
+| Q8 | Maquete antes | Sim (`maquetes/proximo_update_maquete.html`, fora do Git) |
+| Q9 | Excluir cotas | ✕ em toda linha (com «Desfazer»); número no desenho: clique + Delete ou botão direito › «Tirar o número»; F-008 limpa a linha que sobrar |
+| Q10 | Par pela aplicação | Sem par na planilha Lados: mesma montadora, veículo, aplicação, anos e eixo, lado oposto; desempate por prefixo (AMD) e tipo; ambíguo = sem par |
+| Q11 | Lista «Validar itens» | Todos em andamento (pendentes primeiro); atalhos «Todos» / «Pendentes» (pendentes + o par de cada um, selo «par de …») |
+| Q12 | Sem duplicar | Concluir um lado não cria validação nova do par já validado (só avisa); validar de novo um código = Rev.01 da mesma série; «Preparar o par» na validação concluída |
+
+Fatos (cópia): 239 itens de R-D em andamento, 65 pendentes; 100 com lado: 84 pares pela planilha Lados e 16 (8 pares, fora do catálogo) pela aplicação,
+todos recíprocos. 3 pares tinham só um lado pendente (AMD0190, AMD2401, AMD4754). Banco real (leitura): 7 validações, nenhuma duplicada; AMD2523 reprovada
+em 26/11 sem o par AMD2524 preparado (fora do catálogo) → botão «Preparar o par». Metas: 6 códigos R-D validados em dois meses (barras somam 192, KPI 186):
+a lista guarda os meses de cada código e o filtro de mês bate com cada barra (22 de 22 conferidas).
+
+- [x] Q1, Q5, Q9–Q12 no app; conferidos no navegador (cópia): lista com 239/68 e os selos de par, excluir/desfazer linha, Delete e botão direito no número,
+  arrastar ainda move, clique na barra jul/26 R-D = 64 linhas. Testes novos em `test_validacao` (par pela aplicação, lista com pares, sem duplicar, F-008 limpo). 5/5 verdes.
+- [x] Q2/Q3/Q4/Q6/Q7: maquete aprovada («Aprovo, aplicar») e aplicada — `PSDTW.rosca` (Dashboard › Sistema), `PSDTW.anel` (`PSDCharts.gauge`: Dashboard,
+  um embaixo do outro, e cartões de Metas), faixas `.psd-subfs` (DES e R-D; CSS dos cartões antigos `.psd-sub` removido), Configurações › Sistema
+  (primeira seção; `/api/sistema`; botão `.psd-btn-sair`; saiu do topo). Achados: a classe `.sub` do anel pegava o estilo «SHOCK DATA» da tela inicial
+  (renomeada); os dois anéis lado a lado ficavam espremidos no cartão do Dashboard (empilhados); atalhos «Contam/Aguardando» da lista de Metas ganharam
+  «R-D:» quando a lista tem DES e R-D. Conferido no navegador (cópia), claro e escuro; confirmação de «Fechar o sistema» aberta e cancelada.
+- [x] Documentação: DESIGN.md (§6.1 ícone e Sistema, §6.3 sub status e gráfico que filtra, §6.4c excluir cota/lista/preparar par, §6.6 anel e exceção
+  da rosca, §10), REGRAS (§4 lista e anel, §13 update 5, abertura), `regras_telas.py` (Metas, Redesenvolvimento, Validação), LEIA-ME.

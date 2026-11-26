@@ -87,9 +87,13 @@ Selo/etiqueta: `PSDTW.badge(texto, tom)` com tons `blue · green · amber · red
 Use o que existe antes de criar. Componente novo entra em `marca.css` com prefixo `psd-` e é descrito aqui.
 
 ### 6.1 Estrutura de toda tela (`templates/page.html`)
-Menu lateral azul-marinho · barra do topo (título do app, sincronização, tema, usuário, **«Fechar o sistema»** — ícone `power`, último à direita,
-confirmação com `perigo`; etapa 24, o app roda sem a janela do cmd) · `h2.ptitle` + link «Regras da tela» (`.ptitle-regras`)
+Menu lateral azul-marinho · barra do topo (título do app, sincronização, tema, configurações) · `h2.ptitle` + link «Regras da tela» (`.ptitle-regras`)
 · faixa «vem de / alimenta» (`.relbar`) · conteúdo da tela em `#panel` (um arquivo por tela em `static/js/telas/`).
+- **Ícone da aba (update 5):** um só em todas as páginas e no login — `static/img/favicon.svg` (azul-marinho, faixas do logo, amortecedor branco) e o
+  `favicon.ico` gerado dele (`tools/favicon_ico.py`). O logo colorido antigo (`ShockAbsorberData.ico`) não é mais servido.
+- **«Fechar o sistema» (update 5):** saiu da barra do topo (era fácil clicar sem querer). Fica em Configurações › **Sistema**, a primeira seção e a que
+  abre: faixa com «Aberto desde», «Endereço» e «Mensagens do sistema» (`.psd-sis`) e o botão de contorno vermelho `.psd-btn-sair` (destrutivo, mas não
+  a ação principal), com a confirmação `perigo` de sempre (`app.js`, `#psd-fechar`).
 
 ### 6.2 Números
 - **KPI** `PSDTW.kpi(rótulo, valor, sub, tom, ícone)` → `.psd-kpi`. **Etapa 23 · Q4:** KPIs vizinhos formam **uma faixa só** (o contêiner que só tem
@@ -110,6 +114,11 @@ confirmação com `perigo`; etapa 24, o app roda sem a janela do cmd) · `h2.pti
 - **Atalhos** (chips com número) logo abaixo; `forte: true` (laranja) só para o atalho que pede ação (Ruptura, Pendente compras, Vencida).
 - **Etiquetas** dos filtros ativos com × e «Limpar tudo».
 - Estado em `PSDTW.filtros(tela, chaves)` (URL + lembrado). Contagem de cada opção = linhas da lista ao escolher (ignora o próprio filtro).
+- **Sub status do servidor (DES/R-D, update 5):** um bloco `.psd-subfs` com **uma faixa por grupo** (`.psd-subf`: nome do grupo à esquerda, em Barlow
+  cinza) e chips `.psd-subc` (bolinha da cor do sub status, valor, número de itens em pílula; os códigos vão na dica). O escolhido fica cheio em
+  `--b600`. Zerados recolhidos em «+n sem itens» (`.psd-subz`, por grupo); escolhido zerado continua à mostra. Abaixo de 640 px o nome vai para cima.
+- **Gráfico que filtra (update 5, Metas):** clicar numa barra filtra a lista da mesma tela (mês e tipo da barra), põe as etiquetas com × no cartão da
+  lista e rola até ela; clicar de novo na mesma barra tira o filtro. O cartão do gráfico diz «clique numa barra para ver …» à direita do título.
 
 ### 6.4 Listas e tabelas
 `PSDTW.table(colunas, linhas, {h})`: cabeçalho fixo em Barlow 13 px, caixa normal, zebra, hover, altura máxima com rolagem interna (`max-h-[65vh]`).
@@ -155,6 +164,11 @@ Um cartão (`.psd-banc`): cabeçalho com o código, a descrição e os dados do 
 - **Revisões** (Q5): concluída, a bancada oferece «Nova revisão (Rev.0n)» no lugar de duplicar; a faixa `.psd-vrevs` lista as revisões da validação (a atual
   marcada) e a lista da tela Validação mostra uma linha por validação (a revisão mais nova) com a contagem de revisões. Excluir (Q4): lixeira `.psd-vx` ao
   lado da revisão, em qualquer situação, com confirmação `perigo`.
+- **Excluir cota (update 5):** ✕ (`.psd-vx`) em toda linha da tabela de medidas, inclusive as da família; o aviso traz «Desfazer» (8 s). No desenho, clicar
+  num número o seleciona (`.psd-mk.sel`: cheio em vermelho com anel de foco) e Delete o tira; o botão direito abre um menu pequeno (`.psd-vctx`, mesmo
+  visual do `.psd-menu`) com «Tirar o número n deste desenho». Arrastar continua movendo o número; Esc desfaz a seleção; Ctrl+Z devolve.
+- **Lista «Validar itens» (update 5):** atalhos «Todos em andamento» / «Pendentes de validação» (forte); o outro lado de um pendente leva o selo azul
+  «par de AMD…». Validação concluída cujo par ainda não tem validação mostra o aviso `.psd-vaviso` com «Preparar o par (AMD… LE)».
   Em tela cheia o bloco vai para o `<body>` (fora do recorte do cartão) e Esc volta (Esc fecha antes o campo aberto).
 - **Revisão**: tabela de damping, faixa de três números (A, R em vermelho quando houver, conferidas em laranja enquanto faltar), duas ações (Aprovar = principal;
   Reprovar = contorno vermelho, não preenchido) e os arquivos do F-008. Concluída, a bancada fica só leitura.
@@ -220,8 +234,16 @@ tem degraus próprios sobre o cartão `#141A28`, não uma inversão):
 - **Parte de um todo** → barra segmentada alta (`PSDTW.segmentos(el, [{l, v, cor}])`, `.psd-segbar`): 28 px, 2 px entre as partes, cantos de 4 px, a fatia
   escrita dentro em branco ou quase-preto (o que contrastar mais) **só se couber**; a que não cabe vai para a legenda ao lado do nome. Legenda na ordem
   dos blocos. Embaixo, a tabela com os números (Vendas por classe). `PSDCharts.donut` já desenha assim.
-- **Meta** → medidor reto (`PSDTW.medidor({value, target, title, subtitle})`, `.psd-med`): número grande, «de N (x%)» e o trilho; preenche em azul e em
-  verde (`--ok`) só quando bate a meta. `PSDCharts.gauge` já desenha assim.
+- **Meta** → **anel de progresso** (update 5, maquete aprovada em 26/11/2026; substituiu o medidor reto): `PSDTW.anel({value, target, title, subtitle, year})`,
+  `.psd-anel`. Anel de 9 px no trilho `--chart-trilho`, o % no centro em Barlow, preenchido em `--chart-1` e em `--ok` só quando bate a meta. Um
+  **tracinho** no anel marca o ritmo de hoje (meta × parte do ano já passada; ano encerrado = 1, ano futuro = 0). Ao lado: título, «n de meta», a linha
+  do ritmo («ritmo de hoje: 113», «meta atingida em 2026», «ano encerrado») e o selo da distância `.psd-anel-d` — laranja «▼ n abaixo do ritmo»,
+  verde «▲ n acima do ritmo / da meta». Dashboard: um anel embaixo do outro; Metas: um por cartão. `PSDCharts.gauge` já desenha assim.
+  (`PSDTW.medidor` continua disponível para barras de progresso simples.)
+- **Exceção à regra da rosca — Sistema no Dashboard (update 5, pedido do usuário):** `PSDTW.rosca(partes, {rotulo, acoes})`, `.psd-rosca`. Rosca **fina**
+  (12 px, 2 px de vão entre as fatias), o total no centro e, ao lado, nome, quantidade e % de cada parte — os números se leem sem passar o mouse, o que
+  tira o defeito da rosca (comparar fatias pelo ângulo). Só para parte de um todo com 2 ou 3 partes de tamanhos bem diferentes; «Sem dado» em cinza.
+  Nas outras telas continua a barra segmentada.
 
 Trocar o tema repinta: as cores dos eixos são lidas do token a cada desenho e o cache de opções do Chart.js é limpo. Gráfico leva `aria-label` (`titulo`);
 barra segmentada e medidor têm nome acessível com todos os valores.
@@ -264,8 +286,8 @@ barra segmentada e medidor têm nome acessível com todos os valores.
 - Explicar regra de cálculo na tela (vai para `regras_telas.py`).
 - Barra de filtros própria de uma tela, ou «Exportar CSV» em vez de «Baixar Excel».
 - Cor fixa (hex) em componente novo; verde para qualquer coisa que não seja «OK».
-- Gráfico com dois eixos Y, rosca/pizza, meia-rosca de meta, número em todo ponto, legenda de uma série só, barra grossa (> 24 px) ou cor de série
-  escolhida pela posição (§6.6).
+- Gráfico com dois eixos Y, rosca/pizza (exceção: Sistema no Dashboard, §6.6), meia-rosca de meta, número em todo ponto, legenda de uma série só,
+  barra grossa (> 24 px) ou cor de série escolhida pela posição (§6.6).
 - Cartões grandes para escolha simples (use seletor segmentado); mais de uma ação principal por bloco.
 - Fonte abaixo de 11 px, emoji como ícone, gradiente/brilho decorativo.
 - Sinais de design genérico (etapa 23, skill `frontend-design`): caixas iguais para tudo, rótulo em CAIXA ALTA espaçada, informações emendadas com «·»,

@@ -17,7 +17,9 @@
   const ICO = {
     perfil: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z", seg: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4", tema: "M12 3a9 9 0 109 9 7 7 0 01-9-9z",
     users: "M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 11a4 4 0 100-8 4 4 0 000 8zM21 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8", regras: "M4 6h16M4 12h10M4 18h6M18 14l2 2 3-4", srv: "M4 5h16v5H4zM4 14h16v5H4zM8 7.5h.01M8 16.5h.01", bk: "M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" };
-  const SECT = [["perfil", "Meu perfil", ICO.perfil], ["seguranca", "Senha e acesso", ICO.seg], ["aparencia", "Aparência", ICO.tema], ["telas", "Regras das telas", ICO.regras]];
+  ICO.sis = "M12 2v10M18.4 6.6a9 9 0 11-12.8 0";
+  /* update 5: «Sistema» é a primeira seção (e a que abre): quando abriu, endereço, log e «Fechar o sistema» (saiu da barra do topo; o clique é tratado em app.js) */
+  const SECT = [["sistema", "Sistema", ICO.sis], ["perfil", "Meu perfil", ICO.perfil], ["seguranca", "Senha e acesso", ICO.seg], ["aparencia", "Aparência", ICO.tema], ["telas", "Regras das telas", ICO.regras]];
   const ADM = [["usuarios", "Usuários", ICO.users], ["regras", "Regras de negócio", ICO.regras], ["servidor", "Servidor e sincronização", ICO.srv], ["backups", "Backups", ICO.bk]];
 
   // ---------- servidor SQL (só leitura) e sincronização ----------
@@ -47,9 +49,9 @@
   async function configuracoes() {
     let me; try { me = await J("/api/auth/me"); } catch (e) { return fail(e); }
     const user = me.user, admin = !!me.admin;
-    let cur = (location.hash || "#perfil").slice(1), alvo = "";
+    let cur = (location.hash || "#sistema").slice(1), alvo = "";
     if (cur.startsWith("telas-")) { alvo = cur; cur = "telas"; }            // «Regras da tela» (link ao lado do título de cada tela) abre direto na tela certa
-    if (![...SECT, ...ADM].some(x => x[0] === cur) || (!admin && ADM.some(x => x[0] === cur))) cur = "perfil";
+    if (![...SECT, ...ADM].some(x => x[0] === cur) || (!admin && ADM.some(x => x[0] === cur))) cur = "sistema";
     const put = (u, b) => J(u, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) });
     const nav = b => `<button type="button" data-s="${b[0]}" aria-current="${b[0] === cur}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold ${b[0] === cur ? "bg-blue-500/10 text-blue-600" : "text-ink hover:bg-slate-500/10"}"><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${b[2]}"/></svg>${b[1]}</button>`;
     root.innerHTML = `<div class="flex flex-col gap-5 lg:flex-row lg:items-start">
@@ -60,6 +62,10 @@
     const semLogin = notice("<b>Login desligado neste computador.</b> O sistema está com <code>PSD_AUTH=off</code> (modo de desenvolvimento), por isso não há usuário para editar. Remova essa linha do arquivo <code>.env</code> e reinicie para usar contas.", "amber");
     const acoes = (btn, id) => `<div class="flex flex-wrap items-center gap-3 sm:col-span-2">${btn}${aviso(id)}</div>`;
     const PANES = {
+      sistema: async () => { const s = await J("/api/sistema"), it = (l, v) => `<div class="psd-sis-i"><dt>${l}</dt><dd title="${esc(v)}">${esc(v)}</dd></div>`;
+        return card(`Sistema <span class="psd-sis-on"><i></i>aberto</span>`, `<dl class="psd-sis">${it("Aberto desde", quando(s.aberto_em))}${it("Endereço", s.endereco)}${it("Mensagens do sistema", s.log || "na janela do iniciar.bat")}</dl>
+          <div class="psd-sis-a"><button type="button" id="psd-fechar" class="psd-btn psd-btn-sair">${TW.ico("power", "sm")}Fechar o sistema</button>
+            <p>O servidor para e as páginas abertas deixam de funcionar. Para abrir de novo, use o atalho «PERFECT Shock Data».</p></div>`); },
       perfil: () => !user ? semLogin : card("Meu perfil", `<div class="flex flex-wrap items-center gap-4"><div id="av" class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-blue-600 text-2xl font-bold text-white">${avatar(user)}</div>
           <div class="flex flex-col gap-1"><div class="flex flex-wrap items-center gap-2 text-lg font-semibold text-ink">${esc(user.username)} ${badge(user.role === "admin" ? "Administrador" : "Usuário", user.role === "admin" ? "violet" : "slate")}</div>
             <div class="text-sm text-mute">Conta criada em ${TW.dmy(user.created_at)}, último acesso ${user.last_login ? quando(user.last_login) : "—"}</div>
@@ -100,6 +106,7 @@
               d.backups.map(b => [esc(b.name), esc(b.date), nf(b.size / 1048576, 2) + " MB", `<span class="flex gap-1"><a class="${mini}" href="/api/backups/${encodeURIComponent(b.name)}">Baixar</a><button type="button" class="${mini}" data-rs="${esc(b.name)}">Restaurar</button></span>`]), { h: "max-h-[55vh]" }) : empty("Nenhum backup ainda.")); }
     };
     const wire = {
+      sistema() { },          // o clique em «Fechar o sistema» (#psd-fechar) é tratado em app.js, com a confirmação
       perfil() {
         const f = $("#avf"); if (f) f.onchange = async () => { if (!f.files[0]) return; const fd = new FormData(); fd.append("file", f.files[0]); msg("avm", "Enviando…"); try { await J("/api/auth/avatar", { method: "POST", body: fd }); location.reload(); } catch (e) { msg("avm", e.message, true); } };
         const d = $("#avd"); if (d) d.onclick = async () => { try { await J("/api/auth/avatar", { method: "DELETE" }); location.reload(); } catch (e) { msg("avm", e.message, true); } };

@@ -61,7 +61,7 @@
       const est = d.stock, st = (n, l) => `<div class="rounded-xl bg-slate-500/10 px-3 py-3 text-center"><div class="text-2xl font-bold tabular-nums text-ink">${n}</div><div class="text-xs text-mute">${l}</div></div>`;
       const ORD = ["gas", "oleo", "nd"], sys = [...d.system].sort((a, b) => ORD.indexOf(a.s) - ORD.indexOf(b.s)), LAB ={ gas: "FORCE GAS", oleo: "FORCE OIL", nd: "Sem dado" };
       $("#dg").innerHTML = [
-        card(`Metas ${y}`, `<div class="grid grid-cols-1 gap-2 sm:grid-cols-2"><div id="dg-des" class="chart"></div><div id="dg-rd" class="chart"></div></div>
+        card(`Metas ${y}`, `<div class="grid grid-cols-1 gap-3"><div id="dg-des"></div><div id="dg-rd"></div></div>
           <p class="m-0 mt-2 text-xs text-mute">${tr.since ? "Transições rastreadas desde " + dmy(tr.since) : "O rastreio começa na 1ª sincronização com o servidor"}.</p>`, `<a class="${botao}" href="/metas">Detalhes e validações</a>`),
         card("Evolução mensal das metas", '<div id="dg-evo" class="chart"></div>'),
         funil(DES), funil(RD),
@@ -72,17 +72,17 @@
             `<span class="block max-w-[11rem] truncate" title="${esc(t.description || "")}">${esc(t.description || "–")}</span>`, nf(t.qty), brl0(t.value)]), { h: "max-h-[22rem]" })
           : vazio("Sem vendas no período.")),
         card("Estoque disponível", est.available ? `<div class="grid grid-cols-3 gap-2">${st(nf(est.qty), "peças disponíveis")}${st(nf(est.items), "códigos em estoque")}${st(nf(est.zero), "zerados")}</div>` : vazio("Estoque ainda não chegou do servidor.")),
-        card("Sistema: FORCE GAS × FORCE OIL", `<div id="dg-sys" class="chart"></div><div class="mt-2 flex flex-wrap gap-2">${sys.filter(r => r.s !== "nd").map(r => `<a class="${botao}" href="/produtos?system=${r.s}">${LAB[r.s] || esc(r.s)} ${nf(r.n)}</a>`).join("")}</div>`),
+        // update 5: volta a rosca (fina, total no centro, nome, quantidade e % ao lado); «Sem dado» em cinza
+        card("Sistema: FORCE GAS × FORCE OIL", TW.rosca(sys.map(r => ({ l: LAB[r.s] || r.s, v: r.n, cor: ({ gas: "--chart-1", oleo: "--chart-2" })[r.s] || "--chart-7" })),
+          { rotulo: "itens no catálogo", acoes: sys.filter(r => r.s !== "nd").map(r => `<a class="${botao}" href="/produtos?system=${r.s}">Ver ${LAB[r.s] || esc(r.s)}</a>`).join("") })),
       ].join("");
       flagsCard();
-      const gg = (id, k, sub) => PSDCharts.gauge($(id), { value: g[k].done, target: g[k].target, title: k, subtitle: sub });
+      const gg = (id, k, sub) => PSDCharts.gauge($(id), { value: g[k].done, target: g[k].target, title: k, subtitle: sub, year: y });          // anel com o ritmo do ano (update 5)
       gg("#dg-des", DES, vb ? `validações ${u} em ${y}` : `item recebido em ${y}`);          // a meta já aparece no medidor («de N»)
       gg("#dg-rd", RD, vb ? `validações ${u} em ${y}` : `recebido e validado (${u})`);
       const bs = vb ? `validações ${u}` : "item recebido";
       PSDCharts.line($("#dg-evo"), { x: g[DES].series.main.map(m => m.month), series: [DES, RD].map(k => ({ name: `${k}: ${bs}`, y: g[k].series.main.map(m => m.n), color: COR[k] })), height: 260 });
       if (d.sales.available) PSDCharts.bars($("#dg-sales"), { x: d.sales.months.map(m => m.month), series: [{ name: "Peças vendidas", y: d.sales.months.map(m => m.qty) }], height: 250 });
-      // «Sem dado» em cinza: não é série, é o resto
-      PSDCharts.donut($("#dg-sys"), { labels: sys.map(r => LAB[r.s] || r.s), values: sys.map(r => r.n), colors: sys.map(r => ({ gas: "--chart-1", oleo: "--chart-2" })[r.s] || "--chart-7") });
     };
 
     root.addEventListener("click", e => { const b = e.target.closest("[data-pk]"); if (!b) return; F.set({ pk: b.dataset.pk }); flagsCard(); });

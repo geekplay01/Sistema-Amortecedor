@@ -81,6 +81,15 @@ def validated(year, kind=RD):
         if code not in out or (ds and (not out[code] or ds < out[code])): out[code] = ds
     return out
 
+def validated_months(year):
+    """Meses (AAAA-MM) em que cada código foi validado no ano, por tipo → {DES: {código: [meses]}, RD: {...}}. Mesma seleção da contagem por mês
+    (`validation_counts`): o código validado em dois meses aparece nas duas barras, e o filtro de mês da lista de Metas (próximo update) usa isto."""
+    _, sel, _, _, _ = _select(load_frame(), rules.valid_user().strip().upper(), (rules.only_desc() or "AMORTECEDOR").strip().upper(), year)
+    d = sel.dropna(subset=["DATA_APROVACAO"]); out = {DES: {}, RD: {}}
+    for code, t, m in zip(d["CODIGO"], d["T"], d["DATA_APROVACAO"].dt.strftime("%Y-%m")):
+        if t in out and code: out[t].setdefault(code, set()).add(m)
+    return {t: {c: sorted(ms) for c, ms in x.items()} for t, x in out.items()}
+
 def validation_counts(df, user=None, line=None, year=None):
     """Dicionário para o dashboard:
     {"total": n, "DES": n, "R-D": n, "outros": n, "linhas": {...}, "por_mes": {"2026-07": {"DES": a, "R-D": b}, ...}, "filtro": {...}, "avisos": [...]}

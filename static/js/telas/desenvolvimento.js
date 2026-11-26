@@ -30,7 +30,7 @@
       <section aria-label="Linha"><div id="rlin" class="psd-est psd-linha" role="group" aria-label="Linha do produto"></div></section>
       <section aria-label="Estágios"><div id="rest" class="psd-est"></div></section>
       <div id="rbar"></div>
-      <section aria-label="Sub status do servidor"><div class="mb-2 flex flex-wrap items-baseline justify-between gap-2"><span class="psd-rot">Sub status do servidor</span></div><div id="rsub" class="psd-subs"></div></section>
+      <section aria-label="Sub status do servidor"><div class="mb-2 flex flex-wrap items-baseline justify-between gap-2"><span class="psd-rot">Sub status do servidor</span></div><div id="rsub" class="psd-subfs"></div></section>
       <div id="rmeta" class="text-sm text-mute"></div>
       <div id="rt"></div><div id="rp" class="flex items-center justify-center gap-3 text-sm text-mute"></div>
     </div>`;
@@ -91,10 +91,15 @@
         est.filter(x => x.v !== RECEBIDO).map(x => botaoEstagio(x.v, frase(x.v), x.n, x.l)).join("") +
         (rec ? botaoEstagio(RECEBIDO, "Item recebido", rec.n, rec.l, "fim", "fim do ciclo") : "") + botaoEstagio(TODOS, "Todos", fc.total, fc.lines);
     };
+    /* update 5 (maquete aprovada): uma faixa por grupo, com chips (bolinha, valor, número de itens; códigos na dica); zerados recolhidos em «+n sem itens» */
+    const zeros = new Set();          // grupos com os zerados à mostra
     const desenharSubs = () => {
       const s = F.get(), grupos = fc.subs.filter(g => g.values.length && !MAIS_SUBS.includes(g.key));
-      $("#rsub").innerHTML = grupos.length ? grupos.map(g => `<div class="psd-sub"><h4>${esc(g.label)}</h4>${g.values.map(x => { const v = `${g.key}:${x.f || x.v}`, on = s.sub === v;
-        return `<button type="button" data-sub="${esc(v)}" aria-pressed="${on}" ${!x.l && !on ? 'class="zero"' : ""} title="${nf(x.l)} item(ns), ${cod(x.n)}"><i class="psd-sd ${tom(x.v)}"></i><span class="v">${esc(x.v)}</span><span class="n">${nf(x.l)}</span><span class="l">${nf(x.n)} cód.</span></button>`; }).join("")}</div>`).join("")
+      const chipSub = (g, x) => { const v = `${g.key}:${x.f || x.v}`, on = s.sub === v;
+        return `<button type="button" data-sub="${esc(v)}" aria-pressed="${on}" class="psd-subc${!x.l && !on ? " zero" : ""}" title="${nf(x.l)} item(ns), ${cod(x.n)}"><i class="psd-sd ${tom(x.v)}"></i><span class="v">${esc(x.v)}</span><span class="n">${nf(x.l)}</span></button>`; };
+      $("#rsub").innerHTML = grupos.length ? grupos.map(g => { const com = g.values.filter(x => x.l || s.sub === `${g.key}:${x.f || x.v}`), sem = g.values.filter(x => !com.includes(x)), ab = zeros.has(g.key);
+        return `<div class="psd-subf"><span class="g">${esc(g.label)}</span><div class="cs">${com.map(x => chipSub(g, x)).join("")}${ab ? sem.map(x => chipSub(g, x)).join("") : ""}
+          ${sem.length ? `<button type="button" class="psd-subz" data-zeros="${esc(g.key)}" aria-expanded="${ab}">${ab ? "esconder os sem itens" : `+${sem.length} sem itens`}</button>` : ""}${!com.length && !ab ? '<span class="text-xs text-mute">nenhum item</span>' : ""}</div></div>`; }).join("")
         : `<div class="text-sm text-mute">Nenhum sub status neste estágio.</div>`;
     };
 
@@ -126,7 +131,8 @@
       aplicar({ linha: v === "amortecedor" ? "" : v, sub: "", negociacao: "", vendas: "" }, true); });     // os valores de sub status mudam de uma linha para outra
     $("#rest").addEventListener("click", e => { const b = e.target.closest("[data-est]"); if (!b) return; const v = b.dataset.est;
       aplicar({ status: v === ANDAMENTO ? "" : v, sub: "" }, true); });         // trocar de estágio limpa o sub status (o valor pode não existir no outro estágio)
-    $("#rsub").addEventListener("click", e => { const b = e.target.closest("[data-sub]"); if (!b) return; const v = b.dataset.sub; aplicar({ sub: F.get().sub === v ? "" : v }, true); });
+    $("#rsub").addEventListener("click", e => { const z = e.target.closest("[data-zeros]"); if (z) { const k = z.dataset.zeros; zeros.has(k) ? zeros.delete(k) : zeros.add(k); return desenharSubs(); }
+      const b = e.target.closest("[data-sub]"); if (!b) return; const v = b.dataset.sub; aplicar({ sub: F.get().sub === v ? "" : v }, true); });
     $("#rp").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; carregar(); scrollTo(0, 0); } });
 
     const facetas = async () => { const s = F.get(), st = estagio(s); fc = await J(`/api/rd/${k}/facets?` + new URLSearchParams({ status: st === TODOS ? "" : st, linha: s.linha || "", marca: s.marca || "" })); };          // etapa 23 · Q4: sem a fileira de KPIs (repetia os estágios; «Curtidos» e «Pendente compras» são atalhos da barra)

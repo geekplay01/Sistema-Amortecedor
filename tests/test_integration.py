@@ -296,7 +296,9 @@ class Fluxo(unittest.TestCase):
 
     def test_12_favicon_e_menu_sem_pedidos(self):
         r = C.get("/favicon.ico"); self.assertEqual((r.status_code, r.mimetype), (200, "image/x-icon")); self.assertGreater(len(r.data), 1000)
-        html = C.get("/dashboard").get_data(as_text=True); self.assertIn('href="/favicon.ico"', html); self.assertNotIn("Pedidos de compra", html)
+        html = C.get("/dashboard").get_data(as_text=True); self.assertIn('href="/favicon.ico?v=2"', html)
+        self.assertNotIn('id="psd-fechar"', html)                                  # update 5: «Fechar o sistema» saiu da barra do topo (fica em Configurações › Sistema)
+        s = C.get("/api/sistema").json; self.assertRegex(s["aberto_em"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$"); self.assertTrue(s["endereco"]); self.assertNotIn("Pedidos de compra", html)
 
     def test_13_brands_mostra_codigo_perfect(self):
         d = C.get("/api/brands/MOTORCRAFT/items?all=1").json; self.assertTrue(d["rows"]); self.assertTrue(all("perfect_codes" in r for r in d["rows"]))

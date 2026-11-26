@@ -13,7 +13,8 @@
   const put = (u, b) => J(u, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b || {}) });
 
   function metas() {
-    const F = TW.filtros("metas", ["year", "tipo", "conta", "rdv"]); let d = null, ev = null, pv = null, rv = null;
+    const F = TW.filtros("metas", ["year", "tipo", "conta", "rdv", "mes", "vt"]); let d = null, ev = null, pv = null, rv = null;
+    const MESN = ["", "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"], mesl = m => m ? `${MESN[+m.slice(5, 7)]}/${m.slice(2, 4)}` : "";
     root.innerHTML = `<div class="flex flex-col gap-5">
       <div id="mbar" class="flex flex-wrap items-center gap-2"></div>
       <p id="mtr" class="m-0 text-sm text-mute"></p>
@@ -43,9 +44,14 @@
         <div><h3 class="m-0 text-lg font-semibold text-ink">Validações ${u} em ${d.year}</h3></div>
         <div class="grid grid-cols-1 gap-4 ${kp.length > 2 ? "md:grid-cols-3" : "md:grid-cols-2"}">${kp.join("")}</div>
         ${warn.length ? notice(warn.map(esc).join("<br>"), "amber") : ""}
-        ${card("Validações por mês", '<div id="mxc" class="chart"></div>')}</section>`;
+        ${card("Validações por mês", '<div id="mxc" class="chart"></div>', '<span class="text-xs text-mute">clique numa barra para ver as validações do mês</span>')}</section>`;
       const pm = v.por_mes || {}, ms = Object.keys(pm).sort();
-      PSDCharts.bars($("#mxc"), { x: ms.length ? ms : [d.year + "-01"], series: ks.map(k => ({ name: k, y: ms.map(m => pm[m][k] || 0), color: COR[k] })), height: 240, labels: true });
+      /* próximo update (26/11/2026): clicar numa barra filtra a lista de validações pelo mês e pelo tipo dela e rola até a lista */
+      PSDCharts.bars($("#mxc"), { x: ms.length ? ms : [d.year + "-01"], series: ks.map(k => ({ name: k, y: ms.map(m => pm[m][k] || 0), color: COR[k] })), height: 240, labels: true }).then(g => { if (!g || !ms.length) return;
+        g.options.onHover = (e, els) => { e.native.target.style.cursor = els.length ? "pointer" : "default"; };
+        g.options.onClick = (e, els) => { const el = els[0]; if (!el) return; const k = ks[el.datasetIndex], m = ms[el.index], s = F.get();
+          const mesmo = s.mes === m && s.vt === SLUG[k]; F.set({ mes: mesmo ? "" : m, vt: mesmo ? "" : SLUG[k], rdv: "" }); desenharBarra(); desenharRd();
+          if (!mesmo) { const alvo = $("#mrd"); if (alvo) alvo.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); } }; });
     };
 
     const desenharMetas = () => {
@@ -61,24 +67,36 @@
           <p class="m-0">${base}</p></div>`,
           `<button type="button" data-edit="${k}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10">Editar meta</button>`, g.reached ? "ring-1 ring-emerald-500/50" : "");
       }).join("");
-      ks.forEach(k => PSDCharts.gauge($("#gg-" + SLUG[k]), { value: d.goals[k].done, target: d.goals[k].target, title: "" }));
+      ks.forEach(k => PSDCharts.gauge($("#gg-" + SLUG[k]), { value: d.goals[k].done, target: d.goals[k].target, title: "", year: d.year }));          // anel com o ritmo do ano (update 5)
       $("#mevo").innerHTML = d.basis === "validacao" ? "" : card("Evolução mensal — itens recebidos", '<div id="mevoc" class="chart"></div>');
       if (d.basis !== "validacao") PSDCharts.bars($("#mevoc"), { x: d.goals[DES].series.main.map(m => m.month), series: ks.map(k => ({ name: k + (k === DES ? ": item recebido" : ": recebido e validado"), y: d.goals[k].series.main.map(m => m.n), color: COR[k] })), height: 250, labels: true });
     };
 
     // itens que chegaram a ITEM RECEBIDO no ano (já filtrados por tipo na API) + filtro «conta?» local
     // validações R-D do ano (base «validação»): todas, com status atual e controles; conta quando chegar a ITEM RECEBIDO (goals.rd_validations)
+    // próximo update: DES e R-D numa lista só (goals.validacoes_ano); mês e tipo vêm do clique no gráfico; os atalhos de «conta?» valem para o R-D (base «validação»)
     const RDF = { todas: "Todas", contam: "Contam (ITEM RECEBIDO)", aguardando: "Aguardando ITEM RECEBIDO", pend_validacao_qual: "Pend. validação qualidade", val_reprovada: "Validação reprovada" };
     const desenharRd = () => {
-      if (!rv || !tipos().includes(RD)) { $("#mrd").innerHTML = ""; return; }
-      const s = F.get().rdv || "todas", c = rv.counts, ok = r => s === "contam" ? r.counts : s === "aguardando" ? !r.counts : s === "todas" ? true : r.flags.includes(s), rows = rv.rows.filter(ok);
-      const chips = Object.entries(RDF).filter(([k]) => k === "todas" || c[k] || s === k).map(([k, l]) => chip(`data-rdv="${k}"`, `${l} ${nf(c[k])}`, s === k)).join("");
-      $("#mrd").innerHTML = card(`Validações ${RD} em ${d.year}`, `<div class="mb-3 flex flex-wrap gap-2">${chips}</div>`
-        + (rows.length ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Validado em" }, { h: "Status atual" }, { h: "Controle de status", nw: false }, { h: "Recebido em" }, { h: "Conta?" }],
-            rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="rd" data-code="${esc(r.code)}">${esc(r.code)}</a>`, r.description ? `<span class="block max-w-[18rem] truncate" title="${esc(r.description)}">${esc(r.description)}</span>` : "–",
-              dmy(r.valid_at), r.status ? badge(r.status, r.counts ? "green" : "slate") : "–", `<div class="flex min-w-[10rem] flex-wrap gap-1">${PSD.flagChips(r.flags)}</div>`,
-              r.received_at ? dmy(r.received_at) : "–", r.counts ? badge("conta", "green") : badge("aguardando", "amber")]), { h: "max-h-[55vh]" })
-          : empty("Nenhuma validação com este filtro.")));
+      if (!rv) { $("#mrd").innerHTML = ""; return; }
+      const f = F.get(), s = f.rdv || "todas", vb = d.basis === "validacao";
+      const ks = tipos().filter(k => !f.vt || SLUG[k] === f.vt);
+      const base = rv.rows.filter(r => ks.includes(r.kind) && (!f.mes || (r.meses || []).includes(f.mes)));
+      const ok = r => s === "todas" ? true : r.kind !== RD ? false : s === "contam" ? r.counts : s === "aguardando" ? !r.counts : r.flags.includes(s), rows = base.filter(ok);
+      const rd = base.filter(r => r.kind === RD), c = { todas: base.length, contam: rd.filter(r => r.counts).length, aguardando: rd.filter(r => !r.counts).length,
+        pend_validacao_qual: rd.filter(r => r.flags.includes("pend_validacao_qual")).length, val_reprovada: rd.filter(r => r.flags.includes("val_reprovada")).length };
+      const misto = rd.length < base.length;          // lista com DES e R-D: os atalhos de «conta?» dizem que são do R-D
+      const chips = vb && rd.length ? Object.entries(RDF).filter(([k]) => k === "todas" || c[k] || s === k).map(([k, l]) => chip(`data-rdv="${k}"`, `${misto && k !== "todas" ? "R-D: " : ""}${l} ${nf(c[k])}`, s === k)).join("") : "";
+      const etq = [f.mes ? `<span class="psd-tag">Mês: ${mesl(f.mes)}<button type="button" data-tira-mes aria-label="Tirar o filtro de mês">${TW.ico("x", "sm")}</button></span>` : "",
+                   f.vt ? `<span class="psd-tag">Tipo: ${TIPO[f.vt]}<button type="button" data-tira-vt aria-label="Tirar o filtro de tipo">${TW.ico("x", "sm")}</button></span>` : ""].join("");
+      const outros = r => (r.meses || []).length > 1 ? ` <span class="text-xs text-mute">também em ${esc(r.meses.filter(m => m !== (r.valid_at || "").slice(0, 7)).map(mesl).join(", "))}</span>` : "";
+      $("#mrd").innerHTML = card(`Validações item a item`, `${etq || chips ? `<div class="mb-3 flex flex-wrap items-center gap-2">${etq}${chips}</div>` : ""}`
+        + (rows.length ? TW.table([{ h: "Código" }, { h: "Tipo" }, { h: "Descrição" }, { h: "Validado em" }, { h: "Status atual" }, { h: "Controle de status", nw: false }, { h: "Recebido em" }, { h: "Conta?" }],
+            rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="${SLUG[r.kind]}" data-code="${esc(r.code)}">${esc(r.code)}</a>`, badge(r.kind === DES ? "DES" : "R-D", r.kind === DES ? "blue" : "amber"),
+              r.description ? `<span class="block max-w-[18rem] truncate" title="${esc(r.description)}">${esc(r.description)}</span>` : "–",
+              dmy(r.valid_at) + outros(r),
+              r.status ? badge(r.status, r.counts ? "green" : "slate") : "–", r.flags.length ? `<div class="flex min-w-[10rem] flex-wrap gap-1">${PSD.flagChips(r.flags)}</div>` : "–",
+              r.received_at ? dmy(r.received_at) : "–", r.kind !== RD || !vb ? '<span class="text-mute">–</span>' : r.counts ? badge("conta", "green") : badge("aguardando", "amber")]), { h: "max-h-[55vh]" })
+          : empty("Nenhuma validação com este filtro.")), `<span class="text-sm text-mute">${nf(rows.length)} validação(ões)</span>`);
     };
 
     const desenharEventos = () => {
@@ -106,9 +124,8 @@
 
     const carregar = async () => {
       const s = F.get(), y = encodeURIComponent(s.year || ""), kind = s.tipo ? "&kind=" + s.tipo : "";
-      try { [d, ev, pv, rv] = await Promise.all([J("/api/goals?year=" + y), J(`/api/goals/events?year=${y}${kind}&limit=${LIMITE}`), J("/api/validations/pending"), J("/api/goals/rd-validations?year=" + y)]); }
+      try { [d, ev, pv, rv] = await Promise.all([J("/api/goals?year=" + y), J(`/api/goals/events?year=${y}${kind}&limit=${LIMITE}`), J("/api/validations/pending"), J("/api/goals/validacoes?year=" + y)]); }
       catch (e) { return fail(e); }
-      if (d.basis !== "validacao") rv = null;
       desenharBarra(); desenharValidacoes(); desenharMetas(); desenharRd(); desenharEventos(); desenharPendentes();
     };
     const aplicar = patch => { if (patch) F.set(patch); return carregar(); };
@@ -120,6 +137,8 @@
     root.addEventListener("click", async e => {
       const tg = e.target.closest("[data-tg]"), todos = e.target.closest("[data-tipo-todos]"), ed = e.target.closest("[data-edit]"), vs = e.target.closest("[data-vs]"), rdv = e.target.closest("[data-rdv]");
       if (rdv) { F.set({ rdv: rdv.dataset.rdv === "todas" ? "" : rdv.dataset.rdv }); desenharBarra(); return desenharRd(); }
+      if (e.target.closest("[data-tira-mes]")) { F.set({ mes: "" }); desenharBarra(); return desenharRd(); }
+      if (e.target.closest("[data-tira-vt]")) { F.set({ vt: "" }); desenharBarra(); return desenharRd(); }
       if (tg) { F.toggle(tg.dataset.tg, tg.dataset.v); return carregar(); }
       if (todos) return aplicar({ tipo: "" });
       if (e.target.id === "mclr") { F.clear(); return aplicar(null); }

@@ -73,7 +73,8 @@ class Bancada(unittest.TestCase):
         v = V.obter(vid); self.assertEqual((v["family"], v["supplier"], len(v["dados"]["linhas"])), ("ESTRUTURAL", "ZS", 21))
         with self.assertRaises(ValueError): V.criar("rd", "AMD9999")             # fora do R-D
         # aba do R-D: o pendente de validação vem com o rascunho
-        a = V.aba("rd", {}); self.assertEqual([r["code"] for r in a["rows"]], ["AMD0100"]); self.assertEqual(a["rows"][0]["validacao"]["status"], "andamento")
+        a = V.aba("rd", {}); self.assertEqual([r["code"] for r in a["rows"]], ["AMD0100", "AMD0200"]); self.assertEqual(a["rows"][0]["validacao"]["status"], "andamento")    # todos em andamento, pendente primeiro
+        self.assertEqual([r["code"] for r in V.aba("rd", {"ver": "pendentes"})["rows"]], ["AMD0100"]); self.assertEqual(a["counts"], {"pendentes": 1, "todos": 2})
         self.assertEqual([r["code"] for r in V.aba("rd", {"q": "T-CROSS"})["rows"]], ["AMD0200"])
         # desenhos e máscara
         V.desenho(vid, "perfect", _Arq("PERFECT.png", _png())); V.desenho(vid, "fornecedor", _Arq("ZS DQ41746.png", _png((40, 40, 40))))
@@ -181,7 +182,7 @@ class Bancada(unittest.TestCase):
                 c.execute("INSERT INTO rd_projects(code,suggestion,description,family,brand,status,validation_substatus,supplier) VALUES(?,'REDESENVOLVIMENTO',?,'AMORTECEDOR','PERFECT','PEDIDO CONFIRMADO','PENDENTE VALIDAÇÃO','ZS')", (code, desc))
             c.execute("INSERT INTO side_pairs(right_product_id,left_product_id) VALUES(?,?)", (ids["AMD0138"], ids["AMD0139"]))
             c.execute("INSERT INTO dimensions(product_id,lmax_mm,lmin_mm,rod_diameter_mm) VALUES(?,553,396,22)", (ids["AMD0138"],))
-        self.assertEqual(V.par("AMD0138"), {"code": "AMD0139", "side": "esquerdo", "meu_lado": "direito"}); self.assertIsNone(V.par("AMD0100"))      # AMD0100 sem par
+        self.assertEqual(V.par("AMD0138"), {"code": "AMD0139", "side": "esquerdo", "meu_lado": "direito", "fonte": "planilha Lados"}); self.assertIsNone(V.par("AMD0100"))      # AMD0100 sem par
         # PERFECT vigente do par em Desenhos
         tmp = os.path.join(self.tmp, "up"); os.makedirs(tmp); pth = os.path.join(tmp, "RED - AMD0139 - ZS - DQ2 - REV.00.png"); open(pth, "wb").write(_png())
         drawings.apply({"kind": "desenho", "files": [{"name": os.path.basename(pth), "path": pth, "source": None, "folder": ""}]}, {"0": {"codes": "AMD0139"}})
@@ -201,11 +202,12 @@ class Bancada(unittest.TestCase):
         self.assertEqual((w["family"], w["supplier"], w["supplier_code"], w["dados"]["origem_par"]["code"], w["dados"]["origem_par"]["decisao"]), ("ESTRUTURAL", "ZS", None, "AMD0138", "aprovada"))
         self.assertEqual((W["LMAX"]["f"], W["LMAX"]["conferida"], W["LMAX"]["pf"]), ("553", True, [0.3, 0.1])); self.assertTrue(w["imagens"]["perfect"])
         w = V.salvar(w["id"], {"espelhar": "ambos"}); self.assertEqual(w["dados"]["linhas"][0]["pf"], [0.7, 0.1])          # desenho do outro lado espelhado
-        # outra validação do lado já validado (sem ser revisão): PERFECT da validação anterior; posições reaproveitáveis do mesmo código e do mesmo fornecedor/família
+        # validar de novo o lado já validado (próximo update): não nasce outra Rev.00 — é a Rev.01 da mesma série, com tudo da anterior
         nv = V.criar("rd", "AMD0138"); self.assertNotEqual(nv, vid); n = V.obter(nv)
-        self.assertEqual((n["dados"]["linhas"][0]["p"], n["dados"]["linhas"][0]["fonte_p"][:22]), ("553", "validação de AMD0138 ("))
-        self.assertEqual((n["reaproveitar"]["pp"]["code"], n["reaproveitar"]["pf"]["supplier"], n["reaproveitar"]["pf"]["n"]), ("AMD0138", "ZS", 3))
-        n = V.salvar(nv, {"reaproveitar": ["pp", "pf"]}); self.assertEqual((n["dados"]["linhas"][0]["pp"], n["dados"]["linhas"][0]["pf"]), ([0.2, 0.1], [0.3, 0.1]))
+        self.assertEqual((n["revisao"], n["serie"], n["dados"]["linhas"][0]["p"], n["dados"]["linhas"][0]["pp"], n["dados"]["linhas"][0]["pf"]), (1, vid, "553", [0.2, 0.1], [0.3, 0.1]))
+        self.assertEqual(V.criar("rd", "AMD0138"), nv)                              # revisão aberta: a mesma bancada
+        # posições reaproveitáveis de outro código do mesmo fornecedor e família (o par, já com números)
+        self.assertEqual(V.obter(w["id"])["reaproveitar"], {})                      # o par já tem todos os números: nada a oferecer
 
     def test_reprovar_nao_sobe_desenho_e_familia_troca_guardando_valores(self):
         import validacao as V
@@ -217,11 +219,43 @@ class Bancada(unittest.TestCase):
         v = V.salvar(vid, {"family": "CONVENCIONAL"}); self.assertEqual((len(v["dados"]["linhas"]), v["dados"]["linhas"][0]["p"]), (16, "400"))
         V.desenho(vid, "perfect", _Arq("P.png", _png())); V.desenho(vid, "fornecedor", _Arq("F.png", _png()))
         V.salvar(vid, {"supplier_code": "DQF1"})
+        ls = V.obter(vid)["dados"]["linhas"]; del ls[5]; V.salvar(vid, {"linhas": ls})          # cota excluída na bancada (próximo update): 15 linhas
         v = V.gerar(vid, "reprovada", pdf=False); self.assertEqual(v["status"], "reprovada")
         c = self.db.conn()
         try: self.assertEqual(c.execute("SELECT COUNT(*) FROM drawing_files").fetchone()[0], 0)
         finally: c.close()
         import openpyxl
         ws = openpyxl.load_workbook(V.arquivo_gerado(vid, "xlsx")[0]).worksheets[0]; self.assertEqual((ws["S50"].value, ws["S52"].value), (None, "X"))
+        self.assertEqual((ws["B24"].value, ws["B25"].value), (ls[14]["nome"].upper(), None))          # a linha que sobrou no modelo sai limpa (sem o nome antigo)
+
+    def test_par_pela_aplicacao_lista_com_pares_e_sem_duplicar(self):
+        """Próximo update (26/11/2026): item fora do catálogo acha o par pela aplicação (mesma montadora, veículo, aplicação, anos e eixo; lado oposto;
+        desempate por prefixo e tipo; ambíguo = sem par); a lista traz o par do pendente; concluir um lado não duplica o par já validado."""
+        import validacao as V
+        app = ("HONDA", "ZR-V", 2024, 2025)
+        with self.db.session() as c:
+            for code, sug, desc, sub in (("AMD0453", "REDESENVOLVIMENTO", "AMORTECEDOR DIANT. LD", "PENDENTE VALIDAÇÃO"), ("AMD0454", "REDESENVOLVIMENTO", "AMORTECEDOR DIANT. LE", None),
+                                         ("NZ6Z/18124/P", "DESENVOLVIMENTO", "AMORTECEDOR DIANT. LE", None), ("AMD0458", "REDESENVOLVIMENTO", "AMORTECEDOR TRAS. LE", None)):
+                c.execute("INSERT INTO rd_projects(code,suggestion,description,family,brand,status,validation_substatus,supplier,make,vehicle,year_from,year_to) VALUES(?,?,?,'AMORTECEDOR','PERFECT','PEDIDO CONFIRMADO',?,'ZS',?,?,?,?)",
+                          (code, sug, desc, sub, *app))
+        self.assertEqual(V.par("AMD0453"), {"code": "AMD0454", "side": "esquerdo", "meu_lado": "direito", "fonte": "aplicação"})       # NZ6Z (montadora) e o traseiro ficam fora
+        self.assertEqual(V.par("AMD0454")["code"], "AMD0453")
+        with self.db.session() as c:
+            c.execute("INSERT INTO rd_projects(code,suggestion,description,make,vehicle,year_from,year_to) VALUES('AMD0459','REDESENVOLVIMENTO','AMORTECEDOR DIANT. LE',?,?,?,?)", app)
+        self.assertIsNone(V.par("AMD0453"))                                          # dois candidatos AMD do R-D: não adivinha
+        with self.db.session() as c: c.execute("DELETE FROM rd_projects WHERE code='AMD0459'")
+        V._cache_pend.clear()
+        a = {r["code"]: r for r in V.aba("rd", {"ver": "pendentes"})["rows"]}
+        self.assertEqual((sorted(a), a["AMD0454"]["par_de"]), (["AMD0100", "AMD0453", "AMD0454"], "AMD0453"))          # o par do pendente vem junto
+        # par já validado: concluir o outro lado não cria outra validação dele; validar de novo é a Rev.01
+        pid = V.criar("rd", "AMD0454")
+        with self.db.session() as c: c.execute("UPDATE validacoes SET status='reprovada', concluida_em='2026-11-26T10:00:00' WHERE id=?", (pid,))
+        vid = V.criar("rd", "AMD0453"); pp = V.preparar_par(vid)
+        self.assertEqual((pp["id"], pp["ja"]["status"]), (pid, "reprovada"))
+        c = self.db.conn()
+        try: self.assertEqual(c.execute("SELECT COUNT(*) FROM validacoes WHERE code='AMD0454'").fetchone()[0], 1)
+        finally: c.close()
+        r1 = V.criar("rd", "AMD0454"); n = V.obter(r1)
+        self.assertEqual((n["revisao"], n["serie"], n["status"]), (1, pid, "andamento"))
 
 if __name__ == "__main__": unittest.main()

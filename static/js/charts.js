@@ -30,8 +30,8 @@ window.PSDCharts = (() => {
   const donut = (el, o) => { if (!el) return Promise.resolve(null); el.classList.remove("ch"); el.style.height = "";
     T().segmentos(el, o.labels.map((l, i) => ({ l, v: o.values[i] || 0, cor: pal(o)[i % pal(o).length], txt: o.txt ? o.txt[i] : undefined })), { fmt: o.fmtParte });
     return Promise.resolve(null); };
-  /* medidor de meta: número, «de N (x%)» e o trilho; verde só quando bate a meta */
-  const gauge = (el, o) => { if (!el) return Promise.resolve(null); el.classList.remove("ch"); el.style.height = ""; el.innerHTML = T().medidor(o); return Promise.resolve(null); };
+  /* meta: anel com o % no centro e o ritmo do ano (update 5; antes, medidor reto); verde só quando bate a meta. o.year = ano da meta */
+  const gauge = (el, o) => { if (!el) return Promise.resolve(null); el.classList.remove("ch"); el.style.height = ""; el.innerHTML = T().anel(o); return Promise.resolve(null); };
 
   return { ready: () => Promise.resolve(null), nf, palette: SLOT, gauge, funnel, bars, hbars, donut, line };
 })();

@@ -120,7 +120,8 @@ def _aquecer():
 
 @app.get("/favicon.ico")
 def favicon():
-    r = send_file(os.path.join(app.root_path, "static", "img", "ShockAbsorberData.ico"), mimetype="image/x-icon"); r.headers["Cache-Control"] = "public, max-age=3600"; return r
+    # um ícone só na aba (etapa 24 · próximo update Q1): o mesmo desenho do favicon.svg (gerado por tools/favicon_ico.py); o logo colorido antigo trocava de uma tela para outra
+    r = send_file(os.path.join(app.root_path, "static", "img", "favicon.ico"), mimetype="image/x-icon"); r.headers["Cache-Control"] = "public, max-age=3600"; return r
 
 @app.route("/")
 def home():
@@ -569,6 +570,9 @@ def api_val_concluir(vid): return jsonify(validacao.gerar(vid, (request.get_json
 @app.post("/api/validacao/<int:vid>/nova")
 @_val
 def api_val_nova(vid): return jsonify(id=validacao.nova(vid, _quem()))
+@app.post("/api/validacao/<int:vid>/preparar-par")          # próximo update: validação concluída antes da correção do par pela aplicação
+@_val
+def api_val_preparar_par(vid): return jsonify(validacao.preparar_par(vid, _quem()) or {})
 @app.get("/api/validacao/<int:vid>/arquivo/<tipo>")
 @_val
 def api_val_arquivo(vid, tipo):
@@ -643,6 +647,8 @@ def api_goal_set():
     return jsonify(goals.progress(b.get("year")))
 @app.get("/api/goals/rd-validations")
 def api_goal_rd_val(): return jsonify(goals.rd_validations(request.args.get("year")))
+@app.get("/api/goals/validacoes")          # próximo update: DES e R-D numa lista, com os meses de cada validação (clique no gráfico de Metas filtra o mês)
+def api_goal_validacoes(): return jsonify(goals.validacoes_ano(request.args.get("year")))
 @app.get("/api/goals/events")
 def api_goal_events(): return jsonify(goals.events_list(request.args.get("year"), request.args.get("kind"), max(request.args.get("limit", 80, type=int), 1)))
 @app.get("/api/validations/pending")
@@ -756,6 +762,12 @@ def api_price_save():
     except ValueError as e: return jsonify(error=str(e)), 400
 
 # ---- etapa 24 · próximo update Q1: o sistema roda sem a janela do cmd (pythonw); «Fechar o sistema» no topo encerra o servidor ----
+@app.get("/api/sistema")          # update 5: seção «Sistema» de Configurações (o botão «Fechar o sistema» saiu da barra do topo)
+def api_sistema():
+    log = os.path.join(db.BASE, "data", "app_log.txt")
+    return jsonify(aberto_em=datetime.datetime.strptime(ASSET_V, "%Y%m%d%H%M%S").isoformat(timespec="seconds"), endereco=request.host,
+                   log="data\\app_log.txt" if os.path.isfile(log) else None)
+
 @app.post("/api/sistema/fechar")
 def api_sistema_fechar():
     if app.config.get("TESTING"): return jsonify(ok=True, teste=True)          # nos testes não derruba o processo

@@ -150,7 +150,7 @@
         <td class="c" data-ap>${apTag(a)}</td>
         <td><input data-k="melhoria" value="${esc(l.melhoria || "")}" ${dis} aria-label="Melhoria (Improve)"></td>
         <td class="c"><input type="checkbox" data-k="conferida" ${l.conferida ? "checked" : ""} ${dis} aria-label="Conferida"></td>
-        <td>${l.extra && !ro() ? `<button type="button" class="psd-vx" data-tira="${i}" aria-label="Tirar a medida">${ico("x", "sm")}</button>` : ""}</td></tr>`; };
+        <td>${!ro() ? `<button type="button" class="psd-vx" data-tira="${i}" aria-label="Excluir a medida ${esc(l.nome)}" title="Excluir a medida desta validação">${ico("x", "sm")}</button>` : ""}</td></tr>`; };
     const papel = (lado, titulo, extra, img) => `<div class="psd-vdes" data-des="${lado}"><h4><span class="tt">${titulo}${extra ? `<small>${extra}</small>` : ""}</span>
         <span class="psd-zctl">${img ? `<button type="button" data-z="mais" aria-label="Aproximar">${ico("plus", "sm")}</button><button type="button" data-z="menos" aria-label="Afastar"><b>−</b></button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="cheia">Tela cheia</button>` : ""}</span></h4>
       <div class="psd-papel" data-lado="${lado}">${img ? `<div class="psd-zoom"><img alt="" src="${img}">${marcas(lado)}</div>` : empty("Sem desenho.")}</div></div>`;
@@ -199,6 +199,27 @@
         c.querySelectorAll("[data-arma]").forEach(y => y.classList.toggle("armado", +y.dataset.arma === armado)); c.querySelectorAll(".psd-vtab tr[data-i]").forEach(y => y.classList.toggle("armada", +y.dataset.i === armado));
         c.querySelectorAll(".psd-papel[data-lado]").forEach(p => p.classList.toggle("armado", armado != null));
         if (armado != null) { const tr = tab && tab.querySelector(`tr[data-i="${armado}"]`); if (tr) tr.scrollIntoView({ block: "nearest" }); } };
+      /* excluir cota (próximo update, 26/11/2026): qualquer linha sai desta validação (inclusive as da família) e a numeração se refaz; «Desfazer» volta no mesmo lugar */
+      const renumera = () => v.dados.linhas.forEach((l, k) => l.n = k + 1);
+      const excluirLinha = i => { const l = v.dados.linhas[i]; if (!l) return; clearTimeout(timer);
+        v.dados.linhas.splice(i, 1); renumera(); armado = null;
+        salvar({ linhas: v.dados.linhas }, true).then(() => { const t = TW.toast(`<span>Medida <b>${esc(l.nome)}</b> excluída desta validação.</span> <button type="button" class="psd-btn sm" data-desf>Desfazer</button>`, { html: true, titulo: "Medida excluída", ms: 8000 });
+          t.querySelector("[data-desf]").addEventListener("click", () => { v.dados.linhas.splice(Math.min(i, v.dados.linhas.length), 0, l); renumera(); salvar({ linhas: v.dados.linhas }, true); t.remove(); }); }); };
+      /* número no desenho: clicar seleciona; Delete (ou botão direito › «Tirar o número») tira só a posição daquele desenho — os valores da linha ficam; Ctrl+Z devolve */
+      let selMk = null;
+      const marcaEl = (i, lado) => document.querySelectorAll(`.psd-vdes[data-des="${lado}"] .psd-mk[data-i="${i}"]`);
+      const selecionar = (i, lado) => { document.querySelectorAll(".psd-mk.sel").forEach(m => m.classList.remove("sel")); selMk = i == null ? null : { i, lado }; if (selMk) marcaEl(i, lado).forEach(m => m.classList.add("sel")); };
+      const tirarNumero = (i, lado) => { const l = v.dados.linhas[i]; if (!l || !l[lado]) return; desfazer.push({ i, lado, antes: l[lado] }); l[lado] = null;
+        marcaEl(i, lado).forEach(m => m.remove()); selMk = null; fecharCtx(); salvarLinhas();
+        TW.toast(`Número ${l.n} tirado do desenho ${LADO[lado]}; os valores da linha ficam. Ctrl+Z devolve.`, { tom: "info" }); };
+      let ctx = null; const fecharCtx = () => { if (ctx) { ctx.remove(); ctx = null; } };
+      if (!ro()) c.querySelectorAll(".psd-vdes").forEach(box => box.addEventListener("contextmenu", e => { const m = e.target.closest(".psd-mk"); if (!m) return; e.preventDefault(); fecharCtx();
+        const i = +m.dataset.i, lado = box.dataset.des, r = box.getBoundingClientRect(); selecionar(i, lado);
+        ctx = Object.assign(document.createElement("div"), { className: "psd-menu psd-vctx" }); ctx.setAttribute("role", "menu");
+        ctx.innerHTML = `<button type="button" role="menuitem" class="psd-opt">${ico("x", "sm")}<span>Tirar o número ${v.dados.linhas[i].n} deste desenho</span></button>`;
+        Object.assign(ctx.style, { left: e.clientX - r.left + "px", top: e.clientY - r.top + "px" }); box.appendChild(ctx);
+        ctx.querySelector("button").addEventListener("click", () => tirarNumero(i, lado)); ctx.querySelector("button").focus(); }));
+      document.addEventListener("pointerdown", e => { if (ctx && !ctx.contains(e.target)) fecharCtx(); }, true);
       if (tab) {
         tab.addEventListener("mouseover", e => { const tr = e.target.closest("tr[data-i]"); foco(tr ? tr.dataset.i : null); });
         tab.addEventListener("mouseleave", () => foco(null));
@@ -219,7 +240,7 @@
           salvarLinhas(); });
         tab.addEventListener("click", e => { const b = e.target.closest("[data-arma]"), x = e.target.closest("[data-tira]");
           if (b) armar(armado === +b.dataset.arma ? null : +b.dataset.arma);
-          if (x) { v.dados.linhas.splice(+x.dataset.tira, 1); v.dados.linhas.forEach((l, k) => l.n = k + 1); armado = null; salvar({ linhas: v.dados.linhas }, true); } });
+          if (x) excluirLinha(+x.dataset.tira); });
       }
       /* o ouvinte fica no conteúdo do passo (novo a cada desenho), não em #vbc: em #vbc ele se acumulava a cada troca de passo e «Pular linha» pulava várias */
       c.querySelector(".psd-vmedidas").addEventListener("click", e => { if (e.target.closest("[data-digitar]")) { const i = v.dados.linhas.findIndex(l => !l.pp); armar(i < 0 ? 0 : i); }
@@ -230,6 +251,8 @@
         if (e.target.closest("[data-pular]")) { fecharPop(); armar(armado + 1); } if (e.target.closest("[data-parar]")) { fecharPop(); armar(null); } });
       /* Ctrl+Z (ou Backspace fora de um campo): tira o último número posto e volta a linha */
       tecla3 = e => { if (!el.contains(c) || pop) return false; const campo = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || "");
+        if (selMk && !campo && (e.key === "Delete" || e.key === "Backspace")) { e.preventDefault(); tirarNumero(selMk.i, selMk.lado); return true; }
+        if (e.key === "Escape" && (ctx || selMk)) { fecharCtx(); selecionar(null); return true; }
         const desf = ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !campo) || (e.key === "Backspace" && !campo && armado != null);
         if (!desf || !desfazer.length) return false; e.preventDefault();
         const u = desfazer.pop(), l = v.dados.linhas[u.i]; l[u.lado] = u.antes;
@@ -262,15 +285,18 @@
         p.addEventListener("pointerdown", e => { if (e.target.closest(".psd-vpop")) return;
           if (e.button === 1) { e.preventDefault(); pan = { x0: e.clientX, y0: e.clientY, sx: st.x, sy: st.y, moveu: true, meio: true }; p.setPointerCapture(e.pointerId); p.classList.add("movendo"); return; }
           if (e.button !== 0) return; const m = e.target.closest(".psd-mk");
-          if (m && !ro()) { e.preventDefault(); arr = m; p.setPointerCapture(e.pointerId); return; }
+          if (m && !ro()) { e.preventDefault(); arr = m; arr._x0 = e.clientX; arr._y0 = e.clientY; arr._mov = false; p.setPointerCapture(e.pointerId); return; }
+          selecionar(null);
           pan = { x0: e.clientX, y0: e.clientY, sx: st.x, sy: st.y, moveu: false }; p.setPointerCapture(e.pointerId); });
         p.addEventListener("auxclick", e => { if (e.button === 1) e.preventDefault(); });          // sem a rolagem automática do navegador
         p.addEventListener("mousedown", e => { if (e.button === 1) e.preventDefault(); });
-        p.addEventListener("pointermove", e => { if (arr) { const [x, y] = fr(e); arr.style.left = x * 100 + "%"; arr.style.top = y * 100 + "%"; return; }
+        p.addEventListener("pointermove", e => { if (arr) { if (!arr._mov && Math.abs(e.clientX - arr._x0) + Math.abs(e.clientY - arr._y0) < 4) return; arr._mov = true;
+            const [x, y] = fr(e); arr.style.left = x * 100 + "%"; arr.style.top = y * 100 + "%"; return; }
           if (!pan) return; const dx = e.clientX - pan.x0, dy = e.clientY - pan.y0; if (Math.abs(dx) + Math.abs(dy) > 4) pan.moveu = true;
           if (pan.moveu && st.z > 1) { st.x = pan.sx + dx; st.y = pan.sy + dy; fecharPop(); aplica(); p.classList.add("movendo"); } });
         p.addEventListener("pointerup", e => { p.classList.remove("movendo");
-          if (arr) { v.dados.linhas[+arr.dataset.i][lado] = fr(e); arr = null; salvarLinhas(); return; }
+          if (arr) { const m = arr; arr = null; if (!m._mov) return selecionar(+m.dataset.i, lado);          // clique sem arrastar: seleciona (Delete tira)
+            v.dados.linhas[+m.dataset.i][lado] = fr(e); salvarLinhas(); return; }
           const clique = pan && !pan.moveu; pan = null; if (!clique || ro() || armado == null) return;
           if (modo === "digitar") return abrirPop(lado, p, z, fr(e), e, true);
           /* só marcar: põe o número e passa para a próxima linha */
@@ -382,6 +408,7 @@
           ${!ro() && v.dados.origem_par ? notice(`O outro lado, <b>${esc(v.dados.origem_par.code)} (${esc(v.dados.origem_par.lado)})</b>, foi ${v.dados.origem_par.decisao === "aprovada" ? "aprovado" : "reprovado"}. Conclua este lado com a mesma decisão, ou com outra se o desenho deste lado for diferente.`, "blue") : ""}
           ${ro() ? "" : `<div class="psd-vdecide"><button type="button" class="psd-btn ${(v.dados.origem_par || {}).decisao === "reprovada" ? "" : "prim"}" data-dec="aprovada" ${falta || !c.linhas ? "disabled" : ""}>${ico("circle-check", "sm")}Aprovar e gerar F-008</button><button type="button" class="psd-btn psd-vrepr${(v.dados.origem_par || {}).decisao === "reprovada" ? " forte" : ""}" data-dec="reprovada" ${falta || !c.linhas ? "disabled" : ""}>Reprovar e gerar F-008</button></div>`}
           ${ro() && v.par && v.par.validacao && v.par.validacao.status === "andamento" ? `<div class="psd-vaviso">${ico("arrow-left-right", "sm")}<span>O outro lado, <b>${esc(v.par.code)} (${esc(v.par.lado)})</b>, está pronto para concluir.</span><button type="button" class="psd-btn sm prim" data-irpar="${v.par.validacao.id}">Abrir ${esc(v.par.code)}</button></div>` : ""}
+          ${ro() && v.par && !v.par.validacao ? `<div class="psd-vaviso">${ico("arrow-left-right", "sm")}<span>O outro lado, <b>${esc(v.par.code)} (${esc(v.par.lado)})</b>${v.par.fonte === "aplicação" ? ", achado pela aplicação," : ""} ainda não tem validação.</span><button type="button" class="psd-btn sm prim" data-prepar>Preparar o par (${esc(v.par.code)} ${esc(v.par.lado)})</button></div>` : ""}
           <div class="psd-varq">
             ${["xlsx", "pdf"].map(t => ro() && v[t] ? `<a href="/api/validacao/${vid}/arquivo/${t}" class="psd-varq-l"><span class="ext ${t}">${t.toUpperCase()}</span><span>${esc(v[t])}</span>${ico("download", "sm")}</a>`
               : `<div class="psd-varq-l mudo"><span class="ext ${t}">${t.toUpperCase()}</span><span>${esc(v.nome_f008)}.${t}</span></div>`).join("")}
@@ -424,9 +451,17 @@
         b.disabled = true; b.innerHTML = `${ico("loader-circle", "sm psd-gira")}Gerando o F-008…`;
         try { clearTimeout(timer); v = await JS(`/${vid}/concluir`, "POST", { decisao: b.dataset.dec }); redesenharTopo(); corpo(); TW.toast(v.aviso || (ok ? "F-008 gerado e desenho enviado para Desenhos." : "F-008 gerado com a reprovação."), { tom: v.aviso ? "aviso" : "ok", titulo: ok ? "Validação aprovada" : "Validação reprovada" });
           const pp = v.par_preparado;          // item com lados: oferece o outro lado, já preenchido
+          if (pp && pp.ja) { TW.toast(`${pp.code} (${pp.lado}) já tem validação ${pp.ja.status === "aprovada" ? "aprovada" : "reprovada"}${pp.ja.em ? " em " + dmy(pp.ja.em) : ""}: não foi mexida. Para validar de novo, abra a Rev.${String(pp.ja.revisao + 1).padStart(2, "0")} nela.`, { tom: "aviso", titulo: "Par já validado" }); return; }
           if (pp && await TW.confirmar({ titulo: `Validar também ${pp.code} (${pp.lado})?`, icone: "arrow-left-right", botao: `Abrir ${pp.code}`, cancelar: "Agora não",
             texto: `A bancada do outro lado já está com a família, as medidas, a conferência e as posições dos números${pp.perfect ? " e com o desenho PERFECT vigente dele" : ""}. Falta enviar o desenho do fornecedor deste lado (o código sai do nome do arquivo) e concluir.` })) irPara(pp.id); }
         catch (e) { TW.erro(e); corpo(); } }));
+      const ppb = c.querySelector("[data-prepar]");          // validação concluída sem o par preparado (p. ex. par achado pela aplicação depois)
+      if (ppb) ppb.addEventListener("click", async () => { ppb.disabled = true;
+        try { const pp = await JS(`/${vid}/preparar-par`, "POST");
+          if (!pp.id) { TW.toast("Não foi possível preparar o outro lado.", { tom: "aviso" }); ppb.disabled = false; return; }
+          if (pp.ja) { TW.toast(`${pp.code} (${pp.lado}) já tem validação: não foi mexida.`, { tom: "aviso" }); return irPara(pp.id); }
+          TW.toast(`${pp.code} (${pp.lado}) pronto: falta o desenho do fornecedor deste lado e concluir.`); irPara(pp.id); }
+        catch (e) { TW.erro(e); ppb.disabled = false; } });
       const nv = c.querySelector("[data-nova]");
       if (nv) nv.addEventListener("click", async () => { try { const r = await JS(`/${vid}/nova`, "POST"); location.href = (o.base || location.pathname) + "?" + new URLSearchParams({ ...(o.params || {}), v: r.id }); } catch (e) { TW.erro(e); } });
     };
@@ -467,18 +502,22 @@
     root.innerHTML = `<div class="flex flex-col gap-5"><div id="vabas">${abasRD("validar")}</div><div id="vconteudo"></div></div>`; ligarAbas($("#vabas"));
     const alvo = $("#vconteudo");
     if (vid) return bancada(alvo, +vid, { voltar: "/redesenvolvimento?aba=validar", base: "/redesenvolvimento", params: { aba: "validar" } });
-    let q = u.get("q") || "", timer;
+    let q = u.get("q") || "", ver = u.get("ver") === "pendentes" ? "pendentes" : "", ult = null, timer;
     alvo.innerHTML = `<div id="vbar"></div><div id="vmeta" class="mb-2 text-sm text-mute"></div><div id="vlista">${TW.esqueleto(6)}</div>`;
-    const barra = () => TW.pintarBarra($("#vbar"), { busca: { valor: q, ph: "Buscar outro item de Redesenvolvimento: código, descrição, veículo…" } });
+    /* próximo update (26/11/2026): todos os itens em andamento, pendentes primeiro; atalho «Pendentes» = pendentes no servidor + o par LD/LE de cada um */
+    const barra = () => TW.pintarBarra($("#vbar"), { busca: { valor: q, ph: "Buscar item de Redesenvolvimento: código, descrição, veículo…" },
+      atalhos: ult && !q ? [{ k: "ver", v: "", l: "Todos em andamento", n: ult.counts.todos, on: !ver }, { k: "ver", v: "pendentes", l: "Pendentes de validação", n: ult.counts.pendentes, on: ver === "pendentes", forte: true }] : [] });
+    const url = () => history.replaceState(null, "", "/redesenvolvimento?" + new URLSearchParams({ aba: "validar", ...(q ? { q } : {}), ...(ver ? { ver } : {}) }));
     const tom = st => /REPROVAD/.test(st) ? "no" : /FINALIZAD|CONCLU|APROVAD/.test(st) ? "ok" : "";
     const carregar = async () => {
       try {
-        const d = await _J("/api/validacao/aba/rd?" + new URLSearchParams(q ? { q } : {}));
-        $("#vabas").innerHTML = abasRD("validar", d.pendentes);
-        $("#vmeta").innerHTML = q ? `<b class="text-ink">${nf(d.total)}</b> item(ns) em andamento com «${esc(q)}»` : `<b class="text-ink">${nf(d.total)}</b> item(ns) pendente(s) de validação no servidor`;
+        const d = ult = await _J("/api/validacao/aba/rd?" + new URLSearchParams({ ...(q ? { q } : {}), ...(ver ? { ver } : {}) }));
+        $("#vabas").innerHTML = abasRD("validar", d.pendentes); barra();
+        $("#vmeta").innerHTML = q ? `<b class="text-ink">${nf(d.total)}</b> item(ns) em andamento com «${esc(q)}»`
+          : `<b class="text-ink">${nf(d.total)}</b> item(ns)${ver ? `: ${nf(d.pendentes)} pendente(s) de validação no servidor${d.pares ? ` e ${nf(d.pares)} par(es) LD/LE deles` : ""}` : ` em andamento, os ${nf(d.pendentes)} pendentes de validação primeiro`}`;
         $("#vlista").innerHTML = TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Veículo(s)" }, { h: "Fornecedor" }, { h: "Validação no app" }, { h: "" }, { h: "Sub status do servidor", nw: false }],
           d.rows.map(r => { const x = r.validacao, subs = [...new Map((r.subs || []).map(s => [s.v, s])).values()];
-            return [`<a href="#" class="font-semibold text-blue-600" data-rd="rd" data-code="${esc(r.code)}">${esc(r.code)}</a>`, `<span class="block max-w-[16rem] truncate" title="${esc(r.description || "")}">${esc(r.description || "")}</span>`,
+            return [`<a href="#" class="font-semibold text-blue-600" data-rd="rd" data-code="${esc(r.code)}">${esc(r.code)}</a>${r.par_de ? ` <span title="O outro lado (LD/LE) de ${esc(r.par_de)}, que está pendente no servidor">${badge("par de " + r.par_de, "blue")}</span>` : ""}`, `<span class="block max-w-[16rem] truncate" title="${esc(r.description || "")}">${esc(r.description || "")}</span>`,
               `<span class="block max-w-[12rem] truncate" title="${esc(r.vehicles || "")}">${esc((r.vehicles || "–").replace(/ · /g, ", "))}</span>`, esc((r.suppliers || "–").replace(/ · /g, ", ")),
               x ? badge(x.status === "andamento" ? `Em andamento, ${nf(x.conferidas)} de ${nf(x.linhas)}` : x.status_label, ST[x.status][1]) : badge("Não iniciada", "slate"),
               x && x.status === "andamento" ? `<button type="button" class="psd-btn sm" data-abrir="${x.id}">Continuar</button>` : x ? `<button type="button" class="psd-btn sm" data-abrir="${x.id}">Abrir</button>` : `<button type="button" class="psd-btn sm prim" data-iniciar="${esc(r.code)}">Iniciar validação</button>`,
@@ -486,7 +525,7 @@
           { h: "max-h-[65vh]" });
       } catch (e) { $("#vlista").innerHTML = notice(esc(e.message), "red"); }
     };
-    TW.ligarBarra($("#vbar"), { set: () => { }, busca: t => { q = t; history.replaceState(null, "", "/redesenvolvimento?" + new URLSearchParams(q ? { aba: "validar", q } : { aba: "validar" })); carregar(); }, limpar: () => { q = ""; barra(); carregar(); } });
+    TW.ligarBarra($("#vbar"), { set: (k, v) => { if (k === "ver") { ver = v; url(); carregar(); } }, busca: t => { q = t; url(); carregar(); }, limpar: () => { q = ""; ver = ""; url(); barra(); carregar(); } });
     $("#vlista").addEventListener("click", async e => { const a = e.target.closest("[data-abrir]"), i = e.target.closest("[data-iniciar]");
       if (a) location.href = "/redesenvolvimento?aba=validar&v=" + a.dataset.abrir;
       if (i) { i.disabled = true; try { const r = await JS("", "POST", { kind: "rd", code: i.dataset.iniciar }); location.href = "/redesenvolvimento?aba=validar&v=" + r.id; } catch (er) { TW.erro(er); i.disabled = false; } } });

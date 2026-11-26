@@ -242,6 +242,16 @@ ETAPA 24 — 25/11/2026 (decisões em DECISOES_ETAPA24.md, regras em REGRAS_DE_N
      um arquivo copiado no Explorer.
    - Gráficos revistos: cores novas (mais fáceis de distinguir, também para daltônicos), barras mais finas, só os números importantes escritos;
      roscas viraram barras divididas e as metas viraram medidores retos; o Pareto da Garantia tem um eixo só. Nenhum número mudou.
+ - Atualização de 26/11/2026 (update 5):
+   - Um ícone só na aba do navegador (o azul-marinho com o amortecedor). Se ainda aparecer o antigo, feche e abra a aba.
+   - «Fechar o sistema» saiu do topo: fica em Configurações › Sistema (com a hora em que o sistema abriu e o endereço).
+   - Dashboard: a rosca do Sistema voltou (com os números ao lado) e as metas viraram anéis que mostram o ritmo do ano. O mesmo anel na tela Metas.
+   - Metas: clicar numa barra de «Validações por mês» mostra, na lista, as validações daquele mês.
+   - Desenvolvimento e Redesenvolvimento: sub status em faixas com botões; os que estão zerados ficam em «+n sem itens».
+   - Validação: excluir qualquer medida (com Desfazer) e tirar um número do desenho (clique + Delete ou botão direito); o par LD/LE de itens fora
+     do catálogo é achado pela aplicação; «Validar itens» mostra todos os itens em andamento e o outro lado dos pendentes; validar de novo um item
+     já validado abre a próxima revisão (nada duplicado). Nas validações já concluídas sem o par pronto (AMD0453, AMD0456, AMD2523), use
+     «Preparar o par».
  OPCIONAL: leitura das medidas pelo Claude (API da Anthropic; as imagens dos desenhos saem do PC)
  1. .venv\Scripts\python.exe -m pip install anthropic
  2. No arquivo %USERPROFILE%\.perfect_shock_data\.env, acrescente  ANTHROPIC_API_KEY=<chave da API da Anthropic>

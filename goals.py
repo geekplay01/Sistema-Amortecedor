@@ -129,6 +129,22 @@ def rd_validations(year=None):
     return {"year": year, "rows": rows, "counts": {"todas": len(rows), "contam": n, "aguardando": len(rows) - n,
             "pend_validacao_qual": sum("pend_validacao_qual" in r["flags"] for r in rows), "val_reprovada": sum("val_reprovada" in r["flags"] for r in rows)}}
 
+def validacoes_ano(year=None):
+    """Lista de validações do usuário no ano em Metas (próximo update, 26/11/2026): R-D (`rd_validations`, com «conta?») e DES, uma linha por código,
+    com `meses` = os meses em que ele foi validado no ano (o clique numa barra do gráfico filtra por mês e tipo; o código validado em dois meses entra nas duas)."""
+    import metas, data_pipeline as dp
+    r = rd_validations(year); y = r["year"]; mm = metas.validated_months(y); rk = dp.STATUS_RANK
+    for x in r["rows"]: x["kind"] = kinds.RD; x["meses"] = mm[metas.RD].get(x["code"], [])
+    st = {s["code"]: s["status"] for s in q("SELECT code,status FROM dev_item_state WHERE kind=? AND present=1", (kinds.DES,))}
+    info = {}
+    for s in q("SELECT code,status,description FROM rd_projects WHERE suggestion=?", (kinds.DES,)):
+        b = info.setdefault(s["code"], {"status": None, "description": s["description"]}); t = (s["status"] or "").strip().upper()
+        if t and (b["status"] is None or rk.get(t, -1) > rk.get(b["status"], -1)): b["status"] = t
+    des = [{"code": c, "kind": kinds.DES, "description": info.get(c, {}).get("description"), "valid_at": d, "status": st.get(c) or info.get(c, {}).get("status"),
+            "flags": [], "counts": None, "received_at": None, "meses": mm[metas.DES].get(c, [])} for c, d in sorted(metas.validated(y, metas.DES).items())]
+    rows = sorted(des + r["rows"], key=lambda x: (x["valid_at"] or "", x["code"]), reverse=True)
+    return {**r, "rows": rows, "tipos": {kinds.DES: len(des), kinds.RD: len(r["rows"])}}
+
 def progress(year=None):
     """Andamento das duas metas + evolução mensal (alimenta os velocímetros do dashboard). Duas bases de contagem (rules.goal_basis, editável na tela):
     «validacao» (padrão) → validações do usuário ITALOC (USER_VALID) em itens de LINHA «Amortecedor», por SUGESTAO DES / R-D, no ano da DATA_APROVACAO (metas.py).

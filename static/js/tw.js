@@ -220,6 +220,34 @@ window.PSDTW = (() => {
     return `<div class="psd-med">${o.title ? `<div class="psd-med-t">${esc(o.title)}</div>` : ""}<div class="lin"><b>${nf(v)}</b><span>${t ? `de ${nf(t)} (${nf(p, 1)}%)${ok ? ", atingida" : ""}` : "sem meta"}</span></div>
       <div class="trk" role="meter" aria-valuemin="0" aria-valuemax="${t || 0}" aria-valuenow="${v}" aria-label="${esc((o.title || "Meta") + ": " + nf(v) + (t ? " de " + nf(t) : ""))}"><div style="width:${Math.min(100, p).toFixed(1)}%;background:var(${ok ? "--ok" : "--chart-1"})"></div></div>
       ${o.subtitle ? `<div class="psd-med-s">${esc(o.subtitle)}</div>` : ""}</div>`; };
+  /* ---------- update 5 (26/11/2026, maquete aprovada): rosca fina e anel de meta — SVG com cores por token (trocam com o tema sem redesenhar) ---------- */
+  const _var = c => String(c).startsWith("--") ? `var(${c})` : c;
+  const _ponto = (cx, cy, r, t) => [cx + r * Math.cos(2 * Math.PI * t - Math.PI / 2), cy + r * Math.sin(2 * Math.PI * t - Math.PI / 2)];
+  const _arco = (cx, cy, r, a, b) => { const [x0, y0] = _ponto(cx, cy, r, a), [x1, y1] = _ponto(cx, cy, r, b); return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${b - a > 0.5 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
+  /* rosca(partes [{l, v, cor}], {rotulo, acoes}) → anel de 12 px com 2 px de vão, o total no centro e, ao lado, nome, quantidade e % de cada parte (Dashboard › Sistema) */
+  const rosca = (partes, o = {}) => { const tot = partes.reduce((a, p) => a + (p.v || 0), 0), vis = partes.filter(p => p.v > 0), R = 72, gap = vis.length > 1 ? 2 / (2 * Math.PI * R) : 0; let ac = 0;
+    const pct = p => tot ? nf(100 * p.v / tot, 1) + "%" : "–";
+    const arcos = vis.map(p => { const f = p.v / tot, d = f >= 0.9999 ? null : _arco(84, 84, R, ac + gap / 2, ac + f - gap / 2); ac += f;
+      return d ? `<path d="${d}" fill="none" stroke="${_var(p.cor)}" stroke-width="12"><title>${esc(p.l)}: ${nf(p.v)} (${pct(p)})</title></path>` : `<circle cx="84" cy="84" r="${R}" fill="none" stroke="${_var(p.cor)}" stroke-width="12"/>`; }).join("");
+    return `<div class="psd-rosca"><svg viewBox="0 0 168 168" role="img" aria-label="${esc(vis.map(p => `${p.l} ${nf(p.v)} (${pct(p)})`).join("; ") + `; total ${nf(tot)}`)}">
+        <circle cx="84" cy="84" r="${R}" fill="none" stroke="var(--chart-trilho)" stroke-width="12" opacity="${tot ? 0 : 1}"/>${arcos}
+        <text x="84" y="82" text-anchor="middle" class="n">${nf(tot)}</text><text x="84" y="102" text-anchor="middle" class="r">${esc(o.rotulo || "total")}</text></svg>
+      <div class="tab">${partes.map(p => `<div class="lin"><i style="background:${_var(p.cor)}"></i><span>${esc(p.l)}</span><b>${nf(p.v)}</b><span class="p">${pct(p)}</span></div>`).join("")}${o.acoes ? `<div class="ac">${o.acoes}</div>` : ""}</div></div>`; };
+  /* anel({value, target, title, subtitle, year}) → % no centro; o tracinho marca onde a meta deveria estar hoje (meta × parte do ano já passada);
+     ao lado: «n de meta», o ritmo e a distância dele (laranja abaixo, verde acima); verde no anel só quando bate a meta (Dashboard e Metas) */
+  const anel = o => { const v = o.value || 0, t = o.target || 0, ok = t > 0 && v >= t, p = t ? 100 * v / t : 0, hoje = new Date(), y = +o.year || hoje.getFullYear();
+    const fr = y < hoje.getFullYear() ? 1 : y > hoje.getFullYear() ? 0 : (hoje - new Date(y, 0, 1)) / (new Date(y + 1, 0, 1) - new Date(y, 0, 1)), esp = Math.round(t * fr), dif = v - esp;
+    const R = 44, C = 2 * Math.PI * R, [ix, iy] = _ponto(52, 52, R - 9, fr), [ox, oy] = _ponto(52, 52, R + 9, fr);
+    const rit = !t ? "sem meta" : ok ? `meta atingida em ${y}` : fr >= 1 ? `ano encerrado` : `ritmo de hoje: ${nf(esp)}`;
+    const chip = !t ? "" : ok ? `<span class="psd-anel-d cima">▲ ${v > t ? `${nf(v - t)} acima da meta` : "meta atingida"}</span>`
+      : fr >= 1 ? `<span class="psd-anel-d baixo">▼ faltaram ${nf(t - v)}</span>` : dif >= 0 ? `<span class="psd-anel-d cima">▲ ${nf(dif)} acima do ritmo</span>` : `<span class="psd-anel-d baixo">▼ ${nf(-dif)} abaixo do ritmo</span>`;
+    return `<div class="psd-anel"><svg viewBox="0 0 104 104" role="img" aria-label="${esc(`${o.title || "Meta"}: ${nf(v)}${t ? ` de ${nf(t)}, ${nf(p, 1)}%; ${rit}` : ""}`)}">
+        <circle cx="52" cy="52" r="${R}" fill="none" stroke="var(--chart-trilho)" stroke-width="9"/>
+        ${p > 0 ? `<circle cx="52" cy="52" r="${R}" fill="none" stroke="var(${ok ? "--ok" : "--chart-1"})" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(C * Math.min(p, 100) / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 52 52)"/>` : ""}
+        ${t && !ok && fr > 0 && fr < 1 ? `<line x1="${ix.toFixed(2)}" y1="${iy.toFixed(2)}" x2="${ox.toFixed(2)}" y2="${oy.toFixed(2)}" class="rit"><title>Ritmo de hoje: ${nf(esp)}</title></line>` : ""}
+        <text x="52" y="58" text-anchor="middle">${t ? nf(p, p >= 100 ? 0 : 1) + "%" : "–"}</text></svg>
+      <div class="inf">${o.title ? `<div class="tt">${esc(o.title)}</div>` : ""}<div class="num">${nf(v)}${t ? ` <small>de ${nf(t)}</small>` : ""}</div><div class="rit">${esc(rit)}</div>${chip}
+        ${o.subtitle ? `<div class="ap">${esc(o.subtitle)}</div>` : ""}</div></div>`; };
   /* legenda em HTML (gráfico de uma série com cor por categoria, p. ex. curva A/B/C) */
   const legenda = itens => `<div class="psd-legs">${itens.map(x => `<span><i style="background:${String(x.cor).startsWith("--") ? `var(${x.cor})` : x.cor}"></i>${esc(x.l)}</span>`).join("")}</div>`;
   /* ---------- Barra de filtros (etapa 19 · Q4/Q6): um padrão para todas as telas ----------
@@ -414,5 +442,5 @@ window.PSDTW = (() => {
     document.addEventListener("paste", colar);
   };
 
-  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, editarCodigos, fobRD, enviar, carregando, esqueleto, grafico, CORES, curto, segmentos, medidor, legenda, barra, pintarBarra, ligarBarra, botao, ops, etiquetas, zonaPlanilha, ligarPlanilha };
+  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, editarCodigos, fobRD, enviar, carregando, esqueleto, grafico, CORES, curto, segmentos, medidor, rosca, anel, legenda, barra, pintarBarra, ligarBarra, botao, ops, etiquetas, zonaPlanilha, ligarPlanilha };
 })();
