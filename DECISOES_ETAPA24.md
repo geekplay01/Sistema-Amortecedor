@@ -96,4 +96,32 @@ baixados de novo a cada gravação que redesenha. Achado na conferência: o ouvi
 - [x] Feito e conferido na cópia: mola (LMAX, LMAX2, LMIN), só marcar + Ctrl+Z, nome trocado gravado, duplo clique → 553/3/−3, damping (Enter, colar, ±),
   sobrepor (abre, fecha com Esc, um só), abas sem recarregar com o destaque deslizando, ouvinte do passo 3 corrigido. Testes verdes.
 - Node.js 26.13.1 portátil instalado em `%LOCALAPPDATA%\nodejs` (sem administrador; fora do PATH) para o `npx skills find`.
-- [ ] Usuário: validar o fluxo de R-D na prática; teste do PaddleOCR; depois, liberar a aba em Desenvolvimento.
+- [x] Commit `4b7126c`.
+
+## Ajuste 3 (25/11/2026) — par LD/LE, lançamento mais rápido, skills e sugestões
+
+Fatos (cópia): 65 pendentes de validação no R-D; 26 com lados e par (todos pela planilha Lados), 33 LD/LE num item só, 6 fora do catálogo; nos exemplos o par
+também está pendente (AMD0138/0139, AMD0928/0929, AMD1714/1715).
+
+| # | Pergunta | Decisão |
+|---|---|---|
+| Q1 | O que o par recebe | Tudo (família, mola, medidas, tolerâncias, melhorias, damping, conferência, fornecedor) e a decisão |
+| Q2 | Desenhos do par | PERFECT do vigente do par em Desenhos; fornecedor enviado; posições copiadas, «Espelhar posições» |
+| Q3 | Quando conclui | Convite «Validar também …?» ao concluir; o usuário conclui o par (mesma decisão em destaque) |
+| Q4 | Código do fornecedor | **Do nome do arquivo do desenho, nos dois lados** (resposta do usuário) |
+| Q5 | Lançamento | PERFECT já preenchido, posições reaproveitadas, tabela como planilha |
+| Q6 | Skills | `refactoring-ui` e `database-schema-designer` instaladas em `.claude/skills` (fora do Git; só texto) |
+| Q7 | Arquitetura e design | Etapa 25 (abaixo) |
+
+- [x] `ler_nome`, `_preencher_perfect`, `par`, `preparar_par`, `_fonte_posicoes` (reaproveitar), espelhar; bancada com aviso do par, link no cabeçalho, convite ao concluir,
+  decisão em destaque; tabela como planilha. Correção: validação nova começa com a pasta vazia (o SQLite reaproveita o número de uma apagada).
+- [x] Conferido na cópia: AMD0138 (LD) com código lido do nome (ZS, DQ41746) e PERFECT do catálogo; concluída → AMD0139 (LE) pronta, com o PERFECT vigente dela,
+  aviso e «Espelhar»; Enter desce na coluna; colar coluna; «Abrir AMD0139» no lado concluído. Testes verdes.
+
+### Sugestões para a etapa 25 (levantadas pelo mapa do código)
+- Arquitetura: `app.py` (716 linhas, quase todas as rotas) em Blueprints por módulo; `validacao.js` (≈ 500 linhas) em um arquivo por passo; `q()`/`q1()` (130 e 80 ligações) com consultas por domínio.
+- Dados: medidas da validação em tabela própria (hoje JSON) para o painel de reprovações; visão «item» (catálogo + DES/R-D + desenhos + validações pelo código, hoje texto solto em ~8 tabelas); FTS5 na busca rápida.
+- Design: painel da Validação (reprovação por fornecedor, medidas que mais falham, tempo por validação); Ctrl+K; terminar a migração do `style.css` antigo.
+- Lançamento (ficaram para depois): botões «= PERFECT» e «OK» por linha; importar a tabela de medidas do fornecedor (Excel/CSV); ler DXF; teste do PaddleOCR.
+
+- [ ] Usuário: validar o fluxo de R-D na prática (inclusive um par LD/LE); depois, liberar a aba em Desenvolvimento.

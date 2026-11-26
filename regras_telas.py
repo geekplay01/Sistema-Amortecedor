@@ -110,6 +110,11 @@ def lista():
             "Ctrl+Z tira o último; duplo clique num número abre o valor. Em «Marcar e digitar», o clique abre o campo ali mesmo (no PERFECT, «553±3» ou «12.1 +0.15/0» já separa as tolerâncias). "
             "O nome da cota pode ser trocado na tabela (só nesta validação). Roda do mouse aproxima, arrastar move, «Tela cheia» abre o desenho grande; arrastar um número muda o lugar dele. "
             "Cada linha preenchida precisa ser marcada «Conferida».",
+            "O fornecedor e o código do fornecedor saem do nome do arquivo do desenho («RED - AMD0128 - ZS - DQ32713 - REV.06»). A coluna PERFECT já vem preenchida (itálico azul) da última "
+            "validação do mesmo código, do par ou do catálogo; confira. «Reaproveitar posições» traz os números de uma validação anterior do mesmo código ou do mesmo fornecedor e família. "
+            "Na tabela, Enter desce na coluna e colar uma coluna do Excel preenche para baixo.",
+            "<b>Itens com lados</b> (LD × LE na planilha Lados): ao concluir um lado, o outro fica pronto — família, medidas, conferência, posições, damping e o desenho PERFECT vigente dele. "
+            "Falta enviar o desenho do fornecedor do outro lado e concluir; o botão da mesma decisão fica em destaque. «Espelhar posições» vira os números se o desenho for espelhado.",
             "«Item com mola» (passo 2) acrescenta a medida LMAX2 logo abaixo do LMAX. «Sobrepor» mostra os dois desenhos juntos (PERFECT vermelho, fornecedor azul, coincidência escura); com "
             "2 ou mais linhas marcadas nos dois desenhos, alinha sozinho. Damping: Enter passa para o valor ao lado; colar vários números preenche a linha.",
             "Leitura pelo Claude: desligada por padrão (Configurações › Regras de negócio). Ligada, o Claude (Opus 5.5, pela API, com a chave ANTHROPIC_API_KEY do ~/.perfect_shock_data/.env) "

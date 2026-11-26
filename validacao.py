@@ -140,6 +140,85 @@ def _rd_info(kind, code):
             "make": junta("make"), "vehicle": junta("vehicle"), "application": junta("application_text"), "years": f"{anos[0]}-{anos[-1]}" if len(anos) > 1 else (str(anos[0]) if anos else ""),
             "suppliers": [s for s in dict.fromkeys(r["supplier"] for r in rows if r["supplier"])], "family": (prod or {}).get("family"), "in_rd": bool(rows)}
 
+# ---------------- nome do arquivo, PERFECT já preenchido, posições e par LD/LE (ajuste 3 da etapa 24) ----------------
+def _chave(t): return re.sub(r"[^A-Z0-9]", "", str(t or "").upper())
+
+def _fornecedores_conhecidos():
+    out = {"EWIN": "E-WIN"}
+    try:
+        for r in q("SELECT DISTINCT upper(supplier) s FROM rd_projects WHERE supplier IS NOT NULL UNION SELECT upper(supplier) FROM supplier_ex"):
+            if r["s"]: out.setdefault(_chave(r["s"]), r["s"].strip())
+    except Exception: pass
+    return out
+
+def ler_nome(nome, code=None):
+    """Fornecedor, código do fornecedor e revisão pelo nome do arquivo do desenho, no padrão «RED - AMD0128 - ZS - DQ32713 - REV.06».
+    O código do fornecedor é o pedaço logo depois do fornecedor (se não for o código AMD nem a revisão). Sem fornecedor conhecido no nome: nada."""
+    base = os.path.splitext(os.path.basename(nome or ""))[0]
+    base = re.sub(r"\s*\(\d+\)\s*$", "", base); base = re.sub(r"^\d+_(?=\D)", "", base)          # «(1)» de download repetido; «7_» do nome guardado em Desenhos
+    partes = [p.strip() for p in re.split(r"\s+-\s*|\s*-\s+", base) if p.strip()]
+    conhecidos, out = _fornecedores_conhecidos(), {}
+    rev = lambda p: re.fullmatch(r"REV\.?\s*(\w+)", p.upper())
+    for i, p in enumerate(partes):
+        if rev(p): out["rev"] = rev(p).group(1); continue
+        if "supplier" not in out and _chave(p) in conhecidos:
+            out["supplier"] = conhecidos[_chave(p)]
+            prox = partes[i + 1] if i + 1 < len(partes) else ""
+            if prox and not rev(prox) and not re.fullmatch(r"AMD\d+", _chave(prox)) and _chave(prox) != _chave(code) and _chave(prox) not in conhecidos:
+                out["supplier_code"] = prox.upper()
+    return out
+
+def _num_txt(x): return f"{x:g}" if isinstance(x, (int, float)) else ""
+
+def _preencher_perfect(code, linhas, sem_id=None):
+    """Coluna PERFECT já preenchida (só nas linhas vazias): os valores do desenho PERFECT não mudam de fornecedor para fornecedor. Fonte, em ordem:
+    a última validação do mesmo código, a do par LD/LE e as dimensões do catálogo (Lmax, Lmin, curso, Ø haste, Ø tubo, corpo). `fonte_p` diz de onde veio."""
+    if not linhas: return linhas
+    pr = par(code); cods = [c for c in (code, pr["code"] if pr else None) if c]
+    for c in cods:
+        rows = q("SELECT id, code, dados, updated_at FROM validacoes WHERE upper(code)=upper(?) AND id<>? ORDER BY updated_at DESC, id DESC LIMIT 5", (c, sem_id or 0))
+        for r in rows:
+            ant = {(l.get("nome") or "").upper(): l for l in (json.loads(r["dados"] or "{}").get("linhas") or []) if str(l.get("p") or "").strip()}
+            if not ant: continue
+            for l in linhas:
+                a = ant.get((l.get("nome") or "").upper())
+                if a and not str(l.get("p") or "").strip():
+                    l.update(p=a.get("p") or "", tm=a.get("tm") or "", tn=a.get("tn") or "", fonte_p=f"validação de {r['code']} ({(r['updated_at'] or '')[:10]})")
+            break
+    dm = q1("SELECT d.* FROM dimensions d JOIN products p ON p.id=d.product_id WHERE upper(p.perfect_code)=upper(?)", (code,))
+    if dm:
+        curso = dm.get("stroke_mm") or (dm["lmax_mm"] - dm["lmin_mm"] if dm.get("lmax_mm") and dm.get("lmin_mm") else None)
+        cat = {"LMAX": dm.get("lmax_mm"), "LMIN": dm.get("lmin_mm"), "S": curso, "ROD DIAMETER": dm.get("rod_diameter_mm"), "BODY DIAMETER": dm.get("tube_diameter_mm"), "BODY LENGTH": dm.get("body_length_mm")}
+        for l in linhas:
+            x = cat.get((l.get("nome") or "").upper())
+            if x and not str(l.get("p") or "").strip(): l.update(p=_num_txt(x), fonte_p="catálogo")
+    return linhas
+
+def par(code):
+    """Par do outro lado (LD × LE) pela planilha Lados (side_pairs). Só itens com lados (LD ou LE na descrição); LD/LE num item só não tem par."""
+    p = q1("SELECT id, description FROM products WHERE upper(perfect_code)=upper(?)", (code or "",))
+    if not p: return None
+    r = q1("SELECT CASE WHEN right_product_id=? THEN left_product_id ELSE right_product_id END o FROM side_pairs WHERE right_product_id=? OR left_product_id=?", (p["id"],) * 3)
+    o = q1("SELECT perfect_code, description FROM products WHERE id=?", (r["o"],)) if r and r["o"] else None
+    meu, dele = db.side_from_text(p["description"]), db.side_from_text(o["description"]) if o else None
+    if not o or meu not in ("direito", "esquerdo") or dele not in ("direito", "esquerdo") or meu == dele: return None
+    return {"code": o["perfect_code"].upper(), "side": dele, "meu_lado": meu}
+
+LADO_CURTO = {"direito": "LD", "esquerdo": "LE"}
+
+def _fonte_posicoes(v):
+    """De onde reaproveitar as posições dos números: PERFECT = última validação do mesmo código (o desenho PERFECT é o mesmo);
+    fornecedor = última validação do mesmo fornecedor e família (o fornecedor costuma usar o mesmo formato de desenho)."""
+    out = {}
+    def tem(dados, k): return any(l.get(k) for l in (json.loads(dados or "{}").get("linhas") or []))
+    for r in q("SELECT id, code, dados FROM validacoes WHERE upper(code)=upper(?) AND id<>? ORDER BY updated_at DESC LIMIT 5", (v["code"], v["id"])):
+        if tem(r["dados"], "pp"): out["pp"] = {"id": r["id"], "code": r["code"]}; break
+    if v.get("supplier") and v.get("family"):          # mesmo código e fornecedor antes; depois o mesmo fornecedor e família
+        for r in q("""SELECT id, code, dados FROM validacoes WHERE upper(coalesce(supplier,''))=upper(?) AND family=? AND id<>?
+                      ORDER BY upper(code)=upper(?) DESC, updated_at DESC LIMIT 8""", (v["supplier"], v["family"], v["id"], v["code"])):
+            if tem(r["dados"], "pf"): out["pf"] = {"id": r["id"], "code": r["code"], "supplier": v["supplier"]}; break
+    return out
+
 def criar(kind, code, by=None):
     """Abre a bancada do item: devolve a validação em andamento do código (se houver) ou cria uma nova, com fornecedor e família sugeridos."""
     kind = kind if kind in KINDS else "rd"; code = (code or "").strip().upper()
@@ -150,10 +229,15 @@ def criar(kind, code, by=None):
     if not info["in_rd"]: raise ValueError(f"{code} não está em {KINDS[kind]}.")
     fams = {x["v"] for x in familias()}; fam = (info["family"] or "").upper()
     fam = fam if fam in fams else None
-    dados = {"linhas": _linhas_da_familia(fam) if fam else [], "damping": _damping_vazio()}
+    dados = {"linhas": _preencher_perfect(code, _linhas_da_familia(fam)) if fam else [], "damping": _damping_vazio()}
     with db.session() as c:
-        return c.execute("INSERT INTO validacoes(kind,code,supplier,family,received_at,dados,by_user) VALUES(?,?,?,?,?,?,?)",
-                         (kind, code, (info["suppliers"] or [None])[0], fam, datetime.date.today().isoformat(), json.dumps(dados, ensure_ascii=False), by)).lastrowid
+        vid = c.execute("INSERT INTO validacoes(kind,code,supplier,family,received_at,dados,by_user) VALUES(?,?,?,?,?,?,?)",
+                        (kind, code, (info["suppliers"] or [None])[0], fam, datetime.date.today().isoformat(), json.dumps(dados, ensure_ascii=False), by)).lastrowid
+    return _pasta_limpa(vid)
+
+def _pasta_limpa(vid):
+    """Validação nova começa com a pasta vazia: o SQLite reaproveita o número de uma validação apagada, e arquivos que sobraram nela apareceriam aqui."""
+    shutil.rmtree(os.path.join(DIR, str(int(vid))), ignore_errors=True); return vid
 
 def _damping_vazio(): return {"p": {"pf": [""] * 5, "py": [""] * 5}, "f": {"pf": [""] * 5, "py": [""] * 5}}
 
@@ -180,6 +264,17 @@ def obter(vid):
     v["info"] = _rd_info(v["kind"], v["code"]); v["familias"] = familias(); v["status_label"] = STATUS.get(v["status"], v["status"])
     v["kind_label"] = KINDS.get(v["kind"], v["kind"]); v["nome_f008"] = nome_f008(v)
     v["ia"] = ia_disponivel()
+    pr = par(v["code"])
+    if pr:
+        w = q1("SELECT id, status FROM validacoes WHERE kind=? AND upper(code)=? ORDER BY id DESC", (v["kind"], pr["code"]))
+        v["par"] = {**pr, "lado": LADO_CURTO[pr["side"]], "meu": LADO_CURTO[pr["meu_lado"]], "validacao": dict(w) if w else None}
+    else: v["par"] = None
+    v["reaproveitar"] = {}
+    if v["status"] == "andamento":          # só oferece quando a outra validação tem número para alguma linha que aqui ainda não tem
+        for lado, f in _fonte_posicoes(v).items():
+            ant = {(l.get("nome") or "").upper() for l in _row(f["id"])["dados"]["linhas"] if l.get(lado)}
+            n = sum(1 for l in d["linhas"] if not l.get(lado) and (l.get("nome") or "").upper() in ant)
+            if n: v["reaproveitar"][lado] = {**f, "n": n}
     return v
 
 def nome_f008(v):
@@ -205,12 +300,14 @@ def salvar(vid, patch):
         antiga = next((l for l in d["linhas"] if l.get("mola")), None)
         campos["family"] = fam or None; d["linhas"] = _linhas_da_familia(fam, [l for l in d["linhas"] if not l.get("mola")]) if fam else []
         if fam and d.get("mola"): d["linhas"] = _aplicar_mola(d["linhas"], True, antiga)
+        d["linhas"] = _preencher_perfect(v["code"], d["linhas"], vid)
     if "linhas" in patch:
         novas = []
         for i, l in enumerate(patch["linhas"][:NLINHAS], 1):
             x = {**_linha_vazia(), **{k: l.get(k) for k in _linha_vazia() if k in l}}; x["n"] = i
             for k in ("nome", "p", "f", "tm", "tn", "melhoria", "obs"): x[k] = str(x[k] or "").strip()
             x["nome"] = x["nome"].upper(); x["conferida"] = bool(x["conferida"]); x["mola"] = bool(l.get("mola"))
+            if l.get("fonte_p") and str(l.get("p") or "").strip(): x["fonte_p"] = str(l["fonte_p"])[:80]
             t = num(x["tn"])
             if t is not None and t > 0: x["tn"] = f"-{x['tn']}"          # tolerância «−» sempre negativa (a fórmula soma F + M)
             for k in ("pp", "pf"):
@@ -220,6 +317,17 @@ def salvar(vid, patch):
     if "mola" in patch:
         d["mola"] = bool(patch["mola"])
         if d["linhas"]: d["linhas"] = _aplicar_mola(d["linhas"], d["mola"], next((l for l in d["linhas"] if l.get("mola")), None))
+    if patch.get("reaproveitar"):          # posições dos números de outra validação (só nas linhas sem número)
+        fonte = _fonte_posicoes(v)
+        for lado in [x for x in patch["reaproveitar"] if x in ("pp", "pf")]:
+            if lado not in fonte: continue
+            ant = {(l.get("nome") or "").upper(): l.get(lado) for l in (_row(fonte[lado]["id"])["dados"]["linhas"])}
+            for l in d["linhas"]:
+                if not l.get(lado) and ant.get((l.get("nome") or "").upper()): l[lado] = ant[(l["nome"] or "").upper()]
+    if patch.get("espelhar") in ("pp", "pf", "ambos"):          # desenho do outro lado espelhado: as posições também (x → 1 − x)
+        for l in d["linhas"]:
+            for lado in (("pp", "pf") if patch["espelhar"] == "ambos" else (patch["espelhar"],)):
+                if l.get(lado): l[lado] = [round(1 - l[lado][0], 6), l[lado][1]]
     if "mascara" in patch:
         if not _arquivo(vid, "perfect.png"): raise ValueError("Envie primeiro o desenho PERFECT.")
         d["mascara"] = _ops_mascara(patch["mascara"]); _aplicar_mascara(vid, d["mascara"])
@@ -258,12 +366,16 @@ def desenho(vid, lado, storage):
     except Exception as e: os.remove(orig); raise ValueError(f"Não foi possível abrir o desenho ({e}).")
     img.save(os.path.join(p, f"{lado}.png"), optimize=True)
     campos = {("perfect_name" if lado == "perfect" else "supplier_name"): nome}
+    lido = ler_nome(nome, v["code"]) if lado == "fornecedor" else {}
+    if lido.get("supplier"): campos["supplier"] = lido["supplier"]          # Q4: fornecedor e código do fornecedor pelo nome do arquivo
+    if lido.get("supplier_code"): campos["supplier_code"] = lido["supplier_code"]
     if lado == "perfect":           # desenho novo: a máscara anterior não vale mais
         try: os.remove(os.path.join(p, "perfect_limpo.png"))
         except OSError: pass
         v["dados"]["mascara"] = []; campos["dados"] = v["dados"]
     _gravar(vid, **campos)
-    return obter(vid)
+    out = obter(vid); out["lido_do_nome"] = lido
+    return out
 
 def _aplicar_mascara(vid, ops):
     """Desenho PERFECT com a máscara limpa = perfect.png + as operações da ferramenta de seleção, na ordem: «apagar» pinta o retângulo de branco;
@@ -538,7 +650,10 @@ def gerar(vid, decisao, by=None, pdf=True):
         try: fid = subir_desenho(v)
         except Exception as e: aviso = ((aviso + " ") if aviso else "") + f"O desenho não subiu para Desenhos ({e})."
     _gravar(vid, status=decisao, concluida_em=_agora(), xlsx=base + ".xlsx", pdf=pdf_nome, aviso=aviso, drawing_file_id=fid, by_user=by or v.get("by_user"))
-    return obter(vid)
+    try: pp_ = preparar_par(vid, by)          # item com lados: o outro lado fica pronto para concluir (ajuste 3)
+    except Exception: pp_ = None
+    out = obter(vid); out["par_preparado"] = pp_
+    return out
 
 PS_PDF = r"""param([string]$x, [string]$p)
 $e = New-Object -ComObject Excel.Application
@@ -592,9 +707,41 @@ def nova(vid, by=None):
     ja = q1("SELECT id FROM validacoes WHERE kind=? AND upper(code)=upper(?) AND status='andamento'", (v["kind"], v["code"]))
     if ja: return ja["id"]
     with db.session() as c:
-        return c.execute("INSERT INTO validacoes(kind,code,supplier,family,received_at,dados,by_user) VALUES(?,?,?,?,?,?,?)",
-                         (v["kind"], v["code"], v["supplier"], v["family"], datetime.date.today().isoformat(),
-                          json.dumps({"linhas": _linhas_da_familia(v["family"]) if v["family"] else [], "damping": _damping_vazio()}, ensure_ascii=False), by)).lastrowid
+        nid = c.execute("INSERT INTO validacoes(kind,code,supplier,family,received_at,dados,by_user) VALUES(?,?,?,?,?,?,?)",
+                        (v["kind"], v["code"], v["supplier"], v["family"], datetime.date.today().isoformat(),
+                         json.dumps({"linhas": _preencher_perfect(v["code"], _linhas_da_familia(v["family"])) if v["family"] else [], "damping": _damping_vazio()}, ensure_ascii=False), by)).lastrowid
+    return _pasta_limpa(nid)
+
+def preparar_par(vid, by=None):
+    """Ao concluir um lado de um item com lados (LD × LE da planilha Lados), deixa a validação do outro lado pronta: família, mola, medidas (valores,
+    tolerâncias, melhorias, conferência e posições dos números), damping e fornecedor; o desenho PERFECT vem do vigente do par em Desenhos (se houver).
+    Faltam o desenho do fornecedor do par (o código do fornecedor sai do nome do arquivo) e concluir — com a mesma decisão, que fica guardada em
+    `origem_par`. Validação do par já com medidas digitadas não é sobrescrita."""
+    import copy, drawings
+    v = _row(vid); pr = par(v["code"])
+    if not pr: return None
+    try: pid = criar(v["kind"], pr["code"], by)
+    except ValueError: return None
+    w = _row(pid)
+    if w["status"] != "andamento": return None
+    usadas = [l for l in w["dados"]["linhas"] if str(l.get("f") or "").strip()]
+    if not usadas:
+        d = w["dados"]
+        d.update(linhas=copy.deepcopy(v["dados"]["linhas"]), damping=copy.deepcopy(v["dados"]["damping"]), mola=v["dados"].get("mola", False))
+        for l in d["linhas"]: l.pop("fonte_p", None); l["obs"] = ""
+        d["origem_par"] = {"id": vid, "code": v["code"], "lado": LADO_CURTO.get(pr["meu_lado"]), "decisao": v["status"], "em": _agora()}
+        campos = {"dados": d, "family": v["family"], "supplier": v["supplier"], "received_at": v["received_at"]}
+        if not _arquivo(pid, "perfect.png"):          # PERFECT do par: o desenho vigente dele em Desenhos (PDF ou imagem)
+            try:
+                det = drawings.detail(pr["code"]) or {}
+                f = next((x for x in det.get("current", []) if (x.get("ext") or "").lower() in (".pdf", ".png", ".jpg", ".jpeg", ".bmp", ".webp")), None)
+                fp = drawings.file_path(f["id"])[1] if f else None
+                if fp:
+                    pasta = _pasta(pid); ext = os.path.splitext(fp)[1].lower(); orig = os.path.join(pasta, "perfect_original" + ext); shutil.copy2(fp, orig)
+                    _png_de(orig, ext).save(os.path.join(pasta, "perfect.png"), optimize=True); campos["perfect_name"] = f["filename"]
+            except Exception: pass
+        _gravar(pid, **campos)
+    return {"id": pid, "code": pr["code"], "lado": LADO_CURTO[pr["side"]], "perfect": bool(_arquivo(pid, "perfect.png"))}
 
 def excluir(vid):
     v = _row(vid)

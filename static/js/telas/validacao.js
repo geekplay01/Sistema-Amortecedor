@@ -53,7 +53,8 @@
         ${o.voltar ? `<a class="psd-vvolta" href="${o.voltar}">${ico("chevron-right", "sm")}<span>Voltar à lista</span></a>` : ""}
         <span class="id">${esc(v.code)}</span><span class="desc">${esc([v.info.description, v.info.vehicle].filter(Boolean).join(", "))}</span>
         <dl class="psd-par"><div><dt>Fornecedor</dt><dd>${esc(v.supplier || "–")}</dd></div><div><dt>Cód. fornecedor</dt><dd>${esc(v.supplier_code || "–")}</dd></div>
-          <div><dt>Família</dt><dd>${esc(FAM(v.family) || "–")}</dd></div><div><dt>Tipo</dt><dd>${esc(FAM(v.kind_label))}</dd></div></dl>
+          <div><dt>Família</dt><dd>${esc(FAM(v.family) || "–")}</dd></div><div><dt>Tipo</dt><dd>${esc(FAM(v.kind_label))}</dd></div>
+          ${v.par ? `<div><dt>Lado</dt><dd>${esc(v.par.meu)}, par ${v.par.validacao ? `<a class="psd-vpar" href="#" data-irpar="${v.par.validacao.id}">${esc(v.par.code)} (${esc(v.par.lado)})</a>` : esc(`${v.par.code} (${v.par.lado})`)}</dd></div>` : ""}</dl>
         <span class="dir">${badge(ST[v.status][0], ST[v.status][1])}<span id="vsalvo" class="text-xs text-mute">${ro() ? "concluída em " + dmy(v.concluida_em) : v.updated_at ? "rascunho salvo " + String(v.updated_at).slice(11, 16) : ""}</span></span></div>
       <div class="psd-passos" role="tablist">${PASSOS.map((t, i) => `<button type="button" role="tab" data-passo="${i}" aria-selected="${i === passo}" class="${feito(i) ? "feito" : ""}">${i + 1} · ${t}<small>${esc(sub(i))}</small></button>`).join("")}</div>`;
     const redesenharTopo = () => { const t = $("#vtopo", el); if (t) t.innerHTML = topo(); };
@@ -67,7 +68,9 @@
     const drop = (lado, rot) => ro() ? empty("Sem desenho.") : `<label class="psd-drop" data-drop="${lado}">${ico("upload", "lg")}<b>Enviar ${esc(rot)}</b><span>PDF, PNG ou JPG; arraste o arquivo para cá ou clique</span><input type="file" accept=".pdf,.png,.jpg,.jpeg,.bmp,.webp" data-up="${lado}" hidden></label>`;
     const trocar = lado => ro() ? "" : `<label class="psd-btn sm">${ico("upload", "sm")}Trocar arquivo<input type="file" accept=".pdf,.png,.jpg,.jpeg,.bmp,.webp" data-up="${lado}" hidden></label>`;
     const enviar = async (lado, f) => { if (!f) return; const fd = new FormData(); fd.append("file", f);
-      try { v = await TW.enviar(`/api/validacao/${vid}/desenho/${lado}`, fd, [f]); redesenharTopo(); corpo(); TW.toast(lado === "perfect" ? "Desenho PERFECT enviado." : "Desenho do fornecedor enviado."); } catch (e) { TW.erro(e); } };
+      try { v = await TW.enviar(`/api/validacao/${vid}/desenho/${lado}`, fd, [f]); redesenharTopo(); corpo(); const ln = v.lido_do_nome || {};
+        TW.toast(lado === "perfect" ? "Desenho PERFECT enviado." : ln.supplier ? `Desenho do fornecedor enviado. Pelo nome do arquivo: ${ln.supplier}${ln.supplier_code ? ", código " + ln.supplier_code : ""}.` : "Desenho do fornecedor enviado. O nome do arquivo não traz o fornecedor: informe abaixo."); } catch (e) { TW.erro(e); } };
+    const irPara = id => { location.href = (o.base || location.pathname) + "?" + new URLSearchParams({ ...(o.params || {}), v: id }); };
     const ligarEnvio = c => {
       c.querySelectorAll("[data-up]").forEach(i => i.addEventListener("change", () => enviar(i.dataset.up, i.files[0])));
       c.querySelectorAll("[data-drop]").forEach(z => { z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("sobre"); }); z.addEventListener("dragleave", () => z.classList.remove("sobre"));
@@ -142,7 +145,7 @@
       return `<tr data-i="${i}" class="${armado === i ? "armada" : ""}">
         <td><button type="button" class="psd-num${armado === i ? " armado" : ""}" data-arma="${i}" ${dis} title="Digitar esta medida no desenho">${l.n}</button></td>
         <td class="nome">${!ro() ? `<input data-k="nome" class="nm" value="${esc(l.nome)}" title="Nome da cota no F-008 (só nesta validação)" aria-label="Nome da cota em inglês">` : `<span>${esc(l.nome)}</span>`}${l.obs ? `<small title="${esc(l.obs)}">${esc(l.obs)}</small>` : ""}</td>
-        ${["p", "f", "tm", "tn"].map(k => `<td><input data-k="${k}" value="${esc(l[k] || "")}" class="r" ${dis} aria-label="${{ p: "PERFECT", f: "Fornecedor", tm: "Tolerância +", tn: "Tolerância −" }[k]}"></td>`).join("")}
+        ${["p", "f", "tm", "tn"].map(k => `<td><input data-k="${k}" value="${esc(l[k] || "")}" class="r${k === "p" && l.fonte_p ? " pre" : ""}" ${k === "p" && l.fonte_p ? `title="Já preenchido: ${esc(l.fonte_p)}. Confira."` : ""} ${dis} aria-label="${{ p: "PERFECT", f: "Fornecedor", tm: "Tolerância +", tn: "Tolerância −" }[k]}"></td>`).join("")}
         <td class="c" data-ap>${apTag(a)}</td>
         <td><input data-k="melhoria" value="${esc(l.melhoria || "")}" ${dis} aria-label="Melhoria (Improve)"></td>
         <td class="c"><input type="checkbox" data-k="conferida" ${l.conferida ? "checked" : ""} ${dis} aria-label="Conferida"></td>
@@ -164,6 +167,12 @@
             <button type="button" class="psd-btn sm" data-mais ${v.dados.linhas.length >= 25 ? "disabled" : ""}>${ico("plus", "sm")}Adicionar medida</button>
             ${c.linhas ? `<button type="button" class="psd-btn sm" data-confa>${ico("check", "sm")}Conferir as que deram A</button>` : ""}</span>`}</div>
         ${v.ia.ligada && !v.ia.ok && !ro() ? notice(`${esc(v.ia.motivo)} Enquanto isso, digite as medidas no desenho.`, "amber") : ""}
+        ${(() => { const op = v.dados.origem_par; if (!op || ro()) return "";
+          return `<div class="psd-vaviso">${ico("arrow-left-right", "sm")}<span>Copiado de <b>${esc(op.code)} (${esc(op.lado)})</b>, ${op.decisao === "aprovada" ? "aprovado" : "reprovado"} em ${dmy(op.em)}: medidas, conferência e posições dos números. Confira as posições neste desenho; se ele for espelhado, use «Espelhar posições».</span>
+            <button type="button" class="psd-btn sm" data-espelhar="ambos">${ico("arrow-left-right", "sm")}Espelhar posições</button></div>`; })()}
+        ${(() => { if (ro()) return ""; const r = v.reaproveitar || {}, ks = ["pp", "pf"].filter(k => r[k]); if (!ks.length) return "";
+          const de = ks.map(k => k === "pp" ? `PERFECT de ${r.pp.code} (${nf(r.pp.n)} linha${r.pp.n === 1 ? "" : "s"})` : `fornecedor ${r.pf.supplier} de ${r.pf.code} (${nf(r.pf.n)} linha${r.pf.n === 1 ? "" : "s"})`).join(" e ");
+          return `<div class="psd-vaviso">${ico("history", "sm")}<span>Dá para reaproveitar as posições dos números: ${esc(de)}. Só entram nas linhas sem número; depois é só corrigir arrastando.</span><button type="button" class="psd-btn sm" data-reap="${ks.join(",")}">Reaproveitar posições</button></div>`; })()}
         <div id="vmarca">${marcando()}</div>
         ${v.dados.linhas.length ? `<div class="psd-vtab-w"><table class="psd-vtab"><thead><tr><th>Nº</th><th>Medida</th><th class="r">PERFECT</th><th class="r">Fornecedor</th><th class="r">Tol. +</th><th class="r">Tol. −</th><th class="c">Ap</th><th>Melhoria</th><th class="c">Conferida</th><th></th></tr></thead>
           <tbody>${v.dados.linhas.map(linha).join("")}</tbody></table></div>` : empty("Escolha a família no passo 2 para montar a tabela.")}
@@ -192,8 +201,19 @@
       if (tab) {
         tab.addEventListener("mouseover", e => { const tr = e.target.closest("tr[data-i]"); foco(tr ? tr.dataset.i : null); });
         tab.addEventListener("mouseleave", () => foco(null));
+        /* tabela como planilha: Enter ou ↓ desce na mesma coluna, Shift+Enter ou ↑ sobe; colar várias linhas (uma coluna do Excel) preenche para baixo */
+        const celula = (i, d) => { const tr = i.closest("tr"), k = i.dataset.k; let alvo = tr; do { alvo = d > 0 ? alvo.nextElementSibling : alvo.previousElementSibling; } while (alvo && !alvo.querySelector(`[data-k="${k}"]`));
+          return alvo && alvo.querySelector(`[data-k="${k}"]`); };
+        tab.addEventListener("keydown", e => { const i = e.target.closest("input[data-k]"); if (!i || i.type === "checkbox") return;
+          const d = (e.key === "Enter" && !e.shiftKey) || e.key === "ArrowDown" ? 1 : (e.key === "Enter" && e.shiftKey) || e.key === "ArrowUp" ? -1 : 0; if (!d) return;
+          const x = celula(i, d); e.preventDefault(); if (x) { x.focus(); x.select(); } });
+        tab.addEventListener("paste", e => { const i = e.target.closest("input[data-k]"); if (!i || i.type === "checkbox") return;
+          const vals = (e.clipboardData || window.clipboardData).getData("text").replace(/\r/g, "").split("\n").map(s => s.split("\t")[0].trim()); while (vals.length && !vals[vals.length - 1]) vals.pop();
+          if (vals.length < 2) return; e.preventDefault(); let x = i;
+          for (const val of vals) { if (!x) break; x.value = val; x.dispatchEvent(new Event("input", { bubbles: true })); x = celula(x, 1); } });
         tab.addEventListener("input", e => { const i = e.target.closest("[data-k]"); if (!i) return; const tr = i.closest("tr"), l = v.dados.linhas[+tr.dataset.i], k = i.dataset.k;
           if (k === "conferida") l.conferida = i.checked; else l[k] = i.value;
+          if (k === "p" && l.fonte_p) { delete l.fonte_p; i.classList.remove("pre"); i.removeAttribute("title"); }
           if (["p", "f", "tm", "tn"].includes(k)) { melhoria(l); tr.querySelector("[data-ap]").innerHTML = apTag(ap(l)); tr.querySelector('[data-k="melhoria"]').value = l.melhoria || ""; }
           salvarLinhas(); });
         tab.addEventListener("click", e => { const b = e.target.closest("[data-arma]"), x = e.target.closest("[data-tira]");
@@ -203,6 +223,8 @@
       /* o ouvinte fica no conteúdo do passo (novo a cada desenho), não em #vbc: em #vbc ele se acumulava a cada troca de passo e «Pular linha» pulava várias */
       c.querySelector(".psd-vmedidas").addEventListener("click", e => { if (e.target.closest("[data-digitar]")) { const i = v.dados.linhas.findIndex(l => !l.pp); armar(i < 0 ? 0 : i); }
         const md = e.target.closest("[data-modo]"); if (md) { modo = md.dataset.modo; armar(armado); }
+        const ep = e.target.closest("[data-espelhar]"); if (ep) { clearTimeout(timer); salvar({ linhas: v.dados.linhas, espelhar: ep.dataset.espelhar }, true); }
+        const rp = e.target.closest("[data-reap]"); if (rp) { clearTimeout(timer); salvar({ linhas: v.dados.linhas, reaproveitar: rp.dataset.reap.split(",") }, true).then(() => TW.toast("Posições reaproveitadas. Confira e arraste o que mudou.")); }
         if (e.target.closest("[data-sobrepor]")) sobrepor();
         if (e.target.closest("[data-pular]")) { fecharPop(); armar(armado + 1); } if (e.target.closest("[data-parar]")) { fecharPop(); armar(null); } });
       /* Ctrl+Z (ou Backspace fora de um campo): tira o último número posto e volta a linha */
@@ -345,7 +367,9 @@
           <div class="psd-est psd-vconta"><button type="button" tabindex="-1"><span class="t">Aprovadas (A)</span><span class="n">${nf(c.A)}</span></button><button type="button" tabindex="-1" class="${c.R ? "red" : ""}"><span class="t">Reprovadas (R)</span><span class="n">${nf(c.R)}</span></button>
             <button type="button" tabindex="-1" class="${falta ? "amb" : ""}"><span class="t">Conferidas</span><span class="n">${nf(c.conferidas)}</span><span class="l">de ${nf(c.linhas)}</span></button></div>
           ${ro() ? "" : falta ? notice(`Faltam ${nf(falta)} linha(s) para conferir no passo 3.`, "amber") : ""}
-          ${ro() ? "" : `<div class="psd-vdecide"><button type="button" class="psd-btn prim" data-dec="aprovada" ${falta || !c.linhas ? "disabled" : ""}>${ico("circle-check", "sm")}Aprovar e gerar F-008</button><button type="button" class="psd-btn psd-vrepr" data-dec="reprovada" ${falta || !c.linhas ? "disabled" : ""}>Reprovar e gerar F-008</button></div>`}
+          ${!ro() && v.dados.origem_par ? notice(`O outro lado, <b>${esc(v.dados.origem_par.code)} (${esc(v.dados.origem_par.lado)})</b>, foi ${v.dados.origem_par.decisao === "aprovada" ? "aprovado" : "reprovado"}. Conclua este lado com a mesma decisão, ou com outra se o desenho deste lado for diferente.`, "blue") : ""}
+          ${ro() ? "" : `<div class="psd-vdecide"><button type="button" class="psd-btn ${(v.dados.origem_par || {}).decisao === "reprovada" ? "" : "prim"}" data-dec="aprovada" ${falta || !c.linhas ? "disabled" : ""}>${ico("circle-check", "sm")}Aprovar e gerar F-008</button><button type="button" class="psd-btn psd-vrepr${(v.dados.origem_par || {}).decisao === "reprovada" ? " forte" : ""}" data-dec="reprovada" ${falta || !c.linhas ? "disabled" : ""}>Reprovar e gerar F-008</button></div>`}
+          ${ro() && v.par && v.par.validacao && v.par.validacao.status === "andamento" ? `<div class="psd-vaviso">${ico("arrow-left-right", "sm")}<span>O outro lado, <b>${esc(v.par.code)} (${esc(v.par.lado)})</b>, está pronto para concluir.</span><button type="button" class="psd-btn sm prim" data-irpar="${v.par.validacao.id}">Abrir ${esc(v.par.code)}</button></div>` : ""}
           <div class="psd-varq">
             ${["xlsx", "pdf"].map(t => ro() && v[t] ? `<a href="/api/validacao/${vid}/arquivo/${t}" class="psd-varq-l"><span class="ext ${t}">${t.toUpperCase()}</span><span>${esc(v[t])}</span>${ico("download", "sm")}</a>`
               : `<div class="psd-varq-l mudo"><span class="ext ${t}">${t.toUpperCase()}</span><span>${esc(v.nome_f008)}.${t}</span></div>`).join("")}
@@ -371,13 +395,17 @@
         if (!(await TW.confirmar({ titulo: ok ? "Aprovar o desenho e gerar o F-008?" : "Reprovar o desenho e gerar o F-008?", texto: `${v.nome_f008}.xlsx e .pdf`, botao: ok ? "Aprovar e gerar" : "Reprovar e gerar", perigo: !ok, icone: ok ? "circle-check" : "",
           nota: ok ? "O desenho do fornecedor vai para Desenhos. A validação fica fechada para edição." : "A validação fica fechada para edição; para validar de novo, abra uma nova validação." }))) return;
         b.disabled = true; b.innerHTML = `${ico("loader-circle", "sm psd-gira")}Gerando o F-008…`;
-        try { clearTimeout(timer); v = await JS(`/${vid}/concluir`, "POST", { decisao: b.dataset.dec }); redesenharTopo(); corpo(); TW.toast(v.aviso || (ok ? "F-008 gerado e desenho enviado para Desenhos." : "F-008 gerado com a reprovação."), { tom: v.aviso ? "aviso" : "ok", titulo: ok ? "Validação aprovada" : "Validação reprovada" }); }
+        try { clearTimeout(timer); v = await JS(`/${vid}/concluir`, "POST", { decisao: b.dataset.dec }); redesenharTopo(); corpo(); TW.toast(v.aviso || (ok ? "F-008 gerado e desenho enviado para Desenhos." : "F-008 gerado com a reprovação."), { tom: v.aviso ? "aviso" : "ok", titulo: ok ? "Validação aprovada" : "Validação reprovada" });
+          const pp = v.par_preparado;          // item com lados: oferece o outro lado, já preenchido
+          if (pp && await TW.confirmar({ titulo: `Validar também ${pp.code} (${pp.lado})?`, icone: "arrow-left-right", botao: `Abrir ${pp.code}`, cancelar: "Agora não",
+            texto: `A bancada do outro lado já está com a família, as medidas, a conferência e as posições dos números${pp.perfect ? " e com o desenho PERFECT vigente dele" : ""}. Falta enviar o desenho do fornecedor deste lado (o código sai do nome do arquivo) e concluir.` })) irPara(pp.id); }
         catch (e) { TW.erro(e); corpo(); } }));
       const nv = c.querySelector("[data-nova]");
       if (nv) nv.addEventListener("click", async () => { try { const r = await JS(`/${vid}/nova`, "POST"); location.href = (o.base || location.pathname) + "?" + new URLSearchParams({ ...(o.params || {}), v: r.id }); } catch (e) { TW.erro(e); } });
     };
 
-    el.addEventListener("click", e => { const b = e.target.closest("[data-passo]"); if (b && el.contains(b)) ir(+b.dataset.passo); });
+    el.addEventListener("click", e => { const b = e.target.closest("[data-passo]"); if (b && el.contains(b)) ir(+b.dataset.passo);
+      const pr = e.target.closest("[data-irpar]"); if (pr) { e.preventDefault(); irPara(pr.dataset.irpar); } });
     document.addEventListener("keydown", e => { if (!el.isConnected) return;          // bancada que saiu da tela (troca de aba sem recarregar) não responde mais
       if (passo === 2 && tecla3 && tecla3(e)) return; if (e.key !== "Escape") return; if (esc3 && esc3()) return;          // Esc: fecha o campo, depois a tela cheia, depois para a digitação
       if (armado != null && passo === 2) { const b = el.querySelector("[data-parar]"); if (b) b.click(); } });

@@ -404,6 +404,12 @@ div:has(>.psd-kpi,>a>.psd-kpi):not(:has(>:not(.psd-kpi,a)))>a:hover{background:v
 [data-theme=dark] .psd-seg > .psd-ind{background:var(--b600)}
 .psd-linha > .psd-ind{border-radius:10px;background:var(--b600)}
 .psd-linha > .psd-ind::before{width:9px}
+/* etapa 24 · ajuste 3: avisos da bancada (par LD/LE, posições reaproveitáveis), valor PERFECT já preenchido (itálico azul até ser mexido), link do par */
+.psd-vaviso{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:10px;padding:8px 12px;border:1px solid color-mix(in srgb,var(--b500) 35%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--b500) 7%,var(--card));font-size:13px;color:var(--tx)}
+.psd-vaviso > span{flex:1;min-width:16rem}.psd-vaviso > .psd-ico{color:var(--cobalt)}
+.psd-vtab td input.pre{font-style:italic;color:var(--cobalt)}
+a.psd-vpar{color:var(--cobalt);font-weight:600;text-decoration:none}a.psd-vpar:hover{text-decoration:underline}
+.psd-btn.psd-vrepr.forte{background:var(--pf-red);border-color:var(--pf-red);color:#fff}
 /* chave liga/desliga (etapa 24): «Item com mola» no passo 2 */
 .psd-switch{display:inline-flex;align-items:center;gap:12px;margin:2px 0 16px;cursor:pointer;user-select:none}
 .psd-switch input{position:absolute;opacity:0;width:1px;height:1px}

@@ -151,6 +151,48 @@ class Bancada(unittest.TestCase):
         with self.db.session() as c: c.execute("UPDATE rd_projects SET validation_substatus='PENDENTE VALIDAÇÃO' WHERE code='AMD0200'")
         self.assertEqual(sorted(V.pendentes_rd("rd")), ["AMD0100", "AMD0200"])
 
+    def test_nome_do_arquivo_perfect_preenchido_e_par_ld_le(self):
+        """Ajuste 3: fornecedor e código pelo nome do arquivo; PERFECT já preenchido (catálogo e validação anterior); validar um lado deixa o par pronto
+        (medidas, posições, PERFECT vigente do par em Desenhos) com a decisão guardada; posições reaproveitadas e espelhadas."""
+        import validacao as V, drawings
+        self.assertEqual(V.ler_nome("RED - AMD0128 - ZS - DQ32713 - REV.06.pdf", "AMD0128"), {"supplier": "ZS", "supplier_code": "DQ32713", "rev": "06"})
+        self.assertEqual(V.ler_nome("3_RED - AMD0100 - EWIN - DQF60333-02 - REV.03 (1).pdf"), {"supplier": "E-WIN", "supplier_code": "DQF60333-02", "rev": "03"})
+        self.assertEqual(V.ler_nome("RED -AMD0122 - ZS - DQ43922 - REV.04.pdf")["supplier_code"], "DQ43922")
+        self.assertNotIn("supplier_code", V.ler_nome("DES - 1BP31974AB - E-WIN - AMD0122 - REV.00.pdf"))       # depois do fornecedor vem o AMD: sem código
+        self.assertEqual(V.ler_nome("desenho_final.pdf"), {})
+        with self.db.session() as c:
+            ids = {}
+            for code, desc in (("AMD0138", "AMORTECEDOR DIANT. LD"), ("AMD0139", "AMORTECEDOR DIANT. LE")):
+                ids[code] = c.execute("INSERT INTO products(perfect_code,description,family,catalog_position) VALUES(?,?,'ESTRUTURAL',2)", (code, desc)).lastrowid
+                c.execute("INSERT INTO rd_projects(code,suggestion,description,family,brand,status,validation_substatus,supplier) VALUES(?,'REDESENVOLVIMENTO',?,'AMORTECEDOR','PERFECT','PEDIDO CONFIRMADO','PENDENTE VALIDAÇÃO','ZS')", (code, desc))
+            c.execute("INSERT INTO side_pairs(right_product_id,left_product_id) VALUES(?,?)", (ids["AMD0138"], ids["AMD0139"]))
+            c.execute("INSERT INTO dimensions(product_id,lmax_mm,lmin_mm,rod_diameter_mm) VALUES(?,553,396,22)", (ids["AMD0138"],))
+        self.assertEqual(V.par("AMD0138"), {"code": "AMD0139", "side": "esquerdo", "meu_lado": "direito"}); self.assertIsNone(V.par("AMD0100"))      # AMD0100 sem par
+        # PERFECT vigente do par em Desenhos
+        tmp = os.path.join(self.tmp, "up"); os.makedirs(tmp); pth = os.path.join(tmp, "RED - AMD0139 - ZS - DQ2 - REV.00.png"); open(pth, "wb").write(_png())
+        drawings.apply({"kind": "desenho", "files": [{"name": os.path.basename(pth), "path": pth, "source": None, "folder": ""}]}, {"0": {"codes": "AMD0139"}})
+        vid = V.criar("rd", "AMD0138"); L = {l["nome"]: l for l in V.obter(vid)["dados"]["linhas"]}
+        self.assertEqual((L["LMAX"]["p"], L["LMAX"]["fonte_p"], L["S"]["p"], L["ROD DIAMETER"]["p"]), ("553", "catálogo", "157", "22"))
+        V.desenho(vid, "perfect", _Arq("P.png", _png())); v = V.desenho(vid, "fornecedor", _Arq("RED - AMD0138 - ZS - DQ41746 - REV.00.png", _png()))
+        self.assertEqual((v["supplier"], v["supplier_code"], v["lido_do_nome"]["supplier_code"]), ("ZS", "DQ41746", "DQ41746"))
+        self.assertEqual((v["par"]["code"], v["par"]["lado"], v["par"]["meu"]), ("AMD0139", "LE", "LD"))
+        ls = v["dados"]["linhas"]
+        for l in ls:
+            if l["p"]: l.update(f=l["p"], conferida=True)          # linha já preenchida pelo catálogo também precisa ser conferida
+        for l in ls[:3]: l.update(pp=[0.2, 0.1], pf=[0.3, 0.1])
+        V.salvar(vid, {"linhas": ls})
+        r = V.gerar(vid, "aprovada", pdf=False)
+        self.assertEqual((r["par_preparado"]["code"], r["par_preparado"]["lado"], r["par_preparado"]["perfect"]), ("AMD0139", "LE", True))
+        w = V.obter(r["par_preparado"]["id"]); W = {l["nome"]: l for l in w["dados"]["linhas"]}
+        self.assertEqual((w["family"], w["supplier"], w["supplier_code"], w["dados"]["origem_par"]["code"], w["dados"]["origem_par"]["decisao"]), ("ESTRUTURAL", "ZS", None, "AMD0138", "aprovada"))
+        self.assertEqual((W["LMAX"]["f"], W["LMAX"]["conferida"], W["LMAX"]["pf"]), ("553", True, [0.3, 0.1])); self.assertTrue(w["imagens"]["perfect"])
+        w = V.salvar(w["id"], {"espelhar": "ambos"}); self.assertEqual(w["dados"]["linhas"][0]["pf"], [0.7, 0.1])          # desenho do outro lado espelhado
+        # nova validação do lado já validado: PERFECT da validação anterior; posições reaproveitáveis do mesmo código e do mesmo fornecedor/família
+        nv = V.nova(vid); n = V.obter(nv)
+        self.assertEqual((n["dados"]["linhas"][0]["p"], n["dados"]["linhas"][0]["fonte_p"][:22]), ("553", "validação de AMD0138 ("))
+        self.assertEqual((n["reaproveitar"]["pp"]["code"], n["reaproveitar"]["pf"]["supplier"], n["reaproveitar"]["pf"]["n"]), ("AMD0138", "ZS", 3))
+        n = V.salvar(nv, {"reaproveitar": ["pp", "pf"]}); self.assertEqual((n["dados"]["linhas"][0]["pp"], n["dados"]["linhas"][0]["pf"]), ([0.2, 0.1], [0.3, 0.1]))
+
     def test_reprovar_nao_sobe_desenho_e_familia_troca_guardando_valores(self):
         import validacao as V
         vid = V.criar("rd", "AMD0200"); self.assertIsNone(V.obter(vid)["family"])        # sem família no catálogo: escolher

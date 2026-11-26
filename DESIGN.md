@@ -137,6 +137,10 @@ Um cartão (`.psd-banc`): cabeçalho com o código, a descrição e os dados do 
 - **Sobrepor** (`.psd-vsob`, tela inteira): PERFECT em vermelho `--sob-p`, fornecedor em azul `--sob-f`, coincidência escura `--sob-e` (cores do desenho,
   iguais nos dois temas), legenda no topo; arrastar move e a roda muda o tamanho do desenho do fornecedor.
 - **Item com mola** no passo 2: chave liga/desliga `.psd-switch` (rótulo em negrito + linha de apoio).
+- **Avisos da bancada** (`.psd-vaviso`, faixa azul discreta com ícone, texto e uma ação à direita): «copiado do outro lado» (com «Espelhar posições») e «dá para reaproveitar posições».
+  Valor já preenchido pelo app (PERFECT do catálogo ou de validação anterior) fica em itálico azul (`input.pre`) até ser mexido. O par aparece no cabeçalho
+  («Lado: LE, par AMD0138 (LD)», link). No passo 4, a decisão do outro lado fica em destaque (Reprovar cheio em vermelho quando o par foi reprovado).
+- **Tabela como planilha**: Enter/↓ desce na coluna, Shift+Enter/↑ sobe, colar uma coluna do Excel preenche para baixo.
 - **Damping**: Enter vai para o valor ao lado (no fim, a linha de baixo), Shift+Enter volta, colar vários números preenche a linha.
 - **Zoom**: roda do mouse sobre o ponto, botões «+ − Ajustar» e «Tela cheia» no título do desenho (`.psd-zctl`); os números mantêm o tamanho (`--z`).
   Em tela cheia o bloco vai para o `<body>` (fora do recorte do cartão) e Esc volta (Esc fecha antes o campo aberto).
