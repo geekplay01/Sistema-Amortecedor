@@ -569,10 +569,10 @@ a.psd-varq-l:hover span:not(.ext){text-decoration:underline}.psd-varq-l.mudo{col
 /* update 5 (maquete aprovada em 26/11/2026): rosca fina do Sistema (Dashboard) e anel de meta com o ritmo (Dashboard e Metas) — DESIGN.md §6.6 */
 .psd-rosca{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
 .psd-rosca svg{width:168px;height:168px;flex:none;overflow:visible}
-.psd-rosca svg .n{font:600 30px var(--fontd);fill:var(--tx)}.psd-rosca svg .r{font-size:12px;fill:var(--mut)}.psd-rosca svg .pc{font:600 13px var(--fontd);fill:var(--mut)}
+.psd-rosca svg .n{font:600 30px var(--fontd);fill:var(--tx)}.psd-rosca svg .r{font:400 12px var(--font);fill:var(--mut)}.psd-rosca svg .pc{font:500 13px var(--fontd);fill:var(--mut)}
 .psd-rosca .tab{flex:1 1 12rem;display:flex;flex-direction:column;gap:4px}
 .psd-rosca .lin{display:grid;grid-template-columns:auto 1fr auto auto 2.6rem;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;font-size:13.5px;color:var(--tx);text-decoration:none;transition:background .15s,opacity .2s}
-.psd-rosca .lin i{width:10px;height:10px;border-radius:50%}.psd-rosca .lin b{font-variant-numeric:tabular-nums}
+.psd-rosca .lin i{width:10px;height:10px;border-radius:50%}.psd-rosca .lin b{font:500 15px var(--fontd);font-variant-numeric:tabular-nums}
 .psd-rosca .lin .p{min-width:3.4rem;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums}
 .psd-rosca .ac{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 /* update 7: rosca dinâmica — a parte em foco engrossa, o resto se apaga; a linha dela ganha fundo e o «abrir» */
@@ -585,13 +585,17 @@ a.psd-varq-l:hover span:not(.ext){text-decoration:underline}.psd-varq-l.mudo{col
 .psd-rosca path.entra{stroke-dasharray:100 100;animation:psd-varre-r .7s cubic-bezier(.2,.8,.2,1) both}@keyframes psd-varre-r{from{stroke-dasharray:0 100}}
 .psd-anel{padding:12px 14px;border:1px solid var(--line);border-radius:14px;min-width:0}
 .psd-anel .top{display:flex;align-items:center;gap:16px}
-.psd-anel svg{width:104px;height:104px;flex:none}.psd-anel svg .pct{font:600 19px var(--fontd);fill:var(--tx)}.psd-anel svg .sb{font:500 10px var(--font);fill:var(--mut)}
+.psd-anel svg{width:104px;height:104px;flex:none}.psd-anel svg .pct{font:600 20px var(--fontd);fill:var(--tx);letter-spacing:-.01em}.psd-anel svg .sb{font:400 10px var(--font);fill:var(--mut)}
 .psd-anel svg line.rit{stroke:var(--tx);stroke-width:2;stroke-linecap:round}
-.psd-anel .inf{min-width:0;flex:1}.psd-anel .tt{font:600 12.5px/1.2 var(--fontd);color:var(--mut)}
-.psd-anel .num{font:600 26px/1.1 var(--fontd);color:var(--tx);margin:4px 0 2px}.psd-anel .num small{font:500 14px/1 var(--font);color:var(--mut)}
-.psd-anel .rit{font-size:12px;color:var(--mut)}.psd-anel .ap{margin-top:6px;font-size:11.5px;color:var(--mut)}
-.psd-anel .leit{min-height:22px;font-size:12.5px;color:var(--mut)}.psd-anel .leit b{color:var(--tx);font-variant-numeric:tabular-nums}
-.psd-anel .fr{margin-top:6px;font-size:12.5px;color:var(--tx)}.psd-anel .fr b{font-variant-numeric:tabular-nums}
+.psd-anel .inf{min-width:0;flex:1}.psd-anel .tt{font:500 12px/1.2 var(--fontd);color:var(--mut);letter-spacing:.02em}
+/* update 7b (tipografia aprovada): sem negrito no texto — o número pesa pelo tamanho (Barlow), as palavras em cinza; o selo na linha do número */
+.psd-anel .num{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 6px;margin:2px 0 8px}.psd-anel .num b{font:600 28px/1 var(--fontd);color:var(--tx);font-variant-numeric:tabular-nums}
+.psd-anel .num small{font-size:13px;color:var(--mut)}.psd-anel .num .psd-anel-d{margin:0 0 0 4px;align-self:center}.psd-anel.lendo .num .psd-anel-d{visibility:hidden}
+.psd-anel .stats{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 22px;min-height:38px}
+.psd-anel .st{display:flex;flex-direction:column;gap:1px}.psd-anel .st span{font-size:11.5px;color:var(--mut)}
+.psd-anel .st b{font:500 17px/1.15 var(--fontd);color:var(--tx);font-variant-numeric:tabular-nums}.psd-anel .st b small{font:400 12px var(--font);color:var(--mut);margin-left:4px}
+.psd-anel .mes{align-self:flex-end;margin-bottom:2px;padding:4px 8px;border-radius:6px;background:var(--thead);font:500 12px/1 var(--fontd);color:var(--tx)}
+.psd-anel .rit{font-size:12px;color:var(--mut)}.psd-anel .ap{margin-top:8px;font-size:11.5px;color:var(--mut)}
 /* update 7: anel mais rico — arco anda na troca de mês; projeção some enquanto se lê um mês; barrinhas dos meses (futuros = trilho) */
 .psd-anel .arco{transition:stroke-dasharray .45s cubic-bezier(.2,.8,.2,1),stroke .3s,opacity .2s}.psd-anel .proj,.psd-anel line.rit{transition:opacity .25s}
 .psd-anel.lendo .proj,.psd-anel.lendo line.rit{opacity:0}

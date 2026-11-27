@@ -332,8 +332,9 @@ window.PSDTW = (() => {
     const chip = !t ? "" : ok ? `<span class="psd-anel-d cima">▲ ${v > t ? `${nf(v - t)} acima da meta` : "meta atingida"}</span>`
       : fr >= 1 ? `<span class="psd-anel-d baixo">▼ faltaram ${nf(t - v)}</span>` : dif >= 0 ? `<span class="psd-anel-d cima">▲ ${nf(dif)} acima do ritmo</span>` : `<span class="psd-anel-d baixo">▼ ${nf(-dif)} abaixo do ritmo</span>`;
     const corrente = fr > 0 && fr < 1, proj = corrente && t ? Math.round(v / fr) : null, pv = Math.min(1, p / 100), pr = proj != null ? Math.min(1, proj / t) : 0;
-    const frase = proj == null ? "" : ok ? `no ritmo atual, fecha ${y} com <b>${nf(proj)}</b>, ${nf(proj - t)} acima da meta`
-      : proj >= t ? `no ritmo atual, fecha ${y} com <b>${nf(proj)}</b> e bate a meta` : `no ritmo atual, fecha ${y} com <b>${nf(proj)}</b>; faltariam <b>${nf(t - proj)}</b>`;
+    /* update 7b (tipografia aprovada): sem negrito no meio do texto — indicadores curtos, rótulo cinza pequeno e o número em Barlow médio embaixo */
+    const st = (l, val, extra = "") => `<div class="st"><span>${esc(l)}</span><b>${val}${extra ? `<small>${esc(extra)}</small>` : ""}</b></div>`;
+    const stats = !t ? "" : [ok ? st("Atingida em", y) : corrente ? st("Ritmo de hoje", nf(esp)) : "", proj != null ? st("Fecha o ano com", nf(proj), "no ritmo atual") : ""].join("");
     const serie = (o.serie || []).filter(m => String(m.month || "").startsWith(String(y))).map(m => ({ i: +String(m.month).slice(5, 7) - 1, n: +m.n || 0 })), mesHoje = y < hoje.getFullYear() ? 11 : y > hoje.getFullYear() ? -1 : hoje.getMonth();
     const max = Math.max(1, ...serie.map(m => m.n)), por = Object.fromEntries(serie.map(m => [m.i, m.n])), entraM = serie.length && _entra(`anelm|${o.title || ""}|${t}`);
     const meses = serie.length ? `<div class="ms${entraM ? " entra" : ""}" role="group" aria-label="${esc((o.title || "Meta") + " mês a mês")}">${MESES_C.map((m, i) => { const n = por[i] || 0, fut = i > mesHoje;
@@ -345,16 +346,17 @@ window.PSDTW = (() => {
         <circle class="arco${p > 0 && _entra(`anel|${o.title || ""}|${t}`) ? " entra" : ""}" cx="52" cy="52" r="${R}" fill="none" stroke="var(${ok ? "--ok" : "--chart-1"})" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(C * pv).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 52 52)" opacity="${p > 0 ? 1 : 0}"/>
         ${t && !ok && corrente ? `<line x1="${ix.toFixed(2)}" y1="${iy.toFixed(2)}" x2="${ox.toFixed(2)}" y2="${oy.toFixed(2)}" class="rit"><title>Ritmo de hoje: ${nf(esp)}</title></line>` : ""}
         <text x="52" y="56" text-anchor="middle" class="pct">${t ? nf(p, p >= 100 ? 0 : 1) + "%" : "–"}</text><text x="52" y="71" text-anchor="middle" class="sb">${t ? "da meta" : ""}</text></svg>
-      <div class="inf">${o.title ? `<div class="tt">${esc(o.title)}</div>` : ""}<div class="num">${nf(v)}${t ? ` <small>de ${nf(t)}</small>` : ""}</div><div class="leit"><span class="rit">${esc(rit)}</span> ${chip}</div>
-        ${frase ? `<div class="fr">${frase}</div>` : ""}${o.subtitle ? `<div class="ap">${esc(o.subtitle)}</div>` : ""}</div></div>${meses}</div>`; };
+      <div class="inf">${o.title ? `<div class="tt">${esc(o.title)}</div>` : ""}<div class="num"><b>${nf(v)}</b>${t ? `<small>de ${nf(t)}</small>` : `<small>${esc(rit)}</small>`}${chip}</div>
+        <div class="stats">${stats}</div>${o.subtitle ? `<div class="ap">${esc(o.subtitle)}</div>` : ""}</div></div>${meses}</div>`; };
   /* rebobinar: o anel vai até o acumulado do mês i (transição do traço); sem mês, volta ao ano todo */
-  const _anelLer = (box, i) => { const d = JSON.parse(box.dataset.anel), C = 2 * Math.PI * 44, arc = box.querySelector(".arco"), pc = box.querySelector(".pct"), sb = box.querySelector(".sb"), le = box.querySelector(".leit");
+  const _anelLer = (box, i) => { const d = JSON.parse(box.dataset.anel), C = 2 * Math.PI * 44, arc = box.querySelector(".arco"), pc = box.querySelector(".pct"), sb = box.querySelector(".sb"), le = box.querySelector(".stats");
     if (!arc || !d.t) return; if (le && box._leit == null) box._leit = le.innerHTML;
     box.querySelectorAll("[data-mi]").forEach(b => b.classList.toggle("on", i != null && +b.dataset.mi === i)); box.classList.toggle("lendo", i != null);
     const ac = i == null ? d.v : d.ini + d.s.slice(0, i + 1).reduce((a, b) => a + b, 0), p = ac / d.t;
     arc.setAttribute("stroke-dasharray", `${(C * Math.min(p, 1)).toFixed(2)} ${C.toFixed(2)}`); arc.setAttribute("stroke", `var(${p >= 1 ? "--ok" : "--chart-1"})`); arc.setAttribute("opacity", ac > 0 ? 1 : 0);
     pc.textContent = nf(100 * p, p >= 1 ? 0 : 1) + "%"; sb.textContent = i == null ? "da meta" : `até ${MESES_C[i]}`;
-    if (le) le.innerHTML = i == null ? box._leit : `<b>${MESES_C[i]}/${String(d.y).slice(2)}</b>: <b>${nf(d.s[i])}</b> no mês, <b>${nf(ac)}</b> no acumulado <span class="rit">(ideal até aqui: ${nf(Math.round(d.t * (i + 1) / 12))})</span>`; };
+    const st = (l, val) => `<div class="st"><span>${l}</span><b>${val}</b></div>`;          /* lendo um mês: os mesmos indicadores mostram o mês */
+    if (le) le.innerHTML = i == null ? box._leit : `<span class="mes">${MESES_C[i]}/${String(d.y).slice(2)}</span>${st("No mês", nf(d.s[i]))}${st("Acumulado", nf(ac))}${st("Ideal até aqui", nf(Math.round(d.t * (i + 1) / 12)))}`; };
   /* delegação única: anel (meses) e rosca (fatias e linhas) */
   const _alvoDin = e => { const m = e.target.closest && e.target.closest(".psd-anel [data-mi]:not([disabled])"); if (m) return { tipo: "anel", box: m.closest(".psd-anel"), i: +m.dataset.mi };
     const r = e.target.closest && e.target.closest(".psd-rosca [data-ri]"); if (r) return { tipo: "rosca", box: r.closest(".psd-rosca"), i: +r.dataset.ri }; return null; };

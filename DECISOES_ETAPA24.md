@@ -226,6 +226,11 @@ a lista guarda os meses de cada código e o filtro de mês bate com cada barra (
   Achados: dois comentários `//` no meio da linha engoliam código (Aparência em configuracoes.js; o clique de Metas perdia `const k`) — corrigidos e varridos.
   Com o painel do navegador escondido o Chart.js não processa clique/hover (eventos dentro de requestAnimationFrame, que o navegador pausa): o clique de
   Metas foi conferido chamando o onClick com o evento (filtra jul/26 R-D).
+- [x] Commit 86db4f6 (updates 6 e 7 + ícone). App real reiniciado pelo atalho (porta 5000).
+- [x] Update 7b (pedido: «o texto em negrito deixa meio amador»): maquete curta `maquetes/tipografia_metas_maquete.html` aprovada e aplicada — sem negrito
+  no meio do texto; selo na linha do número; a frase da projeção virou indicadores curtos («Ritmo de hoje», «Fecha o ano com»); lendo um mês, os mesmos
+  indicadores mostram o mês; centros do anel e da rosca com rótulo em letra normal cinza; números da tabela da rosca em Barlow 500. Pesos conferidos no
+  navegador (400 nos rótulos, 500/600 nos números); Dashboard e Metas sem erros.
 - [ ] A rodada anterior (update 6 + ícone) segue sem commit, à espera do usuário.
 - [x] Documentação: DESIGN.md (§6.1 ícone e Sistema, §6.3 sub status e gráfico que filtra, §6.4c excluir cota/lista/preparar par, §6.6 anel e exceção
   da rosca, §10), REGRAS (§4 lista e anel, §13 update 5, abertura), `regras_telas.py` (Metas, Redesenvolvimento, Validação), LEIA-ME.

@@ -1,6 +1,6 @@
 ' PERFECT Shock Data - abre o sistema sem a janela do cmd (etapa 24).
 ' Com o ambiente pronto (.venv e dependencias conferidas), roda o iniciar.bat escondido; senao (1a vez, dependencia nova), mostra a janela da instalacao.
-' Se der erro escondido, o iniciar.bat se reabre visivel com a mensagem. Para fechar o sistema: botao «Fechar o sistema» no topo do app.
+' Se der erro escondido, o iniciar.bat se reabre visivel com a mensagem. Para fechar o sistema: Configuracoes > Sistema > «Fechar o sistema».
 Set sh = CreateObject("WScript.Shell")
 Set fs = CreateObject("Scripting.FileSystemObject")
 pasta = fs.GetParentFolderName(WScript.ScriptFullName)
