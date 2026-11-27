@@ -190,6 +190,24 @@ def planilha(eid):
     ws.freeze_panes = "A2"; bio = io.BytesIO(); wb.save(bio); bio.seek(0)
     return bio, f"{d:%Y%m%d} - APROVACAOIPI.xlsx"
 
+SITUACAO = {"prec": "Pendente de aprovação", "enviado": "Enviado para aprovação", "ressalva": "Com ressalva", "aprovado": "IPI aprovado"}
+
+def planilha_atual():
+    """Planilha da tela dos aprovadores: os itens pendentes de controladoria de agora, no mesmo modelo (16 colunas) + a situação. → (BytesIO, nome)."""
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    itens = tela({})["_todas"]; refs = _refs({l["code"] for l in itens}); hoje = datetime.date.today()
+    wb = Workbook(); ws = wb.active; ws.title = f"AprovacaoIPI - {hoje:%d-%m-%y}"; ws.append(COLUNAS + ["SITUAÇÃO"])
+    for c in ws[1]: c.font = Font(bold=True)
+    for l in sorted(itens, key=lambda x: (x["sit"] != "prec", x["code"])):
+        rf = refs.get(l["code"], {})
+        ws.append([int(l["id"]) if str(l["id"]).isdigit() else l["id"], l["code"], l["ipi"] if l["ipi"] is not None else l["sug"], l["family"], l["make"], l["vehicle"], l["application_text"],
+                   l["brand"], l["description"], l["year_from"], l["year_to"], *[", ".join(rf.get(k, [])) or None for k in REFS], SITUACAO.get(l["sit"], l["sit"])])
+    for col, w in zip("ABCDEFGHIJKLMNOPQ", [8, 12, 6, 24, 16, 20, 28, 12, 40, 11, 11, 30, 18, 18, 18, 18, 22]): ws.column_dimensions[col].width = w
+    ws.freeze_panes = "A2"; bio = io.BytesIO(); wb.save(bio); bio.seek(0)
+    return bio, f"{hoje:%Y%m%d} - APROVACAOIPI.xlsx"
+
 def _refs(codes):
     out = collections.defaultdict(lambda: collections.defaultdict(list)); codes = [c for c in codes if c]
     for i in range(0, len(codes), 800):

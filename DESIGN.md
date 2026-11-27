@@ -201,7 +201,9 @@ Um cartão (`.psd-banc`): cabeçalho com o código, a descrição e os dados do 
   IPI do servidor diverge da sugestão. A regra que gerou a sugestão vai embaixo, em texto pequeno.
 - **Anomalias** em aba própria: cartões `.psd-anc` (3 colunas), um por tipo, com o número em laranja (cinza se zero) e a lista de códigos.
 - **Tela do aprovador** (`templates/aprovacao_ipi.html` + `static/js/aprovacao_ipi.js`, perfil «Aprovador IPI»; repaginada com `/frontend-design`, maquete
-  aprovada em 27/11/2026): **sempre escura**, em azul-petróleo profundo próprio (`body.psd-aprov`: fundo `#071820`, superfície `#0C2430`; 10,4% em
+  aprovada em 27/11/2026): **abre escura** e o botão de tema do topo troca como no sistema (mesma onda e mesma escolha gravada; tema claro com os mesmos
+  tokens `--ap-*` clareados); no topo também «Baixar planilha» (os itens de agora no modelo IPI.xlsx, com a situação). Título sem envio: «47 itens
+  pendentes de aprovação de IPI». em azul-petróleo profundo próprio (`body.psd-aprov`: fundo `#071820`, superfície `#0C2430`; 10,4% em
   azul-céu `#64C4E9`, 2,6% em lilás `#A890F2`, aguardando em laranja, aprovado em verde), sem menu, ícone do PERFECT Shock Data no topo
   (`static/img/shock-data-128.png`). A página conta uma coisa: **qual alíquota vai em cada item**. Ordem: a frase do momento (`.ap-frase`, muda com a
   situação: finalizando o CIT · aguardam sua aprovação · aprovados), o caminho em 3 passos numerados (`.ap-cam`, é uma sequência: preparada → enviada →

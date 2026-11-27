@@ -358,6 +358,7 @@ class Fluxo(unittest.TestCase):
             self.assertTrue(c2.get("/dashboard").headers["Location"].endswith("/aprovacao-ipi")); self.assertEqual(c2.get("/api/ipi").status_code, 403)
             self.assertEqual(c2.get("/api/rd/des").status_code, 403); self.assertEqual(c2.get("/aprovacao-ipi").status_code, 200)
             ap = c2.get("/api/ipi/aprovador").json; self.assertEqual(ap["kpi"], kpi_app); self.assertEqual(sum(1 for l in ap["itens"] if l["sit"] == "ressalva"), n_cod); self.assertEqual(c2.post("/api/ipi/envio").status_code, 403)
+            x2 = c2.get("/api/ipi/aprovador/planilha.xlsx"); self.assertEqual(x2.status_code, 200); self.assertIn("APROVACAOIPI.xlsx", x2.headers["Content-Disposition"])          # «Baixar planilha» da tela deles
         finally:
             os.environ["PSD_AUTH"] = "off"
             c = sqlite3.connect(DB); c.execute("DELETE FROM users WHERE username IN ('adm_teste_ipi','aprov_teste_ipi')"); c.commit(); c.close()

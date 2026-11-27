@@ -1,12 +1,16 @@
 {% extends "base.html" %}{% block title %}Aprovação de IPI · PERFECT Shock Data{% endblock %}
-{% block tema %}<script>document.documentElement.setAttribute("data-theme","dark")</script>{% endblock %}{# a tela dos aprovadores fica sempre no modo escuro (pedido de 27/11/2026) #}
+{# abre no tema escuro; o botão do topo troca o tema como no sistema principal (fica gravado no navegador) #}
+{% block tema %}<script>try{if(!localStorage.getItem("psd-theme"))document.documentElement.setAttribute("data-theme","dark")}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>{% endblock %}
 {% block bodyclass %}psd-aprov{% endblock %}
 {% block body %}
+{% set ICONES = url_for('static', filename='img/icones.svg') %}
 {# update 9: tela do perfil «Aprovador IPI» (repaginada com /frontend-design, maquete aprovada em 27/11/2026): os mesmos dados do Monitoramento de IPI,
    só leitura; a aprovação é pela resposta do e-mail (ipi.py) #}
 <header class="ap-topo"><img src="{{ url_for('static', filename='img/shock-data-128.png') }}" alt="PERFECT Shock Data" width="42" height="42">
   <div><h1>Aprovação de IPI</h1><span class="marca">PERFECT Shock Data</span></div>
-  <span class="quem">{% if user %}<span>{{ user.username }}</span><a href="/logout">Sair</a>{% endif %}</span></header>
+  <span class="quem"><a class="ap-baixar" href="/api/ipi/aprovador/planilha.xlsx"><svg class="psd-ico sm" aria-hidden="true"><use href="{{ ICONES }}#i-download"/></svg>Baixar planilha</a>
+    <button class="themebtn" id="themebtn" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema claro/escuro"><svg class="psd-ico i-sun" aria-hidden="true"><use href="{{ ICONES }}#i-sun"/></svg><svg class="psd-ico i-moon" aria-hidden="true"><use href="{{ ICONES }}#i-moon"/></svg></button>
+    {% if user %}<span>{{ user.username }}</span><a href="/logout">Sair</a>{% endif %}</span></header>
 <main class="ap-main" id="ap" aria-live="polite"><p class="ap-rodape">Carregando…</p></main>
 <script src="{{ url_for('static', filename='js/aprovacao_ipi.js') }}"></script>
 {% endblock %}
