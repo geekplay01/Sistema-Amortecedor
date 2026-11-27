@@ -16,7 +16,7 @@
     return `<div class="flex flex-col gap-0.5">${rows.map(r => `<a href="${r.href}" title="${esc(r.l)}: ${nf(r.n)} (${nf(100 * r.n / tot, 1)}%), clique para abrir a lista" class="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm no-underline hover:bg-slate-500/10">
       <span class="w-32 shrink-0 truncate text-ink sm:w-48">${esc(r.l)}</span>
       <span class="h-2.5 flex-1 rounded-full bg-slate-500/15"><span class="block h-2.5 rounded-full" style="width:${Math.max(2, 100 * r.n / max).toFixed(1)}%;background:${cor}"></span></span>
-      <span class="w-14 shrink-0 text-right font-semibold tabular-nums text-ink">${nf(r.n)}</span></a>`).join("")}</div>`;
+      <span class="w-14 shrink-0 text-right font-medium tabular-nums text-ink">${nf(r.n)}</span></a>`).join("")}</div>`;
   };
 
   function dashboard() {

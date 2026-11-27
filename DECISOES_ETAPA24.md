@@ -231,6 +231,10 @@ a lista guarda os meses de cada código e o filtro de mês bate com cada barra (
   no meio do texto; selo na linha do número; a frase da projeção virou indicadores curtos («Ritmo de hoje», «Fecha o ano com»); lendo um mês, os mesmos
   indicadores mostram o mês; centros do anel e da rosca com rótulo em letra normal cinza; números da tabela da rosca em Barlow 500. Pesos conferidos no
   navegador (400 nos rótulos, 500/600 nos números); Dashboard e Metas sem erros.
-- [ ] A rodada anterior (update 6 + ícone) segue sem commit, à espera do usuário.
+- [x] Commit 2320e46 (update 7b), enviado ao GitHub no branch etapa-16 (o main segue 72 commits atrás; avançar o main é decisão do usuário).
+- [x] Update 7c (pedido: «os gráficos continuam em negrito»): o 7b só tinha mexido no anel e na rosca. Medido no navegador: visor com 700, rótulos
+  do canvas, chip do eixo e título da dica com 600, «de 125» com 800 (herdado da classe global `.num` do style.css), quadrinhos de Metas e números do
+  funil em negrito. Regra nova (DESIGN §6.6): nada acima de 500 dentro de um gráfico. Conferido: Dashboard e Metas sem texto ≥ 600 nos gráficos;
+  Vendas e Garantia idem.
 - [x] Documentação: DESIGN.md (§6.1 ícone e Sistema, §6.3 sub status e gráfico que filtra, §6.4c excluir cota/lista/preparar par, §6.6 anel e exceção
   da rosca, §10), REGRAS (§4 lista e anel, §13 update 5, abertura), `regras_telas.py` (Metas, Redesenvolvimento, Validação), LEIA-ME.

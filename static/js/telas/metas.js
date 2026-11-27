@@ -56,15 +56,15 @@
     };
 
     const desenharMetas = () => {
-      const ks = tipos(), u = esc(d.validacoes?.filtro?.USER_VALID || "ITALOC"), st = (n, l) => `<div class="rounded-xl bg-slate-500/10 px-3 py-2 text-center"><div class="text-xl font-bold tabular-nums text-ink">${n}</div><div class="text-xs text-mute">${l}</div></div>`;
+      const ks = tipos(), u = esc(d.validacoes?.filtro?.USER_VALID || "ITALOC"), st = (n, l) => `<div class="rounded-xl bg-slate-500/10 px-3 py-2 text-center"><div class="psd-stn">${n}</div><div class="text-xs text-mute">${l}</div></div>`;
       $("#mg").innerHTML = ks.map(k => {
         const g = d.goals[k], p = g.parts;
-        const base = d.basis === "validacao" && k === RD ? `Validações ${u} no ano: <b class="text-ink">${nf(p.validacoes)}</b>, já em ITEM RECEBIDO (contam): <b class="text-ink">${nf(p.recebidas)}</b>, aguardando: <b class="text-ink">${nf(p.aguardando)}</b>${p.validacoes_sem_data ? `, ${nf(p.validacoes_sem_data)} sem data de aprovação` : ""}. A lista está abaixo.`
-          : k === RD ? `Recebidos e validados no ano: <b class="text-ink">${nf(p.recebidos_validados)}</b>${p.recebidos_sem_validacao ? `, <b class="text-ink">${nf(p.recebidos_sem_validacao)}</b> recebido(s) sem validação de usuário não contam.` : ""}`
-          : `Pedido confirmado → item recebido no ano: <b class="text-ink">${nf(p.recebidos)}</b>${p.sem_pedido_confirmado ? `, <b class="text-ink">${nf(p.sem_pedido_confirmado)}</b> recebido(s) sem passar por PEDIDO CONFIRMADO não contam` : ""} (data de recebimento do servidor).`;
+        const base = d.basis === "validacao" && k === RD ? `Validações ${u} no ano: <b class="font-medium text-ink">${nf(p.validacoes)}</b>, já em ITEM RECEBIDO (contam): <b class="font-medium text-ink">${nf(p.recebidas)}</b>, aguardando: <b class="font-medium text-ink">${nf(p.aguardando)}</b>${p.validacoes_sem_data ? `, ${nf(p.validacoes_sem_data)} sem data de aprovação` : ""}. A lista está abaixo.`
+          : k === RD ? `Recebidos e validados no ano: <b class="font-medium text-ink">${nf(p.recebidos_validados)}</b>${p.recebidos_sem_validacao ? `, <b class="font-medium text-ink">${nf(p.recebidos_sem_validacao)}</b> recebido(s) sem validação de usuário não contam.` : ""}`
+          : `Pedido confirmado → item recebido no ano: <b class="font-medium text-ink">${nf(p.recebidos)}</b>${p.sem_pedido_confirmado ? `, <b class="font-medium text-ink">${nf(p.sem_pedido_confirmado)}</b> recebido(s) sem passar por PEDIDO CONFIRMADO não contam` : ""} (data de recebimento do servidor).`;
         return card(`${k} ${g.reached ? badge("meta atingida", "green") : ""}`, `<div id="gg-${SLUG[k]}" class="chart"></div>
           <div class="mt-3 grid grid-cols-4 gap-2">${st(nf(g.target), "meta " + d.year)}${st(nf(g.done), "realizado")}${st(nf(g.missing), "faltam")}${st(pct(g.pct), "da meta")}</div>
-          <div class="mt-3 flex flex-col gap-1.5 text-sm text-mute"><p class="m-0">${g.prior_aplica === false ? `Contado pelo servidor: <b class="text-ink">${nf(g.tracked)}</b> (sem itens de montadora)` : `Rastreado pelo sistema: <b class="text-ink">${nf(g.tracked)}</b> + já realizado antes do rastreio: <b class="text-ink">${nf(g.prior_done)}</b>`}${g.note ? `, <i>${esc(g.note)}</i>` : ""}</p>
+          <div class="mt-3 flex flex-col gap-1.5 text-sm text-mute"><p class="m-0">${g.prior_aplica === false ? `Contado pelo servidor: <b class="font-medium text-ink">${nf(g.tracked)}</b> (sem itens de montadora)` : `Rastreado pelo sistema: <b class="font-medium text-ink">${nf(g.tracked)}</b> + já realizado antes do rastreio: <b class="font-medium text-ink">${nf(g.prior_done)}</b>`}${g.note ? `, <i>${esc(g.note)}</i>` : ""}</p>
           <p class="m-0">${base}</p></div>`,
           `<button type="button" data-edit="${k}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10">Editar meta</button>`, g.reached ? "ring-1 ring-emerald-500/50" : "");
       }).join("");
@@ -115,7 +115,7 @@
 
     const desenharPendentes = () => {
       if (!tipos().includes(RD)) { $("#mval").innerHTML = ""; return; }
-      $("#mval").innerHTML = card(`Validações — ${RD}`, `<p class="m-0 mb-3 text-sm text-mute">Itens em <b class="text-ink">PENDENTE CONFIRMAÇÃO</b> (Amortecedor): ${nf(pv.total)}, com validação enviada: <b class="text-ink">${nf(pv.sent)}</b>.</p>` +
+      $("#mval").innerHTML = card(`Validações — ${RD}`, `<p class="m-0 mb-3 text-sm text-mute">Itens em <b class="font-medium text-ink">PENDENTE CONFIRMAÇÃO</b> (Amortecedor): ${nf(pv.total)}, com validação enviada: <b class="font-medium text-ink">${nf(pv.sent)}</b>.</p>` +
         (pv.rows.length ? TW.table([{ h: "Código" }, { h: "Descrição" }, { h: "Validação" }, { h: "" }], pv.rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="rd" data-code="${esc(r.code)}">${esc(r.code)}</a>`,
           r.description ? `<span class="block max-w-[22rem] truncate" title="${esc(r.description)}">${esc(r.description)}</span>` : '<span class="text-mute">–</span>',
           r.sent_at ? `${badge("enviada em " + dmy(r.sent_at), "green")} <span class="text-xs text-mute">aguardando ITEM RECEBIDO</span>` : badge("não enviada", "amber"),

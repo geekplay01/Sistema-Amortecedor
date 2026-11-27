@@ -55,6 +55,7 @@
 .flex-wrap{flex-wrap:wrap}
 .font-bold{font-weight:700}
 .font-display{font-family:var(--fontd)}
+.font-medium{font-weight:500}
 .font-normal{font-weight:400}
 .font-semibold{font-weight:600}
 .gap-0\.5{gap:.125rem}

@@ -257,11 +257,15 @@ reage ao cursor como um mostrador de ensaio. Vale para todo gráfico de barras o
   um mês; sair volta ao ano. **Projeção** (só no ano corrente): arco tracejado do realizado até o fim do ano no ritmo atual (realizado ÷ parte do ano
   que passou). Tracejado só para projeção. A interação é delegada no documento (`tw.js`).
   **Texto (update 7b, maquete aprovada): sem negrito no meio do texto** — o número pesa pelo tamanho e pela fonte, as palavras ficam em cinza. Linha do
-  número: «52» (Barlow 600, 28 px) + «de 125» (13 px, cinza) + o selo. Embaixo, **indicadores curtos** `.st` (rótulo 11,5 px cinza em cima, número em
+  número: «52» (Barlow 500, 28 px) + «de 125» (13 px, letra normal, cinza) + o selo. Embaixo, **indicadores curtos** `.st` (rótulo 11,5 px cinza em cima, número em
   Barlow 500, 17 px, embaixo): «Ritmo de hoje 113» (ou «Atingida em 2026») e «Fecha o ano com 58 no ritmo atual». Lendo um mês, os mesmos indicadores
   mostram o mês: chip «jul/26» (como o do visor) + «No mês 60», «Acumulado 89», «Ideal até aqui 88»; o selo some enquanto isso. No centro, o % em
-  Barlow 600, 20 px, e «da meta» em letra normal, 10 px, cinza. Rosca: no centro, o número em Barlow 600 e o nome (letra normal) e o % (Barlow 500)
+  Barlow 500, 20 px, e «da meta» em letra normal, 10 px, cinza. Rosca: no centro, o número em Barlow 500 e o nome (letra normal) e o % (Barlow 500)
   menores e cinza; na tabela, os números em Barlow 500, alinhados.
+  **Peso dos gráficos (update 7c): nada acima de 500 dentro de um gráfico.** Números em Barlow 500 (visor, anel, rosca, medidor, selos, quadrinhos
+  `.psd-stn` de Metas, números das barras do funil, rótulos e chip do eixo e título da dica no canvas); palavras em letra normal (400), incluindo as
+  letras dos meses do anel. Número citado numa frase abaixo do gráfico: `font-medium`, nunca `<b>` puro. O título do cartão (h3) não é texto do gráfico
+  e segue a regra dos títulos. Atenção: a classe global `.num` (style.css) põe peso 800; contêiner de gráfico que usa `.num` fixa o próprio peso.
 - **Exceção à regra da rosca — Sistema no Dashboard (update 5, pedido do usuário):** `PSDTW.rosca(partes, {rotulo, acoes})`, `.psd-rosca`. Rosca **fina**
   (12 px, 2 px de vão entre as fatias), o total no centro e, ao lado, nome, quantidade e % de cada parte — os números se leem sem passar o mouse, o que
   tira o defeito da rosca (comparar fatias pelo ângulo). Só para parte de um todo com 2 ou 3 partes de tamanhos bem diferentes; «Sem dado» em cinza.

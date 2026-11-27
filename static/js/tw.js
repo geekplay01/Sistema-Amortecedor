@@ -124,7 +124,7 @@ window.PSDTW = (() => {
     C.defaults.font.family = '"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif'; C.defaults.font.size = 12.5; C.defaults.color = cssv("--mut"); C.defaults.borderColor = cssv("--chart-grid");
     C.defaults.scale.grid.color = cssv("--chart-grid"); C.defaults.plugins.legend.labels.color = cssv("--chart-legend");
     Object.assign(C.defaults.plugins.tooltip, { backgroundColor: cssv("--card"), titleColor: cssv("--tx"), bodyColor: cssv("--tx"), borderColor: cssv("--line"), borderWidth: 1, padding: 10, cornerRadius: 10, boxPadding: 4,
-      titleFont: { family: cssv("--fontd"), weight: "600", size: 13 }, usePointStyle: true });
+      titleFont: { family: cssv("--fontd"), weight: "500", size: 13 }, usePointStyle: true });
     // bolinha da legenda do tamanho da caixa (8 px): sem boxHeight ela crescia até o tamanho da fonte e cobria o começo do texto
     Object.assign(C.defaults.plugins.legend.labels, { usePointStyle: true, boxWidth: 8, boxHeight: 8, padding: 14 }); C.defaults.plugins.legend.align = "start"; C.defaults.maintainAspectRatio = false;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) C.defaults.animation = false; registra(); };
@@ -155,7 +155,7 @@ window.PSDTW = (() => {
         if (o.modo === "fim" && m.type === "line") its.push({ el: m.data[ult], txt: fmt(v[ult]), lado: "dir" });
         if (o.modo === "destaque" && m.type === "bar") { const mx = v.reduce((k, x, i) => x != null && x > (v[k] ?? -Infinity) ? i : k, 0);
           [...new Set([mx, ult])].forEach(i => its.push({ el: m.data[i], txt: fmt(v[i]), lado: "cima" })); } });
-      ctx.save(); ctx.font = `600 11.5px ${ch.options.font?.family || window.Chart.defaults.font.family}`; ctx.fillStyle = cssv("--tx");
+      ctx.save(); ctx.font = `500 11.5px ${ch.options.font?.family || window.Chart.defaults.font.family}`; ctx.fillStyle = cssv("--tx");
       const usados = [];                                                     // rótulos que se tocariam: fica o primeiro, o resto vai para a dica e a legenda
       its.forEach(t => { if (!t.el) return; const w = ctx.measureText(t.txt).width, y = t.lado === "dir" ? t.el.y : t.el.y - 5;
         const x = t.lado === "dir" ? Math.min(t.el.x + 8, ch.width - w - 2) : Math.min(Math.max(t.el.x, w / 2 + 2), ch.width - w / 2 - 2);   // o texto nunca sai do quadro
@@ -168,7 +168,7 @@ window.PSDTW = (() => {
       ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); ctx.restore(); } };
     const divisa = { id: "psdDivisa", defaults: { i: null, texto: "" }, descriptors: fixo, afterDatasetsDraw(ch, _a, o) { if (!o || o.i == null) return; const m = ch.getDatasetMeta(0).data, a = m[o.i], b = m[o.i + 1]; if (!a || !b) return;
       const x = (a.x + b.x) / 2, { top, bottom } = ch.chartArea, ctx = ch.ctx; ctx.save(); ctx.strokeStyle = cssv("--mut"); ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x, top + 16); ctx.lineTo(x, bottom); ctx.stroke(); ctx.font = `600 11.5px ${window.Chart.defaults.font.family}`; ctx.fillStyle = cssv("--tx");
+      ctx.beginPath(); ctx.moveTo(x, top + 16); ctx.lineTo(x, bottom); ctx.stroke(); ctx.font = `500 11.5px ${window.Chart.defaults.font.family}`; ctx.fillStyle = cssv("--tx");
       const w = ctx.measureText(o.texto).width, dir = x + 6 + w <= ch.chartArea.right; ctx.textAlign = dir ? "left" : "right"; ctx.textBaseline = "top";
       ctx.fillText(o.texto, dir ? x + 6 : x - 6, top); ctx.restore(); } };
     /* update 6 «painel de instrumento»: ponteiro = faixa da categoria (barras) ou linha do cursor (linhas) + o rótulo dela destacado no eixo; o índice
@@ -179,7 +179,7 @@ window.PSDTW = (() => {
           if (h) c.fillRect(a.left, p - w / 2, a.right - a.left, w); else c.fillRect(p - w / 2, a.top, w, a.bottom - a.top); }
         else { c.strokeStyle = cssv("--mut"); c.globalAlpha = .5; c.lineWidth = 1; c.beginPath(); c.moveTo(p, a.top); c.lineTo(p, a.bottom); c.stroke(); } c.restore(); },
       afterDraw(ch, _a, op) { if (!op || !op.ativo || ch.$at == null) return; const h = ch.options.indexAxis === "y", s = ch.scales[h ? "y" : "x"], c = ch.ctx, p = s.getPixelForValue(ch.$at), t = String(ch.data.labels[ch.$at] ?? "");
-        if (!t) return; c.save(); c.font = `600 11.5px ${cssv("--fontd") || window.Chart.defaults.font.family}`; const hh = 20, w = Math.min(c.measureText(t).width + 14, h ? Math.max(30, ch.chartArea.left - 4) : 220);
+        if (!t) return; c.save(); c.font = `500 11.5px ${cssv("--fontd") || window.Chart.defaults.font.family}`; const hh = 20, w = Math.min(c.measureText(t).width + 14, h ? Math.max(30, ch.chartArea.left - 4) : 220);
         const x = h ? ch.chartArea.left - 4 - w : p - w / 2, y = h ? p - hh / 2 : ch.chartArea.bottom + 5;
         c.fillStyle = cssv("--tx"); c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, hh, 6); else c.rect(x, y, w, hh); c.fill();
         c.fillStyle = cssv("--card"); c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(t, x + w / 2, y + hh / 2 + .5, w - 8); c.restore(); } };
