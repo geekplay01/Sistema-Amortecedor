@@ -1,9 +1,12 @@
 {% extends "base.html" %}{% block title %}Aprovação de IPI · PERFECT Shock Data{% endblock %}
+{% block tema %}<script>document.documentElement.setAttribute("data-theme","dark")</script>{% endblock %}{# a tela dos aprovadores fica sempre no modo escuro (pedido de 27/11/2026) #}
 {% block bodyclass %}psd-aprov{% endblock %}
 {% block body %}
-{# update 9: tela do perfil «Aprovador IPI» — só leitura; a aprovação é pela resposta do e-mail (ipi.py) #}
-<header class="psd-aph"><span class="psd-stripes" aria-hidden="true"><i></i><i></i><i></i><i></i></span><h1>Aprovação de IPI</h1>
-  <span class="q">{% if user %}<span>{{ user.username }}</span><a href="/logout">Sair</a>{% endif %}</span></header>
-<main class="psd-apc" id="ap" aria-live="polite"><p>Carregando…</p></main>
+{# update 9: tela do perfil «Aprovador IPI» (repaginada com /frontend-design, maquete aprovada em 27/11/2026): os mesmos dados do Monitoramento de IPI,
+   só leitura; a aprovação é pela resposta do e-mail (ipi.py) #}
+<header class="ap-topo"><img src="{{ url_for('static', filename='img/shock-data-128.png') }}" alt="PERFECT Shock Data" width="42" height="42">
+  <div><h1>Aprovação de IPI</h1><span class="marca">PERFECT Shock Data</span></div>
+  <span class="quem">{% if user %}<span>{{ user.username }}</span><a href="/logout">Sair</a>{% endif %}</span></header>
+<main class="ap-main" id="ap" aria-live="polite"><p class="ap-rodape">Carregando…</p></main>
 <script src="{{ url_for('static', filename='js/aprovacao_ipi.js') }}"></script>
 {% endblock %}

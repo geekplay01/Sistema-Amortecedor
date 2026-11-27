@@ -349,6 +349,7 @@ class Fluxo(unittest.TestCase):
         self.assertEqual((d["kpi"]["aprovado"], d["kpi"]["ressalva"]), (K["prec"] - n_cod, n_cod)); self.assertEqual(d["aprovadores"][0]["estado"], "aprovou")
         self.assertEqual(C.get("/api/export/ipi.xlsx").status_code, 200)
         # perfil «Aprovador IPI»: só a tela dele (o login é ligado só neste trecho)
+        kpi_app = C.get("/api/ipi").json["kpi"]          # antes de ligar o login: a tela deles mostra os mesmos números
         import auth as AU
         os.environ["PSD_AUTH"] = "on"
         try:
@@ -356,7 +357,7 @@ class Fluxo(unittest.TestCase):
             c2 = A.app.test_client(); c2.post("/login", data={"username": "aprov_teste_ipi", "password": "senha-do-teste-2", "next": "/"})
             self.assertTrue(c2.get("/dashboard").headers["Location"].endswith("/aprovacao-ipi")); self.assertEqual(c2.get("/api/ipi").status_code, 403)
             self.assertEqual(c2.get("/api/rd/des").status_code, 403); self.assertEqual(c2.get("/aprovacao-ipi").status_code, 200)
-            ap = c2.get("/api/ipi/aprovador").json; self.assertEqual(len(ap["envio"]), n_cod); self.assertEqual(c2.post("/api/ipi/envio").status_code, 403)
+            ap = c2.get("/api/ipi/aprovador").json; self.assertEqual(ap["kpi"], kpi_app); self.assertEqual(sum(1 for l in ap["itens"] if l["sit"] == "ressalva"), n_cod); self.assertEqual(c2.post("/api/ipi/envio").status_code, 403)
         finally:
             os.environ["PSD_AUTH"] = "off"
             c = sqlite3.connect(DB); c.execute("DELETE FROM users WHERE username IN ('adm_teste_ipi','aprov_teste_ipi')"); c.commit(); c.close()

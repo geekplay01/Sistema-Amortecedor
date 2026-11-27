@@ -247,8 +247,8 @@ def tela(f=None):
     for l in vis + prox: l["refs"] = {k2: (refs.get(l["code"], {}).get(k2) or [])[:3] for k2 in REFS}
     ult = q1("SELECT r.*, e.assunto FROM ipi_respostas r JOIN ipi_envios e ON e.id=r.envio_id ORDER BY r.id DESC LIMIT 1")
     if ult: ult["ressalvas"] = json.loads(ult["ressalvas"] or "[]")
-    ue = q1("SELECT id FROM ipi_envios WHERE confirmado_em IS NOT NULL AND cancelado_em IS NULL ORDER BY confirmado_em DESC, id DESC LIMIT 1")
-    return {"kpi": kpi, "aprovadores": _aprovadores(), "ultimo_envio": ue["id"] if ue else None, "itens": vis, "proximos": prox, "anomalias": {k2: v for k2, v in an.items()},
+    ue = q1("SELECT id, assunto, confirmado_em FROM ipi_envios WHERE confirmado_em IS NOT NULL AND cancelado_em IS NULL ORDER BY confirmado_em DESC, id DESC LIMIT 1")
+    return {"kpi": kpi, "aprovadores": _aprovadores(), "ultimo_envio": ue["id"] if ue else None, "envio_info": ue, "itens": vis, "proximos": prox, "anomalias": {k2: v for k2, v in an.items()},
             "n_anomalias": sum(len(v) for v in an.values()), "envio_aberto": envio_aberto(), "resposta": ult, "_todas": itens}
 
 def publico(f=None):

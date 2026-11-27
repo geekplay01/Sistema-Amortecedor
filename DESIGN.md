@@ -200,10 +200,14 @@ Um cartão (`.psd-banc`): cabeçalho com o código, a descrição e os dados do 
 - **Selo de IPI** `.psd-ipi`: 10,4 em azul (`--chart-1`, leve e passeio), 2,6 em roxo (`--chart-5`, utilitário e pesado), contorno laranja (`.dv`) quando o
   IPI do servidor diverge da sugestão. A regra que gerou a sugestão vai embaixo, em texto pequeno.
 - **Anomalias** em aba própria: cartões `.psd-anc` (3 colunas), um por tipo, com o número em laranja (cinza se zero) e a lista de códigos.
-- **Tela do aprovador** (`templates/aprovacao_ipi.html`, perfil «Aprovador IPI»): cor própria azul-petróleo (`--ap`, mais escuro no tema escuro) para
-  não se confundir com o app de quem envia; sem menu; três números grandes (`.psd-big`), os itens do envio em duas colunas (10,4 e 2,6, `.psd-apcol`, com
-  código, ID, veículo, aplicação e anos) e os próximos cadastros recolhidos (`details`). Só leitura.
-### 6.5 Retorno e estados
+- **Tela do aprovador** (`templates/aprovacao_ipi.html` + `static/js/aprovacao_ipi.js`, perfil «Aprovador IPI»; repaginada com `/frontend-design`, maquete
+  aprovada em 27/11/2026): **sempre escura**, em azul-petróleo profundo próprio (`body.psd-aprov`: fundo `#071820`, superfície `#0C2430`; 10,4% em
+  azul-céu `#64C4E9`, 2,6% em lilás `#A890F2`, aguardando em laranja, aprovado em verde), sem menu, ícone do PERFECT Shock Data no topo
+  (`static/img/shock-data-128.png`). A página conta uma coisa: **qual alíquota vai em cada item**. Ordem: a frase do momento (`.ap-frase`, muda com a
+  situação: finalizando o CIT · aguardam sua aprovação · aprovados), o caminho em 3 passos numerados (`.ap-cam`, é uma sequência: preparada → enviada →
+  aprovada; atual em laranja, feitos em verde), a resposta aprovada (`.ap-resp`), as pessoas com a bolinha, a busca e os filtros (Todos, Aguardando,
+  Aprovados) e o **elemento memorável**: as duas alíquotas como as duas colunas (`.ap-pista`), com o número grande (64 px) no cabeçalho, o total à
+  direita e a faixa de proporção acima. Os mesmos dados do Monitoramento de IPI; só leitura. Próximos cadastros recolhidos (`details`).### 6.5 Retorno e estados
 - Carregando: `PSDTW.esqueleto(linhas, kpis)` no lugar do conteúdo (preferir a texto «Carregando…»); `carregando()` para blocos pequenos.
 - Vazio: `PSDTW.empty(texto)` — frase curta com o que fazer.
 - Aviso de estado: `PSDTW.notice(html, "blue"|"amber"|"red")`. Não usar para explicar regra (ver §2.3).

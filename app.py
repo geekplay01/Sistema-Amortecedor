@@ -722,8 +722,8 @@ def api_ipi(): return jsonify(ipi.publico({k: request.args.get(k, "") for k in (
 
 @app.get("/api/ipi/aprovador")          # tela do perfil «Aprovador IPI»: só leitura
 def api_ipi_aprovador():
-    d = ipi.publico({}); envio = [l for l in d["itens"] if l["sit"] in ("enviado", "ressalva")]
-    return jsonify(kpi=d["kpi"], aprovadores=d["aprovadores"], envio=envio, proximos=d["proximos"], usuario=(auth.current_user() or {}).get("username"))
+    d = ipi.publico({})          # os mesmos dados da tela Monitoramento de IPI (pedido do usuário, 27/11/2026)
+    return jsonify(kpi=d["kpi"], aprovadores=d["aprovadores"], itens=d["itens"], proximos=d["proximos"], resposta=d["resposta"], envio=d["envio_info"], usuario=(auth.current_user() or {}).get("username"))
 
 @app.post("/api/ipi/envio")
 def api_ipi_envio():
