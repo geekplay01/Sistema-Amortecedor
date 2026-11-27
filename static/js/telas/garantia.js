@@ -144,7 +144,7 @@
       // etapa 24 · Q9: um eixo só (dois eixos Y inventam uma relação entre as escalas); o acumulado vira a divisória «80% em N defeitos» e fica na dica.
       // Sem filtro, todas as barras em azul; com um defeito filtrado, ele em laranja e o resto em cinza.
       const i80 = df.findIndex(r => r.acum >= 80);
-      const g = TW.grafico($("#gcp"), { type: "bar", altura: 280, titulo: "Pareto de defeitos", data: { labels: df.map(r => r.defeito.length > 22 ? r.defeito.slice(0, 21) + "…" : r.defeito),
+      const g = TW.grafico($("#gcp"), { type: "bar", altura: 280, titulo: "Pareto de defeitos", visor: { padrao: 0 }, data: { labels: df.map(r => r.defeito.length > 22 ? r.defeito.slice(0, 21) + "…" : r.defeito),
           datasets: [{ label: "Peças", data: df.map(r => r.pecas), backgroundColor: df.map(r => !s.defeito ? "--chart-1" : r.defeito === s.defeito ? "--chart-2" : "--chart-7") }] },
         options: { onClick: (e, els) => { const i = (els[0] || {}).index; if (i == null) return; F.set({ defeito: df[i].defeito === F.get().defeito ? "" : df[i].defeito }); aplicar(null, true); },
           onHover: (e, els) => { e.native.target.style.cursor = els.length ? "pointer" : "default"; },

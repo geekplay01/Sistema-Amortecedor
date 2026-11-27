@@ -120,8 +120,8 @@ def _aquecer():
 
 @app.get("/favicon.ico")
 def favicon():
-    # um ícone só na aba (etapa 24 · próximo update Q1): o mesmo desenho do favicon.svg (gerado por tools/favicon_ico.py); o logo colorido antigo trocava de uma tela para outra
-    r = send_file(os.path.join(app.root_path, "static", "img", "favicon.ico"), mimetype="image/x-icon"); r.headers["Cache-Control"] = "public, max-age=3600"; return r
+    # um ícone só na aba, em todas as páginas e no login (pedido do usuário em 26/11/2026): o logo ShockAbsorberData.ico; o favicon.svg não é mais ligado
+    r = send_file(os.path.join(app.root_path, "static", "img", "ShockAbsorberData.ico"), mimetype="image/x-icon"); r.headers["Cache-Control"] = "public, max-age=3600"; return r
 
 @app.route("/")
 def home():

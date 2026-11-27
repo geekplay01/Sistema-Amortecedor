@@ -171,7 +171,67 @@ window.PSDTW = (() => {
       ctx.beginPath(); ctx.moveTo(x, top + 16); ctx.lineTo(x, bottom); ctx.stroke(); ctx.font = `600 11.5px ${window.Chart.defaults.font.family}`; ctx.fillStyle = cssv("--tx");
       const w = ctx.measureText(o.texto).width, dir = x + 6 + w <= ch.chartArea.right; ctx.textAlign = dir ? "left" : "right"; ctx.textBaseline = "top";
       ctx.fillText(o.texto, dir ? x + 6 : x - 6, top); ctx.restore(); } };
-    window.Chart.register(rotulos, cursor, divisa); };
+    /* update 6 «painel de instrumento»: ponteiro = faixa da categoria (barras) ou linha do cursor (linhas) + o rótulo dela destacado no eixo; o índice
+       sob o cursor fica em chart.$at (o visor acima do gráfico lê o mesmo índice) */
+    const ponteiro = { id: "psdPonteiro", defaults: { ativo: false, faixa: false }, descriptors: fixo,
+      beforeDatasetsDraw(ch, _a, op) { if (!op || !op.ativo || ch.$at == null) return; const h = ch.options.indexAxis === "y", s = ch.scales[h ? "y" : "x"], a = ch.chartArea, c = ch.ctx, p = s.getPixelForValue(ch.$at);
+        c.save(); if (op.faixa) { const w = (h ? a.bottom - a.top : a.right - a.left) / Math.max(1, ch.data.labels.length) * 0.86; c.fillStyle = cssv("--chart-banda");
+          if (h) c.fillRect(a.left, p - w / 2, a.right - a.left, w); else c.fillRect(p - w / 2, a.top, w, a.bottom - a.top); }
+        else { c.strokeStyle = cssv("--mut"); c.globalAlpha = .5; c.lineWidth = 1; c.beginPath(); c.moveTo(p, a.top); c.lineTo(p, a.bottom); c.stroke(); } c.restore(); },
+      afterDraw(ch, _a, op) { if (!op || !op.ativo || ch.$at == null) return; const h = ch.options.indexAxis === "y", s = ch.scales[h ? "y" : "x"], c = ch.ctx, p = s.getPixelForValue(ch.$at), t = String(ch.data.labels[ch.$at] ?? "");
+        if (!t) return; c.save(); c.font = `600 11.5px ${cssv("--fontd") || window.Chart.defaults.font.family}`; const hh = 20, w = Math.min(c.measureText(t).width + 14, h ? Math.max(30, ch.chartArea.left - 4) : 220);
+        const x = h ? ch.chartArea.left - 4 - w : p - w / 2, y = h ? p - hh / 2 : ch.chartArea.bottom + 5;
+        c.fillStyle = cssv("--tx"); c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, hh, 6); else c.rect(x, y, w, hh); c.fill();
+        c.fillStyle = cssv("--card"); c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(t, x + w / 2, y + hh / 2 + .5, w - 8); c.restore(); } };
+    /* entrada da linha: o desenho abre da esquerda para a direita (recorte), uma vez; chart.$revela = início */
+    const revela = { id: "psdRevela", beforeDatasetsDraw(ch) { if (!ch.$revela) return; const p = Math.min(1, (performance.now() - ch.$revela) / 650), e = 1 - Math.pow(1 - p, 3), a = ch.chartArea;
+        ch.ctx.save(); ch.ctx.beginPath(); ch.ctx.rect(a.left - 8, a.top - 12, (a.right - a.left + 16) * e, a.bottom - a.top + 24); ch.ctx.clip(); ch.$clip = true;
+        if (p < 1) requestAnimationFrame(() => { if (ch.canvas && ch.canvas.isConnected && ch.ctx) ch.draw(); }); else ch.$revela = 0; },
+      afterDatasetsDraw(ch) { if (ch.$clip) { ch.ctx.restore(); ch.$clip = false; } } };
+    window.Chart.register(rotulos, cursor, divisa, ponteiro, revela); };
+  const _alfa = (c, a) => { const m = typeof c === "string" && c.match(/^#([\da-f]{6})$/i); if (!m) return c; const n = parseInt(m[1], 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+  const _corDs = (ds, i) => { const c = ds._cor ?? ds.borderColor; return Array.isArray(c) ? c[i] : typeof c === "string" ? c : cssv("--chart-1"); };
+  /* depois de pintar: barras apagam fora do índice sob o cursor (a 32%); linha única ganha o degradê leve embaixo */
+  const envolve = (type, dss, instr) => dss.forEach(ds => { const tp = ds.type || type;
+    if (tp === "bar") { ds._cor = ds.backgroundColor; if (instr && typeof ds._cor !== "function")
+      ds.backgroundColor = x => { const b = Array.isArray(ds._cor) ? ds._cor[x.dataIndex] : ds._cor, at = x.chart.$at; return at != null && x.dataIndex !== at ? _alfa(b, .32) : b; }; }
+    if (tp === "line") { ds._cor = ds.borderColor; if (ds._grad) ds.backgroundColor = x => { const a = x.chart.chartArea, c = ds._cor; if (!a) return _alfa(c, .1);
+      const g = x.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom); g.addColorStop(0, _alfa(c, .16)); g.addColorStop(1, _alfa(c, 0)); return g; }; } });
+  /* visor (update 6): a leitura do índice i (sem cursor: o último ponto; no ranking deitado, o 1º). Usa as dicas que a tela já definiu (title / label /
+     afterLabel), para não perder informação; sem elas: uma série = número grande (+ variação sobre o mesmo mês do ano anterior, com visor.anoAnterior),
+     pilha = total + cada parte, várias séries = cada uma com a sua cor (o visor é também a legenda) */
+  const _vistosG = new Set();
+  const _visor = (g, cfg, alvo) => {
+    const o = cfg.options, cb = (o.plugins && o.plugins.tooltip && o.plugins.tooltip.callbacks) || {}, dss = g.data.datasets, lab = g.data.labels || [], h = o.indexAxis === "y";
+    const fmt0 = cfg.fmtVisor || (o.plugins.psdRotulos && o.plugins.psdRotulos.fmt);
+    let fmt = fmt0 || (v => Math.abs(v) >= 1e5 ? curto(v) : nf(v, Number.isInteger(+v) || Math.abs(v) >= 100 ? 0 : 1));
+    /* leitura sem cursor: visor.padrao (a tela escolhe: o 1º do Pareto, o último mês fechado de Vendas); senão o último ponto com dado em TODAS as séries
+       (Garantia: dez tem só o ano anterior → fica nov); no ranking deitado, o 1º. visor.parcial = índice do mês em andamento (sem variação) */
+    const V = cfg.visor || {}, fins = dss.map(d => d.data.reduce((k, x, i) => x == null ? k : i, -1)).filter(k => k >= 0);
+    let ult = V.padrao != null ? V.padrao : h ? 0 : Math.max(0, fins.length ? Math.min(...fins) : 0);
+    if (V.padrao == null && !h) while (ult > 0 && dss.every(d => !+d.data[ult])) ult--;          // e com algum valor (Pedidos: «depois» zerado → o último mês com chegada)
+    const ctxDe = (ds, di, i) => ({ chart: g, dataset: ds, datasetIndex: di, dataIndex: i, raw: ds.data[i], parsed: h ? { x: ds.data[i], y: i } : { x: i, y: ds.data[i] }, label: lab[i], formattedValue: nf(ds.data[i]) });
+    const txt = v => esc([].concat(v ?? "").join(" ").trim());
+    const ler = i => { const ctxs = dss.map((ds, di) => ctxDe(ds, di, i)).filter(c => g.isDatasetVisible(c.datasetIndex) && c.raw != null);
+      if (!fmt0) { const grande = ctxs.some(c => Math.abs(+c.raw) >= 1e5) || ctxs.reduce((a, c) => a + (+c.raw || 0), 0) >= 1e5 && dss.some(d => d.stack != null);          // um formato só por leitura
+        fmt = grande ? curto : (v => nf(v, Number.isInteger(+v) || Math.abs(v) >= 100 ? 0 : 1)); }
+      const titulo = cb.title ? txt(cb.title(ctxs.length ? ctxs : [ctxDe(dss[0], 0, i)])) : esc(lab[i] ?? "");
+      const depois = c => cb.afterLabel ? `<span class="u">${txt(cb.afterLabel(c))}</span>` : "";
+      let corpo;
+      if (cb.label) corpo = ctxs.map(c => `<span class="k"><i style="background:${_corDs(c.dataset, i)}"></i><span>${txt(cb.label(c))}</span>${depois(c)}</span>`).join("");
+      else if (ctxs.length === 1 && dss.length === 1) { const c = ctxs[0], v = +c.raw, k = V.anoAnterior, parc = V.parcial === i, ant = k && !parc ? c.dataset.data[i - k] : null, d = ant ? 100 * (v / ant - 1) : null;
+        corpo = `<span class="n">${esc(fmt(v))}</span><span class="u">${esc(c.dataset.label || "")}${parc ? ", mês em andamento" : ""}</span>${depois(c)}` + (d != null && isFinite(d) ? `<span class="d ${d >= 0 ? "up" : "down"}">${d >= 0 ? "▲ +" : "▼ "}${nf(d, Math.abs(d) < 10 ? 1 : 0)}% sobre ${esc(lab[i - k])}</span>` : ""); }
+      else { const chave = c => `<span class="k"><i style="background:${_corDs(c.dataset, i)}"></i>${esc(c.dataset.label || "")} <b>${esc(fmt(c.raw))}</b>${depois(c)}</span>`;
+        corpo = dss.some(d => d.stack != null) ? `<span class="n">${esc(fmt(ctxs.reduce((a, c) => a + (+c.raw || 0), 0)))}</span><span class="u">no total</span>` + ctxs.map(chave).join("") : ctxs.map(chave).join(""); }
+      return `${titulo ? `<span class="m">${titulo}</span>` : ""}${corpo || '<span class="u">sem dado</span>'}`; };
+    const mostra = i => { alvo.innerHTML = ler(i ?? ult); };
+    const antes = o.onHover;
+    g.options.onHover = (e, els, ch) => { if (antes) antes(e, els, ch);          // o Chart.js avisa a saída do mouse como «mouseout» com a última posição: aí a leitura volta ao padrão
+      const a = e.type === "mouseout" ? null : ch.getElementsAtEventForMode(e, "index", { intersect: false, axis: h ? "y" : "x" }, false)[0], i = a ? a.index : null;
+      if (i !== ch.$at) { ch.$at = i; mostra(i); ch.update("none"); } };
+    const sai = () => { if (g.$at == null) return; g.$at = null; mostra(null); g.update("none"); };
+    g.canvas.addEventListener("mouseleave", sai); g.canvas.addEventListener("pointerleave", sai);
+    mostra(null); };
   const _def = (o, k, v) => { if (o[k] === undefined) o[k] = v; return o[k]; };
   /* eixos padrão: grade fina e sólida só no eixo dos valores, sem linha de eixo, até 5 marcas com número curto; cada tela pode sobrescrever */
   const eixos = cfg => { if (cfg.type !== "bar" && cfg.type !== "line") return; const o = cfg.options, sc = _def(o, "scales", {}), val = o.indexAxis === "y" ? "x" : "y", cat = val === "x" ? "y" : "x";
@@ -182,24 +242,41 @@ window.PSDTW = (() => {
     Object.values(sc).forEach(s => { _def(_def(s, "grid", {}), "color", () => cssv("--chart-grid")); _def(_def(s, "ticks", {}), "color", () => cssv("--mut")); }); };
   const grafico = (el, cfg) => {
     if (!window.Chart) { (el.tagName === "CANVAS" ? el.parentElement : el).innerHTML = notice("Gráfico indisponível: static/vendor/chart.umd.js não foi carregado.", "amber"); return null; }
-    tema(); let cv = el;
-    if (el.tagName !== "CANVAS") { el.innerHTML = '<canvas role="img"></canvas>'; cv = el.firstChild; if (!el.style.height) el.style.height = (cfg.altura || 280) + "px"; el.style.position = "relative"; }
-    if (cfg.titulo) cv.setAttribute("aria-label", cfg.titulo);
+    tema(); let cv = el, alvo = null;
     const dss = cfg.data.datasets || [], o = cfg.options ||= {}, pl = _def(o, "plugins", {}), roda = cfg.type === "doughnut" || cfg.type === "pie";
-    pinta(cfg.type, dss);
+    /* update 6: «painel de instrumento» nos gráficos de barras e linhas desenhados num contêiner — o visor fica acima do quadro (cfg.visor = false desliga) */
+    const instr = !roda && cfg.visor !== false && el.tagName !== "CANVAS";
+    if (el.tagName !== "CANVAS") { const alt = parseInt(el.style.height) || cfg.altura || 280; el.style.height = ""; el.style.position = "relative";
+      el.innerHTML = `${instr ? '<div class="psd-vis" aria-live="off"></div>' : ""}<div class="psd-ch-q" style="position:relative;height:${alt}px"><canvas role="img"></canvas></div>`;
+      cv = el.querySelector("canvas"); alvo = el.querySelector(".psd-vis"); }
+    if (cfg.titulo) cv.setAttribute("aria-label", cfg.titulo);
+    const linha = dss.some(ds => (ds.type || cfg.type) === "line"), barra = dss.some(ds => (ds.type || cfg.type) === "bar");
+    if (instr && dss.length === 1 && linha && dss[0].fill === undefined) { dss[0].fill = "origin"; dss[0]._grad = true; }         // linha única: degradê leve embaixo
+    pinta(cfg.type, dss); envolve(cfg.type, dss, instr);
     dss.forEach(ds => { const tp = ds.type || cfg.type;
       if (tp === "bar") { ds.borderRadius ??= 4; ds.maxBarThickness ??= 24; ds.borderSkipped ??= "start";        // ponta arredondada de 4 px, base reta, no máximo 24 px
         ds.borderWidth ??= ds.stack != null ? { top: 2 } : 0; }
-      if (tp === "line") { const ult = ds.data.reduce((k, x, i) => x == null ? k : i, -1);                       // 2 px, sem bolinha em todo ponto: só o último
-        ds.tension ??= 0.25; ds.cubicInterpolationMode ??= "monotone"; /* monótona: a curva não passa do valor (não fura o zero) */ ds.borderWidth ??= 2; ds.fill ??= false; ds.pointRadius ??= ds.data.map((_, i) => i === ult ? 4 : 0); ds.pointBorderWidth ??= 2; ds.pointHoverRadius ??= 5; ds.pointHitRadius ??= 12; } });
-    if (!roda) { eixos(cfg); const lg = _def(pl, "legend", {}); _def(lg, "display", dss.length > 1);                  // legenda só com 2 séries ou mais
-      const linha = dss.some(ds => (ds.type || cfg.type) === "line");
-      if (linha) { _def(o, "interaction", { mode: "index", intersect: false }); _def(pl, "psdCursor", { ativo: true }); }
-      const unicaBarra = dss.length === 1 && cfg.type === "bar" && o.indexAxis !== "y" && dss[0].data.length > 2;
-      const r = _def(pl, "psdRotulos", {}); if (r) _def(r, "modo", linha && dss.length <= 4 && !dss.some(ds => (ds.type || cfg.type) === "bar") ? "fim" : unicaBarra ? "destaque" : null);
-      if (r && r.modo) { const p = _def(o, "layout", {}).padding; if (p === undefined) o.layout.padding = r.modo === "fim" ? { right: 40, top: 6 } : { top: 18 }; } }
+      if (tp === "line") { const ult = ds.data.reduce((k, x, i) => x == null ? k : i, -1);                       // 2 px; bolinha só no ponto lido (sem cursor, o último)
+        ds.tension ??= 0.25; ds.cubicInterpolationMode ??= "monotone"; /* monótona: a curva não passa do valor (não fura o zero) */ ds.borderWidth ??= 2; ds.fill ??= false;
+        ds.pointRadius ??= x => x.dataIndex === (x.chart.$at ?? ult) && x.raw != null ? 4.5 : 0; ds.pointBorderWidth ??= 2; ds.pointHoverRadius ??= 5; ds.pointHitRadius ??= 12; } });
+    if (!roda) { eixos(cfg); const lg = _def(pl, "legend", {});
+      if (instr) { lg.display = false; _def(pl, "tooltip", {}).enabled = false; _def(pl, "psdPonteiro", { ativo: true, faixa: barra });          // o visor é a legenda e a dica
+        _def(o, "interaction", { mode: "index", intersect: false, axis: o.indexAxis === "y" ? "y" : "x" }); const r = _def(pl, "psdRotulos", {}); if (r) _def(r, "modo", null);
+        const lay = _def(o, "layout", {}); if (lay.padding === undefined) lay.padding = { bottom: 4 }; }
+      else { _def(lg, "display", dss.length > 1);                  // legenda só com 2 séries ou mais
+        if (linha) { _def(o, "interaction", { mode: "index", intersect: false }); _def(pl, "psdCursor", { ativo: true }); }
+        const unicaBarra = dss.length === 1 && cfg.type === "bar" && o.indexAxis !== "y" && dss[0].data.length > 2;
+        const r = _def(pl, "psdRotulos", {}); if (r) _def(r, "modo", linha && dss.length <= 4 && !barra ? "fim" : unicaBarra ? "destaque" : null);
+        if (r && r.modo) { const p = _def(o, "layout", {}).padding; if (p === undefined) o.layout.padding = r.modo === "fim" ? { right: 40, top: 6 } : { top: 18 }; } } }
+    /* entrada (Q2): só na 1ª vez que este gráfico aparece nesta tela — barras sobem da base, linha se desenha da esquerda; filtro e tema não reanimam */
+    const chave = location.pathname + "|" + (cfg.titulo || (el.id || cv.closest("[id]")?.id || "")), primeira = !_vistosG.has(chave) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    _vistosG.add(chave);
+    _def(o, "animation", primeira && barra ? { duration: 480, easing: "easeOutCubic" } : false);
     const old = window.Chart.getChart(cv); if (old) old.destroy();
-    const g = new window.Chart(cv, { type: cfg.type, data: cfg.data, options: o }); vivos.add(g); return g;
+    const g = new window.Chart(cv, { type: cfg.type, data: cfg.data, options: o }); g.$instr = instr; vivos.add(g);
+    if (primeira && linha && !barra) { g.$revela = performance.now(); g.draw(); }
+    if (instr && alvo) _visor(g, cfg, alvo);
+    return g;
   };
   /* ---------- barra segmentada alta (no lugar da rosca) e medidor (no lugar da meia-rosca): HTML, sem Chart.js ----------
      segmentos(el, [{ l, v, cor, txt }], { legenda: [{ l, cor }] (padrão: as partes), fmt }) — 28 px, vão de 2 px, a fatia de cada parte escrita dentro só se couber;
@@ -225,29 +302,68 @@ window.PSDTW = (() => {
   const _ponto = (cx, cy, r, t) => [cx + r * Math.cos(2 * Math.PI * t - Math.PI / 2), cy + r * Math.sin(2 * Math.PI * t - Math.PI / 2)];
   const _arco = (cx, cy, r, a, b) => { const [x0, y0] = _ponto(cx, cy, r, a), [x1, y1] = _ponto(cx, cy, r, b); return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${b - a > 0.5 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
   /* rosca(partes [{l, v, cor}], {rotulo, acoes}) → anel de 12 px com 2 px de vão, o total no centro e, ao lado, nome, quantidade e % de cada parte (Dashboard › Sistema) */
-  const rosca = (partes, o = {}) => { const tot = partes.reduce((a, p) => a + (p.v || 0), 0), vis = partes.filter(p => p.v > 0), R = 72, gap = vis.length > 1 ? 2 / (2 * Math.PI * R) : 0; let ac = 0;
-    const pct = p => tot ? nf(100 * p.v / tot, 1) + "%" : "–";
+  /* update 6: anel e rosca varrem do zero só na 1ª vez que aparecem na tela (como a entrada dos gráficos); o número não se mexe */
+  const _entra = k => { const c = location.pathname + "|" + k, n = !_vistosG.has(c); _vistosG.add(c); return n; };
+  /* update 7 (maquete aprovada): rosca dinâmica — mouse ou teclado numa fatia (ou na linha dela) engrossa a fatia, apaga as outras e troca o centro
+     pela parte (valor, nome, %); clicar abre p.href. Sem foco, o centro volta ao total. A interação é delegada (vale para toda rosca da página). */
+  const rosca = (partes, o = {}) => { const tot = partes.reduce((a, p) => a + (p.v || 0), 0), vis = partes.filter(p => p.v > 0), R = 72, gap = vis.length > 1 ? 2 / (2 * Math.PI * R) : 0, entra = _entra("rosca|" + (o.rotulo || "")); let ac = 0;
+    const pct = p => tot ? nf(100 * p.v / tot, 1) + "%" : "–", idx = p => partes.indexOf(p);
     const arcos = vis.map(p => { const f = p.v / tot, d = f >= 0.9999 ? null : _arco(84, 84, R, ac + gap / 2, ac + f - gap / 2); ac += f;
-      return d ? `<path d="${d}" fill="none" stroke="${_var(p.cor)}" stroke-width="12"><title>${esc(p.l)}: ${nf(p.v)} (${pct(p)})</title></path>` : `<circle cx="84" cy="84" r="${R}" fill="none" stroke="${_var(p.cor)}" stroke-width="12"/>`; }).join("");
-    return `<div class="psd-rosca"><svg viewBox="0 0 168 168" role="img" aria-label="${esc(vis.map(p => `${p.l} ${nf(p.v)} (${pct(p)})`).join("; ") + `; total ${nf(tot)}`)}">
+      return d ? `<path data-ri="${idx(p)}" d="${d}" fill="none" stroke="${_var(p.cor)}" stroke-width="12"${entra ? ' pathLength="100" class="entra"' : ""}><title>${esc(p.l)}: ${nf(p.v)} (${pct(p)})</title></path>`
+        : `<circle data-ri="${idx(p)}" cx="84" cy="84" r="${R}" fill="none" stroke="${_var(p.cor)}" stroke-width="12"/>`; }).join("");
+    const dados = esc(JSON.stringify({ tot: nf(tot), rot: o.rotulo || "total", p: partes.map(p => [nf(p.v), p.l, pct(p), p.href || ""]) }));
+    return `<div class="psd-rosca" data-rosca="${dados}"><svg viewBox="0 0 168 168" role="img" aria-label="${esc(vis.map(p => `${p.l} ${nf(p.v)} (${pct(p)})`).join("; ") + `; total ${nf(tot)}`)}">
         <circle cx="84" cy="84" r="${R}" fill="none" stroke="var(--chart-trilho)" stroke-width="12" opacity="${tot ? 0 : 1}"/>${arcos}
-        <text x="84" y="82" text-anchor="middle" class="n">${nf(tot)}</text><text x="84" y="102" text-anchor="middle" class="r">${esc(o.rotulo || "total")}</text></svg>
-      <div class="tab">${partes.map(p => `<div class="lin"><i style="background:${_var(p.cor)}"></i><span>${esc(p.l)}</span><b>${nf(p.v)}</b><span class="p">${pct(p)}</span></div>`).join("")}${o.acoes ? `<div class="ac">${o.acoes}</div>` : ""}</div></div>`; };
+        <text x="84" y="80" text-anchor="middle" class="n">${nf(tot)}</text><text x="84" y="99" text-anchor="middle" class="r">${esc(o.rotulo || "total")}</text><text x="84" y="117" text-anchor="middle" class="pc"></text></svg>
+      <div class="tab">${partes.map((p, i) => `<${p.href ? `a href="${esc(p.href)}"` : 'div tabindex="0"'} class="lin" data-ri="${i}"><i style="background:${_var(p.cor)}"></i><span>${esc(p.l)}</span><b>${nf(p.v)}</b><span class="p">${pct(p)}</span>${p.href ? '<span class="ir">abrir</span>' : ""}</${p.href ? "a" : "div"}>`).join("")}${o.acoes ? `<div class="ac">${o.acoes}</div>` : ""}</div></div>`; };
+  const _roscaFoco = (box, i) => { const d = JSON.parse(box.dataset.rosca), [n, r, pc] = ["n", "r", "pc"].map(c => box.querySelector("text." + c)), on = i != null && d.p[i];
+    box.classList.toggle("foco", !!on); box.querySelectorAll("[data-ri]").forEach(x => x.classList.toggle("on", !!on && +x.dataset.ri === i));
+    n.textContent = on ? d.p[i][0] : d.tot; r.textContent = on ? d.p[i][1] : d.rot; pc.textContent = on ? d.p[i][2] : ""; };
   /* anel({value, target, title, subtitle, year}) → % no centro; o tracinho marca onde a meta deveria estar hoje (meta × parte do ano já passada);
      ao lado: «n de meta», o ritmo e a distância dele (laranja abaixo, verde acima); verde no anel só quando bate a meta (Dashboard e Metas) */
+  /* update 7 (maquete aprovada): anel mais rico — o.serie = [{month: "AAAA-MM", n}] (realizado de cada mês) vira barrinhas embaixo; mouse ou teclado num mês
+     rebobina o anel até ali (mês, acumulado e ideal até aquele mês); arco tracejado = projeção do fim do ano no ritmo atual (realizado ÷ parte do ano
+     que passou) com a frase ao lado — só no ano corrente. o.inicio = o que entra antes do 1º mês («já realizado antes do rastreio»). */
+  const MESES_C = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const anel = o => { const v = o.value || 0, t = o.target || 0, ok = t > 0 && v >= t, p = t ? 100 * v / t : 0, hoje = new Date(), y = +o.year || hoje.getFullYear();
     const fr = y < hoje.getFullYear() ? 1 : y > hoje.getFullYear() ? 0 : (hoje - new Date(y, 0, 1)) / (new Date(y + 1, 0, 1) - new Date(y, 0, 1)), esp = Math.round(t * fr), dif = v - esp;
     const R = 44, C = 2 * Math.PI * R, [ix, iy] = _ponto(52, 52, R - 9, fr), [ox, oy] = _ponto(52, 52, R + 9, fr);
     const rit = !t ? "sem meta" : ok ? `meta atingida em ${y}` : fr >= 1 ? `ano encerrado` : `ritmo de hoje: ${nf(esp)}`;
     const chip = !t ? "" : ok ? `<span class="psd-anel-d cima">▲ ${v > t ? `${nf(v - t)} acima da meta` : "meta atingida"}</span>`
       : fr >= 1 ? `<span class="psd-anel-d baixo">▼ faltaram ${nf(t - v)}</span>` : dif >= 0 ? `<span class="psd-anel-d cima">▲ ${nf(dif)} acima do ritmo</span>` : `<span class="psd-anel-d baixo">▼ ${nf(-dif)} abaixo do ritmo</span>`;
-    return `<div class="psd-anel"><svg viewBox="0 0 104 104" role="img" aria-label="${esc(`${o.title || "Meta"}: ${nf(v)}${t ? ` de ${nf(t)}, ${nf(p, 1)}%; ${rit}` : ""}`)}">
+    const corrente = fr > 0 && fr < 1, proj = corrente && t ? Math.round(v / fr) : null, pv = Math.min(1, p / 100), pr = proj != null ? Math.min(1, proj / t) : 0;
+    const frase = proj == null ? "" : ok ? `no ritmo atual, fecha ${y} com <b>${nf(proj)}</b>, ${nf(proj - t)} acima da meta`
+      : proj >= t ? `no ritmo atual, fecha ${y} com <b>${nf(proj)}</b> e bate a meta` : `no ritmo atual, fecha ${y} com <b>${nf(proj)}</b>; faltariam <b>${nf(t - proj)}</b>`;
+    const serie = (o.serie || []).filter(m => String(m.month || "").startsWith(String(y))).map(m => ({ i: +String(m.month).slice(5, 7) - 1, n: +m.n || 0 })), mesHoje = y < hoje.getFullYear() ? 11 : y > hoje.getFullYear() ? -1 : hoje.getMonth();
+    const max = Math.max(1, ...serie.map(m => m.n)), por = Object.fromEntries(serie.map(m => [m.i, m.n])), entraM = serie.length && _entra(`anelm|${o.title || ""}|${t}`);
+    const meses = serie.length ? `<div class="ms${entraM ? " entra" : ""}" role="group" aria-label="${esc((o.title || "Meta") + " mês a mês")}">${MESES_C.map((m, i) => { const n = por[i] || 0, fut = i > mesHoje;
+        return `<button type="button" data-mi="${i}" ${fut ? "disabled" : ""} aria-label="${m}/${String(y).slice(2)}: ${nf(n)}"><i class="${fut ? "fut" : ""}" style="height:${fut ? 2 : Math.max(2, Math.round(30 * n / max))}px;animation-delay:${i * 25}ms"></i><span>${m[0].toUpperCase()}</span></button>`; }).join("")}</div>` : "";
+    const dados = esc(JSON.stringify({ v, t, y, ini: +o.inicio || 0, s: MESES_C.map((_, i) => por[i] || 0), ok }));
+    return `<div class="psd-anel${ok ? " ok" : ""}" data-anel="${dados}"><div class="top"><svg viewBox="0 0 104 104" role="img" aria-label="${esc(`${o.title || "Meta"}: ${nf(v)}${t ? ` de ${nf(t)}, ${nf(p, 1)}%; ${rit}` : ""}${proj != null ? `; projeção ${nf(proj)}` : ""}`)}">
         <circle cx="52" cy="52" r="${R}" fill="none" stroke="var(--chart-trilho)" stroke-width="9"/>
-        ${p > 0 ? `<circle cx="52" cy="52" r="${R}" fill="none" stroke="var(${ok ? "--ok" : "--chart-1"})" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(C * Math.min(p, 100) / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 52 52)"/>` : ""}
-        ${t && !ok && fr > 0 && fr < 1 ? `<line x1="${ix.toFixed(2)}" y1="${iy.toFixed(2)}" x2="${ox.toFixed(2)}" y2="${oy.toFixed(2)}" class="rit"><title>Ritmo de hoje: ${nf(esp)}</title></line>` : ""}
-        <text x="52" y="58" text-anchor="middle">${t ? nf(p, p >= 100 ? 0 : 1) + "%" : "–"}</text></svg>
-      <div class="inf">${o.title ? `<div class="tt">${esc(o.title)}</div>` : ""}<div class="num">${nf(v)}${t ? ` <small>de ${nf(t)}</small>` : ""}</div><div class="rit">${esc(rit)}</div>${chip}
-        ${o.subtitle ? `<div class="ap">${esc(o.subtitle)}</div>` : ""}</div></div>`; };
+        ${pr > pv ? `<path class="proj" d="${_arco(52, 52, R, pv, pr)}" fill="none" stroke="var(${ok ? "--ok" : "--chart-1"})" stroke-width="9" stroke-dasharray="3 3" opacity=".8"><title>Projeção do fim do ano: ${nf(proj)}</title></path>` : ""}
+        <circle class="arco${p > 0 && _entra(`anel|${o.title || ""}|${t}`) ? " entra" : ""}" cx="52" cy="52" r="${R}" fill="none" stroke="var(${ok ? "--ok" : "--chart-1"})" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(C * pv).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 52 52)" opacity="${p > 0 ? 1 : 0}"/>
+        ${t && !ok && corrente ? `<line x1="${ix.toFixed(2)}" y1="${iy.toFixed(2)}" x2="${ox.toFixed(2)}" y2="${oy.toFixed(2)}" class="rit"><title>Ritmo de hoje: ${nf(esp)}</title></line>` : ""}
+        <text x="52" y="56" text-anchor="middle" class="pct">${t ? nf(p, p >= 100 ? 0 : 1) + "%" : "–"}</text><text x="52" y="71" text-anchor="middle" class="sb">${t ? "da meta" : ""}</text></svg>
+      <div class="inf">${o.title ? `<div class="tt">${esc(o.title)}</div>` : ""}<div class="num">${nf(v)}${t ? ` <small>de ${nf(t)}</small>` : ""}</div><div class="leit"><span class="rit">${esc(rit)}</span> ${chip}</div>
+        ${frase ? `<div class="fr">${frase}</div>` : ""}${o.subtitle ? `<div class="ap">${esc(o.subtitle)}</div>` : ""}</div></div>${meses}</div>`; };
+  /* rebobinar: o anel vai até o acumulado do mês i (transição do traço); sem mês, volta ao ano todo */
+  const _anelLer = (box, i) => { const d = JSON.parse(box.dataset.anel), C = 2 * Math.PI * 44, arc = box.querySelector(".arco"), pc = box.querySelector(".pct"), sb = box.querySelector(".sb"), le = box.querySelector(".leit");
+    if (!arc || !d.t) return; if (le && box._leit == null) box._leit = le.innerHTML;
+    box.querySelectorAll("[data-mi]").forEach(b => b.classList.toggle("on", i != null && +b.dataset.mi === i)); box.classList.toggle("lendo", i != null);
+    const ac = i == null ? d.v : d.ini + d.s.slice(0, i + 1).reduce((a, b) => a + b, 0), p = ac / d.t;
+    arc.setAttribute("stroke-dasharray", `${(C * Math.min(p, 1)).toFixed(2)} ${C.toFixed(2)}`); arc.setAttribute("stroke", `var(${p >= 1 ? "--ok" : "--chart-1"})`); arc.setAttribute("opacity", ac > 0 ? 1 : 0);
+    pc.textContent = nf(100 * p, p >= 1 ? 0 : 1) + "%"; sb.textContent = i == null ? "da meta" : `até ${MESES_C[i]}`;
+    if (le) le.innerHTML = i == null ? box._leit : `<b>${MESES_C[i]}/${String(d.y).slice(2)}</b>: <b>${nf(d.s[i])}</b> no mês, <b>${nf(ac)}</b> no acumulado <span class="rit">(ideal até aqui: ${nf(Math.round(d.t * (i + 1) / 12))})</span>`; };
+  /* delegação única: anel (meses) e rosca (fatias e linhas) */
+  const _alvoDin = e => { const m = e.target.closest && e.target.closest(".psd-anel [data-mi]:not([disabled])"); if (m) return { tipo: "anel", box: m.closest(".psd-anel"), i: +m.dataset.mi };
+    const r = e.target.closest && e.target.closest(".psd-rosca [data-ri]"); if (r) return { tipo: "rosca", box: r.closest(".psd-rosca"), i: +r.dataset.ri }; return null; };
+  const _dinAplica = (a, i) => a.tipo === "anel" ? _anelLer(a.box, i) : _roscaFoco(a.box, i);
+  ["pointerover", "focusin"].forEach(ev => document.addEventListener(ev, e => { const a = _alvoDin(e); if (a) _dinAplica(a, a.i); }));
+  ["pointerout", "focusout"].forEach(ev => document.addEventListener(ev, e => { const a = _alvoDin(e); if (!a) return; const para = e.relatedTarget, b = para && _alvoDin({ target: para });
+    if (!b || b.box !== a.box) _dinAplica(a, null); }));
+  document.addEventListener("click", e => { const p = e.target.closest && e.target.closest(".psd-rosca svg [data-ri]"); if (!p) return; const box = p.closest(".psd-rosca"), d = JSON.parse(box.dataset.rosca), h = d.p[+p.dataset.ri] && d.p[+p.dataset.ri][3];
+    if (h) location.href = h; });
   /* legenda em HTML (gráfico de uma série com cor por categoria, p. ex. curva A/B/C) */
   const legenda = itens => `<div class="psd-legs">${itens.map(x => `<span><i style="background:${String(x.cor).startsWith("--") ? `var(${x.cor})` : x.cor}"></i>${esc(x.l)}</span>`).join("")}</div>`;
   /* ---------- Barra de filtros (etapa 19 · Q4/Q6): um padrão para todas as telas ----------
@@ -382,7 +498,8 @@ window.PSDTW = (() => {
     window.addEventListener("resize", fechar);
   })();
 
-  document.addEventListener("psd-theme", () => { tema(); vivos.forEach(g => { if (!g.canvas.isConnected) { vivos.delete(g); return; } pinta(g.config.type, g.data.datasets); g.config.clearCache?.(); g.update(); });
+  /* troca de tema: repinta na hora, sem animação (update 6: a onda fotografa a tela logo depois — o gráfico já precisa estar com as cores novas) */
+  document.addEventListener("psd-theme", () => { tema(); vivos.forEach(g => { if (!g.canvas.isConnected) { vivos.delete(g); return; } pinta(g.config.type, g.data.datasets); envolve(g.config.type, g.data.datasets, g.$instr); g.config.clearCache?.(); g.update("none"); });
     _vivosSeg.forEach(el => el.isConnected ? _ajustaSeg(el) : _vivosSeg.delete(el)); });       // tinta do texto da barra segmentada muda com o tema
   /* ---------- etapa 24: chaves de escolha (.psd-seg, .psd-linha) — o destaque desliza até a opção escolhida (0,2 s) ----------
      Um único marcador (.psd-ind, com a faixa inclinada) fica atrás dos botões. A posição anterior de cada chave fica guardada pela identidade dela

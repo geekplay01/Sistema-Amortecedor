@@ -121,8 +121,8 @@
         $("#spane").onclick = e => { const a = e.target.closest("[data-ir]"); if (!a) return; e.preventDefault(); history.replaceState(null, "", location.pathname + "#telas-" + a.dataset.ir); ir(a.dataset.ir); };
         if (alvo) { ir(alvo.slice(6)); alvo = ""; }
       },
-      aparencia() { const mark = () => $$("#thm button").forEach(b => { const on = b.dataset.t === psdTheme.get(); b.setAttribute("aria-pressed", on); b.className = "rounded-md px-4 py-1.5 text-sm font-semibold " + (on ? "bg-blue-600 text-white" : "text-ink hover:bg-slate-500/10"); });
-        mark(); $("#thm").onclick = e => { const b = e.target.closest("[data-t]"); if (b) { psdTheme.set(b.dataset.t); mark(); } }; },
+      aparencia() { const mark = (t = psdTheme.get()) => $$("#thm button").forEach(b => { const on = b.dataset.t === t; /* com a onda, o tema muda um instante depois: marca o escolhido */ b.setAttribute("aria-pressed", on); b.className = "rounded-md px-4 py-1.5 text-sm font-semibold " + (on ? "bg-blue-600 text-white" : "text-ink hover:bg-slate-500/10"); });
+        mark(); $("#thm").onclick = e => { const b = e.target.closest("[data-t]"); if (b && b.dataset.t !== psdTheme.get()) { psdTheme.set(b.dataset.t, b); mark(b.dataset.t); } }; },          // update 6: a onda nasce do botão clicado
       usuarios() {
         const pane = $("#spane");
         pane.onchange = async e => { const r = e.target.closest("[data-role]"); if (r) try { await put("/api/admin/users/" + r.dataset.role, { role: r.value }); msg("um", "Perfil atualizado."); } catch (er) { msg("um", er.message, true); show(); } };

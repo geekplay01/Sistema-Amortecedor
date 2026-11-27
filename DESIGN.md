@@ -89,8 +89,9 @@ Use o que existe antes de criar. Componente novo entra em `marca.css` com prefix
 ### 6.1 Estrutura de toda tela (`templates/page.html`)
 Menu lateral azul-marinho · barra do topo (título do app, sincronização, tema, configurações) · `h2.ptitle` + link «Regras da tela» (`.ptitle-regras`)
 · faixa «vem de / alimenta» (`.relbar`) · conteúdo da tela em `#panel` (um arquivo por tela em `static/js/telas/`).
-- **Ícone da aba (update 5):** um só em todas as páginas e no login — `static/img/favicon.svg` (azul-marinho, faixas do logo, amortecedor branco) e o
-  `favicon.ico` gerado dele (`tools/favicon_ico.py`). O logo colorido antigo (`ShockAbsorberData.ico`) não é mais servido.
+- **Ícone da aba (update 5, ajustado em 26/11/2026 a pedido do usuário):** um só em todas as páginas e no login — o logo `static/img/ShockAbsorberData.ico`
+  (P colorido com o amortecedor), servido em `/favicon.ico` e ligado só por ele (`base.html`, `login.html`). O `favicon.svg` fica no projeto, mas não é
+  ligado: antes os dois se alternavam de uma tela para outra. Para trocar o ícone, troque esse arquivo e suba o `?v=` do link.
 - **«Fechar o sistema» (update 5):** saiu da barra do topo (era fácil clicar sem querer). Fica em Configurações › **Sistema**, a primeira seção e a que
   abre: faixa com «Aberto desde», «Endereço» e «Mensagens do sistema» (`.psd-sis`) e o botão de contorno vermelho `.psd-btn-sair` (destrutivo, mas não
   a ação principal), com a confirmação `perigo` de sempre (`app.js`, `#psd-fechar`).
@@ -224,11 +225,21 @@ tem degraus próprios sobre o cartão `#141A28`, não uma inversão):
 - **Um eixo só.** Dois eixos Y inventam uma relação entre as escalas: o Pareto mostra o acumulado como a divisória «80% em N defeitos» (plugin
   `psdDivisa`) e o % de cada um na dica.
 
-**Texto:**
-- Legenda **só com 2 séries ou mais**, alinhada à esquerda, bolinha 8 × 8; uma série não tem legenda (o título do cartão diz o que é).
-- **Rótulo seletivo** (`psdRotulos`): linha = o valor no fim de cada série; barras de uma série = o maior e o último mês. Rótulos que se tocariam: fica
-  um, o resto vai para a dica. O texto nunca sai do quadro e nunca usa a cor da série (`--tx`).
-- Dica ao passar o mouse em tudo; linhas e barras agrupadas mostram todas as séries do mês, com a linha vertical do cursor (`psdCursor`) nas linhas.
+**«Painel de instrumento» (update 6, maquete aprovada em 26/11/2026; skill `frontend-design`):** o elemento memorável dos gráficos é o **visor** — o número
+reage ao cursor como um mostrador de ensaio. Vale para todo gráfico de barras ou linhas desenhado num contêiner (`PSDTW.grafico`; `cfg.visor = false` desliga).
+- **Visor** `.psd-vis`, acima do quadro (`.psd-ch-q`): o rótulo lido em chip (`.m`, Barlow) e a leitura. **Uma série:** número grande (`.n`, Barlow 26 px) +
+  o nome da série; com `visor.anoAnterior: 12`, a variação sobre o mesmo mês do ano anterior (`.d`, verde «▲ +x%» / laranja «▼ x%»); `visor.parcial` marca o
+  mês em andamento (sem variação). **Pilha:** total grande + cada parte. **Várias séries:** cada uma com a bolinha da cor e o valor (`.k`) — **o visor é a
+  legenda**, por isso a legenda do Chart.js e a caixinha da dica saem. Se a tela já define as dicas (`tooltip.callbacks.title/label/afterLabel`), o visor usa
+  esses textos (nada se perde: Pareto, Garantia em R$, participação no ranking, aplicações da Cobertura).
+- **Leitura sem cursor:** `visor.padrao` (a tela escolhe: 1º defeito do Pareto, último mês fechado de Vendas); senão o último ponto com dado em todas as
+  séries e com algum valor (Garantia: dez/26 só tem o ano anterior → nov; Pedidos: «depois» zerado → o último mês com chegada); no ranking deitado, o 1º.
+  Um formato de número por leitura (passou de 100 mil, tudo em «mil/mi»).
+- **Ponteiro** (`psdPonteiro`, índice em `chart.$at`): barras = faixa de fundo `--chart-banda` na categoria e as **outras barras apagadas a 32%**; linhas = linha
+  vertical do cursor e a bolinha (8 px, anel de 2 px da cor do cartão) só no ponto lido. O rótulo lido fica **destacado no eixo** (chip `--tx` com texto `--card`;
+  no ranking deitado, à esquerda). Sair do gráfico volta a leitura ao padrão.
+- **Linha única:** degradê leve embaixo (16% → 0, a cor da série). Rótulos diretos (`psdRotulos`) e legenda continuam só nos gráficos sem visor.
+- Gráfico desenhado direto num `<canvas>` (sem contêiner) fica no modo anterior: legenda com 2+ séries, rótulo seletivo e dica.
 
 **Formas que substituem a rosca e a meia-rosca:**
 - **Parte de um todo** → barra segmentada alta (`PSDTW.segmentos(el, [{l, v, cor}])`, `.psd-segbar`): 28 px, 2 px entre as partes, cantos de 4 px, a fatia
@@ -240,18 +251,34 @@ tem degraus próprios sobre o cartão `#141A28`, não uma inversão):
   do ritmo («ritmo de hoje: 113», «meta atingida em 2026», «ano encerrado») e o selo da distância `.psd-anel-d` — laranja «▼ n abaixo do ritmo»,
   verde «▲ n acima do ritmo / da meta». Dashboard: um anel embaixo do outro; Metas: um por cartão. `PSDCharts.gauge` já desenha assim.
   (`PSDTW.medidor` continua disponível para barras de progresso simples.)
+  **Update 7 (maquete aprovada em 26/11/2026), anel mais rico e dinâmico:** com `serie` (o realizado de cada mês) e `inicio`, embaixo do anel vem uma
+  faixa `.ms` com uma barrinha por mês (altura proporcional, cor do anel; meses que ainda não chegaram = trilho, desligados). **Mouse ou teclado num
+  mês rebobina o anel** até o acumulado daquele mês (o traço anda em 0,45 s; o centro diz «até jul») e a linha de leitura mostra «jul/26: 60 no mês,
+  89 no acumulado (ideal até aqui: 88)»; o tracinho e a projeção somem enquanto se lê um mês; sair volta ao ano. **Projeção** (só no ano corrente):
+  arco tracejado do realizado até o fim do ano no ritmo atual (realizado ÷ parte do ano que passou) e a frase «no ritmo atual, fecha 2026 com 58;
+  faltariam 67» (ou «…, 23 acima da meta» / «… e bate a meta»). Tracejado só para projeção. A interação é delegada no documento (`tw.js`).
 - **Exceção à regra da rosca — Sistema no Dashboard (update 5, pedido do usuário):** `PSDTW.rosca(partes, {rotulo, acoes})`, `.psd-rosca`. Rosca **fina**
   (12 px, 2 px de vão entre as fatias), o total no centro e, ao lado, nome, quantidade e % de cada parte — os números se leem sem passar o mouse, o que
   tira o defeito da rosca (comparar fatias pelo ângulo). Só para parte de um todo com 2 ou 3 partes de tamanhos bem diferentes; «Sem dado» em cinza.
-  Nas outras telas continua a barra segmentada.
+  Nas outras telas continua a barra segmentada. **Update 7, dinâmica:** mouse ou teclado numa fatia ou na linha dela → a fatia engrossa (12 → 18 px), as
+  outras e as outras linhas se apagam e o centro troca o total pela parte («142, FORCE OIL, 15,5%»); a linha é o link (`href` da parte: Produtos
+  filtrado pelo sistema, com «abrir» ao passar) e a fatia também abre. Sem foco, o centro volta ao total. Os botões «Ver …» embaixo saíram.
 
-Trocar o tema repinta: as cores dos eixos são lidas do token a cada desenho e o cache de opções do Chart.js é limpo. Gráfico leva `aria-label` (`titulo`);
-barra segmentada e medidor têm nome acessível com todos os valores.
+Trocar o tema repinta **na hora, sem animação** (`update("none")` — a onda fotografa a tela logo depois): as cores dos eixos são lidas do token a cada
+desenho e o cache de opções do Chart.js é limpo. Gráfico leva `aria-label` (`titulo`); barra segmentada, anel e rosca têm nome acessível com todos os valores.
 
 ## 7. Movimento
 
 - Entrada da tela 0,18 s (fade + 4 px); troca de tela por View Transition (o menu fica parado); toasts 0,2 s; hover 0,15 s.
-- Botão de tema (etapa 23): o ícone que entra gira e cresce em 0,35 s (sol gira, lua balança); as cores da página trocam na hora.
+- Botão de tema (etapa 23): o ícone que entra gira e cresce em 0,35 s (sol gira, lua balança).
+- **Onda da troca de tema (update 6):** o tema novo entra num **círculo que nasce do centro do botão clicado** (topo ou Claro/Escuro de Configurações ›
+  Aparência) e cobre a tela em 0,6 s, `cubic-bezier(.2,.8,.2,1)`. View Transitions (`psdTheme.set(t, origem)` em `app.js`): o navegador fotografa a tela
+  antes e depois e só o recorte `clip-path: circle()` da foto nova cresce — nada é recalculado por quadro. Durante a onda, `html.psd-onda` tira o nome de
+  transição do menu e da barra do topo (senão escapariam do círculo) e desliga o esmaecer da troca de página. Sem o recurso no navegador, com «reduzir
+  movimento» ou numa onda já em curso, a troca é instantânea. Os gráficos repintam dentro da troca, sem animação.
+- **Entrada dos gráficos (update 6):** só na **1ª vez que o gráfico aparece na tela** (por página e título): barras sobem da base em 0,48 s (`easeOutCubic`),
+  a linha se desenha da esquerda para a direita em 0,65 s (`psdRevela`), o anel e a rosca varrem do zero em 0,7 s. Filtro, troca de tema e redesenho não
+  reanimam. Os números nunca se mexem.
 - Ação demorada (ler os desenhos com o Claude, gerar o F-008): o botão troca o texto e mostra o ícone girando (`.psd-gira`) até terminar.
 - **Chaves de escolha (etapa 24)**: em toda `.psd-seg` e `.psd-linha` o destaque **desliza** até a opção escolhida em 0,2 s (`.psd-ind`, posto pelo
   `tw.js`; a posição anterior fica guardada pelo `id`/`aria-label` da chave, então desliza também quando a tela redesenha a chave). Vale para todos os

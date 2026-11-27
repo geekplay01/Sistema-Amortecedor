@@ -16,7 +16,8 @@ window.PSDCharts = (() => {
   const topo = ctx => { const { dataIndex: i, datasetIndex: d, chart } = ctx, D = chart.data.datasets;
     for (let k = D.length - 1; k > d; k--) if (chart.isDatasetVisible(k) && D[k].data[i]) return 0; return { topLeft: 4, topRight: 4 }; };
 
-  const bars = (el, o) => G(el, { type: "bar", altura: o.height || 280, data: { labels: o.x.map(mlabel), datasets: o.series.map((s, j) => ({ label: s.name, data: s.y, cor: s.color || pal(o)[j % pal(o).length],
+  /* o.anoAnterior = 12: o visor (update 6) mostra a variação sobre o mesmo mês do ano anterior (série de 24 meses) */
+  const bars = (el, o) => G(el, { type: "bar", altura: o.height || 280, visor: o.visor || (o.anoAnterior ? { anoAnterior: o.anoAnterior } : undefined), data: { labels: o.x.map(mlabel), datasets: o.series.map((s, j) => ({ label: s.name, data: s.y, cor: s.color || pal(o)[j % pal(o).length],
       ...(o.stacked ? { stack: "s", borderRadius: topo } : {}) })) },
     options: { plugins: { tooltip: { mode: "index", intersect: false }, ...fmtOp(o) }, scales: { x: { stacked: !!o.stacked }, y: { stacked: !!o.stacked, ...tickOp(o) } } } });
   const line = (el, o) => G(el, { type: "line", altura: o.height || 260, data: { labels: o.x.map(mlabel), datasets: o.series.map((s, j) => ({ label: s.name, data: s.y, cor: s.color || pal(o)[j % pal(o).length],
@@ -24,7 +25,7 @@ window.PSDCharts = (() => {
     options: { plugins: { ...fmtOp(o) }, scales: { y: { ...tickOp(o) } } } });
   const hbars = (el, o) => { const tot = o.values.reduce((a, b) => a + (b || 0), 0) || 1;
     return G(el, { type: "bar", altura: Math.max(120, o.labels.length * 30 + 30), data: { labels: o.labels, datasets: [{ label: o.name || "Quantidade", data: o.values, cor: o.color || SLOT[0] }] },
-      options: { indexAxis: "y", plugins: { tooltip: { callbacks: { afterLabel: c => "Participação: " + nf(100 * c.parsed.x / tot) + "%" } } }, scales: { x: { ...tickOp(o) } } } }); };
+      options: { indexAxis: "y", plugins: { tooltip: { callbacks: { afterLabel: c => "Participação: " + nf(100 * c.parsed.x / tot) + "%" } }, ...fmtOp(o) }, scales: { x: { ...tickOp(o) } } } }); };
   const funnel = (el, o) => hbars(el, { labels: o.labels, values: o.values, color: (o.colors || [])[0], name: "Itens" });
   /* parte de um todo: barra segmentada de 28 px com a fatia escrita dentro (quando cabe) e a legenda embaixo, em vez da rosca */
   const donut = (el, o) => { if (!el) return Promise.resolve(null); el.classList.remove("ch"); el.style.height = "";

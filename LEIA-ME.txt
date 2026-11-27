@@ -243,7 +243,7 @@ ETAPA 24 — 25/11/2026 (decisões em DECISOES_ETAPA24.md, regras em REGRAS_DE_N
    - Gráficos revistos: cores novas (mais fáceis de distinguir, também para daltônicos), barras mais finas, só os números importantes escritos;
      roscas viraram barras divididas e as metas viraram medidores retos; o Pareto da Garantia tem um eixo só. Nenhum número mudou.
  - Atualização de 26/11/2026 (update 5):
-   - Um ícone só na aba do navegador (o azul-marinho com o amortecedor). Se ainda aparecer o antigo, feche e abra a aba.
+   - Um ícone só na aba do navegador: o logo PERFECT SHOCK DATA (ShockAbsorberData.ico). Se aparecer outro, feche e abra a aba.
    - «Fechar o sistema» saiu do topo: fica em Configurações › Sistema (com a hora em que o sistema abriu e o endereço).
    - Dashboard: a rosca do Sistema voltou (com os números ao lado) e as metas viraram anéis que mostram o ritmo do ano. O mesmo anel na tela Metas.
    - Metas: clicar numa barra de «Validações por mês» mostra, na lista, as validações daquele mês.
@@ -252,6 +252,11 @@ ETAPA 24 — 25/11/2026 (decisões em DECISOES_ETAPA24.md, regras em REGRAS_DE_N
      do catálogo é achado pela aplicação; «Validar itens» mostra todos os itens em andamento e o outro lado dos pendentes; validar de novo um item
      já validado abre a próxima revisão (nada duplicado). Nas validações já concluídas sem o par pronto (AMD0453, AMD0456, AMD2523), use
      «Preparar o par».
+ - Gráficos como painel de instrumento (26/11/2026): acima de cada gráfico, um visor mostra o valor do último mês (ou do mês sob o mouse) e, nas vendas,
+   a variação sobre o mesmo mês do ano anterior; o mês fica marcado no eixo e o resto se apaga. Ao trocar claro/escuro, o tema novo entra numa onda
+   que nasce do botão.
+ - Metas e Sistema dinâmicos: embaixo de cada anel de meta, os meses; passe o mouse num mês para ver o anel até ali, e o arco tracejado mostra onde o
+   ano deve fechar no ritmo atual. Na rosca do Sistema, passe o mouse numa fatia para ver a parte; clique para abrir os produtos daquele sistema.
  OPCIONAL: leitura das medidas pelo Claude (API da Anthropic; as imagens dos desenhos saem do PC)
  1. .venv\Scripts\python.exe -m pip install anthropic
  2. No arquivo %USERPROFILE%\.perfect_shock_data\.env, acrescente  ANTHROPIC_API_KEY=<chave da API da Anthropic>

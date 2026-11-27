@@ -47,9 +47,10 @@
         ${card("Validações por mês", '<div id="mxc" class="chart"></div>', '<span class="text-xs text-mute">clique numa barra para ver as validações do mês</span>')}</section>`;
       const pm = v.por_mes || {}, ms = Object.keys(pm).sort();
       /* próximo update (26/11/2026): clicar numa barra filtra a lista de validações pelo mês e pelo tipo dela e rola até a lista */
-      PSDCharts.bars($("#mxc"), { x: ms.length ? ms : [d.year + "-01"], series: ks.map(k => ({ name: k, y: ms.map(m => pm[m][k] || 0), color: COR[k] })), height: 240, labels: true }).then(g => { if (!g || !ms.length) return;
-        g.options.onHover = (e, els) => { e.native.target.style.cursor = els.length ? "pointer" : "default"; };
-        g.options.onClick = (e, els) => { const el = els[0]; if (!el) return; const k = ks[el.datasetIndex], m = ms[el.index], s = F.get();
+      PSDCharts.bars($("#mxc"), { x: ms.length ? ms : [d.year + "-01"], series: ks.map(k => ({ name: k === DES ? "DES" : "R-D", y: ms.map(m => pm[m][k] || 0), color: COR[k] })), height: 240, labels: true }).then(g => { if (!g || !ms.length) return;
+        const visor = g.options.onHover;          // update 6: o visor também ouve o mouse — encadeia, não substitui
+        g.options.onHover = (e, els, ch) => { if (visor) visor(e, els, ch); e.native.target.style.cursor = els.length ? "pointer" : "default"; };
+        g.options.onClick = (e, els, ch) => { const el = ch.getElementsAtEventForMode(e, "nearest", { intersect: true }, false)[0] || els[0]; if (!el) return; /* a barra clicada (DES ou R-D), não a 1ª série do mês */ const k = ks[el.datasetIndex], m = ms[el.index], s = F.get();
           const mesmo = s.mes === m && s.vt === SLUG[k]; F.set({ mes: mesmo ? "" : m, vt: mesmo ? "" : SLUG[k], rdv: "" }); desenharBarra(); desenharRd();
           if (!mesmo) { const alvo = $("#mrd"); if (alvo) alvo.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); } }; });
     };
@@ -67,9 +68,9 @@
           <p class="m-0">${base}</p></div>`,
           `<button type="button" data-edit="${k}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-500/10">Editar meta</button>`, g.reached ? "ring-1 ring-emerald-500/50" : "");
       }).join("");
-      ks.forEach(k => PSDCharts.gauge($("#gg-" + SLUG[k]), { value: d.goals[k].done, target: d.goals[k].target, title: "", year: d.year }));          // anel com o ritmo do ano (update 5)
+      ks.forEach(k => PSDCharts.gauge($("#gg-" + SLUG[k]), { value: d.goals[k].done, target: d.goals[k].target, title: "", year: d.year, serie: (d.goals[k].series || {}).main, inicio: d.goals[k].prior_aplica === false ? 0 : d.goals[k].prior_done }));          // anel com o ritmo do ano (update 5) + meses, rebobinar e projeção (update 7)
       $("#mevo").innerHTML = d.basis === "validacao" ? "" : card("Evolução mensal — itens recebidos", '<div id="mevoc" class="chart"></div>');
-      if (d.basis !== "validacao") PSDCharts.bars($("#mevoc"), { x: d.goals[DES].series.main.map(m => m.month), series: ks.map(k => ({ name: k + (k === DES ? ": item recebido" : ": recebido e validado"), y: d.goals[k].series.main.map(m => m.n), color: COR[k] })), height: 250, labels: true });
+      if (d.basis !== "validacao") PSDCharts.bars($("#mevoc"), { x: d.goals[DES].series.main.map(m => m.month), series: ks.map(k => ({ name: k === DES ? "DES, item recebido" : "R-D, recebido e validado", y: d.goals[k].series.main.map(m => m.n), color: COR[k] })), height: 250, labels: true });
     };
 
     // itens que chegaram a ITEM RECEBIDO no ano (já filtrados por tipo na API) + filtro «conta?» local

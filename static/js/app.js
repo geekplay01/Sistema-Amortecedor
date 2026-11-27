@@ -93,12 +93,25 @@
 })();
 
 // ---- tema claro/escuro (gravado neste navegador) ----
+/* update 6: com `origem` (o botão clicado), a troca vem numa onda — View Transitions: o navegador fotografa a tela antes e depois e só o recorte em círculo
+   cresce do centro do botão até cobrir a tela (~0,6 s), sem recalcular a página a cada quadro. Sem o recurso, ou com «reduzir movimento», troca na hora.
+   Enquanto dura, menu e barra do topo perdem o nome de transição próprio (html.psd-onda), senão escapariam da onda. */
+const _aplicaTema = t => { document.documentElement.setAttribute("data-theme", t); try { localStorage.setItem("psd-theme", t); } catch (e) { } document.dispatchEvent(new CustomEvent("psd-theme", { detail: t })); };
 window.psdTheme = {
   get: () => document.documentElement.getAttribute("data-theme") || "light",
-  set(t) { document.documentElement.setAttribute("data-theme", t); try { localStorage.setItem("psd-theme", t); } catch (e) { } document.dispatchEvent(new CustomEvent("psd-theme", { detail: t })); },
-  toggle() { this.set(this.get() === "dark" ? "light" : "dark"); }
+  set(t, origem) {
+    const html = document.documentElement;
+    if (!origem || !document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches || html.classList.contains("psd-onda")) return _aplicaTema(t);
+    const r = origem.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, raio = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    html.classList.add("psd-onda");
+    let tr; try { tr = document.startViewTransition(() => _aplicaTema(t)); } catch (e) { html.classList.remove("psd-onda"); return _aplicaTema(t); }
+    tr.ready.then(() => html.animate({ clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${raio}px at ${x}px ${y}px)`] },
+      { duration: 600, easing: "cubic-bezier(.2,.8,.2,1)", pseudoElement: "::view-transition-new(root)" })).catch(() => { });
+    tr.finished.finally(() => html.classList.remove("psd-onda"));
+  },
+  toggle(origem) { this.set(this.get() === "dark" ? "light" : "dark", origem); }
 };
-document.addEventListener("click", e => { const b = e.target.closest("#themebtn"); if (!b) return; psdTheme.toggle();
+document.addEventListener("click", e => { const b = e.target.closest("#themebtn"); if (!b) return; psdTheme.toggle(b);
   b.classList.remove("gira"); void b.offsetWidth; b.classList.add("gira"); b.addEventListener("animationend", () => b.classList.remove("gira"), { once: true }); });   // etapa 23: o ícone que entra gira (marca.css)
 /* etapa 24: o sistema abre sem a janela do cmd; «Fechar o sistema» (botão no topo) encerra o servidor */
 document.addEventListener("click", async e => { if (!e.target.closest("#psd-fechar") || !window.PSDTW) return;

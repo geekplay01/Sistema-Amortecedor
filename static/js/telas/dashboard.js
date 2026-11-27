@@ -63,7 +63,7 @@
       $("#dg").innerHTML = [
         card(`Metas ${y}`, `<div class="grid grid-cols-1 gap-3"><div id="dg-des"></div><div id="dg-rd"></div></div>
           <p class="m-0 mt-2 text-xs text-mute">${tr.since ? "Transições rastreadas desde " + dmy(tr.since) : "O rastreio começa na 1ª sincronização com o servidor"}.</p>`, `<a class="${botao}" href="/metas">Detalhes e validações</a>`),
-        card("Evolução mensal das metas", '<div id="dg-evo" class="chart"></div>'),
+        card(`Evolução mensal das metas <span class="text-sm font-normal text-mute">${vb ? `validações ${u}` : "item recebido"}</span>`, '<div id="dg-evo" class="chart"></div>'),
         funil(DES), funil(RD),
         `<div id="dfl" class="xl:col-span-2"></div>`,
         card("Vendas nos últimos 12 meses", d.sales.available ? '<div id="dg-sales" class="chart"></div>' : vazio("Vendas ainda não chegaram do servidor. Sincronize em Configurações.")),
@@ -73,15 +73,18 @@
           : vazio("Sem vendas no período.")),
         card("Estoque disponível", est.available ? `<div class="grid grid-cols-3 gap-2">${st(nf(est.qty), "peças disponíveis")}${st(nf(est.items), "códigos em estoque")}${st(nf(est.zero), "zerados")}</div>` : vazio("Estoque ainda não chegou do servidor.")),
         // update 5: volta a rosca (fina, total no centro, nome, quantidade e % ao lado); «Sem dado» em cinza
-        card("Sistema: FORCE GAS × FORCE OIL", TW.rosca(sys.map(r => ({ l: LAB[r.s] || r.s, v: r.n, cor: ({ gas: "--chart-1", oleo: "--chart-2" })[r.s] || "--chart-7" })),
-          { rotulo: "itens no catálogo", acoes: sys.filter(r => r.s !== "nd").map(r => `<a class="${botao}" href="/produtos?system=${r.s}">Ver ${LAB[r.s] || esc(r.s)}</a>`).join("") })),
+        // update 7: rosca dinâmica — a linha (e a fatia) abre Produtos filtrado pelo sistema; os botões «Ver …» saíram (a linha é o link)
+        card("Sistema: FORCE GAS × FORCE OIL", TW.rosca(sys.map(r => ({ l: LAB[r.s] || r.s, v: r.n, cor: ({ gas: "--chart-1", oleo: "--chart-2" })[r.s] || "--chart-7", href: r.s !== "nd" ? `/produtos?system=${r.s}` : "" })),
+          { rotulo: "itens no catálogo" })),
       ].join("");
       flagsCard();
-      const gg = (id, k, sub) => PSDCharts.gauge($(id), { value: g[k].done, target: g[k].target, title: k, subtitle: sub, year: y });          // anel com o ritmo do ano (update 5)
+      // anel com o ritmo do ano (update 5) + meses, rebobinar e projeção (update 7)
+      const gg = (id, k, sub) => PSDCharts.gauge($(id), { value: g[k].done, target: g[k].target, title: k, subtitle: sub, year: y, serie: (g[k].series || {}).main, inicio: g[k].prior_aplica === false ? 0 : g[k].prior_done });
       gg("#dg-des", DES, vb ? `validações ${u} em ${y}` : `item recebido em ${y}`);          // a meta já aparece no medidor («de N»)
       gg("#dg-rd", RD, vb ? `validações ${u} em ${y}` : `recebido e validado (${u})`);
       const bs = vb ? `validações ${u}` : "item recebido";
-      PSDCharts.line($("#dg-evo"), { x: g[DES].series.main.map(m => m.month), series: [DES, RD].map(k => ({ name: `${k}: ${bs}`, y: g[k].series.main.map(m => m.n), color: COR[k] })), height: 260 });
+      // update 6: nomes curtos (o visor mostra «DES 23  R-D 64»); a base da contagem vai no título do cartão
+      PSDCharts.line($("#dg-evo"), { x: g[DES].series.main.map(m => m.month), series: [DES, RD].map(k => ({ name: k === DES ? "DES" : "R-D", y: g[k].series.main.map(m => m.n), color: COR[k] })), height: 260 });
       if (d.sales.available) PSDCharts.bars($("#dg-sales"), { x: d.sales.months.map(m => m.month), series: [{ name: "Peças vendidas", y: d.sales.months.map(m => m.qty) }], height: 250 });
     };
 

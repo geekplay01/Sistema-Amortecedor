@@ -161,7 +161,7 @@ também está pendente (AMD0138/0139, AMD0928/0929, AMD1714/1715).
 
 | # | Pedido | Decisão |
 |---|---|---|
-| Q1 | Ícone da aba mudava por módulo | Um só: o `favicon.svg` (azul-marinho); `static/img/favicon.ico` gerado dele (`tools/favicon_ico.py`); login e `/favicon.ico` também |
+| Q1 | Ícone da aba mudava por módulo | Um só. **Ajuste do usuário (26/11):** o `ShockAbsorberData.ico` (logo colorido), em `/favicon.ico`, ligado em todas as páginas e no login; o `favicon.svg` não é mais ligado (o `.ico` gerado do SVG e `tools/favicon_ico.py` saíram) |
 | Q2 | Dashboard: volta a rosca do Sistema | Só no Dashboard; rosca fina com o total no centro e nome, quantidade e % ao lado (exceção ao §6.6 no DESIGN.md) |
 | Q3 | Indicador de metas mais moderno | Anel de progresso com o % no centro, «x de meta» e o ritmo do ano (tracinho no anel + «n abaixo/acima do ritmo») |
 | Q4 | Onde | Dashboard e cartões da tela Metas |
@@ -186,5 +186,46 @@ a lista guarda os meses de cada código e o filtro de mês bate com cada barra (
   (primeira seção; `/api/sistema`; botão `.psd-btn-sair`; saiu do topo). Achados: a classe `.sub` do anel pegava o estilo «SHOCK DATA» da tela inicial
   (renomeada); os dois anéis lado a lado ficavam espremidos no cartão do Dashboard (empilhados); atalhos «Contam/Aguardando» da lista de Metas ganharam
   «R-D:» quando a lista tem DES e R-D. Conferido no navegador (cópia), claro e escuro; confirmação de «Fechar o sistema» aberta e cancelada.
+- [x] Ícone (pedido do usuário depois do commit 33f6de7): volta o `ShockAbsorberData.ico`, único em todas as páginas e no login.
+
+## Update 6 (26/11/2026) — gráficos «painel de instrumento» e onda na troca de tema (skill `frontend-design`; Q1–Q6 aceitas)
+
+| # | Decisão |
+|---|---|
+| Q1 | Direção A, «painel de instrumento», mantendo a paleta e as regras do update 4: visor no topo de cada gráfico (último mês por padrão; ao passar o mouse, o mês sob o cursor; valor e cor de cada série = legenda), mês marcado no eixo, faixa do mês nas barras / linha do cursor nas linhas, o resto apagado; degradê leve só em linha de uma série |
+| Q2 | Entrada só na 1ª vez que a tela abre (barras sobem da base, linha se desenha da esquerda), < 0,5 s; filtro não reanima; «reduzir movimento» = nada |
+| Q3 | Os 16 gráficos, pelo `PSDTW.grafico`, rosca e anel |
+| Q4 | Maquete antes (`maquetes/graficos_instrumento_maquete.html`) |
+| Q5 | Onda: View Transitions, círculo do centro do botão clicado cobrindo a tela em ~0,6 s; nos dois sentidos e nos botões de Configurações › Aparência; sem o recurso ou com «reduzir movimento», instantâneo |
+| Q6 | Sem skill nova (o /find-skills precisa do Node, que não está instalado); `dataviz` + `frontend-design` |
+
+- [x] Maquete pronta e conferida (claro, escuro, visor ao passar o mouse, onda no meio da animação). Aprovada («Aprovo, aplicar»).
+- [x] Aplicado: `PSDTW.grafico` (visor `.psd-vis` + quadro `.psd-ch-q`; plugins `psdPonteiro` e `psdRevela`; `envolve` = barras apagadas / degradê; entrada só
+  na 1ª vez por página e título), anel e rosca varrem na entrada, onda em `app.js` (`psdTheme.set(t, origem)`) + `html.psd-onda` em marca.css; tema repinta com
+  `update("none")`. Achados na conferência: Vendas abria no mês parcial («▼ -80%») → `visor.parcial`/`padrao`; ranking mostrava «Quantidade» em reais;
+  Garantia abria em dez (só o ano anterior) e Pedidos no «depois» zerado → leitura padrão = último ponto com dado em todas as séries e com valor; Pareto abre
+  no 1º defeito; formatos misturados no visor (um formato por leitura); Metas: o clique trocava o `onHover` do visor (encadeado) e, com o modo índice,
+  sempre pegava a série DES (agora a barra sob o cursor); o Chart.js não chama `onHover` ao sair do gráfico (`mouseleave`/`pointerleave`); nomes longos
+  das séries (DES/R-D, base no título); a marca de Aparência lia o tema antigo durante a onda. Conferido na cópia: Dashboard, Metas, Vendas, Garantia,
+  Pedidos, Item, Cobertura, Guia; onda pelo topo e por Aparência, claro ↔ escuro.
+
+## Update 7 (26/11/2026) — metas e Sistema dinâmicos
+
+| # | Decisão do usuário |
+|---|---|
+| Q1 | **B, anel mais rico**: o anel continua, com o realizado de cada mês em barrinhas embaixo; passar o mouse/Tab num mês rebobina o anel até ali (mês, acumulado e ideal até aquele mês) |
+| Q2 | «Não precisa alterar nada»: o anel fica onde já está (Dashboard e cartões de Metas), sem mudar a disposição das telas (interpretação; a confirmar na maquete) |
+| Q3 | Rosca do Sistema: fatia sob o mouse/teclado (ou a linha dela) engrossa, as outras se apagam, o centro mostra a parte; clique abre Produtos filtrado |
+| Q4 | Projeção: arco tracejado até o fim do ano no ritmo atual (realizado ÷ parte do ano que passou) e a frase «no ritmo atual, fecha 2026 com 58; faltariam 67»; só no ano corrente |
+| Q5 | Maquete antes (`maquetes/metas_sistema_maquete.html`, números da cópia: DES 52/125, R-D 156/150; GAS 772, OIL 142) |
+
+- [x] Maquete pronta e conferida (rebobinar em jul/26 R-D = 59,3%, 89 acumulado; rosca FORCE OIL = 142, 15,5%). Aprovada («Aprovo, aplicar»).
+- [x] Aplicado: `PSDTW.anel` (serie, inicio, projeção, meses, `_anelLer`), `PSDTW.rosca` (data-ri, centro com 3 linhas, `_roscaFoco`, linhas = links), interação
+  delegada no documento; Dashboard (rosca com href; botões «Ver …» saíram) e Metas passam `serie`/`inicio`. Conferido na cópia: Dashboard — os dois anéis com
+  a frase de projeção, rebobinar jul/26 R-D = 59,3% / 89 / ideal 88, rosca FORCE OIL = 142 / 15,5% → /produtos?system=oleo; Metas com os anéis novos.
+  Achados: dois comentários `//` no meio da linha engoliam código (Aparência em configuracoes.js; o clique de Metas perdia `const k`) — corrigidos e varridos.
+  Com o painel do navegador escondido o Chart.js não processa clique/hover (eventos dentro de requestAnimationFrame, que o navegador pausa): o clique de
+  Metas foi conferido chamando o onClick com o evento (filtra jul/26 R-D).
+- [ ] A rodada anterior (update 6 + ícone) segue sem commit, à espera do usuário.
 - [x] Documentação: DESIGN.md (§6.1 ícone e Sistema, §6.3 sub status e gráfico que filtra, §6.4c excluir cota/lista/preparar par, §6.6 anel e exceção
   da rosca, §10), REGRAS (§4 lista e anel, §13 update 5, abertura), `regras_telas.py` (Metas, Redesenvolvimento, Validação), LEIA-ME.

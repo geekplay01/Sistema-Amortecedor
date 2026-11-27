@@ -200,7 +200,10 @@ window.PSD_EXEC = ctx => {
         ${TW.kpi(`Acumulado ${Y.ano} (até ${MONTHS[Y.ate_mes]})`, brl0(Y.valor), `${pct(Y.var_valor_pct)} vs. ${brl0(Y.valor_ant)} no mesmo período de ${Y.ano - 1}`, "green")}
         ${TW.kpi("Faturamento de SKUs do catálogo", o.catalogo.pct_valor_catalogo == null ? "–" : nf(o.catalogo.pct_valor_catalogo, 1) + "%", `${nf(o.catalogo.skus_fora)} SKU(s) vendidos fora do CatalogoAMD em ${o.catalogo.ano}`, o.catalogo.pct_valor_catalogo >= 90 ? "green" : "amber")}</div>
       ${TW.card("Faturamento mensal (últimos 24 meses, com IPI)", '<div id="vmes" class="chart"></div>', `<span class="text-sm text-mute">servidor: ${mesAno(o.primeiro_mes)} → ${mesAno(o.ultimo_mes)}, atualizado ${dmy(o.atualizado_em)}, ano ${o.catalogo.ano} por linha: ${o.por_linha.map(l => `${esc(l.linha)} ${brl0(l.v)}`).join(", ")}</span>`)}</div>`;
-    PSDCharts.bars($("#vmes"), { x: o.meses.map(m => m.mes), series: [{ name: "Faturado (R$)", y: o.meses.map(m => Math.round(m.valor)) }], fmt: v => "R$ " + TW.curto(v) });
+    // visor (update 6): variação sobre o mesmo mês do ano anterior; o mês em andamento (parcial) não é comparado e o visor abre no último mês fechado
+    const n = o.meses.length, parc = n && R.parcial.tem_dados && o.meses[n - 1].mes === R.parcial.mes ? n - 1 : null;
+    PSDCharts.bars($("#vmes"), { x: o.meses.map(m => m.mes), series: [{ name: "faturado, com IPI", y: o.meses.map(m => Math.round(m.valor)) }], fmt: v => "R$ " + TW.curto(v),
+      visor: { anoAnterior: 12, parcial: parc, padrao: parc != null && n > 1 ? n - 2 : null } });
   }
   async function vendas() {
     const P = new URLSearchParams(location.search);
@@ -236,7 +239,7 @@ window.PSD_EXEC = ctx => {
           sk.map(([c, n, p]) => [`Classe ${c}`, nf(n), brl0((p || 0) * d.total_valor / 100), nf(p || 0, 1) + "%"]), { h: "" }) + "</div>")}</div>
         ${TW.card("Curva ABC por produto", '<div id="vt"></div>', `<span id="vcount" class="text-sm text-mute"></span>`)}</div>`;
       const top = d.rows.slice(0, 15);
-      top.length ? PSDCharts.hbars($("#vh"), { labels: top.map(r => r.PRODUTO), values: top.map(r => r.VALOR), fmt: v => "R$ " + TW.curto(v) }) : $("#vh").innerHTML = '<div class="ch-empty">Sem vendas no período.</div>';
+      top.length ? PSDCharts.hbars($("#vh"), { labels: top.map(r => r.PRODUTO), values: top.map(r => r.VALOR), name: "faturado no período", fmt: v => "R$ " + TW.curto(v) }) : $("#vh").innerHTML = '<div class="ch-empty">Sem vendas no período.</div>';
       PSDCharts.donut($("#vd"), { labels: sk.map(([c, n]) => `Classe ${c}, ${nf(n)} SKUs`), values: sk.map(s => s[2] || 0), colors: ["--chart-1", "--chart-2", "--chart-3"], fmtParte: p => `${p.l.slice(7, 8)} ${nf(p.v, 1)}%` });
       table();
     };

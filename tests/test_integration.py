@@ -296,7 +296,7 @@ class Fluxo(unittest.TestCase):
 
     def test_12_favicon_e_menu_sem_pedidos(self):
         r = C.get("/favicon.ico"); self.assertEqual((r.status_code, r.mimetype), (200, "image/x-icon")); self.assertGreater(len(r.data), 1000)
-        html = C.get("/dashboard").get_data(as_text=True); self.assertIn('href="/favicon.ico?v=2"', html)
+        html = C.get("/dashboard").get_data(as_text=True); self.assertIn('href="/favicon.ico?v=3"', html); self.assertNotIn("favicon.svg", html)          # um ícone só: o ShockAbsorberData.ico
         self.assertNotIn('id="psd-fechar"', html)                                  # update 5: «Fechar o sistema» saiu da barra do topo (fica em Configurações › Sistema)
         s = C.get("/api/sistema").json; self.assertRegex(s["aberto_em"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$"); self.assertTrue(s["endereco"]); self.assertNotIn("Pedidos de compra", html)
 
