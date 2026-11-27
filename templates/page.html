@@ -5,8 +5,9 @@
 <div id="psd-shell" class="flex h-screen w-full overflow-hidden">
 <div id="psd-scrim" class="psd-scrim" hidden></div>
 <aside id="psd-side" class="psd-side nav-side fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col md:static" aria-label="Navegação">
-  <a class="nav-brand" href="/" aria-label="PERFECT Automotive – início"><img src="{{ url_for('static', filename='img/logo-perfect-branca.png') }}" alt="PERFECT Automotive"><span class="nav-sub"><span class="psd-stripes" aria-hidden="true"><i></i><i></i><i></i><i></i></span>SHOCK DATA</span></a>
-  <div class="px-4 pb-2 pt-2"><input class="nav-search" id="navsearch" type="search" placeholder="Filtrar menu…" aria-label="Filtrar menu"></div>
+  <div class="nav-top"><a class="nav-brand" href="/" aria-label="PERFECT Automotive – início"><img src="{{ url_for('static', filename='img/logo-perfect-branca.png') }}" alt="PERFECT Automotive"><span class="nav-sub"><span class="psd-stripes" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="nav-sub-t">SHOCK DATA</span></span></a>
+    <button type="button" id="psd-pin" class="psd-pin" aria-pressed="true" aria-label="Desfixar o menu" title="Desfixar o menu">{{ ico("pin") }}</button></div>
+  <div class="nav-busca px-4 pb-2 pt-2"><input class="nav-search" id="navsearch" type="search" placeholder="Filtrar menu…" aria-label="Filtrar menu"></div>
   <nav id="psd-nav" class="flex-1 overflow-y-auto px-3 pb-3" aria-label="Menu principal">
     <section class="gx mt-1" data-g="Painel executivo">
       <div class="nav-title">Painel executivo</div>
@@ -18,7 +19,7 @@
     <div class="nav-sep"></div>
     <a href="/" data-nav class="psd-sn nav-item">{{ ico("house", "sm") }}<span>Início</span></a>
     {% for title, items in menu %}
-    <section class="gx mt-1{{ ' flowg' if title in flow_groups else '' }}{{ ' has-cur' if cur[0] in items|map(attribute=0)|list else '' }}" data-g="{{ title }}">
+    <section class="gx mt-1{{ ' has-cur' if cur[0] in items|map(attribute=0)|list else '' }}" data-g="{{ title }}">
       <button class="gx-h nav-title" type="button" aria-expanded="true"><span>{{ title }}</span>{{ ico("chevron-down", "sm") }}</button>
       <div class="gx-w"><div class="gx-b flex flex-col gap-px">{% for s,l,i,e in items %}
         <a href="/{{ s }}" data-nav data-slug="{{ s }}" class="psd-sn nav-item{{ ' is-cur' if s==cur[0] else '' }}"{% if s==cur[0] %} aria-current="page"{% endif %}>{{ ico(i, "sm") }}<span class="flex-1 truncate">{{ l }}</span><span class="nav-badge" data-badge="{{ s }}" hidden></span></a>{% endfor %}
@@ -36,12 +37,6 @@
     <a class="gear" href="/configuracoes" aria-label="Configurações">{{ ico("settings") }}</a></header>
   <main id="psd-main" class="max-w-none flex-1 overflow-y-auto p-8">
     <div class="ptitle-row"><h2 class="ptitle">{{ cur[1] }}</h2>{% if cur[0] in regras_slugs %}<a class="ptitle-regras" href="/configuracoes#telas-{{ cur[0] }}" title="Como esta tela calcula e o que entra nela">{{ ico("info", "sm") }}Regras da tela</a>{% endif %}</div>
-    {% set rin, rout = related(cur[0]) %}{% if rin or rout %}
-    <nav class="relbar" aria-label="Telas relacionadas">
-      {% if rin %}<span class="relside"><small>vem de</small>{% for s,l,i,e in rin %}<a class="relchip" href="/{{ s }}">{{ ico(i, "sm") }}{{ l }}</a>{% endfor %}</span><i class="relarrow" aria-hidden="true"></i>{% endif %}
-      <span class="relchip here">{{ ico(cur[2], "sm") }}{{ cur[1] }}</span>
-      {% if rout %}<i class="relarrow" aria-hidden="true"></i><span class="relside"><small>alimenta</small>{% for s,l,i,e in rout %}<a class="relchip" href="/{{ s }}">{{ ico(i, "sm") }}{{ l }}</a>{% endfor %}</span>{% endif %}
-    </nav>{% endif %}
     {% if cur[0]=='dashboard' %}
     <div id="empty" class="notice" hidden>Nenhum dado cadastrado ainda. Importe uma base na página <a href="/importacao">Importação de Excel</a> para preencher estes indicadores.</div>
     <section class="cards compactc psd-atl" aria-label="Atalhos">
@@ -60,7 +55,7 @@
     <script src="{{ url_for('static', filename='js/pages_exec.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pages_new.js') }}"></script>
     <script src="{{ url_for('static', filename='js/core.js') }}"></script>
-    {% if cur[0]=='garantia' %}<script src="{{ url_for('static', filename='js/brasil_uf.js') }}"></script>{# contorno dos estados (IBGE) para o mapa da Garantia #}{% endif %}
+    {% if cur[0] in ('garantia', 'vendas') %}<script src="{{ url_for('static', filename='js/brasil_uf.js') }}"></script>{# contorno dos estados (IBGE) para os mapas da Garantia e de Vendas #}{% endif %}
     {# uma tela por arquivo (static/js/telas); cada uma se registra com PSD.tela(slug, desenhar) #}
     {% for t in ['dashboard', 'catalogo','produtos', 'desenvolvimento', 'metas', 'desenhos', 'damping', 'amostras', 'envio', 'lados', 'brands', 'anomalias', 'garantia', 'estoque', 'pendencias', 'fontes', 'configuracoes', 'atualizacao', 'guia', 'item', 'cobertura', 'validacao'] %}
     <script src="{{ url_for('static', filename='js/telas/' ~ t ~ '.js') }}"></script>

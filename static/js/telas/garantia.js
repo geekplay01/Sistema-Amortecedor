@@ -12,9 +12,7 @@
   const MES = ["", "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const PROC = { PROCEDENTE: ["Procedente", "red"], IMPROCEDENTE: ["Improcedente", "green"], sem: ["Sem análise", "slate"] };
   const VAL = { VALIDO: "Lote válido", VENCIDO: "Lote vencido", sem: "Lote não informado" };
-  const UFN = { AC: "Acre", AL: "Alagoas", AP: "Amapá", AM: "Amazonas", BA: "Bahia", CE: "Ceará", DF: "Distrito Federal", ES: "Espírito Santo", GO: "Goiás", MA: "Maranhão", MT: "Mato Grosso",
-    MS: "Mato Grosso do Sul", MG: "Minas Gerais", PA: "Pará", PB: "Paraíba", PR: "Paraná", PE: "Pernambuco", PI: "Piauí", RJ: "Rio de Janeiro", RN: "Rio Grande do Norte", RS: "Rio Grande do Sul",
-    RO: "Rondônia", RR: "Roraima", SC: "Santa Catarina", SP: "São Paulo", SE: "Sergipe", TO: "Tocantins" };
+  const UFN = TW.UFN;          /* nomes dos estados: tw.js (update 8, também no mapa de Vendas) */
   const nomeUni = u => (u || "").replace(/^PRIVATE-/, "").replace("MOGI", "Mogi").replace("ARUJA", "Arujá");
   const pct = (v, d = 2) => v == null ? "–" : nf(v, d) + "%";
   const pager = (pg, pages) => { const b = (p, dis, l) => `<button type="button" data-p="${p}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${dis ? "disabled" : ""}>${l}</button>`;
@@ -43,7 +41,7 @@
     const paths = Object.entries(B.uf).map(([u, g]) => { const r = por[u], k = classe(val(r), qb), on = sel === u;
       return `<path d="${g.d}" data-uf="${u}" tabindex="0" role="button" aria-label="${UFN[u]}: ${metrica === "indice" ? pct(r && r.indice) : nf(r && r.pecas) + " peças"}" fill="${cor(k)}" stroke="${on ? "var(--navy)" : "var(--card)"}" stroke-width="${on ? 4 : 1.2}"></path>`; }).join("");
     const rot = Object.entries(B.uf).map(([u, g]) => { const k = classe(val(por[u]), qb);
-      return `<text x="${g.x}" y="${g.y}" text-anchor="middle" dominant-baseline="central" font-size="${["DF", "SE", "AL", "RN", "PB", "ES", "RJ"].includes(u) ? 20 : 28}" font-weight="700" fill="${k >= 3 ? "#fff" : "var(--tx)"}">${u}</text>`; }).join("");
+      return `<text x="${g.x}" y="${g.y}" text-anchor="middle" dominant-baseline="central" font-size="${["DF", "SE", "AL", "RN", "PB", "ES", "RJ"].includes(u) ? 20 : 28}" font-weight="500" fill="${k >= 3 ? "#fff" : "var(--tx)"}">${u}</text>`; }).join("");
     const leg = qb.length ? [null, ...qb].map((t, i) => `<span class="inline-flex items-center gap-1.5"><i class="psd-sw" style="background:${cor(i)}"></i>${i === 0 ? "até " + (metrica === "indice" ? pct(qb[0]) : nf(qb[0])) : i === qb.length ? "acima de " + (metrica === "indice" ? pct(qb[i - 1]) : nf(qb[i - 1])) : (metrica === "indice" ? pct(qb[i]) : nf(qb[i]))}</span>`).join("")
       + `<span class="inline-flex items-center gap-1.5"><i class="psd-sw" style="background:var(--thead);border:1px solid var(--line)"></i>sem dado</span>` : "";
     return `<div class="relative"><svg viewBox="0 0 ${B.w} ${B.h}" class="psd-mapa mx-auto block h-auto max-h-[30rem] w-full" role="img" aria-label="Mapa do Brasil: ${metrica === "indice" ? "índice de garantia" : "peças em garantia"} por estado">${paths}${rot}</svg>

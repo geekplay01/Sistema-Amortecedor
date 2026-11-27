@@ -2,7 +2,7 @@
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}PERFECT Shock Data{% endblock %}</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico?v=3">
-<script>try{var t=localStorage.getItem("psd-theme");document.documentElement.setAttribute("data-theme",t||"light")}catch(e){}</script>
+<script>try{var t=localStorage.getItem("psd-theme");document.documentElement.setAttribute("data-theme",t||"light");if(localStorage.getItem("psd-menu-fixo")==="0")document.documentElement.classList.add("psd-mini")}catch(e){}</script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 {% if tw_page is defined and tw_page %}
 <!-- Estilos Tailwind PRÉ-COMPILADOS (static/css/tw-fallback.css, gerado por tools/tw_fallback.py): nenhum script externo — a tela abre na hora, mesmo sem internet.

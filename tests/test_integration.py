@@ -300,6 +300,33 @@ class Fluxo(unittest.TestCase):
         self.assertNotIn('id="psd-fechar"', html)                                  # update 5: «Fechar o sistema» saiu da barra do topo (fica em Configurações › Sistema)
         s = C.get("/api/sistema").json; self.assertRegex(s["aberto_em"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$"); self.assertTrue(s["endereco"]); self.assertNotIn("Pedidos de compra", html)
 
+    def test_12b_update8_menu_abas_mapa_inmetro(self):
+        html = C.get("/vendas").get_data(as_text=True)
+        self.assertIn('id="psd-pin"', html); self.assertNotIn('class="relbar"', html); self.assertNotIn("flowg", html)          # alfinete no menu; sem a faixa «vem de / alimenta» e sem o trilho
+        self.assertIn("brasil_uf.js", html)                                                                                    # o mapa de Vendas usa os contornos do IBGE
+        # fechamento automático: as páginas avisam que chegaram e que saíram (só liga pelo atalho; aqui fica desligado)
+        self.assertEqual(C.post("/api/aba", json={"id": "t1", "ev": "ping"}).status_code, 204); self.assertEqual(C.post("/api/aba", json={"id": "t1", "ev": "saiu"}).status_code, 204)
+        s = C.get("/api/sistema").json; self.assertFalse(s["autofechar"]); self.assertFalse(s["celular"]["ligado"])
+        self.assertTrue(C.put("/api/sistema/celular", json={"ligado": True}).json["ligado"]); self.assertFalse(C.put("/api/sistema/celular", json={"ligado": False}).json["ligado"])
+        # mapa de Vendas: mês × UF × código × linha (servidor) → peças e R$ por UF + os códigos mais vendidos de cada UF, no universo de linhas da tela
+        c = sqlite3.connect(DB); c.execute("DELETE FROM ds_vendas_uf_cod")
+        c.executemany("INSERT INTO ds_vendas_uf_cod(sale_date,uf,code,line,qty,total) VALUES(?,?,?,?,?,?)", [("2026-10-01", "SP", "AMD1", "AMORTECEDOR", 30, 300), ("2026-10-01", "SP", "AMD2", "AMORTECEDOR", 10, 100),
+            ("2026-10-01", "RS", "AMD1", "AMORTECEDOR", 5, 50), ("2026-10-01", "SP", "AMD9", "AMORTECEDOR LINHA PESADA", 99, 990), ("2025-10-01", "SP", "AMD1", "AMORTECEDOR", 7, 70)]); c.commit(); c.close()
+        m = C.get("/api/vendas/uf?year=2026").json; sp = next(r for r in m["por_uf"] if r["uf"] == "SP")
+        self.assertEqual((sp["pecas"], sp["valor"], sp["n_codigos"], [x["code"] for x in sp["top"]]), (40, 400, 2, ["AMD1", "AMD2"]))          # linha pesada fora do padrão do BI
+        self.assertEqual(next(r for r in C.get("/api/vendas/uf?year=2026&linhas=amortecedor,pesada").json["por_uf"] if r["uf"] == "SP")["pecas"], 139)
+        self.assertEqual(C.get("/api/export/vendas_uf.xlsx?year=2026&uf=SP").status_code, 200); self.assertEqual(C.get("/api/export/vendas_uf.xlsx?year=2026").status_code, 400)
+        # Inmetro: aba de Produtos e códigos e a faixa «Inmetro» do DES/R-D (sempre as três situações)
+        i = C.get("/api/inmetro").json; self.assertEqual(i["kpi"]["catalogo"], i["kpi"]["com_cert"] + i["kpi"]["sem"])
+        self.assertEqual(i["total"], len(C.get("/api/inmetro?page=1").json["rows"]) if i["total"] <= 100 else i["total"])
+        for k, n in i["chips"].items():
+            if n: self.assertEqual(C.get("/api/inmetro?sit=" + k).json["total"], n, k)                                         # o número do chip é o número da lista
+        self.assertEqual(C.get("/api/export/inmetro.xlsx").status_code, 200)
+        fc = C.get("/api/rd/rd/facets").json; g = next(x for x in fc["subs"] if x["key"] == "inmetro")
+        self.assertEqual([v["f"] for v in g["values"]], ["@APROVACAO", "@COM_NUM", "@FORA"])
+        for v in g["values"]: self.assertEqual(C.get("/api/rd/rd?status=andamento&sub=inmetro:" + v["f"]).json["linhas"], v["l"], v["f"])          # o número da faixa (em andamento) abre a lista com o mesmo total
+        self.assertIn("inmetro", C.get("/api/rd/rd?page=1").json["rows"][0])
+
     def test_13_brands_mostra_codigo_perfect(self):
         d = C.get("/api/brands/MOTORCRAFT/items?all=1").json; self.assertTrue(d["rows"]); self.assertTrue(all("perfect_codes" in r for r in d["rows"]))
         com = [r for r in d["rows"] if r["perfect_codes"]]; self.assertTrue(com, "ao menos um item Motorcraft deveria ter código PERFECT relacionado")

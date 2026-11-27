@@ -205,6 +205,51 @@ window.PSD_EXEC = ctx => {
     PSDCharts.bars($("#vmes"), { x: o.meses.map(m => m.mes), series: [{ name: "faturado, com IPI", y: o.meses.map(m => Math.round(m.valor)) }], fmt: v => "R$ " + TW.curto(v),
       visor: { anoAnterior: 12, parcial: parc, padrao: parc != null && n > 1 ? n - 2 : null } });
   }
+  /* update 8: mapa de vendas por estado (contornos do IBGE em brasil_uf.js) — segue o ano, o mês e as linhas da tela; azul (vendas não é alerta);
+     clicar num estado mostra os 10 códigos mais vendidos ali e o Excel do estado inteiro */
+  const RAMPA_V = [14, 30, 48, 68, 90];
+  const corV = i => i == null ? "var(--thead)" : `color-mix(in srgb, var(--chart-1) ${RAMPA_V[i]}%, var(--card))`;
+  const quebrasV = vals => { const v = vals.filter(x => x != null).sort((a, b) => a - b); return v.length ? [0.2, 0.4, 0.6, 0.8].map(p => v[Math.min(v.length - 1, Math.floor(p * v.length))]) : []; };
+  let vufSeq = 0;
+  async function vendasMapa(el, filtro) {
+    const B = window.PSD_BRASIL; if (!el) return; if (!B) { el.innerHTML = TW.card("Vendas por estado", TW.notice("Mapa indisponível: static/js/brasil_uf.js não foi carregado.", "amber")); return; }
+    const meu = ++vufSeq; let d;
+    try { d = await J("/api/vendas/uf?" + new URLSearchParams(filtro).toString()); } catch (e) { el.innerHTML = ""; return; }
+    if (meu !== vufSeq) return;
+    if (!d.available || d.sem_dados) { el.innerHTML = TW.card("Vendas por estado", nodata("VENDAS_FATURAMENTO_DETALHADO", ": as vendas por estado chegam na próxima sincronização")); return; }
+    if (!d.por_uf.length) { el.innerHTML = TW.card("Vendas por estado", TW.empty("Sem vendas por estado neste período.")); return; }
+    let med = el.dataset.med || "pecas", sel = el.dataset.uf && d.por_uf.some(r => r.uf === el.dataset.uf) ? el.dataset.uf : null;
+    const por = Object.fromEntries(d.por_uf.map(r => [r.uf, r])), noMapa = d.por_uf.filter(r => B.uf[r.uf]);
+    const fmt = v => med === "pecas" ? nf(v) : "R$ " + TW.curto(v), uni = med === "pecas" ? "peças" : "";
+    const periodo = filtro.month ? `${MONTHS[+filtro.month].slice(0, 3)}/${filtro.year || "todos"}` : filtro.year || "todo o período";
+    const desenha = () => {
+      const val = u => por[u] ? por[u][med] : null, qb = quebrasV(Object.keys(B.uf).map(val)), cl = x => x == null ? null : qb.filter(t => x > t).length;
+      const tot = noMapa.reduce((a, r) => a + r[med], 0), fora = d.por_uf.filter(r => !B.uf[r.uf]);
+      const paths = Object.entries(B.uf).map(([u, g]) => `<path d="${g.d}" data-uf="${u}" tabindex="0" role="button" aria-pressed="${sel === u}" aria-label="${TW.UFN[u] || u}: ${val(u) == null ? "sem venda" : fmt(val(u)) + (uni ? " " + uni : "")}" fill="${corV(cl(val(u)))}" stroke="${sel === u ? "var(--tx)" : "var(--card)"}" stroke-width="${sel === u ? 4 : 1.2}"><title>${TW.UFN[u] || u}: ${val(u) == null ? "sem venda" : fmt(val(u))}</title></path>`).join("");
+      const rot = Object.entries(B.uf).map(([u, g]) => `<text x="${g.x}" y="${g.y}" text-anchor="middle" dominant-baseline="central" font-size="${["DF", "SE", "AL", "RN", "PB", "ES", "RJ"].includes(u) ? 20 : 28}" font-weight="500" fill="${cl(val(u)) >= 3 ? "#fff" : "var(--tx)"}">${u}</text>`).join("");
+      const leg = qb.length ? [null, ...qb].map((t, i) => `<span><i style="background:${corV(i)}"></i>${i === 0 ? "até " + fmt(qb[0]) : i === qb.length ? "acima de " + fmt(qb[i - 1]) : fmt(qb[i])}</span>`).join("") + '<span><i class="vazio"></i>sem venda</span>' : "";
+      const R = sel && por[sel];
+      const vis = R ? `<span class="m">${sel}</span><span class="n">${fmt(R[med])}</span><span class="u">${uni ? uni + ", " : ""}${nf(tot ? 100 * R[med] / tot : 0, 1)}% do total no mapa</span>`
+        : `<span class="m">${esc(periodo)}</span><span class="n">${fmt(tot)}</span><span class="u">${med === "pecas" ? "peças vendidas" : "faturados, com IPI"} em ${nf(noMapa.length)} estados${fora.length ? `; sem estado ou exterior: ${fmt(fora.reduce((a, r) => a + r[med], 0))}` : ""}</span>`;
+      let lado;
+      if (R) { const mx = Math.max(1, ...R.top.map(x => x[med]));
+        lado = `<div class="psd-uftop"><h4>Mais vendidos em ${esc(TW.UFN[sel] || sel)}</h4><div class="qt">${nf(R.n_codigos)} códigos vendidos no estado</div>
+          <table><tbody>${R.top.map((x, i) => `<tr><td class="r mu">${i + 1}</td><td>${pc(x.code)}${x.desc ? `<span class="d" title="${esc(x.desc)}">${esc(x.desc)}</span>` : ""}<div class="bar" style="width:${Math.max(4, 100 * x[med] / mx)}%"></div></td><td class="r">${nf(x.pecas)} pç</td><td class="r">R$ ${TW.curto(x.valor)}</td><td class="r mu">${nf(x.pct, 1)}%</td></tr>`).join("")}</tbody></table>
+          <div class="ac">${TW.botao(`Baixar Excel de ${sel}`, { href: "/api/export/vendas_uf.xlsx?" + new URLSearchParams({ ...filtro, uf: sel }).toString(), icone: "download" })}<button type="button" class="psd-btn" data-vuf-limpa>Ver regiões</button></div></div>`; }
+      else { const ac = {}; noMapa.forEach(r => { const g = B.uf[r.uf].regiao, a = ac[g] ||= { v: 0, ufs: [] }; a.v += r[med]; a.ufs.push(r); });
+        const rows = Object.entries(ac).sort((a, b) => b[1].v - a[1].v), mx = Math.max(1, ...rows.map(r => r[1].v));
+        lado = `<div class="psd-vreg">${rows.map(([g, a]) => { const t = a.ufs.slice().sort((x, y) => y[med] - x[med])[0];
+          return `<div><div class="l"><span>${esc(B.regioes[g])}</span><b>${fmt(a.v)}</b></div><div class="tr"><div style="width:${100 * a.v / mx}%"></div></div><div class="s">maior estado: <button type="button" data-uf="${t.uf}">${t.uf}</button>, ${fmt(t[med])}</div></div>`; }).join("")}</div>`; }
+      el.innerHTML = TW.card("Vendas por estado", `<div class="psd-vmapa"><div><div class="psd-vis">${vis}</div><svg viewBox="0 0 ${B.w} ${B.h}" class="psd-mapa mx-auto block h-auto max-h-[30rem] w-full" role="img" aria-label="Mapa do Brasil: vendas por estado">${paths}${rot}</svg><div class="psd-mleg">${leg}</div></div><div>${lado}</div></div>`,
+        `<span class="text-sm text-mute">clique num estado para ver os códigos mais vendidos</span><span class="psd-seg sm" role="group" aria-label="Medida do mapa"><button type="button" data-vmed="pecas" aria-pressed="${med === "pecas"}">Peças</button><button type="button" data-vmed="valor" aria-pressed="${med === "valor"}">R$</button></span>`);
+    };
+    const escolhe = u => { sel = sel === u ? null : u; el.dataset.uf = sel || ""; desenha(); };
+    el.onclick = e => { const m = e.target.closest("[data-vmed]"); if (m) { med = el.dataset.med = m.dataset.vmed; desenha(); return; }
+      if (e.target.closest("[data-vuf-limpa]")) { escolhe(sel); return; }
+      const p = e.target.closest("[data-uf]"); if (p) escolhe(p.dataset.uf); };
+    el.onkeydown = e => { const p = e.target.closest("path[data-uf]"); if (p && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); escolhe(p.dataset.uf); } };
+    desenha();
+  }
   async function vendas() {
     const P = new URLSearchParams(location.search);
     let year = P.get("year") || "", month = "", cls = "", q = (P.get("q") || "").trim().toUpperCase(), d;
@@ -237,7 +282,9 @@ window.PSD_EXEC = ctx => {
         ${TW.kpi("Quantidade", nf(d.total_qtd), "peças faturadas", "green")}${TW.kpi("SKUs", nf(d.skus), "códigos com faturamento", "slate")}${TW.kpi("Curva A", `${nf(C.n.A)} SKUs`, `${nf(C.valor_pct.A, 1)}% do faturamento`, "amber")}</div>
         <div class="grid grid-cols-1 gap-6 xl:grid-cols-3"><div class="xl:col-span-2">${TW.card("Top 15 SKUs por valor faturado", '<div id="vh" class="chart"></div>')}</div>${TW.card("Participação por classe", '<div id="vd"></div><div class="mt-4">' + TW.table([{ h: "Classe" }, { h: "SKUs", r: true }, { h: "Faturado", r: true }, { h: "% do valor", r: true }],
           sk.map(([c, n, p]) => [`Classe ${c}`, nf(n), brl0((p || 0) * d.total_valor / 100), nf(p || 0, 1) + "%"]), { h: "" }) + "</div>")}</div>
+        <div id="vuf"></div>
         ${TW.card("Curva ABC por produto", '<div id="vt"></div>', `<span id="vcount" class="text-sm text-mute"></span>`)}</div>`;
+      vendasMapa($("#vuf"), { year, month, linhas: linhas.join(",") });
       const top = d.rows.slice(0, 15);
       top.length ? PSDCharts.hbars($("#vh"), { labels: top.map(r => r.PRODUTO), values: top.map(r => r.VALOR), name: "faturado no período", fmt: v => "R$ " + TW.curto(v) }) : $("#vh").innerHTML = '<div class="ch-empty">Sem vendas no período.</div>';
       PSDCharts.donut($("#vd"), { labels: sk.map(([c, n]) => `Classe ${c}, ${nf(n)} SKUs`), values: sk.map(s => s[2] || 0), colors: ["--chart-1", "--chart-2", "--chart-3"], fmtParte: p => `${p.l.slice(7, 8)} ${nf(p.v, 1)}%` });

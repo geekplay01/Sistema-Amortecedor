@@ -330,14 +330,17 @@ def L_fornecedor_erp(x, rows):
 
 def L_certificados(x, rows):
     x.replace("certificates")
-    have = {(r[0], r[1], r[2]) for r in x.c.execute("SELECT perfect_code_raw,inmetro_number,cert_description FROM certificates")} if x.sync else set()
+    have = {(r[0], r[1], r[2]): r[3] for r in x.c.execute("SELECT perfect_code_raw,inmetro_number,cert_description,id FROM certificates")} if x.sync else {}
     for r in rows:
         pid = x.of(r.get("perfect_code")); fam = (_s(r.get("family")) or "").upper() or None
         k = (_s(r.get("perfect_code")), _s(r.get("inmetro_number")), _s(r.get("description")))
-        if k in have: x.n["present"] += 1; continue
-        have.add(k)
-        x.c.execute("INSERT INTO certificates(product_id,perfect_code_raw,inmetro_number,family,cert_description,source_id) VALUES(?,?,?,?,?,?)",
-                    (pid, k[0], k[1], fam, k[2], x.src)); x.n["new"] += 1
+        if k in have:
+            x.n["present"] += 1
+            if have[k]: x.c.execute("UPDATE certificates SET ean=coalesce(ean,?), brand=coalesce(brand,?) WHERE id=?", (_s(r.get("ean")), _s(r.get("brand")), have[k]))      # update 8: completa o que faltava
+            continue
+        have[k] = None
+        x.c.execute("INSERT INTO certificates(product_id,perfect_code_raw,inmetro_number,family,cert_description,source_id,ean,brand) VALUES(?,?,?,?,?,?,?,?)",
+                    (pid, k[0], k[1], fam, k[2], x.src, _s(r.get("ean")), _s(r.get("brand")))); x.n["new"] += 1      # update 8: código de barras e marca de cada certificado (aba Inmetro)
         if not pid: x.n["unmatched"] += 1; continue
         _merge(x, pid, {"ean": _s(r.get("ean")), "family": fam}, only_fill=("family",))  # nº Inmetro fica só em certificates (um por fornecedor); família: o catálogo prevalece (anomalias.familia)
 

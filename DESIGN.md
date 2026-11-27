@@ -88,7 +88,13 @@ Use o que existe antes de criar. Componente novo entra em `marca.css` com prefix
 
 ### 6.1 Estrutura de toda tela (`templates/page.html`)
 Menu lateral azul-marinho · barra do topo (título do app, sincronização, tema, configurações) · `h2.ptitle` + link «Regras da tela» (`.ptitle-regras`)
-· faixa «vem de / alimenta» (`.relbar`) · conteúdo da tela em `#panel` (um arquivo por tela em `static/js/telas/`).
+· conteúdo da tela em `#panel` (um arquivo por tela em `static/js/telas/`).
+- **Menu lateral (update 8, maquete aprovada):** alfinete `.psd-pin` no topo, ao lado do logo. Fixado (padrão) = como sempre; desfixado (`html.psd-mini`,
+  lembrado no navegador em `psd-menu-fixo`, aplicado no `base.html` antes de desenhar) = faixa de 64 px só com os ícones, que abre por cima da tela (sombra,
+  sem empurrar o conteúdo) ao passar o mouse ou ao chegar pelo teclado (`#psd-side.abre`) e fecha ao sair; Esc fecha. Na faixa, os títulos dos grupos viram
+  uma linha fina e os contadores viram um ponto laranja. O ícone anima só ele (0,32 s): fixar = o alfinete desce e fica em pé; desfixar = sobe e fica
+  inclinado 40°. Só no computador (≥ 768 px); no celular continua o ☰. **Saíram** as bolinhas e a linha vertical dos grupos 1 a 4 (a numeração já dá a
+  ordem) e a faixa «vem de / alimenta» (`.relbar`) de todas as telas.
 - **Ícone da aba (update 5, ajustado em 26/11/2026 a pedido do usuário):** um só em todas as páginas e no login — o logo `static/img/ShockAbsorberData.ico`
   (P colorido com o amortecedor), servido em `/favicon.ico` e ligado só por ele (`base.html`, `login.html`). O `favicon.svg` fica no projeto, mas não é
   ligado: antes os dois se alternavam de uma tela para outra. Para trocar o ícone, troque esse arquivo e suba o `?v=` do link.
@@ -118,6 +124,15 @@ Menu lateral azul-marinho · barra do topo (título do app, sincronização, tem
 - **Sub status do servidor (DES/R-D, update 5):** um bloco `.psd-subfs` com **uma faixa por grupo** (`.psd-subf`: nome do grupo à esquerda, em Barlow
   cinza) e chips `.psd-subc` (bolinha da cor do sub status, valor, número de itens em pílula; os códigos vão na dica). O escolhido fica cheio em
   `--b600`. Zerados recolhidos em «+n sem itens» (`.psd-subz`, por grupo); escolhido zerado continua à mostra. Abaixo de 640 px o nome vai para cima.
+  **Faixa «Inmetro» (update 8):** em vez do texto do servidor, sempre as três situações do item, em caixa normal (rótulos do app): «Em aprovação» (bolinha
+  laranja), «Com nº Inmetro» (verde), «Fora do certificado» (cinza, `.psd-sd.mu`); filtro `sub=inmetro:@APROVACAO|@COM_NUM|@FORA`.
+- **Selo Inmetro** `.psd-inm` (update 8): pílula pequena — cinza = nº do certificado («Inmetro 002533/2018»), âmbar `.am` = «Inmetro em aprovação, nº»,
+  verde `.ok` = «Com nº Inmetro» (ficha). Na lista do DES/R-D é uma coluna própria («Inmetro»); fora do certificado mostra «–». Divergência numa célula:
+  linha de apoio âmbar `.psd-dv` («certificado: Semi-estrutural», «catálogo: Ø 12,4 mm»).
+- **Abas dentro de uma tela** (Redesenvolvimento: Itens | Validar itens; Produtos e códigos: Catálogo | Inmetro, update 8): seletor `.psd-seg` com
+  `role="tablist"` acima do conteúdo; a aba fica na URL (`?aba=`), a troca não recarrega a página.
+- **Cartões de família (aba Inmetro, update 8)** `.psd-ifam`: botão que filtra a lista (nome, «447 de 448 com certificado», barrinha nos dois / num só /
+  sem — `--chart-1`, `--chart-3`, laranja — e os números do certificado de cada fornecedor); escolhido com borda `--b600`.
 - **Gráfico que filtra (update 5, Metas):** clicar numa barra filtra a lista da mesma tela (mês e tipo da barra), põe as etiquetas com × no cartão da
   lista e rola até ela; clicar de novo na mesma barra tira o filtro. O cartão do gráfico diz «clique numa barra para ver …» à direita do título.
 
@@ -266,6 +281,12 @@ reage ao cursor como um mostrador de ensaio. Vale para todo gráfico de barras o
   `.psd-stn` de Metas, números das barras do funil, rótulos e chip do eixo e título da dica no canvas); palavras em letra normal (400), incluindo as
   letras dos meses do anel. Número citado numa frase abaixo do gráfico: `font-medium`, nunca `<b>` puro. O título do cartão (h3) não é texto do gráfico
   e segue a regra dos títulos. Atenção: a classe global `.num` (style.css) põe peso 800; contêiner de gráfico que usa `.num` fixa o próprio peso.
+- **Mapa do Brasil por estado (update 8: Vendas; Garantia desde a etapa 18):** contornos do IBGE (`brasil_uf.js`), 5 tons em quintis misturados ao fundo
+  do cartão — **vendas em azul `--chart-1`** (não é alerta), garantia em vermelho (índice de garantia é alerta) —, «sem venda» em `--thead`; sigla em Barlow
+  500 (branca nos dois tons mais escuros). Vendas: seletor Peças | R$ (`.psd-seg sm`) no título, visor acima do mapa (período e total, ou o estado
+  escolhido e sua parte do total), legenda dos tons embaixo; à direita as regiões (barra + maior estado, `.psd-vreg`) ou, com um estado escolhido (clique
+  ou Enter; clicar de novo solta), os 10 códigos mais vendidos ali (`.psd-uftop`: código, descrição, barrinha, peças, R$, % do estado) e «Baixar Excel de
+  UF» com todos os códigos do estado. Segue o ano, o mês e as linhas da tela.
 - **Exceção à regra da rosca — Sistema no Dashboard (update 5, pedido do usuário):** `PSDTW.rosca(partes, {rotulo, acoes})`, `.psd-rosca`. Rosca **fina**
   (12 px, 2 px de vão entre as fatias), o total no centro e, ao lado, nome, quantidade e % de cada parte — os números se leem sem passar o mouse, o que
   tira o defeito da rosca (comparar fatias pelo ângulo). Só para parte de um todo com 2 ou 3 partes de tamanhos bem diferentes; «Sem dado» em cinza.
@@ -334,7 +355,6 @@ desenho e o cache de opções do Chart.js é limpo. Gráfico leva `aria-label` (
 - **Vendas** ainda usa barra própria (Ano/Mês, busca e classe abaixo do gráfico, «Exportar CSV»): migrar para §6.3 quando o usuário pedir
   (maquete aprovada como referência em DECISOES_ETAPA21.md; adiada em 23/11/2026).
 - **Estoque**: 11 colunas; «Cobertura» só aparece rolando em telas < ~1600 px.
-- **Celular**: a faixa «vem de / alimenta» ocupa meia tela antes do conteúdo.
 - `style.css` ainda carrega estilos antigos (`.btn`, `.dlg`, `.cards`, `.tbl`); `marca.css` os alinha à marca. Ao mexer num deles, prefira migrar
   para o componente `psd-` equivalente.
 

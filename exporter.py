@@ -184,11 +184,11 @@ BUILD = {"desenvolvimento": _rd("DESENVOLVIMENTO"), "redesenvolvimento": _rd("RE
 
 LABELS = {"desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvolvimento", "produtos": "Produtos e códigos", "pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares",
           "comparacao": "Comparação técnica", "pendencias": "Pendências de dados", "fontes": "Fontes e histórico", "amostras": "Compra de amostras", "damping": "Damping force",
-          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra", "cobertura": "Cobertura de concorrentes", "validacao": "Validação"}      # nome da tela como no menu (nome do arquivo baixado)
-FLABEL = {"q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
+          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "vendas_uf": "Vendas por estado", "inmetro": "Inmetro", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra", "cobertura": "Cobertura de concorrentes", "validacao": "Validação"}      # nome da tela como no menu (nome do arquivo baixado)
+FLABEL = {"sit": "Situação", "familia": "Família", "forn": "Fornecedor do certificado", "q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
-          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "linha": "Linha", "hibrido": "Híbrido ou elétrico","origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito", "concorrente": "Concorrente", "curva": "Curva ABC", "lancamento": "Lançamento", "tab": "Aba", "uf": "UF", "validade": "Lote válido/vencido", "situacao": "Situação", "classif": "Classificação"}
-FVALUE = {"system": SYS, "launch": {"S": "Sim", "N": "Não"}, "hibrido": {"S": "Sim", "N": "Não", "nd": "Não informado"}, "linha": {"sem": "Sem linha"},"kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT", "rd": "Redesenvolvimento", "des": "Desenvolvimento", "conflito": "Conflito entre fontes", "campo_ausente": "Campo ausente", "campo_invalido": "Campo inválido"},
+          "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "linha": "Linha", "hibrido": "Híbrido ou elétrico","origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito", "concorrente": "Concorrente", "curva": "Curva ABC", "lancamento": "Lançamento", "tab": "Aba", "uf": "UF", "linhas": "Linhas", "validade": "Lote válido/vencido", "situacao": "Situação", "classif": "Classificação"}
+FVALUE = {"sit": {"dois": "Nos dois fornecedores", "zs": "Só ZS", "ewin": "Só E-WIN", "sem": "Sem certificado", "so_cert": "Só no certificado", "rd_aprovacao": "DES/R-D em aprovação", "rd_com_num": "DES/R-D com nº Inmetro", "rd_fora": "DES/R-D fora do certificado", "div_familia": "Divergência de família", "div_haste": "Divergência de Ø da haste", "div_ean": "Divergência de código de barras"}, "forn": {"dois": "Os dois", "zs": "Só ZS", "ewin": "Só E-WIN", "nenhum": "Nenhum"}, "system": SYS, "launch": {"S": "Sim", "N": "Não"}, "hibrido": {"S": "Sim", "N": "Não", "nd": "Não informado"}, "linha": {"sem": "Sem linha"},"kind": {"desenho": "Desenho técnico", "projeto": "Projeto PERFECT", "rd": "Redesenvolvimento", "des": "Desenvolvimento", "conflito": "Conflito entre fontes", "campo_ausente": "Campo ausente", "campo_invalido": "Campo inválido"},
           "status": {"aberta": "Abertas", "resolvida": "Resolvidas", "ignorada": "Ignoradas", "todas": "Todas", "simulado": "Só verificação", "andamento": "Em andamento", "aprovada": "Aprovadas", "reprovada": "Reprovadas"},
           "field": {"family": "Família", "package_code": "Código da caixa", "ean": "EAN", "peso": "Peso", "sistema": "Sistema"},
           "where": {"cat": "No catálogo", "des": "Em DES", "rd": "Em R-D", "sem": "Sem vínculo", "falta": "Sem desenho"},
@@ -265,6 +265,28 @@ def _parados(a):
              [[r["pedido"], r["fornecedor"], r["codigo"], r["descricao"], r["saldo"], r["emissao"], r["dias_sem_embarque"], r["limite_dias"], r["ultima_previsao"], r["adiamentos"], r["dias_adiados"]] for r in rows],
              [12, 14, 16, 38, 10, 12, 14, 16, 14, 12, 12])], len(rows)
 BUILD["parados"] = _parados
+def _vendas_uf(a):
+    """Update 8: todos os códigos vendidos num estado (mapa da tela Vendas), no período e nas linhas da tela."""
+    import curva_abc
+    if not a.get("uf"): raise ValueError("Escolha um estado no mapa.")
+    rows = curva_abc.uf_codigos(a["uf"], a.get("year"), a.get("month"), a.get("linhas"))
+    return [(f"Vendas em {a['uf'].upper()}"[:31], ["Código", "Descrição", "Peças", "Valor c/ IPI", "% das peças do estado"],
+             [[r["code"], r["desc"], r["pecas"], r["valor"], r["pct"]] for r in rows], [16, 44, 12, 16, 14])], len(rows)
+BUILD["vendas_uf"] = _vendas_uf
+def _inmetro(a):
+    """Update 8: aba Inmetro de Produtos e códigos com os filtros da tela (situação, família, fornecedor, busca)."""
+    import inmetro
+    rows = inmetro.linhas_excel({k: a.get(k, "") for k in ("sit", "familia", "forn", "q")})
+    sit = lambda l: inmetro.SIT[l["sit"]] if l["grupo"] == "rd" else inmetro.CAT[l["sit"]]
+    p = lambda l, k: (l["pad"] or {}).get(k)
+    return [("Inmetro", ["Código", "Descrição", "Origem", "Situação", "Família (catálogo)", "Família em outro certificado", "Nº ZS", "Nº E-WIN", "Nº do servidor", "Outros certificados",
+                         "Cód. barras catálogo", "Cód. barras ZS", "Cód. barras E-WIN", "Marca", "Material", "Categoria", "Tratamento térmico", "Ø haste certificado (mm)", "Ø haste catálogo (mm)",
+                         "Descrição padronizada", "Descrição do certificado", "Divergências", "Status DES/R-D"],
+             [[l["code"], l["descr"], {"catalogo": "Catálogo", "fora": "Só no certificado", "rd": l.get("tipo")}[l["grupo"]], sit(l), l["fam"], ", ".join(l["fam_cert"]), l["num_zs"], l["num_ew"], l.get("num_srv"),
+               ", ".join(l.get("outros") or []), l["ean"], l["ean_zs"], l["ean_ew"], l["marca"], p(l, "material"), p(l, "categoria"), p(l, "tratamento"), p(l, "haste"), l["haste_cat"],
+               l["pad_txt"], l["orig"], ", ".join(inmetro.DIV[d] for d in l["div"]), l.get("status")] for l in rows],
+             [14, 34, 12, 18, 16, 18, 13, 13, 13, 22, 16, 16, 16, 12, 10, 12, 20, 12, 12, 40, 50, 22, 24])], len(rows)
+BUILD["inmetro"] = _inmetro
 def _garantia(a):
     """Garantia (servidor, etapa 18) com os filtros da tela: ocorrências + defeitos (Pareto), códigos, UF (índice), fornecedores e lotes."""
     import garantias

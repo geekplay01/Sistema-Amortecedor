@@ -257,6 +257,20 @@ ETAPA 24 — 25/11/2026 (decisões em DECISOES_ETAPA24.md, regras em REGRAS_DE_N
    que nasce do botão.
  - Metas e Sistema dinâmicos: embaixo de cada anel de meta, os meses; passe o mouse num mês para ver o anel até ali, e o arco tracejado mostra onde o
    ano deve fechar no ritmo atual. Na rosca do Sistema, passe o mouse numa fatia para ver a parte; clique para abrir os produtos daquele sistema.
+ - Atualização de 27/11/2026 (update 8):
+   - Menu lateral: o alfinete no topo fixa ou desfixa o menu. Desfixado, fica só a faixa de ícones, que abre por cima ao passar o mouse.
+     Saíram as bolinhas dos grupos e a faixa «vem de / alimenta» das telas.
+   - Fecha sozinho: aberto pelo atalho, o sistema fecha uns 15 segundos depois de fechar a última aba dele. Travar a tela ou suspender o PC
+     não fecha. «Fechar o sistema» continua em Configurações › Sistema.
+   - Celular: em Configurações › Sistema, ligue «Abrir o app pelo celular» e feche e abra o sistema; a tela mostra o endereço para digitar no
+     celular (mesma rede da empresa, mesmo login). Na primeira vez o Windows pergunta se libera o app no firewall.
+   - Vendas: mapa por estado (peças ou R$), segue o ano, o mês e as linhas da tela; clique num estado para ver os 10 códigos mais vendidos e
+     baixar o Excel do estado.
+   - Produtos e códigos: aba Inmetro (certificados ZS e E-WIN × catálogo, códigos só no certificado, DES/R-D em aprovação e divergências).
+     Para aparecer o código de barras de cada certificado, em Atualização de dados clique em «Verificar a pasta bases_exemplo» e aplique
+     (ou envie só as planilhas «Inmetro… Certificado»).
+   - Desenvolvimento e Redesenvolvimento: faixa «Inmetro» no quadro de sub status (em aprovação, com nº, fora do certificado), coluna Inmetro
+     na lista e o bloco Inmetro na ficha do item.
  OPCIONAL: leitura das medidas pelo Claude (API da Anthropic; as imagens dos desenhos saem do PC)
  1. .venv\Scripts\python.exe -m pip install anthropic
  2. No arquivo %USERPROFILE%\.perfect_shock_data\.env, acrescente  ANTHROPIC_API_KEY=<chave da API da Anthropic>

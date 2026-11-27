@@ -94,6 +94,10 @@ def validacao_ia():
     """Etapa 24: a bancada de Validação lê as medidas com o Claude (API da Anthropic)? Padrão: não — as medidas são digitadas no desenho e nenhuma imagem sai do PC."""
     return (_setting("validacao_ia") or "0").strip() == "1"
 
+def acesso_celular():
+    """Update 8: o app atende a rede (celular) além do próprio PC? Padrão: não. Lido ao abrir o app (app.py); mudar exige reabrir."""
+    return (_setting("acesso_celular") or "0").strip() == "1"
+
 def goal_basis():
     """Base de contagem das metas: 'validacao' (padrão: validações ITALOC por SUGESTAO) ou 'recebido' (transições de status até ITEM RECEBIDO)."""
     v = (_setting("goal_basis") or os.environ.get("GOAL_BASIS", "validacao")).strip().lower()

@@ -78,7 +78,33 @@ button.nav-title:hover{color:#DCE3F5}
 .nav-badge{margin-left:auto;border-radius:999px;background:var(--pf-orange);padding:0 8px;font-size:11px;font-weight:700;line-height:18px;color:#1B2238}
 .nav-sep{margin:12px 8px;border-top:1px solid rgb(255 255 255/.08)}
 .nav-foot{border-top:1px solid rgb(255 255 255/.08)}
-.flowg .gx-b::before{background:rgb(255 255 255/.12)!important}
+/* update 8: alfinete do menu (fixar/desfixar). Desfixado (html.psd-mini, lembrado no navegador): faixa de 64 px só com os ícones, que abre por cima da
+   tela ao passar o mouse (ou ao chegar pelo teclado: #psd-side.abre, app.js) e fecha ao sair. Só no computador; no celular o menu segue o botão ☰. */
+.nav-top{position:relative}.nav-top .nav-brand{padding-right:50px}
+.psd-pin{position:absolute;top:14px;right:10px;display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#9AA6C6;cursor:pointer;transition:background-color .15s,color .15s}
+.psd-pin:hover{background:var(--navy-2);color:#fff}.psd-pin:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.psd-pin[aria-pressed="true"]{color:var(--pf-sky)}
+.psd-pin .psd-ico{width:17px;height:17px;transition:transform .28s cubic-bezier(.2,.8,.2,1)}.psd-pin[aria-pressed="false"] .psd-ico{transform:rotate(40deg)}
+.psd-pin.crava .psd-ico{animation:psd-crava .32s cubic-bezier(.2,.8,.2,1)}@keyframes psd-crava{0%{transform:rotate(40deg) translateY(-2px)}55%{transform:rotate(0) translateY(2px) scale(.86)}100%{transform:none}}
+.psd-pin.solta .psd-ico{animation:psd-solta .32s cubic-bezier(.2,.8,.2,1)}@keyframes psd-solta{0%{transform:none}45%{transform:translateY(-3px) scale(1.08)}100%{transform:rotate(40deg)}}
+@media (max-width:767px){.psd-pin{display:none}.nav-top .nav-brand{padding-right:20px}}
+@media (min-width:768px){
+  html.psd-mini #psd-shell{padding-left:64px}
+  html.psd-mini #psd-side{position:fixed;inset:0 auto 0 0;width:64px;z-index:45;overflow-x:hidden;white-space:nowrap;transition:width .2s cubic-bezier(.2,.8,.2,1)}
+  html.psd-mini #psd-side:hover,html.psd-mini #psd-side.abre{width:16rem;box-shadow:8px 0 28px rgb(2 6 23/.35);transition-delay:.08s}
+  html.psd-mini #psd-side:not(:hover):not(.abre) :is(.nav-brand img,.nav-sub-t,.nav-busca,div.nav-title,.nav-item>span:not(.nav-ibox):not(.nav-badge),.gx-h>*){display:none}
+  html.psd-mini #psd-side:not(:hover):not(.abre) .nav-top{display:flex;flex-direction:column;align-items:center}
+  html.psd-mini #psd-side:not(:hover):not(.abre) .nav-brand{padding:18px 0 6px;align-items:center}
+  html.psd-mini #psd-side:not(:hover):not(.abre) .psd-pin{position:static;margin:2px 0 6px}
+  html.psd-mini #psd-side:not(:hover):not(.abre) .nav-item{justify-content:center;padding:8px 0}
+  html.psd-mini #psd-side:not(:hover):not(.abre) .nav-item.big{padding:4px 0}
+  html.psd-mini #psd-side:not(:hover):not(.abre) .gx-h{padding:8px 6px 5px;pointer-events:none}
+  html.psd-mini #psd-side:not(:hover):not(.abre) .gx-h::after{content:"";flex:1;height:1px;background:rgb(255 255 255/.12)}
+  html.psd-mini #psd-side:not(:hover):not(.abre) .nav-badge{position:absolute;top:5px;right:3px;width:8px;height:8px;padding:0;font-size:0;line-height:0}
+  html.psd-mini #psd-side:not(:hover):not(.abre) #psd-nav{scrollbar-width:none}
+}
+@media (prefers-reduced-motion:reduce){.psd-pin .psd-ico,html.psd-mini #psd-side{transition:none}.psd-pin.crava .psd-ico,.psd-pin.solta .psd-ico{animation:none}}
+
 
 /* ---------- barra do topo e título da tela ---------- */
 .top{background:var(--bar)!important;border-bottom:1px solid var(--line)!important;min-height:56px;box-shadow:none}
@@ -149,7 +175,7 @@ dialog.psd-confirm .c-acts{display:flex;justify-content:flex-end;gap:8px;padding
 /* escuro (etapa 22): o «cobalt» dos estilos antigos é cor de TEXTO (códigos .pcx, números dos cartões, links, etiquetas) → azul claro legível;
    onde ele era FUNDO com texto branco, volta o azul da marca */
 [data-theme="dark"]{--cobalt:#8FA9EE;--sh2:0 2px 4px rgb(0 0 0/.35),0 14px 32px -12px rgb(0 0 0/.6)}
-[data-theme="dark"] .relchip.here{background:var(--b600);border-color:var(--b600)}
+
 [data-theme="dark"] .uavatar,[data-theme="dark"] .avatar-lg{background:var(--b600)}
 .btn,[data-theme] .btn{display:inline-flex;align-items:center;gap:8px;background:var(--b600);border:1px solid var(--b600);color:#fff;border-radius:10px;box-shadow:none;font:600 14px/1.2 var(--font);padding:9px 16px;min-height:40px;text-decoration:none;filter:none;transform:none}
 .btn:hover,[data-theme] .btn:hover{background:var(--b700);border-color:var(--b700);filter:none;transform:none;box-shadow:none}
@@ -328,7 +354,19 @@ tr:hover .psd-ed-btn,.psd-ed-btn:focus-visible{opacity:1}.psd-ed-btn:hover{backg
 .psd-linha button[aria-pressed=true]::before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--pf-sky);clip-path:var(--inc)}
 .psd-linha button[aria-pressed=true] .t{color:#fff}
 .psd-linha button[aria-pressed=true] .n{background:rgba(255,255,255,.18);color:#fff}
-.psd-sd{flex:none;width:8px;height:8px;border-radius:999px;background:var(--pf-orange)}.psd-sd.ok{background:var(--ok)}.psd-sd.no{background:var(--pf-red)}
+.psd-sd{flex:none;width:8px;height:8px;border-radius:999px;background:var(--pf-orange)}.psd-sd.ok{background:var(--ok)}.psd-sd.no{background:var(--pf-red)}.psd-sd.mu{background:color-mix(in srgb,var(--mut) 55%,transparent)}
+/* update 8: selo Inmetro (DES/R-D: linha e ficha; aba Inmetro) — cinza = nº do certificado, âmbar = em aprovação, verde = com nº (na ficha) */
+.psd-inm{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:12px;white-space:nowrap;background:var(--thead);color:var(--mut);font-variant-numeric:tabular-nums}
+.psd-inm.am{background:color-mix(in srgb,var(--pf-orange) 18%,transparent);color:var(--t-amber-700)}.psd-inm.ok{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--t-emerald-600)}
+.psd-inm.rd{background:color-mix(in srgb,var(--pf-red) 12%,transparent);color:var(--t-red-600)}
+.psd-dv{display:block;margin-top:3px;font-size:12px;color:var(--t-amber-700)}
+.psd-ifams{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}@media (max-width:1100px){.psd-ifams{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.psd-ifam{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--tx);text-align:left;cursor:pointer;transition:background-color .15s,border-color .15s}
+.psd-ifam:hover{background:var(--hover)}.psd-ifam:focus-visible{outline:none;box-shadow:0 0 0 2px var(--focus)}.psd-ifam[aria-pressed="true"]{border-color:var(--b600);box-shadow:0 0 0 2px color-mix(in srgb,var(--b600) 25%,transparent)}
+.psd-ifam .n{font:500 15px/1.3 var(--fontd)}.psd-ifam .q{font:500 22px/1.2 var(--fontd);font-variant-numeric:tabular-nums}.psd-ifam .q small{margin-left:5px;font:400 12.5px var(--font);color:var(--mut)}
+.psd-ifam .bar{display:flex;height:6px;margin:8px 0;border-radius:3px;overflow:hidden;background:var(--chart-trilho)}.psd-ifam .bar i{display:block;height:100%}
+.psd-ifam .ce{font-size:12px;line-height:1.5;color:var(--mut)}.psd-ifam .ce b{font-weight:400;color:var(--tx);font-variant-numeric:tabular-nums}.psd-ifam .ce .am{color:var(--t-amber-700)}
+.psd-inmf{display:grid;grid-template-columns:10rem minmax(0,1fr);gap:4px 12px;margin:0;font-size:13px}.psd-inmf dt{color:var(--mut)}.psd-inmf dd{margin:0;color:var(--tx)}
 .psd-sublist{display:flex;min-width:22rem;max-width:30rem;flex-wrap:wrap;gap:4px}
 .psd-sublist span{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:color-mix(in srgb,var(--mut) 12%,transparent);font-size:11.5px;font-weight:600;color:var(--tx);white-space:nowrap}
 
@@ -546,6 +584,20 @@ a.psd-varq-l:hover span:not(.ext){text-decoration:underline}.psd-varq-l.mudo{col
 .psd-mapa path:hover,.psd-mapa path:focus-visible{opacity:.78}
 .psd-mapa text{pointer-events:none;user-select:none;font-family:var(--fontd)}
 .psd-sw{display:inline-block;width:20px;height:12px;border-radius:3px}
+/* update 8 · mapa da tela Vendas: mapa + visor à esquerda; regiões ou os 10 códigos do estado escolhido à direita (azul das séries, sem negrito) */
+.psd-vmapa{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:24px;align-items:start}@media (max-width:1100px){.psd-vmapa{grid-template-columns:minmax(0,1fr)}}
+.psd-mleg{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12px;color:var(--mut)}
+.psd-mleg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}.psd-mleg i.vazio{background:var(--thead);border:1px solid var(--line)}
+.psd-vreg{display:flex;flex-direction:column;gap:14px}.psd-vreg .l{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;color:var(--tx)}
+.psd-vreg .l b{font:500 14px var(--fontd);font-variant-numeric:tabular-nums}
+.psd-vreg .tr{height:8px;margin-top:4px;border-radius:4px;background:var(--chart-trilho);overflow:hidden}.psd-vreg .tr>div{height:100%;border-radius:4px;background:var(--chart-1)}
+.psd-vreg .s{margin-top:3px;font-size:12px;color:var(--mut)}.psd-vreg .s button{border:0;background:none;padding:0;color:var(--cobalt);font:inherit;cursor:pointer}.psd-vreg .s button:hover{text-decoration:underline}
+.psd-uftop h4{margin:0 0 2px;font:500 16px/1.3 var(--fontd);color:var(--tx)}.psd-uftop .qt{margin-bottom:10px;font-size:12.5px;color:var(--mut)}
+.psd-uftop table{width:100%;border-collapse:collapse;font-size:13px}.psd-uftop td{padding:6px;border-top:1px solid var(--line);vertical-align:top;color:var(--tx)}
+.psd-uftop td.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.psd-uftop .mu{color:var(--mut)}
+.psd-uftop .d{display:block;max-width:18rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--mut)}
+.psd-uftop .bar{height:4px;margin-top:4px;border-radius:2px;background:var(--chart-1)}
+.psd-uftop .ac{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 
 /* ---------- etapa 24 · Q9: barra segmentada alta (no lugar da rosca), legenda em HTML e medidor de meta (no lugar da meia-rosca) — DESIGN.md §6.6 ---------- */
 .psd-segbar{display:flex;gap:2px;height:28px;margin:8px 0 12px}

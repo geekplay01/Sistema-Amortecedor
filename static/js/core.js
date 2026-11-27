@@ -65,7 +65,11 @@
   const subPanel = rows => { const g = new Map();
     rows.forEach(r => (r.subs || []).forEach(x => { const m = g.get(x.l) || new Map(); m.set(x.v, (m.get(x.v) || 0) + 1); g.set(x.l, m); }));
     return `<div class="fpanel"><h4>Sub status do servidor</h4>${g.size ? `<div class="fgrid2">${[...g].map(([l, m]) => `<div class="fgroup"><h5>${esc(l)}</h5>${[...m].map(([v, n]) => `<div>${esc(v)} <small class="muted">· ${n} de ${rows.length} aplicaç${rows.length === 1 ? "ão" : "ões"}</small></div>`).join("")}</div>`).join("")}</div>` : '<p class="muted">Nenhum sub status no servidor.</p>'}</div>`; };
-  const subsTxt = r => [...new Set((r.subs || []).map(x => x.v))].join(", ");
+  /* update 8: Inmetro na ficha do DES/R-D — situação, nº, descrição padronizada (o texto original na dica) e de onde veio */
+  const inmPanel = m => !m ? `<div class="fpanel"><h4>Inmetro</h4><p class="muted">Fora do certificado: o código não está nas planilhas de certificado e o servidor não traz nº Inmetro.</p></div>`
+    : `<div class="fpanel"><h4>Inmetro</h4><dl class="psd-inmf"><dt>Situação</dt><dd><span class="psd-inm${m.sit === "aprovacao" ? " am" : m.sit === "com_num" ? " ok" : ""}">${esc(m.rotulo)}</span></dd>
+      <dt>Nº Inmetro</dt><dd>${esc(m.num || "–")}</dd><dt>Descrição padronizada</dt><dd title="${esc(m.orig || "")}">${esc(m.pad || "–")}</dd>${m.origem ? `<dt>Origem</dt><dd>${esc(m.origem)}</dd>` : ""}</dl></div>`;
+  const subsTxt = r =>[...new Set((r.subs || []).map(x => x.v))].join(", ");
   const rdOpen = async (k, code) => { try { const d = await J(`/api/rd/${k}/item/` + encodeURIComponent(code)); const lab = k === "des" ? "DESENVOLVIMENTO" : "REDESENVOLVIMENTO", other = d.other.map(o => o.suggestion);
     dlg.innerHTML = `<div class="dh"><div><h2>${esc(d.code)} ${tag(lab)} ${other.map(tag).join(" ")}</h2><p>${esc(d.description || "")}</p></div><div><a class="btn ghost" href="/item/${encodeURIComponent(d.code)}">Página do item</a> <button class="btn ghost" data-close>Fechar</button></div></div>
       ${other.length ? `<div class="notice">Este código também consta em <b>${other.join(", ")}</b>.</div>` : ""}
@@ -74,6 +78,7 @@
       ${k === "rd" ? `<div class="vpanel" data-vc="${esc(d.code)}"><b>Validação</b> ${(d.validations || []).length ? d.validations.map(v => `<span class="vchip">enviada em ${dmy(v.sent_at)}${v.by_user ? " por " + esc(v.by_user) : ""} <a href="#" data-vundo="${v.id}">desfazer</a></span>`).join("") : '<span class="muted">nenhuma validação enviada registrada.</span>'}<button class="btn sm" data-vsend="${esc(d.code)}">Marcar validação enviada</button><small class="muted">A meta de Redesenvolvimento conta quando o status passar de PENDENTE CONFIRMAÇÃO para ITEM RECEBIDO.</small></div>` : ""}
       ${d.product ? "" : '<p class="muted">Ainda não está no catálogo.</p>'}
       ${subPanel(d.rows)}
+      ${inmPanel(d.inmetro)}
       ${d.cross && d.cross.length ? `<div class="xref"><b>Referência cruzada:</b> ${xchips(d.cross)}</div>` : ""}
       <div data-dwblock="${esc(d.code)}" data-dwkind="projeto"></div>
       ${d.product ? "" : `<div data-dwblock="${esc(d.code)}"></div>`}

@@ -561,5 +561,9 @@ window.PSDTW = (() => {
     document.addEventListener("paste", colar);
   };
 
-  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, editarCodigos, fobRD, enviar, carregando, esqueleto, grafico, CORES, curto, segmentos, medidor, rosca, anel, legenda, barra, pintarBarra, ligarBarra, botao, ops, etiquetas, zonaPlanilha, ligarPlanilha };
+  /* nomes dos estados (mapas da Garantia e de Vendas) */
+  const UFN = { AC: "Acre", AL: "Alagoas", AP: "Amapá", AM: "Amazonas", BA: "Bahia", CE: "Ceará", DF: "Distrito Federal", ES: "Espírito Santo", GO: "Goiás", MA: "Maranhão", MT: "Mato Grosso",
+    MS: "Mato Grosso do Sul", MG: "Minas Gerais", PA: "Pará", PB: "Paraíba", PR: "Paraná", PE: "Pernambuco", PI: "Piauí", RJ: "Rio de Janeiro", RN: "Rio Grande do Norte", RS: "Rio Grande do Sul",
+    RO: "Rondônia", RR: "Roraima", SC: "Santa Catarina", SP: "São Paulo", SE: "Sergipe", TO: "Tocantins" };
+  return { esc, nf, brl, brl0, dmy, badge, kpi, card, notice, empty, table, input, select, btn, csv, nome, filtros, ico, stripes, toast, confirmar, erro, editarCodigos, fobRD, enviar, carregando, esqueleto, grafico, CORES, curto, segmentos, medidor, rosca, anel, legenda, barra, pintarBarra, ligarBarra, botao, ops, etiquetas, zonaPlanilha, ligarPlanilha, UFN };
 })();

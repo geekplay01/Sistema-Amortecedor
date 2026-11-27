@@ -23,9 +23,13 @@ def _univ(kind, f, a="r."):
     m = rules.marca_sql(kind, (f or {}).get("marca"), a)
     return w + [m] if m else w
 
+INM = {"APROVACAO": "aprovacao", "COM_NUM": "com_num", "FORA": "fora"}          # update 8: faixa «Inmetro» = situação do item (inmetro.py), não o texto do servidor
+
 def _sub_cond(sk, sv, p, n):
     """Condição de um sub status: valor fixo («@CHAVE», statuses.FIXOS) ou uma parte exata do valor do servidor."""
     col = "r." + statuses.SUB_COL[sk]; sv = sv.strip()
+    if sk == "inmetro" and sv.startswith("@") and sv[1:].upper() in INM:
+        import inmetro; p[n] = INM[sv[1:].upper()]; return f"{inmetro.sit_sql()}=:{n}"
     if sv.startswith("@"): return statuses.fixo_sql(sk, sv[1:].upper(), col)
     p[n] = f"%/{sv.upper()}/%"; return f"{statuses.sub_has(col)} LIKE :{n}"
 
@@ -84,15 +88,18 @@ FLAGS = dict(statuses.LABEL)
 def _j(v): return (v or "").replace(",", " · ")
 
 def items(kind, f):
+    import inmetro
     w, p = _where(kind, f)
     size = 10**9 if f.get("all") else 50; off = 0 if f.get("all") else (max(int(f.get("page") or 1), 1) - 1) * size
     t = q1(f"SELECT COUNT(DISTINCT r.code) n,COUNT(*) l FROM rd_projects r WHERE {w}", p); total = t["n"]
     subs = ",".join(f"group_concat(DISTINCT r.{c}) s_{k}" for k, c, _ in statuses.SUBS)          # «,» entre aplicações vira «/» abaixo
     rows = q(f"""SELECT r.code,MAX(r.description) description,MAX(r.product_id) product_id,COUNT(*) n_rows,group_concat(DISTINCT r.make) makes,group_concat(DISTINCT r.vehicle) vehicles,
         group_concat(DISTINCT r.status) statuses,group_concat(DISTINCT r.supplier) suppliers,{subs},
-        MAX(substr(r.sample_bought,1,10)) bought,MAX(substr(r.sample_sent,1,10)) sent,MAX(r.curtiu) curtiu,MAX(r.nao_curtiu) nao_curtiu
+        MAX(substr(r.sample_bought,1,10)) bought,MAX(substr(r.sample_sent,1,10)) sent,MAX(r.curtiu) curtiu,MAX(r.nao_curtiu) nao_curtiu,
+        MAX(CASE {inmetro.sit_sql()} WHEN 'aprovacao' THEN 3 WHEN 'com_num' THEN 2 ELSE 1 END) inm_r, MAX({inmetro.num_sql()}) inm_num
         FROM rd_projects r WHERE {w} GROUP BY r.code ORDER BY {_order(f)} LIMIT {size} OFFSET {off}""", p)
     for r in rows:
+        r["inmetro"] = {"sit": {3: "aprovacao", 2: "com_num"}.get(r.pop("inm_r"), "fora"), "num": r.pop("inm_num")}          # update 8: selo na linha
         for k in ("makes", "vehicles", "statuses", "suppliers"): r[k] = _j(r[k])
         r["subs"] = [{"k": k, "l": lab, "v": v} for k, _, lab in statuses.SUBS for v in dict.fromkeys(statuses.split_sub((r.pop("s_" + k) or "").replace(",", "/")))]
     fi = fob_info(kind, [r["code"] for r in rows])          # etapa 22: FOB do fornecedor do item (verde) e de comparação (branco)
@@ -102,11 +109,16 @@ def items(kind, f):
 def _sub_counts(kind, st, f=None):
     """Sub status do servidor no estágio `st`, por coluna: [{key, label, values: [{v, f (valor do filtro), n (códigos), l (itens = linhas)}]}].
     Um valor composto conta em cada parte. Validação: os valores fixos (statuses.FIXOS) sempre aparecem, mesmo zerados, e juntam as grafias do servidor."""
+    import inmetro
     p = {"kind": kind}; c = _stage(st, p)
     cols = ",".join(f"r.{col}" for _, col, _ in statuses.SUBS)
-    rows = q(f"SELECT r.code,{cols} FROM rd_projects r WHERE {' AND '.join(_univ(kind, f))}{' AND ' + c if c else ''}", p)
+    rows = q(f"SELECT r.code,{cols},{inmetro.sit_sql()} sit_inm FROM rd_projects r WHERE {' AND '.join(_univ(kind, f))}{' AND ' + c if c else ''}", p)
     out = []
     for k, col, lab in statuses.SUBS:
+        if k == "inmetro":          # update 8: situação Inmetro do item (em aprovação · com nº · fora do certificado), sempre as três
+            acc = {s: [set(), 0] for s in INM.values()}
+            for r in rows: a = acc[r["sit_inm"]]; a[0].add(r["code"]); a[1] += 1
+            out.append({"key": k, "label": lab, "values": [{"v": inmetro.SIT[s], "f": "@" + fk, "n": len(acc[s][0]), "l": acc[s][1], "fixo": True, "inm": s} for fk, s in INM.items()]}); continue
         fixos = {fk: fl for fk, fl, _, _ in statuses.FIXOS.get(k, [])}; acc = {("@" + fk): [set(), 0, fl] for fk, fl in fixos.items()}
         for r in rows:
             for v in dict.fromkeys(statuses.split_sub(r[col])):
@@ -236,7 +248,7 @@ def detail(kind, code):
             "damping": q("SELECT id,test_date FROM damping_tests WHERE perfect_code=?", (code,)),
             "cross": _cross(pid, code), "info": _info(kind, code), "validations": __import__("goals").validations_of(code, kind),
             "curtiu": max([r["curtiu"] or 0 for r in rows] or [0]), "nao_curtiu": max([r["nao_curtiu"] or 0 for r in rows] or [0]),
-            "fob": fob_info(kind, [code]).get(str(code).upper())}
+            "fob": fob_info(kind, [code]).get(str(code).upper()), "inmetro": __import__("inmetro").item(code)}          # update 8: Inmetro na ficha
 
 def filter_lists(make=None):
     mk = [r["m"] for r in q("SELECT DISTINCT upper(trim(make)) m FROM (SELECT make FROM applications UNION ALL SELECT make FROM rd_projects) WHERE make IS NOT NULL AND trim(make)<>'' ORDER BY m")]

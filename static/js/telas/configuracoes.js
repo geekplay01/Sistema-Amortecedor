@@ -60,12 +60,19 @@
     const msg = (id, t, err) => { const m = $("#" + id); if (m) { m.textContent = t; m.className = "text-sm font-semibold " + (err ? "text-red-600" : "text-emerald-600"); } };
     const avatar = u => u.avatar ? `<img src="/avatar/${u.id}?t=${Date.now()}" alt="Foto de ${esc(u.username)}" class="h-full w-full object-cover">` : esc((u.username || "?").slice(0, 1).toUpperCase());
     const semLogin = notice("<b>Login desligado neste computador.</b> O sistema está com <code>PSD_AUTH=off</code> (modo de desenvolvimento), por isso não há usuário para editar. Remova essa linha do arquivo <code>.env</code> e reinicie para usar contas.", "amber");
-    const acoes = (btn, id) => `<div class="flex flex-wrap items-center gap-3 sm:col-span-2">${btn}${aviso(id)}</div>`;
+    /* update 8: «Acesso pelo celular» — o app passa a atender a rede da empresa; vale depois de reabrir o sistema */
+    const celular = c => { const muda = c.ligado !== c.ativo;
+      return `<label class="psd-switch"><input type="checkbox" id="celsw" ${c.ligado ? "checked" : ""} ${admin ? "" : "disabled"}><span class="tr" aria-hidden="true"></span><span class="tx"><b>Abrir o app pelo celular</b><small>${c.ligado ? "Ligado: celulares na mesma rede abrem o app com o mesmo login" : "Desligado: o app só abre neste computador"}</small></span></label>
+        ${muda ? notice(`Feche e abra o sistema para ${c.ligado ? "ligar" : "desligar"} o acesso pelo celular.`, "amber") : ""}
+        ${c.ativo && c.enderecos.length ? `<div class="psd-sis-i" style="max-width:28rem"><dt>Endereço para digitar no celular</dt>${c.enderecos.map(e => `<dd class="tabular-nums">${esc(e)}</dd>`).join("")}</div>` : ""}
+        <div class="mt-2">${aviso("celm")}</div>`; };
+    const acoes = (btn, id) =>`<div class="flex flex-wrap items-center gap-3 sm:col-span-2">${btn}${aviso(id)}</div>`;
     const PANES = {
       sistema: async () => { const s = await J("/api/sistema"), it = (l, v) => `<div class="psd-sis-i"><dt>${l}</dt><dd title="${esc(v)}">${esc(v)}</dd></div>`;
         return card(`Sistema <span class="psd-sis-on"><i></i>aberto</span>`, `<dl class="psd-sis">${it("Aberto desde", quando(s.aberto_em))}${it("Endereço", s.endereco)}${it("Mensagens do sistema", s.log || "na janela do iniciar.bat")}</dl>
           <div class="psd-sis-a"><button type="button" id="psd-fechar" class="psd-btn psd-btn-sair">${TW.ico("power", "sm")}Fechar o sistema</button>
-            <p>O servidor para e as páginas abertas deixam de funcionar. Para abrir de novo, use o atalho «PERFECT Shock Data».</p></div>`); },
+            <p>O servidor para e as páginas abertas deixam de funcionar. Para abrir de novo, use o atalho «PERFECT Shock Data».${s.autofechar ? " Ele também fecha sozinho quando a última aba do app é fechada." : ""}</p></div>`)
+          + card("Acesso pelo celular", celular(s.celular)); },
       perfil: () => !user ? semLogin : card("Meu perfil", `<div class="flex flex-wrap items-center gap-4"><div id="av" class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-blue-600 text-2xl font-bold text-white">${avatar(user)}</div>
           <div class="flex flex-col gap-1"><div class="flex flex-wrap items-center gap-2 text-lg font-semibold text-ink">${esc(user.username)} ${badge(user.role === "admin" ? "Administrador" : "Usuário", user.role === "admin" ? "violet" : "slate")}</div>
             <div class="text-sm text-mute">Conta criada em ${TW.dmy(user.created_at)}, último acesso ${user.last_login ? quando(user.last_login) : "—"}</div>
@@ -106,7 +113,9 @@
               d.backups.map(b => [esc(b.name), esc(b.date), nf(b.size / 1048576, 2) + " MB", `<span class="flex gap-1"><a class="${mini}" href="/api/backups/${encodeURIComponent(b.name)}">Baixar</a><button type="button" class="${mini}" data-rs="${esc(b.name)}">Restaurar</button></span>`]), { h: "max-h-[55vh]" }) : empty("Nenhum backup ainda.")); }
     };
     const wire = {
-      sistema() { },          // o clique em «Fechar o sistema» (#psd-fechar) é tratado em app.js, com a confirmação
+      sistema() {          /* o clique em «Fechar o sistema» (#psd-fechar) é tratado em app.js, com a confirmação */
+        const sw = $("#celsw"); if (sw) sw.onchange = async () => { try { await put("/api/sistema/celular", { ligado: sw.checked }); show(); } catch (e) { sw.checked = !sw.checked; msg("celm", e.message, true); } };
+      },
       perfil() {
         const f = $("#avf"); if (f) f.onchange = async () => { if (!f.files[0]) return; const fd = new FormData(); fd.append("file", f.files[0]); msg("avm", "Enviando…"); try { await J("/api/auth/avatar", { method: "POST", body: fd }); location.reload(); } catch (e) { msg("avm", e.message, true); } };
         const d = $("#avd"); if (d) d.onclick = async () => { try { await J("/api/auth/avatar", { method: "DELETE" }); location.reload(); } catch (e) { msg("avm", e.message, true); } };

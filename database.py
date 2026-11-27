@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS packaging_boxes(code TEXT PRIMARY KEY, length_mm REAL
 CREATE TABLE IF NOT EXISTS product_components(id INTEGER PRIMARY KEY, parent_code TEXT NOT NULL, product_id INTEGER REFERENCES products(id) ON DELETE SET NULL, component_code TEXT NOT NULL, component_desc TEXT, seq INTEGER, qty REAL, loss_index REAL, date_from TEXT, date_to TEXT, source_id INTEGER REFERENCES sources(id), batch_id INTEGER REFERENCES import_batches(id));
 CREATE INDEX IF NOT EXISTS ix_comp_parent ON product_components(parent_code);
 CREATE TABLE IF NOT EXISTS supplier_items(id INTEGER PRIMARY KEY, supplier_name TEXT, erp_code TEXT, item_type TEXT, supplier_code TEXT, supplier_code2 TEXT, description TEXT, product_id INTEGER REFERENCES products(id) ON DELETE SET NULL, source_id INTEGER REFERENCES sources(id), batch_id INTEGER REFERENCES import_batches(id));
-CREATE TABLE IF NOT EXISTS certificates(id INTEGER PRIMARY KEY, product_id INTEGER REFERENCES products(id) ON DELETE CASCADE, perfect_code_raw TEXT, inmetro_number TEXT, family TEXT, supplier TEXT, cert_description TEXT, brand TEXT, source_id INTEGER REFERENCES sources(id), batch_id INTEGER REFERENCES import_batches(id));
+CREATE TABLE IF NOT EXISTS certificates(id INTEGER PRIMARY KEY, product_id INTEGER REFERENCES products(id) ON DELETE CASCADE, perfect_code_raw TEXT, inmetro_number TEXT, family TEXT, supplier TEXT, cert_description TEXT, brand TEXT, source_id INTEGER REFERENCES sources(id), batch_id INTEGER REFERENCES import_batches(id), ean TEXT);
 CREATE TABLE IF NOT EXISTS rd_projects(id INTEGER PRIMARY KEY, code TEXT NOT NULL, product_id INTEGER REFERENCES products(id) ON DELETE SET NULL, suggestion TEXT, status TEXT, drawing_substatus TEXT, validation_substatus TEXT, supplier TEXT, sample_bought TEXT, sample_sent TEXT, source_id INTEGER REFERENCES sources(id), batch_id INTEGER REFERENCES import_batches(id));
 """
 NEW_COLUMNS = {
@@ -157,6 +157,7 @@ NEW_COLUMNS["rd_projects"] += [("negotiation_substatus", "TEXT"), ("sales_substa
 NEW_COLUMNS["rd_projects"] += [("family", "TEXT")]      # etapa 21: FAMILIA do servidor (amortecedor / de moto / linha pesada), o universo das telas
 NEW_COLUMNS["ds_situacao"] = [("stock_total", "REAL"), ("priv_pa", "REAL"), ("priv_mp", "REAL"), ("fect_pa", "REAL"), ("fect_mp", "REAL")]      # estoque da tela Estoque (etapa 20 · Q5)
 SUB_EXTRA = {"negotiation_substatus": "SUB STATUS NEGOCIAÇÃO", "sales_substatus": "SUB STATUS VENDAS", "cit_substatus": "SUB STATUS CIT", "family": "FAMILIA"}
+NEW_COLUMNS["certificates"] = [("ean", "TEXT")]          # update 8: código de barras de cada certificado (aba Inmetro de Produtos e códigos)
 NEW_COLUMNS["drawing_files"] = [("kind", "TEXT DEFAULT 'desenho'"), ("origin", "TEXT"), ("source", "TEXT")]
 
 def rebuild_flags_view():
@@ -185,6 +186,7 @@ def migrate():
             n = _re.sub(r"\s+", " ", t.lstrip("'")).strip(); c.execute("UPDATE rd_projects SET application_text=? WHERE id=?", (None if n in ("-", "") else n, rid))
         c.execute("CREATE INDEX IF NOT EXISTS ix_codes_norm ON codes(normalized_code)")
         c.execute("CREATE INDEX IF NOT EXISTS ix_rd_code ON rd_projects(code)")
+        c.execute("CREATE INDEX IF NOT EXISTS ix_cert_code ON certificates(upper(trim(perfect_code_raw)))")          # update 8: situação Inmetro de cada item (inmetro.py)
         import bi03, concorrentes, fraga; bi03.ensure(c); concorrentes.ensure(c); fraga.ensure(c)          # etapa 17: cadastro Protheus, concorrentes do servidor e Fraga
         # caixa «PP025M» × «PP025»: só o sufixo da marca (M Motorcraft, B BPROAUTO) difere → não é conflito (etapa 16 · D); fecha os abertos antes da regra
         for pid_, d in c.execute("SELECT id,description FROM pendencies WHERE kind='conflito' AND field='package_code' AND status='aberta'").fetchall():

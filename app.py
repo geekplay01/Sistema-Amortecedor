@@ -1,6 +1,6 @@
 """Perfect Shock Data - rotas Flask."""
-from flask import Flask, send_file, Response, render_template, jsonify, request, abort, send_from_directory
-import os, re, glob, uuid, shutil, datetime
+from flask import Flask, send_file, Response, render_template, jsonify, request, abort, send_from_directory, g
+import os, re, glob, uuid, shutil, datetime, threading
 import database as db, importer, loaders, queries, equivalence, damping, exporter, rd, updater, drawings, purchases, brands, shipments, sides
 import kinds, statuses, data_pipeline, goals, analytics, price_search, auth, rules, metas, orders, curva_abc, fob_merge, regras_telas
 
@@ -65,33 +65,20 @@ CARDS = [  # chave, rótulo, destino, dica — produtos, DES e R-D ficam só na 
 ]
 
 PRIMARY = ["metas", "pedidos-aberto", "vendas", "estoque", "garantia"]     # menu fixo da sidebar (Metas & Validação · Pedidos em Aberto · Vendas (Curva A) · Estoque · Garantia)
-# Menu na ordem do FLUXO do produto: desenvolve → compra amostra → entra no catálogo → compra/importa → vende (o menu lateral desenha o conector entre as etapas)
+# Menu na ordem do FLUXO do produto: desenvolve → compra amostra → entra no catálogo → compra/importa → vende (a numeração dos grupos mostra a ordem)
 MENU = [("Visão geral", ["dashboard", "brands"]),
         ("1 · Desenvolvimento", ["desenvolvimento", "redesenvolvimento", "validacao", "desenhos", "damping"]),
         ("2 · Amostras", ["amostras", "envio"]),
         ("3 · Catálogo", ["pesquisa", "produtos", "aplicacoes", "lados", "comparacao", "cobertura", "anomalias"]),
         ("4 · Compras", ["fob"]),
         ("Dados", ["atualizacao", "importacao", "fontes", "pendencias"])]
-FLOW_GROUPS = {"1 · Desenvolvimento", "2 · Amostras", "3 · Catálogo", "4 · Compras"}
-# Conectores entre telas: de onde a informação vem → esta tela → para onde ela vai (faixa abaixo do título de cada página)
-RELATED = {
- "desenvolvimento": (["metas"], ["amostras", "desenhos", "lados"]), "redesenvolvimento": (["metas"], ["validacao", "amostras", "desenhos", "lados"]),
- "validacao": (["redesenvolvimento"], ["desenhos"]),
- "amostras": (["desenvolvimento", "redesenvolvimento"], ["envio", "pedidos-aberto"]), "envio": (["amostras"], ["desenvolvimento"]),
- "produtos": (["atualizacao"], ["lados", "aplicacoes", "vendas"]), "pesquisa": (["produtos"], ["lados", "pedidos-aberto", "vendas"]),
- "lados": (["produtos", "desenvolvimento"], ["pedidos-aberto", "vendas"]), "aplicacoes": (["produtos"], ["lados"]),
- "pedidos-aberto": (["fob", "amostras"], ["vendas", "lados"]), "vendas": (["pedidos-aberto", "produtos"], ["garantia", "lados"]),
- "garantia": (["vendas"], ["redesenvolvimento"]), "estoque": (["vendas", "pedidos-aberto"], ["pedidos-aberto"]), "metas": (["desenvolvimento", "redesenvolvimento"], []), "fob": (["produtos"], ["pedidos-aberto"]),
- "atualizacao": ([], ["produtos", "lados"]), "anomalias": (["produtos", "pendencias"], ["pesquisa"]), "cobertura": (["produtos", "desenvolvimento"], ["pesquisa", "amostras"]), "desenhos": (["desenvolvimento"], ["envio"]),
-}
 _NAMES = {"pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares", "comparacao": "Comparação técnica", "desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvolvimento"}
 
 @app.context_processor
 def inject():
     byslug = {p[0]: p for p in PAGES}
-    rel = lambda slug: tuple([byslug[s] for s in side if s in byslug] for side in RELATED.get(slug, ([], [])))
     return {"pages": PAGES, "primary": [byslug[s] for s in PRIMARY], "tw_local": os.path.exists(os.path.join(app.root_path, "static", "vendor", "tailwind.js")), "menu": [(t, [byslug[s] for s in ss if s in byslug]) for t, ss in MENU],
-            "flow_groups": FLOW_GROUPS, "related": rel, "cfg_page": byslug.get("configuracoes"), "status_defs": statuses.public(), "regras_slugs": regras_telas.slugs()}
+            "cfg_page": byslug.get("configuracoes"), "status_defs": statuses.public(), "regras_slugs": regras_telas.slugs()}
 
 @app.get("/api/regras-telas")
 def api_regras_telas(): return jsonify(regras_telas.lista())          # etapa 21: os textos de regra das telas ficam em Configurações › Regras das telas
@@ -721,6 +708,17 @@ def api_previsao():
 def api_vendas_resumo():
     return jsonify(curva_abc.overview(request.args.get("months") or 24, request.args.get("linhas")))
 
+@app.get("/api/inmetro")          # update 8: aba Inmetro de Produtos e códigos
+def api_inmetro():
+    import inmetro
+    f = {k: request.args.get(k, "") for k in ("sit", "familia", "forn", "q")}
+    return jsonify(inmetro.tela(f, request.args.get("page", 1, type=int)))
+
+@app.get("/api/vendas/uf")          # update 8: mapa da tela Vendas (peças e R$ por UF + os 10 códigos mais vendidos de cada UF)
+def api_vendas_uf():
+    try: return jsonify(curva_abc.por_uf(request.args.get("year"), request.args.get("month"), request.args.get("linhas")))
+    except ValueError as e: return jsonify(error=str(e)), 400
+
 @app.get("/api/vendas/curva-a")
 def api_curva_a():
     try: return jsonify(curva_abc.payload(request.args.get("year"), request.args.get("month"), request.args.get("limit"), request.args.get("linhas")))
@@ -766,7 +764,49 @@ def api_price_save():
 def api_sistema():
     log = os.path.join(db.BASE, "data", "app_log.txt")
     return jsonify(aberto_em=datetime.datetime.strptime(ASSET_V, "%Y%m%d%H%M%S").isoformat(timespec="seconds"), endereco=request.host,
-                   log="data\\app_log.txt" if os.path.isfile(log) else None)
+                   log="data\\app_log.txt" if os.path.isfile(log) else None, autofechar=bool(app.config.get("AUTOFECHAR")), celular=_celular())
+
+# ---- update 8: fechar o sistema quando a última aba fecha (abas.py) e acesso pelo celular ----
+_em_curso = [0]; _em_curso_lock = threading.Lock()
+@app.before_request
+def _conta_inicio():
+    if request.path.startswith("/api/") and not request.path.startswith("/api/aba"):
+        with _em_curso_lock: _em_curso[0] += 1
+        g._psd_conta = True
+@app.teardown_request
+def _conta_fim(_exc=None):
+    if g.pop("_psd_conta", None):
+        with _em_curso_lock: _em_curso[0] -= 1
+
+def _ocupado():
+    """Sincronização, importação, backup ou qualquer outra requisição da API em andamento: o fechamento automático espera."""
+    return bool(data_pipeline._STATE.get("running")) or _em_curso[0] > 0
+
+@app.post("/api/aba")
+def api_aba():
+    """Sinal de cada página aberta: {id, ev: "ping" | "saiu"} (saiu vem por sendBeacon). Aba do PC = endereço local."""
+    import abas
+    b = request.get_json(force=True, silent=True) or {}
+    if b.get("ev") == "saiu": abas.saiu(b.get("id"))
+    else: abas.ping(b.get("id"), request.remote_addr in ("127.0.0.1", "::1"))
+    return ("", 204)
+
+def _enderecos():
+    import socket
+    try: ips = socket.gethostbyname_ex(socket.gethostname())[2]
+    except OSError: ips = []
+    return sorted({i for i in ips if not i.startswith("127.")})
+
+def _celular():
+    host = app.config.get("HOST_ATIVO") or "127.0.0.1"; porta = app.config.get("PORTA_ATIVA") or 5000
+    return {"ligado": rules.acesso_celular(), "ativo": host not in ("127.0.0.1", "localhost", "::1"),
+            "enderecos": [f"http://{i}:{porta}" for i in _enderecos()]}
+
+@app.put("/api/sistema/celular")
+def api_sistema_celular():
+    admin_only(); b = request.get_json(force=True) or {}
+    rules.set_setting("acesso_celular", "1" if str(b.get("ligado")).strip().lower() in ("1", "true", "sim", "on") else "0", (auth.current_user() or {}).get("username"))
+    return jsonify(_celular())
 
 @app.post("/api/sistema/fechar")
 def api_sistema_fechar():
@@ -784,7 +824,8 @@ def _ja_aberto(porta):
 if __name__ == "__main__":
     import sys, threading, webbrowser
     porta = int(os.environ.get("PORT", 5000)); url = f"http://127.0.0.1:{porta}"
-    if sys.stdout is None or sys.stderr is None:          # aberto pelo pythonw (sem janela): as mensagens vão para data\app_log.txt
+    _sem_janela = sys.stdout is None or sys.stderr is None
+    if _sem_janela:          # aberto pelo pythonw (sem janela): as mensagens vão para data\app_log.txt
         os.makedirs(os.path.join(db.BASE, "data"), exist_ok=True)
         _log = open(os.path.join(db.BASE, "data", "app_log.txt"), "a", encoding="utf-8", buffering=1); sys.stdout = sys.stderr = _log
         print(f"\n=== {datetime.datetime.now():%d/%m/%Y %H:%M:%S} · sistema aberto ===")
@@ -794,4 +835,11 @@ if __name__ == "__main__":
     if os.environ.get("PSD_SCHEDULER", "on") != "off": data_pipeline.start_scheduler(on_done=_after_sync)      # sincronização diária automática (DEV_SYNC_HOURS, padrão 24)
     threading.Thread(target=_aquecer, daemon=True).start()
     if os.environ.get("PSD_ABRIR") == "1": threading.Timer(1.5, webbrowser.open, (url,)).start()
-    app.run(host=os.environ.get("HOST", "127.0.0.1"), port=porta, debug=False)
+    # update 8: pelo atalho (pythonw, sem janela) o sistema fecha sozinho quando a última aba fecha; PSD_AUTOFECHAR=0 desliga
+    if _sem_janela and os.environ.get("PSD_AUTOFECHAR", "1") != "0":
+        import abas
+        def _fechar_sozinho(): print(f"{datetime.datetime.now():%d/%m/%Y %H:%M:%S} · última aba fechada: sistema encerrado"); os._exit(0)
+        app.config["AUTOFECHAR"] = True; abas.iniciar(_ocupado, _fechar_sozinho)
+    host = os.environ.get("HOST") or ("0.0.0.0" if rules.acesso_celular() else "127.0.0.1")      # update 8: «Acesso pelo celular» atende a rede
+    app.config.update(HOST_ATIVO=host, PORTA_ATIVA=porta)
+    app.run(host=host, port=porta, debug=False)

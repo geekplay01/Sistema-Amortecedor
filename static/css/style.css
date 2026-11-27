@@ -433,26 +433,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cobalt);
 
 #pt{overflow-x:auto}
 
-/* ═══════ Etapa 15 — conectores entre telas, trilho do fluxo no menu, chips de código, pipeline do lead time e conjunto do Lados ═══════ */
-/* trilho do FLUXO no menu lateral: cada grupo numerado (1 · Desenvolvimento → 4 · Compras) é ligado ao seguinte por uma linha com nós */
-.psd-side .flowg{position:relative}
-.psd-side .flowg .gx-b{position:relative;padding-left:14px}
-.psd-side .flowg .gx-b::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;border-radius:2px;background:linear-gradient(#3b82f6aa,#47556999)}
-.psd-side .flowg .psd-sn{position:relative}
-.psd-side .flowg .psd-sn::before{content:"";position:absolute;left:-10px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:#1e293b;border:2px solid #64748b;transition:border-color .15s,background .15s}
-.psd-side .flowg .psd-sn:hover::before{border-color:#93c5fd}
-.psd-side .flowg .psd-sn.is-cur::before{background:#3b82f6;border-color:#bfdbfe;box-shadow:0 0 0 3px #3b82f633}
-.psd-side .flowg + .flowg::before{content:"";position:absolute;left:15px;top:-10px;height:12px;width:2px;background:#47556999}
-.psd-side .flowg .gx-h span{display:inline-flex;align-items:center;gap:6px}
-.psd-side .flowg.has-cur .gx-h{color:#e2e8f0}
-/* faixa «vem de → esta tela → alimenta» abaixo do título */
-.relbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:-6px 0 18px;padding:8px 12px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--card) 70%,transparent)}
-.relside{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}.relside small{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-right:2px}
-.relchip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--tx);font-size:12.5px;text-decoration:none;white-space:nowrap;transition:border-color .15s,transform .15s}
-.relchip svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;opacity:.8}
-a.relchip:hover{border-color:var(--cobalt);transform:translateY(-1px);text-decoration:none}
-.relchip.here{background:var(--cobalt);border-color:var(--cobalt);color:#fff;font-weight:600}
-.relarrow{position:relative;display:inline-block;width:28px;height:2px;background:var(--line)}.relarrow::after{content:"";position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left:7px solid var(--line);border-right:0}
+/* ═══════ Etapa 15 — chips de código, pipeline do lead time e conjunto do Lados ═══════ */
+/* item atual: o título do grupo que o contém fica mais claro (o trilho com bolinhas e a faixa «vem de / alimenta» saíram no update 8) */
+.psd-side .gx.has-cur .gx-h{color:#e2e8f0}
 /* chip de código com menu de conexões (Pesquisa · Lados · Pedidos · Vendas) */
 .pcx{cursor:pointer;font-weight:700;color:var(--cobalt);border-bottom:1px dashed color-mix(in srgb,var(--cobalt) 55%,transparent)}
 .pcx:hover{border-bottom-style:solid}

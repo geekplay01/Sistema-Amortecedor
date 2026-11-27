@@ -401,6 +401,10 @@ DATASETS = {
     "vendas_uf": {"object": os.environ.get("DEV_DB_OBJECT_VENDAS", "VENDAS_FATURAMENTO_DETALHADO"), "table": "ds_vendas_uf", "aliases": {
         "sale_date": ["DATA"], "uf": ["UF"], "qty": ["QTDE"], "total": ["VALOR_TOTAL"]},
         "num": ["qty", "total"], "dates": ["sale_date"], "no_extra": True},
+    # update 8: mapa da tela Vendas — vendas de amortecedor por mês × UF × código × LINHA (≈ 5–8 mil linhas por mês), somadas no servidor, incremental (3 anos)
+    "vendas_uf_cod": {"object": os.environ.get("DEV_DB_OBJECT_VENDAS", "VENDAS_FATURAMENTO_DETALHADO"), "table": "ds_vendas_uf_cod", "aliases": {
+        "sale_date": ["DATA"], "uf": ["UF"], "code": ["PRODUTO"], "line": ["LINHA"], "qty": ["QTDE"], "total": ["VALOR_TOTAL"]},
+        "num": ["qty", "total"], "dates": ["sale_date"], "no_extra": True},
     "embarques": {"object": os.environ.get("DEV_DB_OBJECT_EMBARQUES", "EMBARQUES_DETALHADO"), "table": "ds_embarques", "aliases": {
         "pedido": ["PEDIDO", "NUM_PEDIDO", "NUMERO_PEDIDO", "N_PEDIDO", "PEDIDO_COMPRA", "ORDEM_COMPRA", "OC", "NUMERO_PC", "PC"],
         "supplier": ["FORNECEDOR", "NOME_FORNECEDOR", "COD_FORNECEDOR", "CODIGO_FORNECEDOR", "EX"],
@@ -467,6 +471,15 @@ def vendas_uf_sql(obj, cols, since_month):
     am, uf, ln, qt = (qi(x) for x in need)
     return (f"SELECT {am} AS ANO_MES, LTRIM(RTRIM({uf})) AS UF, SUM({qt}) AS QTDE, SUM({qi(val)}) AS VALOR_TOTAL FROM {obj['sql']} "
             f"WHERE LTRIM(RTRIM({ln})) IN ('AMORTECEDOR', 'AMORTECEDOR LINHA PESADA') AND {am} >= '{since_month}' GROUP BY {am}, LTRIM(RTRIM({uf}))")
+
+def vendas_uf_cod_sql(obj, cols, since_month):
+    """Update 8: vendas de amortecedor somadas NO SERVIDOR por mês × UF × código × LINHA (mesmo valor da tela Vendas: VALOR_TOTAL_CIPI). None sem as colunas."""
+    by = {canon_col(c): c for c in cols}
+    need = [by.get(n) for n in ("ANO_MES", "UF", "PRODUTO", "LINHA", "QUANTIDADE")]; val = by.get("VALOR_TOTAL_CIPI")
+    if None in need or not val: return None
+    am, uf, pr, ln, qt = (qi(x) for x in need)
+    return (f"SELECT {am} AS ANO_MES, LTRIM(RTRIM({uf})) AS UF, LTRIM(RTRIM({pr})) AS PRODUTO, LTRIM(RTRIM({ln})) AS LINHA, SUM({qt}) AS QTDE, SUM({qi(val)}) AS VALOR_TOTAL "
+            f"FROM {obj['sql']} WHERE {ln} LIKE '%AMORTECEDOR%' AND {am} >= '{since_month}' GROUP BY {am}, LTRIM(RTRIM({uf})), LTRIM(RTRIM({pr})), LTRIM(RTRIM({ln}))")
 
 def where_for(spec_where, cols, refs=None):
     """Monta o WHERE do servidor só com os filtros cujas colunas existem no objeto (o servidor de testes não tem LINHA, por exemplo). '' = sem filtro."""
@@ -537,6 +550,8 @@ CREATE INDEX IF NOT EXISTS ix_dse2_ped ON ds_embarques(pedido);
 CREATE TABLE IF NOT EXISTS ds_garantia(code TEXT, description TEXT, defect TEXT, qty REAL, event_date TEXT, extra TEXT);
 CREATE INDEX IF NOT EXISTS ix_dsg_code ON ds_garantia(code);
 CREATE TABLE IF NOT EXISTS ds_vendas_uf(sale_date TEXT, uf TEXT, qty REAL, total REAL);
+CREATE TABLE IF NOT EXISTS ds_vendas_uf_cod(sale_date TEXT, uf TEXT, code TEXT, line TEXT, qty REAL, total REAL);
+CREATE INDEX IF NOT EXISTS ix_dsvuc_date ON ds_vendas_uf_cod(sale_date, uf);
 CREATE TABLE IF NOT EXISTS ds_situacao(code TEXT, active TEXT, blocked TEXT, line TEXT, stock_total REAL, priv_pa REAL, priv_mp REAL, fect_pa REAL, fect_mp REAL, extra TEXT);
 CREATE INDEX IF NOT EXISTS ix_dssit_code ON ds_situacao(code);
 CREATE TABLE IF NOT EXISTS ds_concorrentes(dev_id TEXT, comp_code TEXT, competitor TEXT, reference TEXT, extra TEXT);
@@ -805,6 +820,15 @@ def _sync(cfg, store, conn_factory):
                     raw_v["DATA"] = raw_v["ANO_MES"].astype(str).str.strip() + "-01"; raw_v["GRAO"] = "mes"
                     df, warn, mp = normalize_dataset(key, raw_v, ov)
                     dss[key] = {**store.replace_dataset(key, df, out["run_id"], obj["sql"], cfg, scope=probe_sql, since=since), "mapped": sorted(mp), "avisos": warn, "desde": since[:7], "completa": full}
+                    continue
+                if key == "vendas_uf_cod":   # update 8: mapa da tela Vendas (mês × UF × código × linha), incremental como as vendas
+                    probe_sql = vendas_uf_cod_sql(obj, cols, "2000-01")
+                    if not probe_sql: dss[key] = {"status": "ausente", "note": "a view de vendas não tem ANO_MES, UF, PRODUTO, LINHA e QUANTIDADE"}; continue
+                    since, full = store.vendas_since(probe_sql, int(os.environ.get("DEV_VENDAS_ANOS", "3")), key="vendas_uf_cod")
+                    raw_v = extract_raw(conn, obj, sql=vendas_uf_cod_sql(obj, cols, since[:7]))
+                    raw_v["DATA"] = raw_v["ANO_MES"].astype(str).str.strip() + "-01"
+                    df, warn, mp = normalize_dataset(key, raw_v, ov)
+                    dss[key] = {**store.replace_dataset(key, df, out["run_id"], obj["sql"], cfg, scope=probe_sql, since=since), "desde": since[:7], "completa": full}
                     continue
                 if key == "vendas_uf":   # vendas por mês × UF (índice de garantia por estado): somadas no servidor, incremental como as vendas
                     probe_sql = vendas_uf_sql(obj, cols, "2000-01")

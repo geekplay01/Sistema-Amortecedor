@@ -12,9 +12,9 @@
   const linha = l => familia(String(l || "").replace(/^LINHA\s+/, ""));          // «LINHA PICK-UP E UTILITÁRIOS» → «Pick-up e utilitários»
   const RD_LAB = { des: "DESENVOLVIMENTO", rd: "REDESENVOLVIMENTO" };
 
-  function lista(slug, pesquisa) {
+  function lista(slug, pesquisa, host = root) {
     const F = TW.filtros(slug, pesquisa ? PESQ : BASE); let pg = 1, fc = null, L = { makes: [], models: [], years: [] }, timer;
-    root.innerHTML = `<div class="flex flex-col gap-5">
+    host.innerHTML = `<div class="flex flex-col gap-5">
       ${pesquisa ? "" : '<div id="pk" class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>'}
       <div id="pbar"></div>
       <div id="pmeta" class="text-sm text-mute"></div>
@@ -110,6 +110,75 @@
       desenharKpis(); desenharAtalhos(); desenharFiltros(); await carregar();
     })().catch(fail);
   }
-  PSD.tela("produtos", () => lista("produtos", false));
+  /* update 8: abas de Produtos e códigos — «Catálogo» (a lista de sempre) e «Inmetro». A aba fica na URL (?aba=inmetro); trocar não recarrega a página */
+  function produtos() {
+    const aba = new URLSearchParams(location.search).get("aba") === "inmetro" ? "inmetro" : "catalogo";
+    root.innerHTML = `<div class="flex flex-col gap-5"><div><div class="psd-seg" role="tablist" aria-label="Abas de Produtos e códigos">${[["catalogo", "Catálogo"], ["inmetro", "Inmetro"]].map(([v, l]) =>
+      `<button type="button" role="tab" data-paba="${v}" aria-selected="${v === aba}" aria-pressed="${v === aba}">${l}</button>`).join("")}</div></div><div id="pcorpo"></div></div>`;
+    root.querySelector("[data-paba]").parentElement.onclick = e => { const b = e.target.closest("[data-paba]"); if (!b || b.dataset.paba === aba) return;
+      const u = new URLSearchParams(location.search); b.dataset.paba === "inmetro" ? u.set("aba", "inmetro") : u.delete("aba");
+      history.replaceState(null, "", location.pathname + (u.toString() ? "?" + u : "")); produtos(); };
+    if (aba === "inmetro") inmetroAba($("#pcorpo")); else lista("produtos", false, $("#pcorpo"));
+  }
+
+  /* update 8 · aba Inmetro: catálogo × certificados (ZS e E-WIN), códigos só no certificado, DES/R-D em andamento e divergências (inmetro.py) */
+  function inmetroAba(host) {
+    const F = TW.filtros("inmetro", ["aba", "sit", "familia", "forn", "iq"]); F.set({ aba: "inmetro" }); let pg = 1, d = null, timer;          /* «aba» fica na URL junto com os filtros */
+    host.innerHTML = `<div class="flex flex-col gap-5"><div id="ik" class="grid grid-cols-2 gap-4 lg:grid-cols-5"></div><div id="ifam" class="psd-ifams"></div>
+      <div id="ibar"></div><section aria-label="Situação"><div id="igr" class="psd-subfs"></div></section><div id="imeta" class="text-sm text-mute"></div><div id="it"></div>
+      <div id="ip" class="flex items-center justify-center gap-3 text-sm text-mute"></div></div>`;
+    const api = () => { const s = F.get(); return { sit: s.sit || "", familia: s.familia || "", forn: s.forn || "", q: s.iq || "" }; };
+    const SIT = { dois: "Nos dois fornecedores", zs: "Só ZS", ewin: "Só E-WIN", sem: "Sem certificado", so_cert: "Só no certificado", rd_aprovacao: "Em aprovação", rd_com_num: "Com nº Inmetro",
+      rd_fora: "Fora do certificado", div_familia: "Família", div_haste: "Ø da haste", div_ean: "Código de barras" };
+    const GRUPOS = [["Catálogo", ["dois", "zs", "ewin", "sem"]], ["Fora do catálogo", ["so_cert"]], ["DES/R-D em andamento", ["rd_aprovacao", "rd_com_num", "rd_fora"]], ["Divergências", ["div_familia", "div_haste", "div_ean"]]];
+    const COR = { dois: "ok", zs: "mu", ewin: "mu", sem: "", so_cert: "mu", rd_aprovacao: "", rd_com_num: "ok", rd_fora: "mu", div_familia: "", div_haste: "", div_ean: "" };
+    const FORN = { dois: "Os dois", zs: "Só ZS", ewin: "Só E-WIN", nenhum: "Nenhum" }, NOMES = { sit: "Situação", familia: "Família", forn: "Fornecedor do certificado", iq: "Busca" };
+    const SELO = { dois: ["Nos dois", " ok"], zs: ["Só ZS", ""], ewin: ["Só E-WIN", ""], sem: ["Sem certificado", " am"], so_cert: ["Só no certificado", ""], aprovacao: ["Em aprovação", " am"], com_num: ["Com nº Inmetro", " ok"], fora: ["Fora do certificado", ""] };
+    const DIV = { familia: "família", haste: "Ø da haste", ean: "código de barras" };
+    const mu = '<span class="text-mute">–</span>';
+    const desenhar = () => {
+      const { aba: _a, ...s } = F.get(), K = d.kpi;
+      $("#ik").innerHTML = kpi("Catálogo com certificado", nf(K.com_cert), `${nf(K.dois)} nos dois fornecedores`, "blue") + kpi("Catálogo sem certificado", nf(K.sem), "em nenhum fornecedor", K.sem ? "amber" : "slate")
+        + kpi("Só no certificado", nf(K.so_cert), "códigos fora do catálogo", "slate") + kpi("DES/R-D em aprovação", nf(K.rd_aprovacao), `${nf(K.rd_fora)} códigos fora do certificado`, K.rd_aprovacao ? "amber" : "slate")
+        + kpi("Divergências", nf(K.div), "catálogo × certificado", K.div ? "amber" : "slate");
+      $("#ifam").innerHTML = d.familias.map(f => { const com = f.dois + f.um, t = f.total || 1;
+        return `<button type="button" class="psd-ifam" data-fam="${esc(f.fam)}" aria-pressed="${s.familia === f.fam}"><span class="n">${esc(familia(f.fam))}</span><span class="q">${nf(com)}<small>de ${nf(f.total)} com certificado</small></span>
+          <span class="bar" aria-hidden="true"><i style="width:${100 * f.dois / t}%;background:var(--chart-1)"></i><i style="width:${100 * f.um / t}%;background:var(--chart-3)"></i><i style="width:${100 * f.sem / t}%;background:var(--pf-orange)"></i></span>
+          <span class="ce">ZS <b>${esc(f.certs.ZS || "sem certificado")}</b><br>E-WIN <b>${esc(f.certs["E-WIN"] || "sem certificado")}</b>${f.sem ? `<br><span class="am">${nf(f.sem)} sem certificado</span>` : ""}</span></button>`; }).join("");
+      const val = (k, v) => k === "sit" ? (v.startsWith("div_") ? "divergência de " + SIT[v].toLowerCase() : v.startsWith("rd_") ? "DES/R-D " + SIT[v].toLowerCase() : SIT[v] || v) : k === "familia" ? familia(v) : k === "forn" ? FORN[v] || v : v;
+      TW.pintarBarra($("#ibar"), {
+        busca: { valor: s.iq, ph: "Código, descrição ou nº Inmetro" },
+        principais: [{ k: "familia", rotulo: "Família", tipo: "lista", atual: s.familia || "", opcoes: [{ v: "", l: "Todas" }, ...d.familia_opc.map(x => ({ v: x.v, l: familia(x.v), n: x.n }))] },
+                     { k: "forn", rotulo: "Fornecedor do certificado", tipo: "lista", atual: s.forn || "", opcoes: [{ v: "", l: "Todos" }, ...d.forn_opc.map(x => ({ v: x.v, l: FORN[x.v], n: x.n }))] }],
+        etiquetas: TW.etiquetas(s, NOMES, val),
+        acoes: TW.botao("Baixar Excel", { href: `/api/export/inmetro.xlsx?${qs(api())}`, icone: "download" }) });
+      $("#igr").innerHTML = GRUPOS.map(([g, ks]) => `<div class="psd-subf"><span class="g">${g}</span><div class="cs">${ks.map(k => { const on = s.sit === k, n = d.chips[k] || 0;
+        return `<button type="button" data-sit="${k}" aria-pressed="${on}" class="psd-subc${!n && !on ? " zero" : ""}"><i class="psd-sd ${COR[k]}"></i><span class="v">${SIT[k]}</span><span class="n">${nf(n)}</span></button>`; }).join("")}</div></div>`).join("");
+      const ativos = Object.keys(s).length, pages = Math.max(1, Math.ceil(d.total / d.size));
+      $("#imeta").innerHTML = `<b class="text-ink">${nf(d.total)}</b> código(s)${ativos ? `, ${ativos} filtro(s) ativo(s)` : ""}`;
+      $("#it").innerHTML = d.rows.length ? TW.table([{ h: "Código" }, { h: "Situação" }, { h: "Família" }, { h: "Nº ZS" }, { h: "Nº E-WIN" }, { h: "Código de barras" }, { h: "Descrição padronizada", nw: false }], d.rows.map(l => {
+        const sel = SELO[l.sit] || [l.sit, ""], rdl = l.grupo === "rd";
+        const cod = rdl ? `<a href="#" class="font-semibold text-blue-600" data-rd="${l.tipo === "DES" ? "des" : "rd"}" data-code="${esc(l.code)}">${esc(l.code)}</a> ${badge(l.tipo, l.tipo === "DES" ? "blue" : "green")}` : `<a class="font-semibold text-blue-600" href="/item/${encodeURIComponent(l.code)}">${esc(l.code)}</a>`;
+        const eans = [...new Set([l.ean_zs, l.ean_ew].filter(Boolean))];
+        return [`${cod}${l.descr ? `<span class="block max-w-[16rem] truncate text-xs text-mute" title="${esc(l.descr)}">${esc(l.descr)}</span>` : ""}`,
+          `<span class="psd-inm${sel[1]}">${sel[0]}</span>${rdl && l.status ? `<span class="block text-xs text-mute">${esc(l.status)}</span>` : ""}${l.num_srv ? `<span class="block text-xs text-mute">nº ${esc(l.num_srv)}, do servidor</span>` : ""}${l.div.length ? `<span class="psd-dv">diverge: ${l.div.map(x => DIV[x]).join(", ")}</span>` : ""}`,
+          `${esc(familia(l.fam)) || mu}${l.fam_cert.length ? `<span class="psd-dv">certificado: ${esc(l.fam_cert.map(familia).join(", "))}</span>` : ""}`,
+          `<span class="tabular-nums">${esc(l.num_zs || "–")}</span>`, `<span class="tabular-nums" ${l.outros && l.outros.length ? `title="Também em: ${esc(l.outros.join(", "))}"` : ""}>${esc(l.num_ew || "–")}</span>`,
+          `<span class="tabular-nums">${eans.length ? eans.map(esc).join("<br>") : mu}</span>${l.div.includes("ean") ? `<span class="psd-dv">catálogo: ${esc(l.ean)}</span>` : ""}`,
+          `<span title="${esc(l.orig || "")}">${esc(l.pad_txt || "–")}</span>${l.div.includes("haste") ? `<span class="psd-dv">catálogo: Ø ${nf(l.haste_cat, l.haste_cat % 1 ? 1 : 0)} mm</span>` : ""}`]; }), { h: "max-h-[65vh]" }) : empty("Nenhum código com estes filtros.");
+      $("#ip").innerHTML = pages > 1 ? `<button type="button" data-p="${pg - 1}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${pg < 2 ? "disabled" : ""}>‹</button> Página ${pg} de ${pages} <button type="button" data-p="${pg + 1}" class="rounded-lg border border-line bg-card px-3 py-1.5 text-ink" ${pg >= pages ? "disabled" : ""}>›</button>` : "";
+    };
+    let seq = 0;
+    const carregar = async () => { const meu = ++seq;
+      try { const r = await J("/api/inmetro?" + qs({ ...api(), page: pg })); if (meu !== seq) return; d = r; desenhar(); } catch (e) { $("#it").innerHTML = notice(esc(e.message), "red"); } };
+    const aplicar = (patch, logo = true) => { if (patch) F.set(patch); pg = 1; clearTimeout(timer); timer = setTimeout(carregar, logo ? 0 : 250); };
+    TW.ligarBarra($("#ibar"), { set: (k, v) => aplicar({ [k]: v }), busca: t => aplicar({ iq: t }, false), limpar: () => { F.clear(); F.set({ aba: "inmetro" }); aplicar(); } });
+    $("#ifam").addEventListener("click", e => { const b = e.target.closest("[data-fam]"); if (b) aplicar({ familia: F.get().familia === b.dataset.fam ? "" : b.dataset.fam }); });
+    $("#igr").addEventListener("click", e => { const b = e.target.closest("[data-sit]"); if (b) aplicar({ sit: F.get().sit === b.dataset.sit ? "" : b.dataset.sit }); });
+    $("#ip").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b && !b.disabled) { pg = +b.dataset.p; carregar(); scrollTo(0, 0); } });
+    $("#it").innerHTML = TW.carregando("Lendo os certificados…");
+    carregar();
+  }
+  PSD.tela("produtos", produtos);
   PSD.tela("pesquisa", () => lista("pesquisa", true));
 })();

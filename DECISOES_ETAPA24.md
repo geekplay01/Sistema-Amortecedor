@@ -238,3 +238,23 @@ a lista guarda os meses de cada código e o filtro de mês bate com cada barra (
   Vendas e Garantia idem.
 - [x] Documentação: DESIGN.md (§6.1 ícone e Sistema, §6.3 sub status e gráfico que filtra, §6.4c excluir cota/lista/preparar par, §6.6 anel e exceção
   da rosca, §10), REGRAS (§4 lista e anel, §13 update 5, abertura), `regras_telas.py` (Metas, Redesenvolvimento, Validação), LEIA-ME.
+
+## Update 8 (27/11/2026) — menu, fechamento automático, mapa de Vendas, Inmetro
+Pedido: fixar/desfixar o menu; tirar as bolinhas dos grupos; tirar «vem de / alimenta»; mapa em Vendas; fechar o app ao fechar a aba; outra API para
+ler desenhos; aba Inmetro em Produtos e códigos. Respostas: Q1–Q3 e Q8 sim; Q4 mapa **com** os códigos por estado; Q5 sim + travar a tela/suspender
+não fecha (uso pelo celular); Q6 (outra API) adiada; Q7 + mostrar o que está no catálogo e não no Inmetro, o que está num fornecedor e não no outro,
+DES/R-D fora do certificado, dados do certificado (código de barras, Ø da haste, descrição padronizada) e «em aprovação» aqui e no DES/R-D.
+Rodada 2 (Q4b, Q5b, Q5c, Q7b–d): «sim para todas». Maquete `maquetes/update8_maquete.html` aprovada, com a animação do alfinete pedida depois.
+- [x] Menu: alfinete `#psd-pin` (fixado/desfixado no navegador, `html.psd-mini`), faixa de ícones que abre por cima; animação só no ícone.
+  Saíram o trilho com bolinhas (`.flowg`) e a faixa `.relbar` (CSS, `RELATED`/`FLOW_GROUPS` do app.py e o template).
+- [x] Fecha sozinho (`abas.py`, `/api/aba`): só pelo atalho (pythonw). Conferido com uma cópia sem janela na porta 5057: sem aviso de saída ficou
+  aberta; depois do aviso, fechou em 17 s. Acesso pelo celular em Configurações › Sistema (desligado; vale ao reabrir; mostra o endereço).
+- [x] Vendas: `ds_vendas_uf_cod` (mês × UF × código × linha, ~190 mil linhas em 3 anos, 104 s na 1ª carga) e o mapa azul com os 10 códigos do estado e
+  o Excel do estado. Conferido na cópia: set e out/2026 batem com a Curva A (out = R$ 25.467.648).
+- [x] Inmetro (`inmetro.py`): certificados guardam código de barras e marca (reimportar completa os antigos). Achado: o mesmo código pode estar em
+  dois certificados do mesmo fornecedor (AMD0107: Convencional e Semi-estrutural) — referência = o da família do catálogo; divergência de família = regra
+  de Anomalias (43 na cópia). Cópia: 904 com certificado (902 nos dois, 2 só E-WIN), 10 sem, 288 só no certificado, divergências 43 família + 4 código
+  de barras, DES/R-D em andamento: 46 códigos em aprovação, 130 fora. Faixa «Inmetro» do DES/R-D = as três situações; R-D: 43 itens em aprovação
+  na faixa = 43 na lista.
+- [x] Testes: `test_abas`, `test_inmetro` e `test_12b` (integração); integração verde.
+- [ ] Commit, à espera do usuário. No banco real o código de barras dos certificados só aparece depois de reimportar as planilhas Inmetro.

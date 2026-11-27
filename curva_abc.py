@@ -111,6 +111,51 @@ def classes(today=None):
         _CLS.update(k=key, v=out)
     return _CLS["v"]
 
+def _uf_rows(year=None, month=None, linhas=None, uf=None):
+    """ds_vendas_uf_cod (mês × UF × código × linha, servidor) no período e no universo de linhas da tela Vendas → [{uf, code, q, v}]."""
+    from queries import q
+    ls, lp = linha_sql(linhas, desc="''"); where, par = ["code IS NOT NULL", "trim(coalesce(uf,''))<>''", ls], list(lp)
+    if year: where.append("substr(sale_date,1,4)=?"); par.append(str(int(year)))
+    if month: where.append("substr(sale_date,6,2)=?"); par.append(f"{int(month):02d}")
+    if uf: where.append("upper(trim(uf))=?"); par.append(str(uf).strip().upper())
+    return q("SELECT upper(trim(uf)) uf, upper(code) code, SUM(qty) q, SUM(total) v FROM ds_vendas_uf_cod WHERE " + " AND ".join(where) + " GROUP BY 1, 2", par)
+
+def _descricoes(codes):
+    from queries import q
+    codes = list(codes)
+    if not codes: return {}
+    out = {}
+    for i in range(0, len(codes), 800):
+        part = codes[i:i + 800]
+        out.update({r["c"]: r["d"] for r in q(f"SELECT upper(perfect_code) c, description d FROM products WHERE upper(perfect_code) IN ({','.join('?' * len(part))})", part)})
+    return out
+
+def por_uf(year=None, month=None, linhas=None, top=10):
+    """Update 8 · mapa da tela Vendas: peças e R$ por UF no período e nas linhas da tela, com os `top` códigos mais vendidos (em peças) de cada UF."""
+    from analytics import _has
+    from queries import q1
+    if not _has("ds_vendas_uf_cod"): return {"available": False}
+    rows = _uf_rows(year, month, linhas)
+    if not rows:
+        vazio = not (q1("SELECT 1 x FROM ds_vendas_uf_cod LIMIT 1") or {}).get("x")
+        return {"available": True, "sem_dados": vazio, "por_uf": [], "linhas_sel": linhas_sel(linhas)}
+    by = {}
+    for r in rows:
+        a = by.setdefault(r["uf"], {"uf": r["uf"], "pecas": 0.0, "valor": 0.0, "cods": []}); a["pecas"] += r["q"] or 0; a["valor"] += r["v"] or 0; a["cods"].append(r)
+    tops = {u: sorted(a["cods"], key=lambda x: (-(x["q"] or 0), x["code"]))[:top] for u, a in by.items()}
+    desc = _descricoes({x["code"] for t in tops.values() for x in t})
+    out = []
+    for u, a in sorted(by.items(), key=lambda kv: -kv[1]["pecas"]):
+        out.append({"uf": u, "pecas": a["pecas"], "valor": a["valor"], "n_codigos": len(a["cods"]),
+                    "top": [{"code": x["code"], "desc": desc.get(x["code"]), "pecas": x["q"] or 0, "valor": x["v"] or 0, "pct": round(100 * (x["q"] or 0) / a["pecas"], 1) if a["pecas"] else 0} for x in tops[u]]})
+    per = q1("SELECT MIN(sale_date) a, MAX(sale_date) b FROM ds_vendas_uf_cod") or {}
+    return {"available": True, "por_uf": out, "linhas_sel": linhas_sel(linhas), "primeiro_mes": (per.get("a") or "")[:7], "ultimo_mes": (per.get("b") or "")[:7]}
+
+def uf_codigos(uf, year=None, month=None, linhas=None):
+    """Todos os códigos vendidos numa UF (Excel do estado), do maior para o menor em peças."""
+    rows = sorted(_uf_rows(year, month, linhas, uf), key=lambda x: (-(x["q"] or 0), x["code"])); tot = sum(r["q"] or 0 for r in rows); desc = _descricoes({r["code"] for r in rows})
+    return [{"code": r["code"], "desc": desc.get(r["code"]), "pecas": r["q"] or 0, "valor": r["v"] or 0, "pct": round(100 * (r["q"] or 0) / tot, 2) if tot else 0} for r in rows]
+
 def payload(year=None, month=None, limit=None, linhas=None):
     from analytics import _has
     from queries import q

@@ -17,6 +17,9 @@
   const clip = (t, w = "max-w-[16rem]") => t ? `<span class="block truncate ${w}" title="${esc(t)}">${esc(t)}</span>` : '<span class="text-mute">–</span>';
   /* bolinha do sub status: finalizado = verde · reprovado = vermelho · o resto (pendente…) = laranja */
   const tom = v => /REPROVAD/.test(v) ? "no" : /FINALIZAD|CONCLU|APROVAD/.test(v) ? "ok" : "";
+  /* update 8: situação Inmetro — selo âmbar «Inmetro em aprovação», o nº em cinza, nada quando fora do certificado; bolinha da faixa: aprovação = laranja, com nº = verde, fora = cinza */
+  const TOM_INM = { aprovacao: "", com_num: "ok", fora: "mu" };
+  const inmCell = m => !m || m.sit === "fora" ? '<span class="text-mute">–</span>' : `<span class="psd-inm${m.sit === "aprovacao" ? " am" : ""}">${m.sit === "aprovacao" ? "Inmetro em aprovação" : "Inmetro"}${m.num ? (m.sit === "aprovacao" ? ", " : " ") + esc(m.num) : ""}</span>`;
   const subCell = subs => { const vs = [...new Map((subs || []).map(x => [x.v, x])).values()];
     return vs.length ? `<div class="psd-sublist">${vs.map(x => `<span title="Sub status ${esc(x.l.toLowerCase())}"><i class="psd-sd ${tom(x.v)}"></i>${esc(x.v)}</span>`).join("")}</div>` : '<span class="text-mute">–</span>'; };
 
@@ -96,7 +99,7 @@
     const desenharSubs = () => {
       const s = F.get(), grupos = fc.subs.filter(g => g.values.length && !MAIS_SUBS.includes(g.key));
       const chipSub = (g, x) => { const v = `${g.key}:${x.f || x.v}`, on = s.sub === v;
-        return `<button type="button" data-sub="${esc(v)}" aria-pressed="${on}" class="psd-subc${!x.l && !on ? " zero" : ""}" title="${nf(x.l)} item(ns), ${cod(x.n)}"><i class="psd-sd ${tom(x.v)}"></i><span class="v">${esc(x.v)}</span><span class="n">${nf(x.l)}</span></button>`; };
+        return `<button type="button" data-sub="${esc(v)}" aria-pressed="${on}" class="psd-subc${!x.l && !on ? " zero" : ""}" title="${nf(x.l)} item(ns), ${cod(x.n)}"><i class="psd-sd ${x.inm ? TOM_INM[x.inm] : tom(x.v)}"></i><span class="v">${esc(x.v)}</span><span class="n">${nf(x.l)}</span></button>`; };
       $("#rsub").innerHTML = grupos.length ? grupos.map(g => { const com = g.values.filter(x => x.l || s.sub === `${g.key}:${x.f || x.v}`), sem = g.values.filter(x => !com.includes(x)), ab = zeros.has(g.key);
         return `<div class="psd-subf"><span class="g">${esc(g.label)}</span><div class="cs">${com.map(x => chipSub(g, x)).join("")}${ab ? sem.map(x => chipSub(g, x)).join("") : ""}
           ${sem.length ? `<button type="button" class="psd-subz" data-zeros="${esc(g.key)}" aria-expanded="${ab}">${ab ? "esconder os sem itens" : `+${sem.length} sem itens`}</button>` : ""}${!com.length && !ab ? '<span class="text-xs text-mute">nenhum item</span>' : ""}</div></div>`; }).join("")
@@ -109,10 +112,10 @@
       try {
         const d = await J(`/api/rd/${k}?` + qs), pages = Math.max(1, Math.ceil(d.total / d.size)), ativos = Object.keys(s).filter(x => x !== "ordem" && x !== "linha").length;
         $("#rmeta").innerHTML = `<b class="text-ink">${nf(d.linhas)}</b> item(ns)${d.total !== d.linhas ? ` (${cod(d.total)})` : ""} em «${esc(nomeEstagio(estagio(s)))}», ${esc(linNome(fc.linha))}${fc.marca !== "TODAS" ? `, marca ${esc(fc.marca)}` : ""}${ativos ? `, ${ativos} filtro(s) ativo(s)` : ""}`;
-        const cols = [{ h: "Código" }, { h: "Curtidas" }, { h: "Status" }, { h: "Sub status", nw: false }, { h: "Aplic.", r: true }, { h: "FOB (US$)" }, { h: "Descrição" },
+        const cols = [{ h: "Código" }, { h: "Curtidas" }, { h: "Status" }, { h: "Sub status", nw: false }, { h: "Inmetro" }, { h: "Aplic.", r: true }, { h: "FOB (US$)" }, { h: "Descrição" },
           { h: "Montadora(s)" }, { h: "Veículo(s)" }, { h: "Fornecedor" }, { h: "Amostra" }, { h: "Catálogo" }, { h: "Desenho" }];
         $("#rt").innerHTML = TW.table(cols, d.rows.map(r => [`<a href="#" class="font-semibold text-blue-600" data-rd="${k}" data-code="${esc(r.code)}">${esc(r.code)}</a>`,
-          curtidas(r), statusCell(r.statuses), subCell(r.subs), nf(r.n_rows), TW.fobRD(r.fob), clip(r.description, "max-w-[18rem]"), clip(r.makes, "max-w-[10rem]"), clip(r.vehicles), clip(r.suppliers, "max-w-[8rem]"),
+          curtidas(r), statusCell(r.statuses), subCell(r.subs), inmCell(r.inmetro), nf(r.n_rows), TW.fobRD(r.fob), clip(r.description, "max-w-[18rem]"), clip(r.makes, "max-w-[10rem]"), clip(r.vehicles), clip(r.suppliers, "max-w-[8rem]"),
           r.sent ? `enviada ${TW.dmy(r.sent)}` : r.bought ? `comprada ${TW.dmy(r.bought)}` : '<span class="text-mute">–</span>', r.product_id ? lnk(r.product_id, "ficha") : '<span class="text-mute">–</span>', `<span data-dw="${esc(r.code)}"></span>`]),
           { h: "max-h-[65vh]" });
         dwFill($("#rt"));

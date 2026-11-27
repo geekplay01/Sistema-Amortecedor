@@ -24,6 +24,8 @@ def _des_rd(c, tipo):
             "quando diferem, os códigos; o quadro de sub status conta dentro do estágio escolhido e clicar num sub status filtra a lista.",
             "«Curtidos» e «Pendente compras» ficam nos atalhos da barra de filtros.",
             "Item <b>bloqueado ou inativo no ERP</b> (ESTOQUE_ANALISE_REPOSICAO) sai das listas e contadores — por isso o número pode ficar um abaixo do sistema PERFECT. As metas não mudam.",
+            "<b>Inmetro</b> (faixa do quadro, coluna e ficha): <b>em aprovação</b> = sub status PENDENTE INMETRO ou descrição Inmetro «PENDENTE INCLUSÃO NO CERTIFICADO»; "
+            "<b>com nº Inmetro</b> = código nas planilhas de certificado ou nº Inmetro no servidor; <b>fora do certificado</b> = nenhum dos dois. O código vale pela situação mais forte entre as aplicações.",
             "<b>Sub status</b>: só o que o servidor manda, por coluna; um valor composto («A / B») conta em cada parte. Validação aprovada, reprovada e pendente qualidade ficam sempre no quadro. "
             "Negociação e vendas" + (" e «Pendente controladoria» (o texto CONTROLADORIA em qualquer status)" if tipo == "des" else "") + " ficam em «Mais filtros».",
             "<b>Curtidos</b> aparecem primeiro; desempate pelo status mais avançado. Nada é marcado à mão.",
@@ -61,7 +63,10 @@ def lista():
         ("vendas", "Vendas (Curva A)", [
             "Faturamento do servidor com IPI (VALOR_TOTAL_CIPI, data de faturamento). Universo padrão = o do BI: LINHA exatamente «AMORTECEDOR»; linha pesada e kit só pelo seletor da tela.",
             "Curva ABC: A até 80% do valor acumulado, B até 95%, o resto C. O resumo mostra o último mês fechado, o mês atual (parcial) e o acumulado do ano com o mesmo período do ano anterior.",
-            "Conferência com o BI: o export do BI traz os filtros (ano, mês, LINHA) na linha «Filtros aplicados», e eles são aplicados também aos dados do servidor."]),
+            "Conferência com o BI: o export do BI traz os filtros (ano, mês, LINHA) na linha «Filtros aplicados», e eles são aplicados também aos dados do servidor.",
+            "<b>Vendas por estado</b>: o mesmo faturamento, somado no servidor por mês, estado (UF do faturamento), código e linha; segue o ano, o mês e as linhas escolhidos na tela. "
+            "Os tons do mapa dividem os estados em cinco faixas iguais. Clicar num estado mostra os 10 códigos mais vendidos ali (em peças) e o Excel traz todos os códigos do estado. "
+            "Venda sem estado ou para o exterior entra só no total."]),
         ("garantia", "Garantia", [
             "Só do servidor (ANALITICO_GARANTIA_DEVOLUCAO), FAMILIA AMORTECEDOR ou AMORTECEDOR LINHA PESADA, todos os anos. Valor com IPI.",
             "Padrão da tela: tipos GARANTIA, GARANTIA AUTOMATICA, CRÉDITO GARANTIA e GARANTIA EM DEVOLUÇÃO, sem ocorrência cancelada, no ano atual (data de cadastro). Defeito agrupado sem o prefixo AM-xxx/O-xxx.",
@@ -149,7 +154,14 @@ def lista():
             "Aceita código PERFECT, OEM ou de concorrente (com ou sem ponto/hífen: 16.470 = 16470) ou uma aplicação (ex.: strada 2012 dianteiro). Procura no catálogo e nos itens em DESENVOLVIMENTO e REDESENVOLVIMENTO."]),
         ("produtos", "Produtos e códigos", [
             "Na ordem do catálogo (planilha CatalogoAMD, que prevalece). A busca aceita código PERFECT, OEM ou de concorrente — a linha mostra qual referência casou.",
-            "Ficha do item: peso e código de barras do BI03 (Protheus) quando ele tem o item; IPI do servidor. «—» = não consta nas bases."]),
+            "Ficha do item: peso e código de barras do BI03 (Protheus) quando ele tem o item; IPI do servidor. «—» = não consta nas bases.",
+            "<b>Aba Inmetro</b>: os certificados das planilhas «Inmetro… Certificado» de cada fornecedor (ZS e E-WIN) contra o catálogo. Catálogo: nos dois fornecedores, só ZS, "
+            "só E-WIN ou sem certificado. «Só no certificado» = código que está no certificado e não está no catálogo. DES/R-D: itens em andamento, contados em códigos — "
+            "<b>em aprovação</b> (sub status PENDENTE INMETRO ou descrição «PENDENTE INCLUSÃO»), <b>com nº Inmetro</b> (código no certificado ou nº vindo do servidor) e <b>fora do certificado</b>.",
+            "Um código pode estar em mais de um certificado do mesmo fornecedor (famílias diferentes): vale o da família do catálogo; os outros aparecem ao passar o mouse e no Excel.",
+            "<b>Divergências</b>: família (algum certificado de outra família, como em Anomalias), Ø da haste (diferença maior que 0,05 mm) e código de barras do catálogo fora dos do certificado.",
+            "<b>Descrição padronizada</b>: material, categoria, tratamento térmico e Ø da haste escritos de um jeito só para os dois fornecedores; o texto original aparece ao passar o mouse. "
+            "O código de barras e a marca de cada certificado entram ao reimportar as planilhas Inmetro (Atualização de dados)."]),
         ("aplicacoes", "Aplicações veiculares", ["Veículos em que cada amortecedor do catálogo é aplicado (um produto pode ter várias aplicações). Clique no código para abrir a ficha."]),
         ("comparacao", "Comparação técnica", ["Escolha de 2 a 4 produtos para comparar os dados lado a lado. As linhas que diferem ficam destacadas; dimensões parecidas não bastam para afirmar intercambialidade."]),
         ("lados", "Lados", ["Amortecedores do catálogo (CatalogoAMD.xlsx). O par LD × LE vem da planilha «Lados - Amortecedores.xlsx»; se ela não cobrir, dos Produtos Relacionados ou da aplicação."]),

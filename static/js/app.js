@@ -27,6 +27,28 @@
     });
     fetch("/api/menu/counts").then(r => r.json()).then(c => Object.entries(c).forEach(([k, v]) => { const b = navEl.querySelector(`[data-badge="${k}"]`); if (b && v) { b.textContent = v > 999 ? Math.round(v / 100) / 10 + "k" : v; b.hidden = false; } })).catch(() => { });
   }
+  /* update 8: cada página avisa que está aberta (agora e a cada 30 s) e, ao sair, que saiu — pelo atalho, o sistema fecha quando a última aba fecha (abas.py) */
+  { const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const sinal = ev => { const b = JSON.stringify({ id, ev });
+      if (ev === "saiu" && navigator.sendBeacon) { navigator.sendBeacon("/api/aba", new Blob([b], { type: "application/json" })); return; }
+      fetch("/api/aba", { method: "POST", headers: { "Content-Type": "application/json" }, body: b, keepalive: true }).catch(() => { }); };
+    sinal("ping"); setInterval(() => sinal("ping"), 30000);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sinal("ping"); });
+    addEventListener("pageshow", e => { if (e.persisted) sinal("ping"); });
+    addEventListener("pagehide", () => sinal("saiu")); }
+  /* update 8: alfinete — fixado (padrão) ou desfixado (faixa de ícones que abre ao passar o mouse); a escolha fica no navegador (base.html aplica antes de desenhar) */
+  const pin = $("#psd-pin");
+  if (pin && side) {
+    const H = document.documentElement, marca = () => { const m = H.classList.contains("psd-mini"); pin.setAttribute("aria-pressed", String(!m));
+      pin.title = m ? "Fixar o menu" : "Desfixar o menu"; pin.setAttribute("aria-label", pin.title); };
+    marca();
+    pin.addEventListener("click", () => { const m = !H.classList.contains("psd-mini"); H.classList.toggle("psd-mini", m); side.classList.remove("abre");
+      try { localStorage.setItem("psd-menu-fixo", m ? "0" : "1"); } catch (e) { }
+      marca(); pin.classList.remove("crava", "solta"); void pin.offsetWidth; pin.classList.add(m ? "solta" : "crava"); });
+    side.addEventListener("focusin", e => { if (H.classList.contains("psd-mini") && e.target.matches(":focus-visible")) side.classList.add("abre"); });
+    side.addEventListener("focusout", e => { if (!side.contains(e.relatedTarget)) side.classList.remove("abre"); });
+    side.addEventListener("keydown", e => { if (e.key === "Escape" && side.classList.contains("abre")) { side.classList.remove("abre"); document.activeElement && document.activeElement.blur(); } });
+  }
   const nav = $("#navsearch");
   if (nav) nav.addEventListener("input", () => {
     const t = nav.value.toLowerCase().trim(); side.classList.toggle("filtering", !!t);
