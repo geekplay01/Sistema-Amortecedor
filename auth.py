@@ -119,8 +119,11 @@ def _admins():
     try: return c.execute("SELECT COUNT(*) FROM users WHERE role='admin'").fetchone()[0]
     finally: c.close()
 
+ROLES = ("admin", "user", "aprovador_ipi")          # update 9: «Aprovador IPI» só vê a tela de aprovação de IPI (APROVADOR_OK)
+APROVADOR_OK = ("/aprovacao-ipi", "/api/ipi/aprovador", "/api/aba", "/api/auth/")
+
 def admin_set_role(uid, role):
-    if role not in ("admin", "user"): raise ValueError("Perfil inválido.")
+    if role not in ROLES: raise ValueError("Perfil inválido.")
     r = _row(uid)
     if not r: raise ValueError("Usuário não encontrado.")
     if r["role"] == "admin" and role != "admin" and _admins() <= 1: raise ValueError("Precisa existir ao menos um administrador.")
@@ -155,7 +158,10 @@ def init_app(app):
     def gate():
         if not enabled() or request.path.startswith(OPEN_PREFIXES): return None
         if n_users() == 0: return (jsonify(error="Crie o administrador em /setup.", setup=True), 401) if request.path.startswith("/api/") else redirect(url_for("setup"))
-        if current_user(): return None
+        u = current_user()
+        if u and u.get("role") == "aprovador_ipi" and not request.path.startswith(APROVADOR_OK):          # update 9: o aprovador só vê a tela dele
+            return (jsonify(error="Sem acesso a esta parte do sistema.", aprovador=True), 403) if request.path.startswith("/api/") else redirect("/aprovacao-ipi")
+        if u: return None
         return (jsonify(error="Faça login.", login=True), 401) if request.path.startswith("/api/") else redirect(url_for("login", next=request.full_path.rstrip("?")))
 
     def _safe_next(n): return n if n and n.startswith("/") and not n.startswith("//") else "/"
@@ -234,7 +240,7 @@ def init_app(app):
     @app.post("/api/admin/users")
     def adm_user_new():
         _need_admin(); b = request.get_json(force=True) or {}
-        try: create_user(b.get("username"), b.get("password"), b.get("role") if b.get("role") in ("admin", "user") else "user")
+        try: create_user(b.get("username"), b.get("password"), b.get("role") if b.get("role") in ROLES else "user")
         except ValueError as e: return jsonify(error=str(e)), 400
         return jsonify(ok=True)
 

@@ -763,10 +763,27 @@ LOCK_STALE_S = 45 * 60          # trava mais velha que isso = processo que morre
 def lock_path(store):
     return os.path.join(os.path.dirname(os.path.abspath(store.path)), "sincronizacao.lock")
 
-def _take_file_lock(path):
-    """Trava ENTRE PROCESSOS (tarefa agendada do Windows × app aberto): cria o arquivo de forma atômica; False se outro processo já tem a trava."""
+def _pid_vivo(pid):
+    """O processo `pid` ainda existe? (Windows: OpenProcess + GetExitCodeProcess; outros: os.kill(pid, 0)). Na dúvida, True."""
     try:
-        if time.time() - os.path.getmtime(path) > LOCK_STALE_S: os.remove(path)
+        pid = int(pid)
+        if os.name == "nt":
+            import ctypes
+            k = ctypes.windll.kernel32; h = k.OpenProcess(0x1000, False, pid)          # PROCESS_QUERY_LIMITED_INFORMATION
+            if not h: return False
+            try:
+                code = ctypes.c_ulong(); ok = k.GetExitCodeProcess(h, ctypes.byref(code)); return not ok or code.value == 259          # STILL_ACTIVE
+            finally: k.CloseHandle(h)
+        os.kill(pid, 0); return True
+    except (ValueError, TypeError): return True
+    except OSError: return False
+
+def _take_file_lock(path):
+    """Trava ENTRE PROCESSOS (tarefa agendada do Windows × app aberto): cria o arquivo de forma atômica; False se outro processo já tem a trava.
+    Trava velha (> LOCK_STALE_S) ou de um processo que já não existe (app fechado no meio da sincronização, 27/11/2026) é descartada."""
+    try:
+        m = re.search(r"pid=(\d+)", open(path, encoding="utf-8", errors="ignore").read())
+        if time.time() - os.path.getmtime(path) > LOCK_STALE_S or (m and not _pid_vivo(m.group(1))): os.remove(path)
     except OSError: pass
     try: fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError: return False

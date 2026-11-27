@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block title %}Aprovação de IPI · PERFECT Shock Data{% endblock %}
+{% block bodyclass %}psd-aprov{% endblock %}
+{% block body %}
+{# update 9: tela do perfil «Aprovador IPI» — só leitura; a aprovação é pela resposta do e-mail (ipi.py) #}
+<header class="psd-aph"><span class="psd-stripes" aria-hidden="true"><i></i><i></i><i></i><i></i></span><h1>Aprovação de IPI</h1>
+  <span class="q">{% if user %}<span>{{ user.username }}</span><a href="/logout">Sair</a>{% endif %}</span></header>
+<main class="psd-apc" id="ap" aria-live="polite"><p>Carregando…</p></main>
+<script src="{{ url_for('static', filename='js/aprovacao_ipi.js') }}"></script>
+{% endblock %}

@@ -18,6 +18,7 @@ CATEGORIES = ['Produtos / códigos', 'Aplicações', 'Dimensões técnicas', 'Fo
 db.init_db()
 shipments.sync()   # envios coerentes com Compra de amostra e os itens em desenvolvimento
 goals.ensure()
+import ipi; ipi.ensure()          # update 9: envios e respostas da aprovação de IPI
 
 # slug, rótulo, ícone (nome em static/img/icones.svg — tools/icones.py), etapa em que foi implementada
 PAGES = [
@@ -45,6 +46,7 @@ PAGES = [
  ("validacao", "Validação", "clipboard-check", 24),          # etapa 24: validação de desenho (PERFECT × fornecedor) que gera o F-008
  ("amostras", "Compra de amostras", "shopping-cart", 3),
  ("damping", "Damping force", "activity", 3),
+ ("monitoramento-ipi", "Monitoramento de IPI", "file-spreadsheet", 24),          # update 9: aprovação do IPI dos itens em desenvolvimento
  ("pendencias", "Pendências de dados", "circle-alert", 4),
  ("fontes", "Fontes e histórico", "history", 2),
  ("configuracoes", "Configurações e backup", "settings", 5),
@@ -67,7 +69,7 @@ CARDS = [  # chave, rótulo, destino, dica — produtos, DES e R-D ficam só na 
 PRIMARY = ["metas", "pedidos-aberto", "vendas", "estoque", "garantia"]     # menu fixo da sidebar (Metas & Validação · Pedidos em Aberto · Vendas (Curva A) · Estoque · Garantia)
 # Menu na ordem do FLUXO do produto: desenvolve → compra amostra → entra no catálogo → compra/importa → vende (a numeração dos grupos mostra a ordem)
 MENU = [("Visão geral", ["dashboard", "brands"]),
-        ("1 · Desenvolvimento", ["desenvolvimento", "redesenvolvimento", "validacao", "desenhos", "damping"]),
+        ("1 · Desenvolvimento", ["desenvolvimento", "redesenvolvimento", "validacao", "desenhos", "damping", "monitoramento-ipi"]),
         ("2 · Amostras", ["amostras", "envio"]),
         ("3 · Catálogo", ["pesquisa", "produtos", "aplicacoes", "lados", "comparacao", "cobertura", "anomalias"]),
         ("4 · Compras", ["fob"]),
@@ -714,6 +716,46 @@ def api_inmetro():
     f = {k: request.args.get(k, "") for k in ("sit", "familia", "forn", "q")}
     return jsonify(inmetro.tela(f, request.args.get("page", 1, type=int)))
 
+# ---- update 9 · Monitoramento de IPI (ipi.py) ----
+@app.get("/api/ipi")
+def api_ipi(): return jsonify(ipi.publico({k: request.args.get(k, "") for k in ("sit", "ipi", "q")}))
+
+@app.get("/api/ipi/aprovador")          # tela do perfil «Aprovador IPI»: só leitura
+def api_ipi_aprovador():
+    d = ipi.publico({}); envio = [l for l in d["itens"] if l["sit"] in ("enviado", "ressalva")]
+    return jsonify(kpi=d["kpi"], aprovadores=d["aprovadores"], envio=envio, proximos=d["proximos"], usuario=(auth.current_user() or {}).get("username"))
+
+@app.post("/api/ipi/envio")
+def api_ipi_envio():
+    admin_only()
+    try: return jsonify(ipi.preparar_envio(_quem()))
+    except ValueError as e: return jsonify(error=str(e)), 400
+
+@app.get("/api/ipi/envio/<int:eid>.xlsx")
+def api_ipi_envio_xlsx(eid):
+    try: bio, nome = ipi.planilha(eid)
+    except ValueError as e: return jsonify(error=str(e)), 404
+    return send_file(bio, as_attachment=True, download_name=nome, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+@app.post("/api/ipi/envio/<int:eid>/<acao>")
+def api_ipi_envio_acao(eid, acao):
+    admin_only()
+    try:
+        if acao == "confirmar": ipi.confirmar_envio(eid)
+        elif acao == "cancelar": ipi.cancelar_envio(eid)
+        else: abort(404)
+    except ValueError as e: return jsonify(error=str(e)), 400
+    return jsonify(ok=True)
+
+@app.post("/api/ipi/resposta")          # resposta da aprovadora (lida no Gmail a pedido do usuário, ou colada na tela)
+def api_ipi_resposta():
+    admin_only(); b = request.get_json(force=True) or {}
+    try: return jsonify(ipi.registrar_resposta(b.get("envio_id"), b.get("autor"), b.get("recebido_em"), b.get("texto") or "", _quem()))
+    except (ValueError, TypeError) as e: return jsonify(error=str(e)), 400
+
+@app.get("/aprovacao-ipi")
+def aprovacao_ipi(): return render_template("aprovacao_ipi.html", user=auth.current_user())
+
 @app.get("/api/vendas/uf")          # update 8: mapa da tela Vendas (peças e R$ por UF + os 10 códigos mais vendidos de cada UF)
 def api_vendas_uf():
     try: return jsonify(curva_abc.por_uf(request.args.get("year"), request.args.get("month"), request.args.get("linhas")))
@@ -811,8 +853,13 @@ def api_sistema_celular():
 @app.post("/api/sistema/fechar")
 def api_sistema_fechar():
     if app.config.get("TESTING"): return jsonify(ok=True, teste=True)          # nos testes não derruba o processo
-    import threading; threading.Timer(0.6, lambda: os._exit(0)).start()
-    return jsonify(ok=True)
+    import threading, time
+    def _sair():          # 27/11/2026: fechar no meio de uma sincronização deixava a trava e cortava a carga — espera ela terminar (até 15 min)
+        t0 = time.time()
+        while data_pipeline._STATE.get("running") and time.time() - t0 < 900: time.sleep(1)
+        time.sleep(0.6); os._exit(0)
+    threading.Thread(target=_sair, daemon=True).start()
+    return jsonify(ok=True, espera_sincronizacao=bool(data_pipeline._STATE.get("running")))
 
 def _ja_aberto(porta):
     """Já há um sistema respondendo nesta porta? (abrir de novo só abre o navegador)"""
@@ -835,11 +882,12 @@ if __name__ == "__main__":
     if os.environ.get("PSD_SCHEDULER", "on") != "off": data_pipeline.start_scheduler(on_done=_after_sync)      # sincronização diária automática (DEV_SYNC_HOURS, padrão 24)
     threading.Thread(target=_aquecer, daemon=True).start()
     if os.environ.get("PSD_ABRIR") == "1": threading.Timer(1.5, webbrowser.open, (url,)).start()
-    # update 8: pelo atalho (pythonw, sem janela) o sistema fecha sozinho quando a última aba fecha; PSD_AUTOFECHAR=0 desliga
-    if _sem_janela and os.environ.get("PSD_AUTOFECHAR", "1") != "0":
+    host = os.environ.get("HOST") or ("0.0.0.0" if rules.acesso_celular() else "127.0.0.1")      # update 8: «Acesso pelo celular» atende a rede
+    # update 8: pelo atalho (pythonw, sem janela) o sistema fecha sozinho quando a última aba fecha; PSD_AUTOFECHAR=0 desliga.
+    # update 9: com o acesso pela rede ligado (aprovadores de IPI), não fecha sozinho — os outros aparelhos dependem do app aberto
+    if _sem_janela and os.environ.get("PSD_AUTOFECHAR", "1") != "0" and host in ("127.0.0.1", "localhost"):
         import abas
         def _fechar_sozinho(): print(f"{datetime.datetime.now():%d/%m/%Y %H:%M:%S} · última aba fechada: sistema encerrado"); os._exit(0)
         app.config["AUTOFECHAR"] = True; abas.iniciar(_ocupado, _fechar_sozinho)
-    host = os.environ.get("HOST") or ("0.0.0.0" if rules.acesso_celular() else "127.0.0.1")      # update 8: «Acesso pelo celular» atende a rede
     app.config.update(HOST_ATIVO=host, PORTA_ATIVA=porta)
     app.run(host=host, port=porta, debug=False)

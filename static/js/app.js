@@ -138,8 +138,9 @@ document.addEventListener("click", e => { const b = e.target.closest("#themebtn"
 /* etapa 24: o sistema abre sem a janela do cmd; «Fechar o sistema» (botão no topo) encerra o servidor */
 document.addEventListener("click", async e => { if (!e.target.closest("#psd-fechar") || !window.PSDTW) return;
   if (!(await PSDTW.confirmar({ titulo: "Fechar o sistema?", texto: "O servidor para e esta página deixa de funcionar. Para abrir de novo, use o atalho «PERFECT Shock Data» (ou o iniciar.bat).", botao: "Fechar o sistema", perigo: true, icone: "power" }))) return;
-  try { await fetch("/api/sistema/fechar", { method: "POST" }); } catch (er) { }
-  document.body.innerHTML = '<div style="display:grid;place-items:center;min-height:100vh;font:16px Segoe UI,sans-serif;color:#5A6378;text-align:center;padding:24px"><div><b style="font-size:20px;color:#202D56">O sistema foi fechado.</b><br>Pode fechar esta aba. Para abrir de novo, use o atalho «PERFECT Shock Data».</div></div>'; });
+  let espera = false; try { espera = !!(await (await fetch("/api/sistema/fechar", { method: "POST" })).json()).espera_sincronizacao; } catch (er) { }
+  document.body.innerHTML = '<div style="display:grid;place-items:center;min-height:100vh;font:16px Segoe UI,sans-serif;color:#5A6378;text-align:center;padding:24px"><div><b style="font-size:20px;color:#202D56">'
+    + (espera ? "O sistema fecha quando a sincronização terminar." : "O sistema foi fechado.") + '</b><br>Pode fechar esta aba. Para abrir de novo, use o atalho «PERFECT Shock Data».</div></div>'; });
 
 
 // ---- chip de sincronização (topo direito): data da última sincronização com o servidor SQL ----

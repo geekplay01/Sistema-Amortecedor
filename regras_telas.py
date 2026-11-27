@@ -146,6 +146,21 @@ def lista():
             "Validação concluída antes disso mostra «Preparar o par».",
             "<b>Excluir cota</b>: o ✕ da linha tira a medida desta validação (com «Desfazer»); no F-008 a linha fica vazia. No desenho, clique no número e aperte Delete "
             "(ou botão direito › «Tirar o número») para tirar só a posição; Ctrl+Z devolve."]),
+        ("monitoramento-ipi", "Monitoramento de IPI", [
+            "Itens de DESENVOLVIMENTO em andamento das famílias Amortecedor e Linha pesada, de todas as marcas; um item = uma linha do servidor (ID). Tudo vem do servidor (DESENVOLVIMENTO_PRODUTOS).",
+            "<b>Pendente controladoria</b> = status FINALIZANDO CIT (saiu de compras). Dentro dele: <b>pendente precificação</b> (a sugestão ainda não foi enviada), "
+            "<b>enviados para aprovação</b> (e-mail confirmado no app) e <b>IPI aprovado</b>. O IPI do servidor é a sugestão cadastrada; a aprovação vem só do e-mail.",
+            "<b>Enviar para aprovação</b>: baixa a planilha no modelo IPI.xlsx (aba «AprovacaoIPI», as 16 colunas, IPI do servidor ou, sem ele, o sugerido) e abre o Gmail com Para "
+            "(Mariana Agostinho), Cópia (Gabriel Santos), assunto «Sugestão de IPI - Amortecedores - data» e o texto; o anexo é arrastado à mão. «Confirmar envio» passa os itens para «Enviado».",
+            "<b>Resposta</b>: só vira «IPI aprovado» quando o corpo do e-mail diz que aprovou («aprovei», «aprovado», «de acordo»…, sem «não» antes); o texto citado de e-mails anteriores é ignorado. "
+            "Código do envio citado na resposta fica «Com ressalva». A resposta é registrada pelo Claude, a pedido, ou colada na tela.",
+            "<b>Sugestão de IPI</b> (10,4 = leve e passeio; 2,6 = utilitário e pesado), nesta ordem: família Linha pesada; linha do catálogo (Leve; Pick-up e utilitários ou Pesada); "
+            "Fraga (caminhões e ônibus); palavras da aplicação (pick-up, furgão, cargo, van, caminhão, cabine, ônibus; «exceto …» não conta); o IPI que o mesmo veículo já teve no servidor "
+            "(sem o próprio código; «misto» quando teve os dois); senão 10,4 para conferir.",
+            "<b>Anomalias</b>: IPI do servidor diferente da sugestão; IPI do Protheus (BI03) diferente do servidor; veículo com os dois IPIs; Pedido confirmado ou Finalizando CIT sem IPI; "
+            "IPI diferente de 10,4 e 2,6; e-mail confirmado há mais de 7 dias sem aprovação.",
+            "<b>Próximos cadastros</b>: Em cotação e Pedido confirmado, com a sugestão. Os aprovadores (perfil «Aprovador IPI») veem só uma tela com os itens do envio aberto e os próximos, "
+            "sem poder mudar nada; com o acesso pela rede ligado, o sistema não fecha sozinho ao fechar a aba."]),
         ("amostras", "Compra de amostras", [
             "<b>Sugestões</b>: itens PERFECT em DESENVOLVIMENTO marcados PENDENTE COMPRAS, sem amostra comprada, fora do catálogo e com status diferente de ITEM RECEBIDO (só Amortecedor). "
             "Redesenvolvimento não tem sugestão: para comprar amostra de um item já desenvolvido, use «+ Nova amostra». Cada referência abre a consulta do menor preço.",

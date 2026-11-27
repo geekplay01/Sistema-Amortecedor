@@ -327,6 +327,40 @@ class Fluxo(unittest.TestCase):
         for v in g["values"]: self.assertEqual(C.get("/api/rd/rd?status=andamento&sub=inmetro:" + v["f"]).json["linhas"], v["l"], v["f"])          # o número da faixa (em andamento) abre a lista com o mesmo total
         self.assertIn("inmetro", C.get("/api/rd/rd?page=1").json["rows"][0])
 
+    def test_12c_update9_monitoramento_ipi(self):
+        self.assertIn("monitoramento-ipi", C.get("/dashboard").get_data(as_text=True)); self.assertEqual(C.get("/monitoramento-ipi").status_code, 200)
+        d = C.get("/api/ipi").json; K = d["kpi"]
+        self.assertEqual(K["controladoria"], K["prec"] + K["enviado"] + K["aprovado"]); self.assertEqual(K["leve"] + K["pesado"], K["controladoria"])
+        self.assertTrue(all(l["status"] == "FINALIZANDO CIT" for l in d["itens"])); self.assertTrue(all(l["status"] in ("EM COTAÇÃO", "PEDIDO CONFIRMADO") for l in d["proximos"]))
+        self.assertGreater(K["prec"], 0, "o banco sintético deveria ter DES em FINALIZANDO CIT")
+        e = C.post("/api/ipi/envio").json; self.assertEqual(e["itens"], K["prec"]); self.assertIn("mail.google.com/mail/?view=cm", e["gmail"]); self.assertIn("marianaagostinho%40", e["gmail"])
+        x = C.get(e["xlsx"]); self.assertEqual(x.status_code, 200); self.assertIn("APROVACAOIPI.xlsx", x.headers["Content-Disposition"])
+        import openpyxl, io; ws = openpyxl.load_workbook(io.BytesIO(x.data)).active
+        self.assertTrue(ws.title.startswith("AprovacaoIPI - ")); self.assertEqual([c.value for c in ws[1]][:3], ["ID", "CÓDIGO", "IPI"]); self.assertEqual(ws.max_row, K["prec"] + 1)
+        self.assertEqual(C.get("/api/ipi").json["kpi"]["prec"], K["prec"])                                   # preparar não muda nada até confirmar
+        self.assertTrue(C.post(f"/api/ipi/envio/{e['id']}/confirmar").json["ok"]); d = C.get("/api/ipi").json
+        self.assertEqual((d["kpi"]["prec"], d["kpi"]["enviado"]), (0, K["prec"])); self.assertEqual([a["estado"] for a in d["aprovadores"]], ["aguardando", "aguardando"])
+        r = C.post("/api/ipi/resposta", json={"envio_id": d["ultimo_envio"], "autor": "Mariana", "texto": "Ainda não aprovei, vejo amanhã."}).json; self.assertFalse(r["aprovou"])
+        self.assertEqual(C.get("/api/ipi").json["kpi"]["aprovado"], 0)                                    # sem aprovação no corpo, nada muda
+        cod = d["itens"][0]["code"]
+        r = C.post("/api/ipi/resposta", json={"envio_id": d["ultimo_envio"], "autor": "Mariana Fanganiello", "texto": f"Boa tarde,\nAprovei os itens, exceto o {cod}.\n\nEm qui. escreveu:\n> não aprovado"}).json
+        self.assertTrue(r["aprovou"]); self.assertEqual(r["ressalvas"], [cod])
+        d = C.get("/api/ipi").json; n_cod = sum(1 for l in d["itens"] if l["code"] == cod)
+        self.assertEqual((d["kpi"]["aprovado"], d["kpi"]["ressalva"]), (K["prec"] - n_cod, n_cod)); self.assertEqual(d["aprovadores"][0]["estado"], "aprovou")
+        self.assertEqual(C.get("/api/export/ipi.xlsx").status_code, 200)
+        # perfil «Aprovador IPI»: só a tela dele (o login é ligado só neste trecho)
+        import auth as AU
+        os.environ["PSD_AUTH"] = "on"
+        try:
+            AU.create_user("adm_teste_ipi", "senha-do-teste-1", "admin"); AU.create_user("aprov_teste_ipi", "senha-do-teste-2", "aprovador_ipi")
+            c2 = A.app.test_client(); c2.post("/login", data={"username": "aprov_teste_ipi", "password": "senha-do-teste-2", "next": "/"})
+            self.assertTrue(c2.get("/dashboard").headers["Location"].endswith("/aprovacao-ipi")); self.assertEqual(c2.get("/api/ipi").status_code, 403)
+            self.assertEqual(c2.get("/api/rd/des").status_code, 403); self.assertEqual(c2.get("/aprovacao-ipi").status_code, 200)
+            ap = c2.get("/api/ipi/aprovador").json; self.assertEqual(len(ap["envio"]), n_cod); self.assertEqual(c2.post("/api/ipi/envio").status_code, 403)
+        finally:
+            os.environ["PSD_AUTH"] = "off"
+            c = sqlite3.connect(DB); c.execute("DELETE FROM users WHERE username IN ('adm_teste_ipi','aprov_teste_ipi')"); c.commit(); c.close()
+
     def test_13_brands_mostra_codigo_perfect(self):
         d = C.get("/api/brands/MOTORCRAFT/items?all=1").json; self.assertTrue(d["rows"]); self.assertTrue(all("perfect_codes" in r for r in d["rows"]))
         com = [r for r in d["rows"] if r["perfect_codes"]]; self.assertTrue(com, "ao menos um item Motorcraft deveria ter código PERFECT relacionado")

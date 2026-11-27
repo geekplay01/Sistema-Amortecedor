@@ -258,3 +258,22 @@ Rodada 2 (Q4b, Q5b, Q5c, Q7b–d): «sim para todas». Maquete `maquetes/update8
   na faixa = 43 na lista.
 - [x] Testes: `test_abas`, `test_inmetro` e `test_12b` (integração); integração verde.
 - [ ] Commit, à espera do usuário. No banco real o código de barras dos certificados só aparece depois de reimportar as planilhas Inmetro.
+- [x] 27/11 16:2x · Sincronização travada: a das 15:56 foi cortada por «Fechar o sistema» (15:58:46) no meio da 1ª carga de `ds_vendas_uf_cod`
+  (> 1 min), e ficou `data\sincronizacao.lock` de um processo morto (pid 18348) — o app só ignorava a trava depois de 45 min. Trava apagada;
+  `data_pipeline._take_file_lock` descarta trava de processo que não existe (`_pid_vivo`), e «Fechar o sistema» espera a sincronização terminar
+  (até 15 min; a página avisa). Teste `test_trava`. Update 9 (IPI) pausado a pedido do usuário.
+
+## Update 9 (27/11/2026) — Monitoramento de IPI
+Pedido: controlar a aprovação de IPI dos itens em desenvolvimento (indicadores, tabela do servidor no modelo IPI.xlsx, anomalias, e-mail para a Mariana
+e o Gabriel Santos, tela para os aprovadores, regra 10,4 leve e passeio × 2,6 utilitário e pesado pela aplicação). Grilling em 2 rodadas:
+- IPI do servidor = sugestão (cadastrada pelo Douglas); aprovação só pelo corpo do e-mail da Mariana; Gusmão fora por enquanto; módulo novo
+  «Monitoramento de IPI» no grupo 1; aprovadores só leitura; com acesso pela rede, não fecha sozinho.
+- Fatos levantados: «pendente precificação» não existe no servidor; «PENDENTE CONTROLADORIA» aparece 1 vez (sub status CIT); IPI 10,4 em 438 e 2,6 em
+  134 linhas; e-mails anteriores para marianaagostinho@ com cópia gabrielsantos@; a Mariana responde em texto livre («Aprovei na sexta…»).
+- Maquetes: 1ª (prévia do e-mail na tela) → 2ª pedida: só o botão, que abre o Gmail; filtros refeitos; anomalias em aba; tela dos aprovadores em
+  azul-petróleo; depois azul mais escuro no tema escuro e IDs. Aprovada.
+- [x] `ipi.py` (sugestão, situação, envios, respostas, anomalias, planilha), rotas `/api/ipi*`, `/aprovacao-ipi`, perfil `aprovador_ipi` (auth),
+  `telas/ipi.js`, `aprovacao_ipi.js`, Excel `ipi.xlsx`. Conferido na cópia: 47 em FINALIZANDO CIT (35 → 10,4; 12 → 2,6), 2 anomalias; fluxo
+  preparar → planilha → confirmar → resposta «Aprovei…, exceto o X» → 46 aprovados e 1 com ressalva, bolinha da Mariana verde.
+- [x] Testes: `test_ipi` e `test_12c` (integração, com o login ligado só no trecho do aprovador); 9/9 verdes.
+- [ ] Commit, à espera do usuário. O primeiro envio real: o usuário clica «Enviar para aprovação», arrasta a planilha no Gmail e confirma.

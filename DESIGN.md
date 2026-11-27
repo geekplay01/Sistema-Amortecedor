@@ -129,7 +129,7 @@ Menu lateral azul-marinho · barra do topo (título do app, sincronização, tem
 - **Selo Inmetro** `.psd-inm` (update 8): pílula pequena — cinza = nº do certificado («Inmetro 002533/2018»), âmbar `.am` = «Inmetro em aprovação, nº»,
   verde `.ok` = «Com nº Inmetro» (ficha). Na lista do DES/R-D é uma coluna própria («Inmetro»); fora do certificado mostra «–». Divergência numa célula:
   linha de apoio âmbar `.psd-dv` («certificado: Semi-estrutural», «catálogo: Ø 12,4 mm»).
-- **Abas dentro de uma tela** (Redesenvolvimento: Itens | Validar itens; Produtos e códigos: Catálogo | Inmetro, update 8): seletor `.psd-seg` com
+- **Abas dentro de uma tela** (Redesenvolvimento: Itens | Validar itens; Produtos e códigos: Catálogo | Inmetro, update 8; Monitoramento de IPI: Itens | Anomalias | Próximos cadastros, update 9): seletor `.psd-seg` com
   `role="tablist"` acima do conteúdo; a aba fica na URL (`?aba=`), a troca não recarrega a página.
 - **Cartões de família (aba Inmetro, update 8)** `.psd-ifam`: botão que filtra a lista (nome, «447 de 448 com certificado», barrinha nos dois / num só /
   sem — `--chart-1`, `--chart-3`, laranja — e os números do certificado de cada fornecedor); escolhido com borda `--b600`.
@@ -190,6 +190,19 @@ Um cartão (`.psd-banc`): cabeçalho com o código, a descrição e os dados do 
   Reprovar = contorno vermelho, não preenchido) e os arquivos do F-008. Concluída, a bancada fica só leitura.
 - Abaixo de 1100 px as colunas viram uma.
 
+### 6.4d Monitoramento de IPI (update 9, `telas/ipi.js`; maquete aprovada em 27/11/2026)
+- **Faixa do fluxo** `.psd-fluxo`: os 4 números são o caminho do item, da esquerda para a direita (Pendente controladoria → Pendente precificação →
+  Enviados para aprovação → IPI aprovado); cada um é um botão que filtra a lista (o escolhido ganha a linha azul-clara embaixo). Os aprovadores ficam dentro
+  de «Enviados» (`.psd-pes`), com a bolinha `.psd-dot`: amarela = aguardando, verde = aprovou, cinza = nada enviado.
+- **Uma ação principal**: «Enviar para aprovação» (com o número de itens) no topo, à direita; «Baixar Excel» é secundário. O e-mail **não** aparece na tela:
+  o botão baixa a planilha e abre o Gmail numa nova aba. Envio preparado = faixa `.psd-envio` (azul-claro) com «Confirmar envio» / «Cancelar».
+- **Resposta** `.psd-resp`: a resposta da Mariana como chegou; verde com o trecho da aprovação marcado (`mark`) quando o corpo aprova; neutra quando não.
+- **Selo de IPI** `.psd-ipi`: 10,4 em azul (`--chart-1`, leve e passeio), 2,6 em roxo (`--chart-5`, utilitário e pesado), contorno laranja (`.dv`) quando o
+  IPI do servidor diverge da sugestão. A regra que gerou a sugestão vai embaixo, em texto pequeno.
+- **Anomalias** em aba própria: cartões `.psd-anc` (3 colunas), um por tipo, com o número em laranja (cinza se zero) e a lista de códigos.
+- **Tela do aprovador** (`templates/aprovacao_ipi.html`, perfil «Aprovador IPI»): cor própria azul-petróleo (`--ap`, mais escuro no tema escuro) para
+  não se confundir com o app de quem envia; sem menu; três números grandes (`.psd-big`), os itens do envio em duas colunas (10,4 e 2,6, `.psd-apcol`, com
+  código, ID, veículo, aplicação e anos) e os próximos cadastros recolhidos (`details`). Só leitura.
 ### 6.5 Retorno e estados
 - Carregando: `PSDTW.esqueleto(linhas, kpis)` no lugar do conteúdo (preferir a texto «Carregando…»); `carregando()` para blocos pequenos.
 - Vazio: `PSDTW.empty(texto)` — frase curta com o que fazer.

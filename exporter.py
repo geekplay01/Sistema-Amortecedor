@@ -184,7 +184,7 @@ BUILD = {"desenvolvimento": _rd("DESENVOLVIMENTO"), "redesenvolvimento": _rd("RE
 
 LABELS = {"desenvolvimento": "Desenvolvimento", "redesenvolvimento": "Redesenvolvimento", "produtos": "Produtos e códigos", "pesquisa": "Pesquisa de amortecedores", "aplicacoes": "Aplicações veiculares",
           "comparacao": "Comparação técnica", "pendencias": "Pendências de dados", "fontes": "Fontes e histórico", "amostras": "Compra de amostras", "damping": "Damping force",
-          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "vendas_uf": "Vendas por estado", "inmetro": "Inmetro", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra", "cobertura": "Cobertura de concorrentes", "validacao": "Validação"}      # nome da tela como no menu (nome do arquivo baixado)
+          "configuracoes": "Backups", "desenhos": "Desenhos", "equivalencias": "Equivalências", "anomalias": "Anomalias", "parados": "Saldos parados", "garantia": "Garantia", "vendas_uf": "Vendas por estado", "inmetro": "Inmetro", "ipi": "Monitoramento de IPI", "estoque": "Estoque", "previsao": "Previsão de chegadas","brands": "Brands", "pendente_compras": "Pendente de compra", "lados": "Lados", "envio": "Envio de amostra", "cobertura": "Cobertura de concorrentes", "validacao": "Validação"}      # nome da tela como no menu (nome do arquivo baixado)
 FLABEL = {"sit": "Situação", "familia": "Família", "forn": "Fornecedor do certificado", "q": "Busca", "make": "Montadora", "model": "Modelo", "year": "Ano", "axle": "Eixo", "side": "Lado", "system": "Sistema", "status": "Status", "supplier": "Fornecedor", "month": "Mês", "stage": "Etapa",
           "code": "Código", "code_type": "Tipo de código", "origem": "Origem", "ids": "Produtos", "kind": "Tipo", "where": "Cadastro", "ext": "Formato", "confidence": "Confiança", "family": "Família", "brand": "Marca",
           "curtiu": "Curtiu", "flag": "Controle", "rod": "Ø haste", "launch": "Lançamento", "linha": "Linha", "hibrido": "Híbrido ou elétrico","origin": "Origem", "res": "Resultado", "scope": "Onde está", "field": "Campo", "ano": "Ano", "tipo": "Tipo", "fornecedor": "Fornecedor", "procedencia": "Procedência", "unidade": "Unidade", "defeito": "Defeito", "concorrente": "Concorrente", "curva": "Curva ABC", "lancamento": "Lançamento", "tab": "Aba", "uf": "UF", "linhas": "Linhas", "validade": "Lote válido/vencido", "situacao": "Situação", "classif": "Classificação"}
@@ -287,6 +287,18 @@ def _inmetro(a):
                l["pad_txt"], l["orig"], ", ".join(inmetro.DIV[d] for d in l["div"]), l.get("status")] for l in rows],
              [14, 34, 12, 18, 16, 18, 13, 13, 13, 22, 16, 16, 16, 12, 10, 12, 20, 12, 12, 40, 50, 22, 24])], len(rows)
 BUILD["inmetro"] = _inmetro
+def _ipi(a):
+    """Update 9: Monitoramento de IPI com os filtros da tela — as 16 colunas do modelo IPI.xlsx e a situação no app; aba de próximos cadastros."""
+    import ipi
+    d = ipi.publico({k: a.get(k, "") for k in ("sit", "ipi", "q")})
+    SIT = {"prec": "Pendente precificação", "enviado": "Enviado", "ressalva": "Com ressalva", "aprovado": "IPI aprovado"}
+    lin = lambda l, extra: [l["id"], l["code"], l["ipi"], l["family"], l["make"], l["vehicle"], l["application_text"], l["brand"], l["description"], l["year_from"], l["year_to"],
+                            *[", ".join(l["refs"].get(k) or []) for k in ipi.REFS], *extra]
+    cab = ipi.COLUNAS + ["IPI sugerido", "Regra da sugestão"]
+    return [("Pendente controladoria", cab + ["Situação", "Enviado em", "IPI no Protheus"], [lin(l, [l["sug"], l["regra"], SIT.get(l["sit"], l["sit"]), l["enviado_em"], l["bi03"]]) for l in d["itens"]],
+             [8, 12, 6, 22, 14, 18, 26, 12, 36, 10, 10, 26, 16, 16, 16, 16, 10, 30, 18, 18, 12]),
+            ("Próximos cadastros", cab + ["Status"], [lin(l, [l["sug"], l["regra"], l["status"]]) for l in d["proximos"]], [8, 12, 6, 22, 14, 18, 26, 12, 36, 10, 10, 26, 16, 16, 16, 16, 10, 30, 18])], len(d["itens"])
+BUILD["ipi"] = _ipi
 def _garantia(a):
     """Garantia (servidor, etapa 18) com os filtros da tela: ocorrências + defeitos (Pareto), códigos, UF (índice), fornecedores e lotes."""
     import garantias

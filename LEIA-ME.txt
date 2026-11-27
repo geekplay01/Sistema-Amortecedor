@@ -271,6 +271,12 @@ ETAPA 24 — 25/11/2026 (decisões em DECISOES_ETAPA24.md, regras em REGRAS_DE_N
      (ou envie só as planilhas «Inmetro… Certificado»).
    - Desenvolvimento e Redesenvolvimento: faixa «Inmetro» no quadro de sub status (em aprovação, com nº, fora do certificado), coluna Inmetro
      na lista e o bloco Inmetro na ficha do item.
+ - Atualização de 27/11/2026 (update 9): Monitoramento de IPI (grupo 1 · Desenvolvimento).
+   - Indicadores: Pendente controladoria (Finalizando CIT) → Pendente precificação → Enviados para aprovação → IPI aprovado; clique num número para filtrar.
+   - «Enviar para aprovação» baixa a planilha e abre o Gmail já preenchido: arraste a planilha no e-mail, envie e volte para clicar «Confirmar envio».
+   - Resposta da Mariana: peça ao Claude «verifique a resposta do IPI» ou cole o texto em «Colar resposta». Só aprova se o e-mail disser que aprovou.
+   - Aprovadores: em Configurações › Usuários, crie a conta com o perfil «Aprovador IPI»; com «Abrir o app pelo celular» ligado, eles entram pelo
+     endereço da rede e veem só a tela de aprovação (o sistema não fecha sozinho enquanto o acesso pela rede estiver ligado).
  OPCIONAL: leitura das medidas pelo Claude (API da Anthropic; as imagens dos desenhos saem do PC)
  1. .venv\Scripts\python.exe -m pip install anthropic
  2. No arquivo %USERPROFILE%\.perfect_shock_data\.env, acrescente  ANTHROPIC_API_KEY=<chave da API da Anthropic>
